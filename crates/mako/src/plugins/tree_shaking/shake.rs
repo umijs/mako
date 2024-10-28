@@ -27,11 +27,17 @@ use crate::{mako_profile_function, mako_profile_scope};
 type TreeShakingModuleMap = HashMap<ModuleId, RefCell<TreeShakeModule>>;
 
 pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> Result<()> {
+    let module_ids = {
+        let (mut module_ids, _) = module_graph.toposort();
+        // start from the leaf nodes, so reverser the sort
+        module_ids.reverse();
+        module_ids
+    };
+    mark_async(module_graph, &module_ids, context);
     let (topo_sorted_modules, _cyclic_modules) = {
         mako_profile_scope!("tree shake topo-sort");
         module_graph.toposort()
     };
-
     let (_skipped, tree_shake_modules_ids): (Vec<ModuleId>, Vec<ModuleId>) =
         topo_sorted_modules.into_iter().partition(|module_id| {
             let module = module_graph.get_module(module_id).unwrap();
@@ -39,8 +45,9 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
             let module_type = module.get_module_type();
 
             // skip non script modules and external modules
-            if module_type != ModuleType::Script || module.is_external() {
-                if module_type != ModuleType::Script && !module.is_external() {
+            let is_async = &module.info.as_ref().unwrap().is_async;
+            if module_type != ModuleType::Script || module.is_external() || *is_async {
+                if module_type != ModuleType::Script && !module.is_external() || *is_async {
                     // mark all non script modules' script dependencies as side_effects
                     for dep_id in module_graph.dependence_module_ids(module_id) {
                         let dep_module = module_graph.get_module_mut(&dep_id).unwrap();
@@ -176,16 +183,6 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
             }
         }
     }
-
-    // mark async should before concatenate && after skip module
-
-    let module_ids = {
-        let (mut module_ids, _) = module_graph.toposort();
-        // start from the leaf nodes, so reverser the sort
-        module_ids.reverse();
-        module_ids
-    };
-    mark_async(&module_ids, context);
 
     if context
         .config

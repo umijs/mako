@@ -14,6 +14,7 @@ use crate::ast::utils::is_commonjs_require;
 use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleId};
+use crate::module_graph::ModuleGraph;
 
 const ASYNC_IMPORTED_MODULE: &str = "_async__mako_imported_module_";
 
@@ -205,9 +206,7 @@ impl VisitMut for AsyncModule<'_> {
     }
 }
 
-pub fn mark_async(module_ids: &[ModuleId], context: &Arc<Context>) {
-    let mut module_graph = context.module_graph.write().unwrap();
-
+pub fn mark_async(module_graph: &mut ModuleGraph, module_ids: &[ModuleId], context: &Arc<Context>) {
     let mut to_visit_queue = module_graph
         .modules()
         .iter()
@@ -252,23 +251,16 @@ pub fn mark_async(module_ids: &[ModuleId], context: &Arc<Context>) {
 
     module_ids.iter().for_each(|module_id| {
         let deps = module_graph.get_dependencies_info(module_id);
+        let mut async_deps_map = context.async_deps_map.write().unwrap();
         let async_deps: Vec<Dependency> = deps
             .into_iter()
             .filter(|(_, dep, is_async)| dep.resolve_type.is_sync_esm() && *is_async)
             .map(|(_, dep, _)| dep.clone())
             .collect();
-        let module = module_graph.get_module_mut(module_id).unwrap();
-        let mut async_deps_map = context.async_deps_map.write().unwrap();
-        if let Some(info) = module.info.as_mut() {
-            // a module with async deps need to be polluted into async module
-            if !info.is_async && !async_deps.is_empty() {
-                info.is_async = true;
-            }
-            if !async_deps.is_empty() {
-                async_deps_map.insert(module_id.clone(), async_deps);
-            }
+        if !async_deps.is_empty() {
+            async_deps_map.insert(module_id.clone(), async_deps);
         }
-    })
+    });
 }
 
 #[cfg(test)]

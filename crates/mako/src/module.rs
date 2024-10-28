@@ -491,7 +491,13 @@ impl Module {
 
 impl Debug for Module {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "id={}({:?})", self.id.id, self.get_module_type())
+        write!(
+            f,
+            "id={}({:?}) is_async={:?}",
+            self.id.id,
+            self.get_module_type(),
+            self.info.as_ref().unwrap().is_async
+        )
     }
 }
 

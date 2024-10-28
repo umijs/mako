@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::DerefMut;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::time::Instant;
@@ -55,7 +56,8 @@ impl Compiler {
 
 pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
     let t = Instant::now();
-    mark_async(&module_ids, context);
+    let mut module_graph = context.module_graph.write().unwrap();
+    mark_async(module_graph.deref_mut(), &module_ids, context);
     debug!(">> mark async in {}ms", t.elapsed().as_millis());
     let t = Instant::now();
     transform_modules_in_thread(&module_ids, context)?;
@@ -70,8 +72,8 @@ pub fn transform_modules_in_thread(
     crate::mako_profile_function!();
 
     let (rs, rr) = channel::<Result<(ModuleId, ModuleAst)>>();
-    let async_deps_by_module_id = context.async_deps_map.read().unwrap();
     for module_id in module_ids {
+        let async_deps_by_module_id = context.async_deps_map.read().unwrap();
         let context = context.clone();
         let rs = rs.clone();
         let module_id = module_id.clone();
