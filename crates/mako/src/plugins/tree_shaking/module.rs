@@ -171,6 +171,7 @@ pub struct TreeShakeModule {
     used_exports: UsedExports,
     pub module_system: ModuleSystem,
     pub all_exports: AllExports,
+    pub is_async: bool,
     pub topo_order: usize,
     pub updated_ast: Option<SwcModule>,
     pub side_effect_dep_sources: HashSet<String>,
@@ -323,6 +324,7 @@ impl TreeShakeModule {
             described_side_effects: module.info.as_ref().unwrap().described_side_effect(),
             side_effects: module_system != ModuleSystem::ESModule,
             side_effect_dep_sources: Default::default(),
+            is_async: module.info.as_ref().unwrap().is_async,
             all_exports: match module_system {
                 ModuleSystem::ESModule => AllExports::Precise(Default::default()),
                 ModuleSystem::Custom | ModuleSystem::CommonJS => {
