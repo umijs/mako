@@ -1,8 +1,0 @@
-{
-  "minify": false,
-  "moduleIdStrategy": "named",
-  "optimization": {
-    "skipModules": true,
-    "concatenateModules": false
-  }
-}
