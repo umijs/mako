@@ -43,11 +43,11 @@ impl Compiler {
             // stage: modules
             self.module_to_optimize_infos(&mut optimize_chunks_infos, None);
 
-            // stage: size
-            self.optimize_chunk_size(&mut optimize_chunks_infos);
-
             // stage: name_suffix
             self.optimize_name_suffix(&mut optimize_chunks_infos);
+
+            // stage: size
+            self.optimize_chunk_size(&mut optimize_chunks_infos);
 
             // stage: apply
             self.apply_optimize_infos(&optimize_chunks_infos);
