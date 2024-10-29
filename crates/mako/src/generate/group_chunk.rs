@@ -116,28 +116,29 @@ impl Compiler {
 
             worker_dependencies.retain(|w| !visited_workers.contains(w));
 
-            if let Some(exited_chunk) = chunk_graph.mut_chunk(&chunk.id) {
+            edges.extend(
+                [dynamic_dependencies.clone(), worker_dependencies.clone()]
+                    .concat()
+                    .iter()
+                    .map(|dep| {
+                        (
+                            chunk.id.clone(),
+                            match dep.1.get_chunk_name() {
+                                Some(chunk_name) => {
+                                    generate_module_id(chunk_name, &self.context).into()
+                                }
+                                None => dep.0.generate(&self.context).into(),
+                            },
+                        )
+                    }),
+            );
+
+            if let Some(existed_chunk) = chunk_graph.mut_chunk(&chunk.id) {
                 chunk
                     .modules
                     .iter()
-                    .for_each(|m| exited_chunk.add_module(m.clone()));
+                    .for_each(|m| existed_chunk.add_module(m.clone()));
             } else {
-                edges.extend(
-                    [dynamic_dependencies.clone(), worker_dependencies.clone()]
-                        .concat()
-                        .iter()
-                        .map(|dep| {
-                            (
-                                chunk.id.clone(),
-                                match dep.1.get_chunk_name() {
-                                    Some(chunk_name) => {
-                                        generate_module_id(chunk_name, &self.context).into()
-                                    }
-                                    None => dep.0.generate(&self.context).into(),
-                                },
-                            )
-                        }),
-                );
                 chunk_graph.add_chunk(chunk);
             }
 
@@ -191,7 +192,14 @@ impl Compiler {
                     }),
             );
 
-            chunk_graph.add_chunk(chunk);
+            if let Some(existed_chunk) = chunk_graph.mut_chunk(&chunk.id) {
+                chunk
+                    .modules
+                    .iter()
+                    .for_each(|m| existed_chunk.add_module(m.clone()));
+            } else {
+                chunk_graph.add_chunk(chunk);
+            }
 
             visited_workers.insert(head.clone());
 
