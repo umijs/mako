@@ -594,11 +594,13 @@ async function getMakoConfig(opts) {
               options: {
                 groups: [
                   {
-                    name: 'vendors',
+                    name: 'npm',
                     allowChunks: 'async',
                     test: '[\\\\/]node_modules[\\\\/]',
-                    priority: -10,
                     nameSuffix: 'packageName',
+                    priority: -10,
+                    minSize: 1,
+                    minPackageSize: 1,
                   },
                   {
                     name: 'common',

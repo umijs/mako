@@ -264,13 +264,7 @@ impl Compiler {
             );
 
             // split new chunks until chunk size is less than max_size and there has more than 1 package can be split
-            while package_size_map.len() > 1
-                && (chunk_size > info.group_options.max_size
-                    || (info.group_options.min_module_size.is_some()
-                        && package_size_map
-                            .iter()
-                            .any(|p| p.1 .0 < info.group_options.min_module_size.unwrap())))
-            {
+            while package_size_map.len() > 1 && chunk_size > info.group_options.max_size {
                 let mut new_chunk_size = 0;
                 let mut new_module_to_chunks = IndexMap::new();
 
@@ -283,8 +277,6 @@ impl Compiler {
                         let package_size = package.1 .0;
                         new_chunk_size == 0
                             || new_chunk_size + package_size < info.group_options.max_size
-                                && (info.group_options.min_module_size.is_none()
-                                    || package_size < info.group_options.min_module_size.unwrap())
                     } else {
                         false
                     }
@@ -344,6 +336,17 @@ impl Compiler {
                         module_to_package_map
                             .iter()
                             .for_each(|(package_name, module_ids)| {
+                                let total_package_size =
+                                    module_ids.iter().fold(0_usize, |total, cur| {
+                                        total + self.get_module_size(cur).unwrap_or_default()
+                                    });
+
+                                if total_package_size
+                                    < info.group_options.min_package_size.unwrap_or_default()
+                                {
+                                    return;
+                                }
+
                                 let mut new_chunk_group_options = info.group_options.clone();
                                 new_chunk_group_options.name =
                                     format!("{}_{}", info.group_options.name, package_name);
@@ -635,7 +638,7 @@ fn code_splitting_strategy_granular(
                 name_suffix: Some(ChunkNameSuffixStrategy::PackageName),
                 allow_chunks: AllowChunks::Async,
                 test: Some(r"[/\\]node_modules[/\\]".to_string()),
-                min_module_size: Some(lib_min_size),
+                min_package_size: Some(lib_min_size),
                 priority: -20,
                 ..Default::default()
             },

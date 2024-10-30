@@ -171,7 +171,7 @@ impl Plugin for SUPlus {
                             min_chunks: 0,
                             min_size: 0,
                             max_size: usize::MAX,
-                            min_module_size: None,
+                            min_package_size: None,
                             priority: 10,
                             test: Some(r"[/\\]node_modules[/\\]".to_string()),
                         },
@@ -182,7 +182,7 @@ impl Plugin for SUPlus {
                             min_size: 1,
                             max_size: usize::MAX,
                             name_suffix: None,
-                            min_module_size: None,
+                            min_package_size: None,
                             priority: 0,
                             ..Default::default()
                         },
