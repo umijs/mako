@@ -239,6 +239,7 @@ function checkConfig(opts) {
     'optimization',
     'sass',
     'autoCSSModules',
+    'moduleIdStrategy',
   ];
   // umi mako config
   const { mako } = opts.config;
