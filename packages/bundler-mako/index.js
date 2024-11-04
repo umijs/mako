@@ -239,6 +239,7 @@ function checkConfig(opts) {
     'optimization',
     'sass',
     'autoCSSModules',
+    'moduleIdStrategy',
   ];
   // umi mako config
   const { mako } = opts.config;
@@ -566,26 +567,52 @@ async function getMakoConfig(opts) {
 
   const normalizedDevtool = devtool === false ? false : 'source-map';
 
-  if (process.env.GRANULAR_CHUNKS) {
-    codeSplitting = {
-      strategy: 'granular',
-      options: {
-        // copy from https://github.com/umijs/umi/blob/d8f3f1fa9586a8c7cab4d3b6a9e1637a6f47e1dc/packages/preset-umi/src/features/codeSplitting/codeSplitting.ts#L60
-        frameworkPackages: [
-          'react-dom',
-          'react',
-          // 'core-js',
-          // 'regenerator-runtime',
-          'history',
-          'react-router',
-          'react-router-dom',
-          'scheduler',
-          // TODO
-          // add renderer-react
-        ],
-      },
-    };
-  }
+  let makoCodeSplittingConfig =
+    codeSplitting === false
+      ? false
+      : codeSplitting?.jsStrategy === 'granularChunks'
+        ? {
+            strategy: 'granular',
+            options: {
+              // copy from https://github.com/umijs/umi/blob/d8f3f1fa9586a8c7cab4d3b6a9e1637a6f47e1dc/packages/preset-umi/src/features/codeSplitting/codeSplitting.ts#L60
+              frameworkPackages: [
+                'react-dom',
+                'react',
+                // 'core-js',
+                // 'regenerator-runtime',
+                'history',
+                'react-router',
+                'react-router-dom',
+                'scheduler',
+                // TODO
+                // add renderer-react
+              ],
+            },
+          }
+        : codeSplitting?.jsStrategy === 'depPerChunk'
+          ? {
+              strategy: 'advanced',
+              options: {
+                groups: [
+                  {
+                    name: 'npm',
+                    allowChunks: 'async',
+                    test: '[\\\\/]node_modules[\\\\/]',
+                    nameSuffix: 'packageName',
+                    priority: -10,
+                    minSize: 1,
+                    minPackageSize: 1,
+                  },
+                  {
+                    name: 'common',
+                    allowChunks: 'async',
+                    minChunks: 2,
+                    priority: -20,
+                  },
+                ],
+              },
+            }
+          : { strategy: 'auto' };
 
   const makoConfig = {
     entry: opts.entry,
@@ -600,13 +627,7 @@ async function getMakoConfig(opts) {
     },
     manifest,
     mdx: !!mdx,
-    codeSplitting:
-      codeSplitting === false
-        ? false
-        : typeof codeSplitting === 'object' &&
-            codeSplitting.strategy === 'granular'
-          ? codeSplitting
-          : { strategy: 'auto' },
+    codeSplitting: makoCodeSplittingConfig,
     devtool: normalizedDevtool,
     cjs,
     dynamicImportToRequire,

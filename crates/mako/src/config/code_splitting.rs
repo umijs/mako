@@ -85,7 +85,7 @@ pub struct ChunkGroup {
     #[serde(default = "GenericUsizeDefault::<5000000>::value")]
     pub max_size: usize,
     #[serde(default)]
-    pub min_module_size: Option<usize>,
+    pub min_package_size: Option<usize>,
     #[serde(default)]
     pub priority: i8,
     #[serde(default)]
@@ -102,7 +102,7 @@ impl Default for ChunkGroup {
             max_size: GenericUsizeDefault::<5000000>::value(),
             name: String::default(),
             name_suffix: None,
-            min_module_size: None,
+            min_package_size: None,
             test: None,
             priority: i8::default(),
         }

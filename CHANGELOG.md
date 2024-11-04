@@ -1,3 +1,13 @@
+## 0.9.4
+
+`2024-11-04`
+
+- feat: enable magicComment features by default by [@xusd320](https://github.com/xusd320) in [#1667](https://github.com/umijs/mako/pull/1667)
+- feat(bundler-mako): add moduleIdStrategy to supportMakoConfigKeys by [@Jinbao1001](https://github.com/Jinbao1001) in [#1664](https://github.com/umijs/mako/pull/1664)
+- feat: compatible codeSplitting config with umi by [@xusd320](https://github.com/xusd320) in [#1669](https://github.com/umijs/mako/pull/1669)
+- fix: hmr with magic comment chunk name by [@xusd320](https://github.com/xusd320) in [#1663](https://github.com/umijs/mako/pull/1663)
+- fix: async module in circular dependence by [@stormslowly](https://github.com/stormslowly) in [#1659](https://github.com/umijs/mako/pull/1659)
+
 ## 0.9.3
 
 `2024-10-25`

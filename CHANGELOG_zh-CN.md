@@ -1,3 +1,13 @@
+## 0.9.4
+
+`2024-11-04`
+
+- 新增: 默认开启魔法注释功能 by [@xusd320](https://github.com/xusd320) in [#1667](https://github.com/umijs/mako/pull/1667)
+- 新增: bundler-mako `moduleIdStrategy` 配置项 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1664](https://github.com/umijs/mako/pull/1664)
+- 新增: 兼容 Umi 的 codesplitting 配置 by [@xusd320](https://github.com/xusd320) in [#1669](https://github.com/umijs/mako/pull/1669)
+- 修复: 魔法注释在热更新时运行时的错误 by [@xusd320](https://github.com/xusd320) in [#1663](https://github.com/umijs/mako/pull/1663)
+- 修复: 循环依赖中 async 模块未被标识的错误 by [@stormslowly](https://github.com/stormslowly) in [#1659](https://github.com/umijs/mako/pull/1659)
+
 ## 0.9.3
 
 `2024-10-25`
