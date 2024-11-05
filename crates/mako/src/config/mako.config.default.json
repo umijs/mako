@@ -71,7 +71,8 @@
     "detectCircularDependence": {
       "ignores": ["node_modules"],
       "graphviz": false
-    }
+    },
+    "centralEnsure": true
   },
   "useDefineForClassFields": true,
   "emitDecoratorMetadata": false,
