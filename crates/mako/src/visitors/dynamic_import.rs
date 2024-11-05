@@ -13,7 +13,7 @@ use super::dep_replacer::miss_throw_stmt;
 use crate::ast::utils::{is_dynamic_import, promise_all, require_ensure};
 use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
-use crate::generate::chunk::ChunkId;
+use crate::module::ModuleId;
 use crate::visitors::dep_replacer::DependenciesToReplace;
 
 pub struct DynamicImport<'a> {
@@ -47,14 +47,16 @@ impl<'a> VisitMut for DynamicImport<'a> {
                 .position(|module_item| !module_item.directive_continue())
                 .unwrap();
 
-            let (id, _) = self
+            let interop_replace = self
                 .dep_to_replace
                 .resolved
                 .get("@swc/helpers/_/_interop_require_wildcard")
                 .unwrap();
 
-            let require_interop = quote_ident!("__mako_require__")
-                .as_call(DUMMY_SP, vec![quote_str!(id.clone()).as_arg()]);
+            let require_interop = quote_ident!("__mako_require__").as_call(
+                DUMMY_SP,
+                vec![quote_str!(interop_replace.to_replace_source.clone()).as_arg()],
+            );
 
             let stmt: Stmt = Expr::Member(MemberExpr {
                 span: DUMMY_SP,
@@ -74,7 +76,6 @@ impl<'a> VisitMut for DynamicImport<'a> {
                 if call_expr.args.is_empty() {
                     return;
                 }
-
                 if let ExprOrSpread {
                     expr: box Expr::Lit(Lit::Str(ref mut source)),
                     ..
@@ -106,60 +107,28 @@ impl<'a> VisitMut for DynamicImport<'a> {
                         // it must be resolved, so unwrap is safe here.
                         .unwrap();
 
-                    let resolved_source = &resolved_info.0;
-                    let _chunk_ids = {
-                        let chunk_id: ChunkId = resolved_source.clone().into();
-                        let chunk_graph = &self.context.chunk_graph.read().unwrap();
-                        let chunk = chunk_graph.chunk(&chunk_id);
-                        let chunk_ids = match chunk {
-                            Some(chunk) => {
-                                [
-                                    chunk_graph.sync_dependencies_chunk(&chunk.id),
-                                    vec![chunk.id.clone()],
-                                ]
-                                .concat()
-                                .iter()
-                                .filter_map(|chunk_id| {
-                                    // skip empty chunk because it will not be generated
-                                    if chunk_graph
-                                        .chunk(chunk_id)
-                                        .is_some_and(|c| !c.modules.is_empty())
-                                    {
-                                        Some(chunk_id.id.clone())
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .collect::<Vec<_>>()
-                            }
-                            // None means the original chunk has been optimized to entry chunk
-                            None => vec![],
-                        };
-                        chunk_ids
-                    };
-
                     self.changed = true;
-                    // build new expr
-                    // e.g.
-                    // Promise.all([ require.ensure("id") ]).then(require.bind(require, "id"))
-                    // Promise.all([ require.ensure("d1"), require.ensure("id)]).then(require.bind(require, "id"))
 
-                    // version 2
-                    // require.ensure2("id").then(require.bind(require,"id"))
-
+                    let generated_module_id = resolved_info.to_replace_source.clone();
                     *expr = {
                         // let load_promise = self.make_load_promise(&chunk_ids);
-                        let load_promise = self.make_load_promise_2(resolved_source);
+
+                        let load_promise = if self.context.args.watch
+                            && self.context.config.experimental.central_ensure
+                        {
+                            self.central_ensure(&generated_module_id)
+                        } else {
+                            self.inline_ensure(&resolved_info.resolved_module_id, &self.context)
+                        };
 
                         let lazy_require_call =
                             member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.bind).as_call(
                                 DUMMY_SP,
                                 vec![
                                     quote_ident!("__mako_require__").as_arg(),
-                                    quote_str!(resolved_source.clone()).as_arg(),
+                                    quote_str!(generated_module_id).as_arg(),
                                 ],
                             );
-
                         let dr_call = member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.dr)
                             .as_call(
                                 DUMMY_SP,
@@ -177,12 +146,47 @@ impl<'a> VisitMut for DynamicImport<'a> {
 }
 
 impl DynamicImport<'_> {
-    fn make_load_promise_2(&self, module_id: &str) -> Expr {
+    // require.ensure2("id").then(require.bind(require,"id"))
+    fn central_ensure(&self, module_id: &str) -> Expr {
         member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.ensure2)
             .as_call(DUMMY_SP, vec![quote_str!(module_id).as_arg()])
     }
 
-    fn make_load_promise(&self, chunk_ids: &[String]) -> Expr {
+    // build the Promise.all([...]) part
+    // Promise.all([ require.ensure("id") ]).then(require.bind(require, "id"))
+    // Promise.all([ require.ensure("d1"), require.ensure("id)]).then(require.bind(require, "id"))
+    fn inline_ensure(&self, module_id: &ModuleId, context: &Arc<Context>) -> Expr {
+        let chunk_graph = context.chunk_graph.read().unwrap();
+
+        let chunk_ids = {
+            let chunk = chunk_graph.get_chunk_for_module(module_id);
+            let chunk_ids = match chunk {
+                Some(chunk) => {
+                    [
+                        chunk_graph.sync_dependencies_chunk(&chunk.id),
+                        vec![chunk.id.clone()],
+                    ]
+                    .concat()
+                    .iter()
+                    .filter_map(|chunk_id| {
+                        // skip empty chunk because it will not be generated
+                        if chunk_graph
+                            .chunk(chunk_id)
+                            .is_some_and(|c| !c.modules.is_empty())
+                        {
+                            Some(chunk_id.id.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                }
+                // None means the original chunk has been optimized to entry chunk
+                None => vec![],
+            };
+            chunk_ids
+        };
+
         let to_ensure_elems = chunk_ids
             .iter()
             .map(|c_id| {
@@ -213,7 +217,7 @@ mod tests {
     use super::DynamicImport;
     use crate::ast::tests::TestUtils;
     use crate::generate::chunk::{Chunk, ChunkType};
-    use crate::visitors::dep_replacer::DependenciesToReplace;
+    use crate::visitors::dep_replacer::{DependenciesToReplace, ResolvedReplaceInfo};
 
     // TODO: add nested chunk test
     #[test]
@@ -242,9 +246,14 @@ Promise.all([
 
         let dep_to_replace = DependenciesToReplace {
             resolved: maplit::hashmap! {
-                "@swc/helpers/_/_interop_require_wildcard".to_string() =>
-                ("hashed_helper".to_string(), "dummy".into()),
-                "foo".to_string() => ("foo".to_string(), "foo".to_string())
+                "@swc/helpers/_/_interop_require_wildcard".to_string() => ResolvedReplaceInfo {
+                    to_replace_source: "hashed_helper".to_string(),
+                    resolved_module_id:"dummy".into()
+                },
+                "foo".to_string() => ResolvedReplaceInfo {
+                    to_replace_source: "foo".into(),
+                    resolved_module_id: "foo".into()
+                }
             },
             missing: HashMap::new(),
         };
