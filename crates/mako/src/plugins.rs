@@ -1,11 +1,11 @@
 pub mod async_runtime;
 pub mod bundless_compiler;
+pub mod central_ensure;
 pub mod context_module;
 pub mod copy;
 pub mod detect_circular_dependence;
 pub mod duplicate_package_checker;
 pub mod emotion;
-pub mod ensure_2;
 pub mod graphviz;
 pub mod hmr_runtime;
 pub mod ignore;
