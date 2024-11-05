@@ -10,6 +10,7 @@ use crate::compiler::Compiler;
 use crate::generate::chunk::Chunk;
 use crate::generate::generate_chunks::modules_to_js_stmts;
 use crate::module::ModuleId;
+use crate::plugins::central_ensure::module_ensure_map;
 
 impl Compiler {
     pub fn generate_hmr_chunk(
@@ -22,10 +23,22 @@ impl Compiler {
         let module_graph = &self.context.module_graph.read().unwrap();
         let (js_stmts, _) = modules_to_js_stmts(module_ids, module_graph, &self.context).unwrap();
         let content = include_str!("../runtime/runtime_hmr.js").to_string();
-        let content = content.replace("__CHUNK_ID__", &chunk.id.id).replace(
-            "__runtime_code__",
-            &format!("runtime._h='{}';", current_hash),
-        );
+
+        let mut runtime_code_snippets = vec![format!("runtime._h='{}';\n", current_hash)];
+
+        if self.context.config.experimental.central_ensure {
+            if let Ok(map) = module_ensure_map(&self.context) {
+                runtime_code_snippets.push(format!(
+                    "runtime.updateEnsure2Map({})",
+                    serde_json::to_string(&map)?
+                ));
+            }
+        }
+
+        let content = content
+            .replace("__CHUNK_ID__", &chunk.id.id)
+            .replace("__runtime_code__", &runtime_code_snippets.join("\n"));
+
         let mut js_ast = JsAst::build(filename, content.as_str(), self.context.clone())
             /* safe */
             .unwrap();

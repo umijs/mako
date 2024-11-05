@@ -9,45 +9,48 @@ use crate::plugin::Plugin;
 
 pub struct CentralChunkEnsure {}
 
+pub fn module_ensure_map(context: &Arc<Context>) -> anyhow::Result<BTreeMap<String, Vec<String>>> {
+    let mg = context
+        .module_graph
+        .read()
+        .map_err(|e| anyhow!("Read_Module_Graph_error:\n{:?}", e))?;
+    let cg = context
+        .chunk_graph
+        .read()
+        .map_err(|e| anyhow!("Read_Chunk_Graph_error:\n{:?}", e))?;
+
+    let mut chunk_async_map: BTreeMap<String, Vec<String>> = Default::default();
+
+    mg.modules().iter().for_each(|module| {
+        let be_dynamic_imported = mg
+            .get_dependents(&module.id)
+            .iter()
+            .any(|(_, dep)| dep.resolve_type.is_dynamic_esm());
+
+        if be_dynamic_imported {
+            cg.get_chunk_for_module(&module.id)
+                .iter()
+                .for_each(|chunk| {
+                    let deps_chunks = cg
+                        .installable_descendants_chunk(&chunk.id)
+                        .iter()
+                        .map(|chunk_id| chunk_id.generate(context))
+                        .collect::<Vec<_>>();
+
+                    chunk_async_map.insert(generate_module_id(&module.id.id, context), deps_chunks);
+                });
+        }
+    });
+
+    Ok(chunk_async_map)
+}
+
 impl Plugin for CentralChunkEnsure {
     fn name(&self) -> &str {
         "dev_ensure2"
     }
     fn runtime_plugins(&self, context: &Arc<Context>) -> anyhow::Result<Vec<String>> {
-        let mg = context
-            .module_graph
-            .read()
-            .map_err(|e| anyhow!("Read_Module_Graph_error:\n{:?}", e))?;
-        let cg = context
-            .chunk_graph
-            .read()
-            .map_err(|e| anyhow!("Read_Chunk_Graph_error:\n{:?}", e))?;
-
-        let mut chunk_async_map: BTreeMap<String, Vec<String>> = Default::default();
-
-        mg.modules().iter().for_each(|module| {
-            let be_dynamic_imported = mg
-                .get_dependents(&module.id)
-                .iter()
-                .any(|(_, dep)| dep.resolve_type.is_dynamic_esm());
-
-            if be_dynamic_imported {
-                cg.get_chunk_for_module(&module.id)
-                    .iter()
-                    .for_each(|chunk| {
-                        let deps_chunks = cg
-                            .installable_descendants_chunk(&chunk.id)
-                            .iter()
-                            .map(|chunk_id| chunk_id.generate(context))
-                            .collect::<Vec<_>>();
-
-                        dbg!(&deps_chunks);
-
-                        chunk_async_map
-                            .insert(generate_module_id(&module.id.id, context), deps_chunks);
-                    });
-            }
-        });
+        let chunk_async_map = module_ensure_map(context)?;
 
         // TODO: compress the map to reduce duplicated chunk ids
         let ensure_map = serde_json::to_string(&chunk_async_map)?;
@@ -56,8 +59,8 @@ impl Plugin for CentralChunkEnsure {
             r#"
 (function(){{
   let map = {ensure_map};
-  requireModule.updateEnsuire2Map = function(newMaping) {{
-    map = newMaping;
+  requireModule.updateEnsure2Map = function(newMapping) {{
+    map = newMapping;
   }}
   requireModule.ensure2 = function(chunkId){{
     let toEnsure = map[chunkId];
