@@ -10,8 +10,7 @@ export interface LessLoaderOpts {
     | 'parens-division'
     | 'parens'
     | 'strict-legacy'
-    | number
-    | undefined;
+    | number;
   sourceMap?: any;
   /**
    * A plugin can be a file path string, or a file path string with a params object.
