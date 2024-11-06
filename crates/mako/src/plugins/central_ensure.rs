@@ -28,7 +28,7 @@ pub fn module_ensure_map(context: &Arc<Context>) -> anyhow::Result<BTreeMap<Stri
             .any(|(_, dep)| dep.resolve_type.is_dynamic_esm());
 
         if be_dynamic_imported {
-            cg.get_chunk_for_module(&module.id)
+            cg.get_async_chunk_for_module(&module.id)
                 .iter()
                 .for_each(|chunk| {
                     let deps_chunks = cg

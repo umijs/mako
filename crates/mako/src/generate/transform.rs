@@ -87,24 +87,42 @@ pub fn transform_modules_in_thread(
             let mut resolved_deps: HashMap<String, ResolvedReplaceInfo> = deps
                 .into_iter()
                 .map(|(id, dep)| {
-                    let to_replace_source = match &dep.resolve_type {
+                    let replace_info = match &dep.resolve_type {
                         ResolveType::Worker(import_options) => {
                             let chunk_id = match import_options.get_chunk_name() {
                                 Some(chunk_name) => generate_module_id(chunk_name, &context),
                                 None => id.generate(&context),
                             };
                             let chunk_graph = context.chunk_graph.read().unwrap();
-                            chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
+                            let chunk_name =
+                                chunk_graph.chunk(&chunk_id.into()).unwrap().filename();
+
+                            ResolvedReplaceInfo {
+                                chunk_id: None,
+                                to_replace_source: chunk_name,
+                                resolved_module_id: id.clone(),
+                            }
                         }
-                        _ => id.generate(&context),
+                        ResolveType::DynamicImport(import_options) => {
+                            let chunk_id = Some(match import_options.get_chunk_name() {
+                                Some(chunk_name) => generate_module_id(chunk_name, &context),
+                                None => id.generate(&context),
+                            });
+
+                            ResolvedReplaceInfo {
+                                chunk_id,
+                                to_replace_source: id.generate(&context),
+                                resolved_module_id: id.clone(),
+                            }
+                        }
+                        _ => ResolvedReplaceInfo {
+                            chunk_id: None,
+                            to_replace_source: id.generate(&context),
+                            resolved_module_id: id.clone(),
+                        },
                     };
 
-                    let resolve_replace_info = ResolvedReplaceInfo {
-                        to_replace_source,
-                        resolved_module_id: id.clone(),
-                    };
-
-                    (dep.source.clone(), resolve_replace_info)
+                    (dep.source.clone(), replace_info)
                 })
                 .collect();
             insert_swc_helper_replace(&mut resolved_deps, &context);
@@ -162,6 +180,7 @@ fn insert_swc_helper_replace(
         map.insert(
             m_id.id.clone(),
             ResolvedReplaceInfo {
+                chunk_id: None,
                 to_replace_source: m_id.generate(context),
                 resolved_module_id: m_id,
             },

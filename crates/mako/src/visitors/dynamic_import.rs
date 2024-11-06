@@ -9,11 +9,11 @@ use swc_core::ecma::utils::{
 };
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
-use super::dep_replacer::miss_throw_stmt;
+use super::dep_replacer::{miss_throw_stmt, ResolvedReplaceInfo};
 use crate::ast::utils::{is_dynamic_import, promise_all, require_ensure};
 use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
-use crate::module::ModuleId;
+use crate::generate::chunk::ChunkId;
 use crate::visitors::dep_replacer::DependenciesToReplace;
 
 pub struct DynamicImport<'a> {
@@ -118,7 +118,7 @@ impl<'a> VisitMut for DynamicImport<'a> {
                         {
                             self.central_ensure(&generated_module_id)
                         } else {
-                            self.inline_ensure(&resolved_info.resolved_module_id, &self.context)
+                            self.inline_ensure(resolved_info, &self.context)
                         };
 
                         let lazy_require_call =
@@ -155,11 +155,12 @@ impl DynamicImport<'_> {
     // build the Promise.all([...]) part
     // Promise.all([ require.ensure("id") ]).then(require.bind(require, "id"))
     // Promise.all([ require.ensure("d1"), require.ensure("id)]).then(require.bind(require, "id"))
-    fn inline_ensure(&self, module_id: &ModuleId, context: &Arc<Context>) -> Expr {
+    fn inline_ensure(&self, replace_info: &ResolvedReplaceInfo, context: &Arc<Context>) -> Expr {
         let chunk_graph = context.chunk_graph.read().unwrap();
 
+        let init_chunk_id: ChunkId = replace_info.chunk_id.as_ref().unwrap().clone().into();
         let chunk_ids = {
-            let chunk = chunk_graph.get_chunk_for_module(module_id);
+            let chunk = chunk_graph.chunk(&init_chunk_id);
             let chunk_ids = match chunk {
                 Some(chunk) => {
                     [
@@ -247,10 +248,12 @@ Promise.all([
         let dep_to_replace = DependenciesToReplace {
             resolved: maplit::hashmap! {
                 "@swc/helpers/_/_interop_require_wildcard".to_string() => ResolvedReplaceInfo {
+                    chunk_id: None,
                     to_replace_source: "hashed_helper".to_string(),
                     resolved_module_id:"dummy".into()
                 },
                 "foo".to_string() => ResolvedReplaceInfo {
+                    chunk_id: Some("foo".into()),
                     to_replace_source: "foo".into(),
                     resolved_module_id: "foo".into()
                 }
