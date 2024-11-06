@@ -2,17 +2,16 @@ import url from 'url';
 import { createParallelLoader } from './parallelLessLoader';
 
 export interface LessLoaderOpts {
-  modifyVars: Record<string, string>;
+  modifyVars?: Record<string, string>;
   globalVars?: Record<string, string>;
-  math:
+  math?:
     | 'always'
     | 'strict'
     | 'parens-division'
     | 'parens'
     | 'strict-legacy'
-    | number
-    | undefined;
-  sourceMap: any;
+    | number;
+  sourceMap?: any;
   /**
    * A plugin can be a file path string, or a file path string with a params object.
    * Notice! The file path should be a resolved path like require.resolve("less-plugin-clean-css"),
