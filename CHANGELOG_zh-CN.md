@@ -1,3 +1,11 @@
+## 0.9.5
+
+`2024-11-07`
+
+- 修复: skip module 跳过对 TLA module 的处理 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1667]https://github.com/umijs/mako/pull/1662
+
+
+
 ## 0.9.4
 
 `2024-11-04`
