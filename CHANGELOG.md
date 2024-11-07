@@ -2,7 +2,7 @@
 
 `2024-11-07`
 
-- fix: skip module should skip async module by [@Jinbao1001](https://github.com/Jinbao1001) in [#1667]https://github.com/umijs/mako/pull/1662
+- fix: skip module should skip async module by [@Jinbao1001](https://github.com/Jinbao1001) in [#1667](https://github.com/umijs/mako/pull/1662)
 
 
 
