@@ -159,6 +159,10 @@ pub trait Plugin: Any + Send + Sync {
         Ok(Vec::new())
     }
 
+    fn hmr_runtime_updates(&self, _context: &Arc<Context>) -> Result<Vec<String>> {
+        Ok(Vec::new())
+    }
+
     fn optimize_module_graph(
         &self,
         _module_graph: &mut ModuleGraph,
@@ -364,6 +368,14 @@ impl PluginDriver {
         let mut plugins = Vec::new();
         for plugin in &self.plugins {
             plugins.extend(plugin.runtime_plugins(context)?);
+        }
+        Ok(plugins.join("\n"))
+    }
+
+    pub fn hmr_runtime_update_code(&self, context: &Arc<Context>) -> Result<String> {
+        let mut plugins = Vec::new();
+        for plugin in &self.plugins {
+            plugins.extend(plugin.hmr_runtime_updates(context)?);
         }
         Ok(plugins.join("\n"))
     }

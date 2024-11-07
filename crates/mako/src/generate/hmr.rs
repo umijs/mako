@@ -10,7 +10,6 @@ use crate::compiler::Compiler;
 use crate::generate::chunk::Chunk;
 use crate::generate::generate_chunks::modules_to_js_stmts;
 use crate::module::ModuleId;
-use crate::plugins::central_ensure::module_ensure_map;
 
 impl Compiler {
     pub fn generate_hmr_chunk(
@@ -24,16 +23,12 @@ impl Compiler {
         let (js_stmts, _) = modules_to_js_stmts(module_ids, module_graph, &self.context).unwrap();
         let content = include_str!("../runtime/runtime_hmr.js").to_string();
 
-        let mut runtime_code_snippets = vec![format!("runtime._h='{}';\n", current_hash)];
-
-        if self.context.config.experimental.central_ensure {
-            if let Ok(map) = module_ensure_map(&self.context) {
-                runtime_code_snippets.push(format!(
-                    "runtime.updateEnsure2Map({})",
-                    serde_json::to_string(&map)?
-                ));
-            }
-        }
+        let runtime_code_snippets = [
+            format!("runtime._h='{}';", current_hash),
+            self.context
+                .plugin_driver
+                .hmr_runtime_update_code(&self.context)?,
+        ];
 
         let content = content
             .replace("__CHUNK_ID__", &chunk.id.id)

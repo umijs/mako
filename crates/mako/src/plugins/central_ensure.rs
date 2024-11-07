@@ -76,4 +76,15 @@ impl Plugin for CentralChunkEnsure {
 
         Ok(vec![runtime])
     }
+
+    fn hmr_runtime_updates(&self, _context: &Arc<Context>) -> anyhow::Result<Vec<String>> {
+        let map = module_ensure_map(_context)?;
+
+        let update_mapping = format!(
+            "runtime.updateEnsure2Map({});",
+            serde_json::to_string(&map)?
+        );
+
+        Ok(vec![update_mapping])
+    }
 }
