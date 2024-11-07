@@ -491,13 +491,15 @@ pub(super) fn skip_module_optimize(
 
     for (module_id, replaces) in re_export_replace_map.iter() {
         if module_graph.has_module(module_id) {
+            let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
+            if tsm.is_async {
+                continue;
+            }
             // stmt_id is reversed order
             for to_replace in replaces.iter() {
                 // println!("{} apply with {:?}", module_id.id, to_replace.1);
                 apply_replace(to_replace, module_id, module_graph, context);
             }
-
-            let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
 
             let swc_module = module_graph
                 .get_module(module_id)
