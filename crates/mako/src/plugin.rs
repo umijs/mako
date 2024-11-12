@@ -183,6 +183,10 @@ pub trait Plugin: Any + Send + Sync {
     fn before_write_fs(&self, _path: &Path, _content: &[u8]) -> Result<()> {
         Ok(())
     }
+
+    fn after_update(&self, _compiler: &Compiler) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Default)]
@@ -190,6 +194,7 @@ pub struct PluginDriver {
     plugins: Vec<Arc<dyn Plugin>>,
 }
 
+#[derive(Debug)]
 pub struct NextBuildParam<'a> {
     pub current_module: &'a ModuleId,
     pub next_file: &'a File,
@@ -425,5 +430,12 @@ impl PluginDriver {
             }
         }
         Ok(content.clone())
+    }
+
+    pub fn after_update(&self, compiler: &Compiler) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.after_update(compiler)?;
+        }
+        Ok(())
     }
 }
