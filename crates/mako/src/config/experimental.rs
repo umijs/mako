@@ -7,6 +7,8 @@ use crate::create_deserialize_fn;
 pub struct ExperimentalConfig {
     pub webpack_syntax_validate: Vec<String>,
     pub require_context: bool,
+    // this feature is conflicting with require_context
+    pub keep_unresolved_node_require: bool,
     pub magic_comment: bool,
     #[serde(deserialize_with = "deserialize_detect_loop")]
     pub detect_circular_dependence: Option<DetectCircularDependence>,

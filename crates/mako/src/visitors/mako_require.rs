@@ -49,7 +49,13 @@ impl VisitMut for MakoRequire {
     }
 
     fn visit_mut_ident(&mut self, ident: &mut Ident) {
-        if let Platform::Node = self.context.config.platform {
+        if self
+            .context
+            .config
+            .experimental
+            .keep_unresolved_node_require
+            && let Platform::Node = self.context.config.platform
+        {
             return;
         }
         self.replace_require(ident);
