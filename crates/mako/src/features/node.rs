@@ -21,7 +21,7 @@ impl Node {
             config.targets = HashMap::from([("node".into(), *target)]);
             // ignore all built-in node modules
             config.ignores.push(format!(
-                "^(node:)?({})(/|$)",
+                "^(node:)?({})(/.+|$)",
                 Self::get_all_node_modules().join("|")
             ));
             // polifyll __dirname & __filename is supported with MockFilenameAndDirname Visitor
