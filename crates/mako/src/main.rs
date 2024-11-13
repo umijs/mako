@@ -78,13 +78,10 @@ async fn run() -> Result<()> {
 
     #[cfg(not(feature = "profile"))]
     {
-        print!("开始执行compiler");
         if let Err(e) = compiler.compile() {
-            print!("进到error里了");
             eprintln!("{}", e);
             std::process::exit(1);
         }
-        print!("compiler执行完毕");
         if cli.watch {
             let d = dev::DevServer::new(root.clone(), compiler);
             // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
