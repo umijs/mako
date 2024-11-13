@@ -9,12 +9,11 @@ use swc_core::ecma::utils::{
 };
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
-use super::dep_replacer::miss_throw_stmt;
+use super::dep_replacer::{miss_throw_stmt, ResolvedReplaceInfo};
 use crate::ast::utils::{is_dynamic_import, promise_all, require_ensure};
 use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::generate::chunk::ChunkId;
-use crate::module::generate_module_id;
 use crate::visitors::dep_replacer::DependenciesToReplace;
 
 pub struct DynamicImport<'a> {
@@ -48,14 +47,16 @@ impl<'a> VisitMut for DynamicImport<'a> {
                 .position(|module_item| !module_item.directive_continue())
                 .unwrap();
 
-            let (id, _) = self
+            let interop_replace = self
                 .dep_to_replace
                 .resolved
                 .get("@swc/helpers/_/_interop_require_wildcard")
                 .unwrap();
 
-            let require_interop = quote_ident!("__mako_require__")
-                .as_call(DUMMY_SP, vec![quote_str!(id.clone()).as_arg()]);
+            let require_interop = quote_ident!("__mako_require__").as_call(
+                DUMMY_SP,
+                vec![quote_str!(interop_replace.to_replace_source.clone()).as_arg()],
+            );
 
             let stmt: Stmt = Expr::Member(MemberExpr {
                 span: DUMMY_SP,
@@ -106,69 +107,26 @@ impl<'a> VisitMut for DynamicImport<'a> {
                         // it must be resolved, so unwrap is safe here.
                         .unwrap();
 
-                    let chunk_ids = {
-                        let chunk_id: ChunkId = resolved_info.0.as_str().into();
-                        let chunk_graph = &self.context.chunk_graph.read().unwrap();
-                        let chunk = chunk_graph.chunk(&chunk_id);
-                        let chunk_ids = match chunk {
-                            Some(chunk) => {
-                                [
-                                    chunk_graph.sync_dependencies_chunk(&chunk.id),
-                                    vec![chunk.id.clone()],
-                                ]
-                                .concat()
-                                .iter()
-                                .filter_map(|chunk_id| {
-                                    // skip empty chunk because it will not be generated
-                                    if chunk_graph
-                                        .chunk(chunk_id)
-                                        .is_some_and(|c| !c.modules.is_empty())
-                                    {
-                                        Some(chunk_id.id.clone())
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .collect::<Vec<_>>()
-                            }
-                            // None means the original chunk has been optimized to entry chunk
-                            None => vec![],
-                        };
-                        chunk_ids
-                    };
-
                     self.changed = true;
-                    // build new expr
-                    // e.g.
-                    // Promise.all([ require.ensure("id") ]).then(require.bind(require, "id"))
-                    // Promise.all([ require.ensure("d1"), require.ensure("id)]).then(require.bind(require, "id"))
-                    *expr = {
-                        let to_ensure_elems = chunk_ids
-                            .iter()
-                            .map(|c_id| {
-                                Some(ExprOrSpread {
-                                    spread: None,
-                                    expr: Box::new(require_ensure(c_id.clone())),
-                                })
-                            })
-                            .collect::<Vec<_>>();
-                        let load_promise = promise_all(ExprOrSpread {
-                            spread: None,
-                            expr: ArrayLit {
-                                span: DUMMY_SP,
-                                elems: to_ensure_elems,
-                            }
-                            .into(),
-                        });
 
-                        let require_module = generate_module_id(&resolved_info.1, &self.context);
+                    let generated_module_id = resolved_info.to_replace_source.clone();
+                    *expr = {
+                        // let load_promise = self.make_load_promise(&chunk_ids);
+
+                        let load_promise = if self.context.args.watch
+                            && self.context.config.experimental.central_ensure
+                        {
+                            self.central_ensure(&generated_module_id)
+                        } else {
+                            self.inline_ensure(resolved_info, &self.context)
+                        };
 
                         let lazy_require_call =
                             member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.bind).as_call(
                                 DUMMY_SP,
                                 vec![
                                     quote_ident!("__mako_require__").as_arg(),
-                                    quote_str!(require_module.as_str()).as_arg(),
+                                    quote_str!(generated_module_id).as_arg(),
                                 ],
                             );
                         let dr_call = member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.dr)
@@ -187,6 +145,69 @@ impl<'a> VisitMut for DynamicImport<'a> {
     }
 }
 
+impl DynamicImport<'_> {
+    // require.ensure2("id").then(require.bind(require,"id"))
+    fn central_ensure(&self, module_id: &str) -> Expr {
+        member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.ensure2)
+            .as_call(DUMMY_SP, vec![quote_str!(module_id).as_arg()])
+    }
+
+    // build the Promise.all([...]) part
+    // Promise.all([ require.ensure("id") ]).then(require.bind(require, "id"))
+    // Promise.all([ require.ensure("d1"), require.ensure("id)]).then(require.bind(require, "id"))
+    fn inline_ensure(&self, replace_info: &ResolvedReplaceInfo, context: &Arc<Context>) -> Expr {
+        let chunk_graph = context.chunk_graph.read().unwrap();
+
+        let init_chunk_id: ChunkId = replace_info.chunk_id.as_ref().unwrap().clone().into();
+        let chunk_ids = {
+            let chunk = chunk_graph.chunk(&init_chunk_id);
+            let chunk_ids = match chunk {
+                Some(chunk) => {
+                    [
+                        chunk_graph.sync_dependencies_chunk(&chunk.id),
+                        vec![chunk.id.clone()],
+                    ]
+                    .concat()
+                    .iter()
+                    .filter_map(|chunk_id| {
+                        // skip empty chunk because it will not be generated
+                        if chunk_graph
+                            .chunk(chunk_id)
+                            .is_some_and(|c| !c.modules.is_empty())
+                        {
+                            Some(chunk_id.id.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                }
+                // None means the original chunk has been optimized to entry chunk
+                None => vec![],
+            };
+            chunk_ids
+        };
+
+        let to_ensure_elems = chunk_ids
+            .iter()
+            .map(|c_id| {
+                Some(ExprOrSpread {
+                    spread: None,
+                    expr: Box::new(require_ensure(c_id.clone())),
+                })
+            })
+            .collect::<Vec<_>>();
+        promise_all(ExprOrSpread {
+            spread: None,
+            expr: ArrayLit {
+                span: DUMMY_SP,
+                elems: to_ensure_elems,
+            }
+            .into(),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -197,7 +218,7 @@ mod tests {
     use super::DynamicImport;
     use crate::ast::tests::TestUtils;
     use crate::generate::chunk::{Chunk, ChunkType};
-    use crate::visitors::dep_replacer::DependenciesToReplace;
+    use crate::visitors::dep_replacer::{DependenciesToReplace, ResolvedReplaceInfo};
 
     // TODO: add nested chunk test
     #[test]
@@ -226,9 +247,16 @@ Promise.all([
 
         let dep_to_replace = DependenciesToReplace {
             resolved: maplit::hashmap! {
-                "@swc/helpers/_/_interop_require_wildcard".to_string() =>
-                ("hashed_helper".to_string(), "dummy".into()),
-                "foo".to_string() => ("foo".to_string(), "foo".to_string())
+                "@swc/helpers/_/_interop_require_wildcard".to_string() => ResolvedReplaceInfo {
+                    chunk_id: None,
+                    to_replace_source: "hashed_helper".to_string(),
+                    resolved_module_id:"dummy".into()
+                },
+                "foo".to_string() => ResolvedReplaceInfo {
+                    chunk_id: Some("foo".into()),
+                    to_replace_source: "foo".into(),
+                    resolved_module_id: "foo".into()
+                }
             },
             missing: HashMap::new(),
         };

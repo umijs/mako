@@ -298,6 +298,10 @@ impl Compiler {
             plugins.push(Arc::new(plugins::ssu::SUPlus::new()));
         }
 
+        if args.watch && config.experimental.central_ensure {
+            plugins.push(Arc::new(plugins::central_ensure::CentralChunkEnsure {}));
+        }
+
         if let Some(minifish_config) = &config._minifish {
             let inject = if let Some(inject) = &minifish_config.inject {
                 let mut map = HashMap::new();
