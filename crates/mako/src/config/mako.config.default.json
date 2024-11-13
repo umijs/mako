@@ -67,7 +67,7 @@
   "experimental": {
     "webpackSyntaxValidate": [],
     "requireContext": true,
-    "keepUnresolvedNodeRequire": false,
+    "ignoreNonLiteralRequire": false,
     "magicComment": true,
     "detectCircularDependence": {
       "ignores": ["node_modules"],
