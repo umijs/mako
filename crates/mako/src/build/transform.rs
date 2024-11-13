@@ -3,10 +3,11 @@ use std::sync::Arc;
 use anyhow::Result;
 use swc_core::base::try_with_handler;
 use swc_core::common::errors::HANDLER;
-use swc_core::common::GLOBALS;
+use swc_core::common::{Mark, GLOBALS};
 use swc_core::css::ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
 use swc_core::css::compat::compiler::{self, Compiler};
 use swc_core::css::{compat as swc_css_compat, prefixer, visit as swc_css_visit};
+use swc_core::ecma::ast::Module;
 use swc_core::ecma::preset_env::{self as swc_preset_env};
 use swc_core::ecma::transforms::base::feature::FeatureFlag;
 use swc_core::ecma::transforms::base::fixer::paren_remover;
@@ -16,7 +17,7 @@ use swc_core::ecma::transforms::compat::reserved_words;
 use swc_core::ecma::transforms::optimization::simplifier;
 use swc_core::ecma::transforms::optimization::simplify::{dce, Config as SimplifyConfig};
 use swc_core::ecma::transforms::proposal::decorators;
-use swc_core::ecma::visit::{Fold, VisitMut};
+use swc_core::ecma::visit::{Fold, VisitMut, VisitMutWith};
 
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::File;
@@ -29,6 +30,7 @@ use crate::module::ModuleAst;
 use crate::plugin::PluginTransformJsParam;
 use crate::plugins::context_module::ContextModuleVisitor;
 use crate::visitors::amd_define_overrides::amd_define_overrides;
+use crate::visitors::clean_ctxt::clean_syntax_context;
 use crate::visitors::css_assets::CSSAssets;
 use crate::visitors::css_flexbugs::CSSFlexbugs;
 use crate::visitors::css_px2rem::Px2Rem;
@@ -75,6 +77,22 @@ impl Transform {
                                     || file.extname == "ts"
                                     || file.extname == "tsx";
 
+                                if is_tsx || is_ts {
+                                    if is_tsx {
+                                        strip_unresolved_tsx(
+                                            &mut ast.ast,
+                                            context.clone(),
+                                            cm.clone(),
+                                        )
+                                    }
+                                    // strip should be ts only
+                                    // since when use this in js, it will remove all unused imports
+                                    // which is not expected as what webpack does
+                                    if is_ts {
+                                        strip_unresolved_ts(&mut ast.ast);
+                                    }
+                                }
+
                                 // visitors
                                 let mut visitors: Vec<Box<dyn VisitMut>> = vec![
                                     Box::new(resolver(
@@ -94,21 +112,7 @@ impl Transform {
                                     }),
                                     Box::new(WorkerModule::new(unresolved_mark)),
                                 ];
-                                if is_tsx {
-                                    visitors.push(Box::new(tsx_strip(
-                                        cm.clone(),
-                                        context.clone(),
-                                        top_level_mark,
-                                        unresolved_mark,
-                                    )))
-                                }
-                                // strip should be ts only
-                                // since when use this in js, it will remove all unused imports
-                                // which is not expected as what webpack does
-                                if is_ts {
-                                    visitors
-                                        .push(Box::new(ts_strip(unresolved_mark, top_level_mark)));
-                                }
+
                                 // named default export
                                 if context.args.watch && !file.is_under_node_modules && is_jsx {
                                     visitors.push(Box::new(DefaultExportNamer::new()));
@@ -346,4 +350,28 @@ fn import_url_to_href(ast: &mut Stylesheet) {
             }
         }
     });
+}
+
+fn strip_unresolved_ts(ast: &mut Module) {
+    let unresolved_mark = Mark::new();
+    let top_level_mark = Mark::new();
+
+    ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, true));
+    ast.visit_mut_with(&mut ts_strip(unresolved_mark, top_level_mark));
+
+    ast.visit_mut_with(&mut clean_syntax_context());
+}
+
+fn strip_unresolved_tsx(
+    ast: &mut Module,
+    context: Arc<Context>,
+    cm: Arc<swc_core::common::SourceMap>,
+) {
+    let unresolved_mark = Mark::new();
+    let top_level_mark = Mark::new();
+
+    ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, true));
+    ast.visit_mut_with(&mut tsx_strip(cm, context, top_level_mark, unresolved_mark));
+
+    ast.visit_mut_with(&mut clean_syntax_context());
 }
