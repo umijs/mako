@@ -63,6 +63,12 @@ impl ChunkGraph {
         self.graph.node_weights().find(|c| c.has_module(module_id))
     }
 
+    pub fn get_async_chunk_for_module(&self, module_id: &ModuleId) -> Option<&Chunk> {
+        self.graph
+            .node_weights()
+            .find(|c| c.has_module(module_id) && matches!(c.chunk_type, ChunkType::Async))
+    }
+
     // pub fn get_chunk_by_id(&self, id: &String) -> Option<&Chunk> {
     //     self.graph.node_weights().find(|c| c.id.id.eq(id))
     // }

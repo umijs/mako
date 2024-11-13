@@ -12,10 +12,10 @@ use std::sync::Arc;
 use concatenated_transformer::ConcatenatedTransform;
 use external_transformer::ExternalTransformer;
 use swc_core::common::util::take::Take;
-use swc_core::common::{SyntaxContext, GLOBALS};
+use swc_core::common::GLOBALS;
 use swc_core::ecma::transforms::base::hygiene::hygiene;
 use swc_core::ecma::transforms::base::resolver;
-use swc_core::ecma::visit::{as_folder, Fold, VisitMut, VisitMutWith};
+use swc_core::ecma::visit::VisitMutWith;
 
 use self::concatenate_context::EsmDependantFlags;
 use self::utils::uniq_module_prefix;
@@ -27,6 +27,7 @@ use crate::plugins::tree_shaking::module::{AllExports, ModuleSystem, TreeShakeMo
 use crate::plugins::tree_shaking::shake::module_concatenate::concatenate_context::{
     ConcatenateContext, RuntimeFlags,
 };
+use crate::visitors::clean_ctxt::clean_syntax_context;
 use crate::{mako_profile_function, mako_profile_scope};
 
 pub fn optimize_module_graph(
@@ -444,18 +445,6 @@ struct ConcatenateConfig {
     root: ModuleId,
     inners: HashSet<ModuleId>,
     externals: HashMap<ModuleId, EsmDependantFlags>,
-}
-
-struct CleanSyntaxContext;
-
-pub fn clean_syntax_context() -> impl VisitMut + Fold {
-    as_folder(CleanSyntaxContext {})
-}
-
-impl VisitMut for CleanSyntaxContext {
-    fn visit_mut_syntax_context(&mut self, ctxt: &mut SyntaxContext) {
-        *ctxt = SyntaxContext::empty();
-    }
 }
 
 impl ConcatenateConfig {

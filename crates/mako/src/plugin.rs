@@ -159,6 +159,10 @@ pub trait Plugin: Any + Send + Sync {
         Ok(Vec::new())
     }
 
+    fn hmr_runtime_updates(&self, _context: &Arc<Context>) -> Result<Vec<String>> {
+        Ok(Vec::new())
+    }
+
     fn optimize_module_graph(
         &self,
         _module_graph: &mut ModuleGraph,
@@ -183,6 +187,10 @@ pub trait Plugin: Any + Send + Sync {
     fn before_write_fs(&self, _path: &Path, _content: &[u8]) -> Result<()> {
         Ok(())
     }
+
+    fn after_update(&self, _compiler: &Compiler) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Default)]
@@ -190,6 +198,7 @@ pub struct PluginDriver {
     plugins: Vec<Arc<dyn Plugin>>,
 }
 
+#[derive(Debug)]
 pub struct NextBuildParam<'a> {
     pub current_module: &'a ModuleId,
     pub next_file: &'a File,
@@ -368,6 +377,14 @@ impl PluginDriver {
         Ok(plugins.join("\n"))
     }
 
+    pub fn hmr_runtime_update_code(&self, context: &Arc<Context>) -> Result<String> {
+        let mut plugins = Vec::new();
+        for plugin in &self.plugins {
+            plugins.extend(plugin.hmr_runtime_updates(context)?);
+        }
+        Ok(plugins.join("\n"))
+    }
+
     pub fn optimize_module_graph(
         &self,
         module_graph: &mut ModuleGraph,
@@ -425,5 +442,12 @@ impl PluginDriver {
             }
         }
         Ok(content.clone())
+    }
+
+    pub fn after_update(&self, compiler: &Compiler) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.after_update(compiler)?;
+        }
+        Ok(())
     }
 }

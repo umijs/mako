@@ -12,6 +12,7 @@ pub struct ExperimentalConfig {
     pub magic_comment: bool,
     #[serde(deserialize_with = "deserialize_detect_loop")]
     pub detect_circular_dependence: Option<DetectCircularDependence>,
+    pub central_ensure: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
