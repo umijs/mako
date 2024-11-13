@@ -66,7 +66,7 @@ pub use resolve::ResolveConfig;
 pub use rsc_client::{deserialize_rsc_client, LogServerComponent, RscClientConfig};
 pub use rsc_server::{deserialize_rsc_server, RscServerConfig};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 pub use stats::{deserialize_stats, StatsConfig};
 use thiserror::Error;
 pub use transform_import::{TransformImportConfig, TransformImportStyle};
@@ -232,14 +232,27 @@ impl Config {
     ) -> Result<Self> {
         let abs_config_file = root.join(CONFIG_FILE);
         let abs_config_file = abs_config_file.to_str().unwrap();
+        let mut overrides_json: Option<String> = None;
         let c = config::Config::builder();
         // default config
         let c = c.add_source(config::File::from_str(
             DEFAULT_CONFIG,
             config::FileFormat::Json5,
         ));
+
         // default config from args
         let c = if let Some(default_config) = default_config {
+            let result: Result<Value, serde_json::Error> = serde_json::from_str(default_config);
+            if let Ok(config) = result {
+                if let Some(experimental) = config.get("experimental") {
+                    overrides_json = Some(
+                        serde_json::to_string(&json!({
+                            "experimental": experimental
+                        }))
+                        .unwrap(),
+                    );
+                }
+            };
             c.add_source(config::File::from_str(
                 default_config,
                 config::FileFormat::Json5,
@@ -255,6 +268,15 @@ impl Config {
         let c = if let Some(cli_config) = cli_config {
             c.add_source(config::File::from_str(
                 cli_config,
+                config::FileFormat::Json5,
+            ))
+        } else {
+            c
+        };
+        // overrides config
+        let c = if let Some(overrides) = overrides_json {
+            c.add_source(config::File::from_str(
+                overrides.as_str(),
                 config::FileFormat::Json5,
             ))
         } else {

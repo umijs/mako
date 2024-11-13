@@ -1,6 +1,8 @@
 #![feature(box_patterns)]
 #![feature(let_chains)]
 
+extern crate swc_malloc;
+
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
@@ -14,18 +16,6 @@ use mako::utils::profile_gui::ProfileApp;
 use mako::utils::tokio_runtime;
 use mako::{cli, config};
 use tracing::debug;
-
-#[cfg(not(target_os = "linux"))]
-#[global_allocator]
-static GLOBAL: mimalloc_rust::GlobalMiMalloc = mimalloc_rust::GlobalMiMalloc;
-
-#[cfg(all(
-    target_os = "linux",
-    target_env = "gnu",
-    any(target_arch = "x86_64", target_arch = "aarch64")
-))]
-#[global_allocator]
-static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 fn main() -> Result<()> {
     let fut = async { run().await };
@@ -88,10 +78,13 @@ async fn run() -> Result<()> {
 
     #[cfg(not(feature = "profile"))]
     {
+        print!("开始执行compiler");
         if let Err(e) = compiler.compile() {
+            print!("进到error里了");
             eprintln!("{}", e);
             std::process::exit(1);
         }
+        print!("compiler执行完毕");
         if cli.watch {
             let d = dev::DevServer::new(root.clone(), compiler);
             // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling

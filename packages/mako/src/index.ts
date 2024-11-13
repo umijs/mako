@@ -6,6 +6,7 @@ import { type Options } from 'sass';
 import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
+import { rustPluginResolver } from './rustPlugins';
 import { sassLoader } from './sassLoader';
 
 type Config = binding.BuildParams['config'] & {
@@ -42,6 +43,12 @@ export async function build(params: BuildParams) {
 
   params.config.plugins = params.config.plugins || [];
   params.config.resolve = params.config.resolve || {};
+
+  const rustPlugins = params.config.experimental?.rustPlugins;
+  if (rustPlugins) {
+    params.config.experimental!.rustPlugins =
+      await rustPluginResolver(rustPlugins);
+  }
 
   let makoConfig: any = {};
   let makoConfigPath = path.join(params.root, 'mako.config.json');

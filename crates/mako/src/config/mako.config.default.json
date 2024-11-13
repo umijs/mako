@@ -66,6 +66,7 @@
   "rscClient": false,
   "experimental": {
     "webpackSyntaxValidate": [],
+    "rustPlugins": [],
     "requireContext": true,
     "magicComment": true,
     "detectCircularDependence": {
