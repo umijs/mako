@@ -1,15 +1,20 @@
+use std::sync::Arc;
+
 use regex::Regex;
 use swc_core::common::Mark;
 use swc_core::ecma::ast::{CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, Str};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::is_ident_undefined;
+use crate::compiler::Context;
+use crate::config::Platform;
 
 const MAKO_REQUIRE: &str = "__mako_require__";
 
 pub struct MakoRequire {
     pub unresolved_mark: Mark,
     pub ignores: Vec<Regex>,
+    pub context: Arc<Context>,
 }
 
 impl MakoRequire {
@@ -44,6 +49,11 @@ impl VisitMut for MakoRequire {
     }
 
     fn visit_mut_ident(&mut self, ident: &mut Ident) {
+        if self.context.config.experimental.ignore_non_literal_require
+            && let Platform::Node = self.context.config.platform
+        {
+            return;
+        }
         self.replace_require(ident);
     }
 }
@@ -105,6 +115,7 @@ require("foo");
             let mut visitor = MakoRequire {
                 ignores,
                 unresolved_mark: ast.unresolved_mark,
+                context: test_utils.context.clone(),
             };
             ast.ast.visit_mut_with(&mut visitor);
         });

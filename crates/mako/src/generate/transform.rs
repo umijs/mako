@@ -272,6 +272,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                         let mut mako_require = MakoRequire {
                             ignores,
                             unresolved_mark,
+                            context: context.clone(),
                         };
                         ast.ast.visit_mut_with(&mut mako_require);
 
