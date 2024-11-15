@@ -10,7 +10,7 @@ use anyhow::{self, Result};
 use colored::Colorize;
 use futures::{SinkExt, StreamExt};
 use get_if_addrs::get_if_addrs;
-use hyper::header::CONTENT_TYPE;
+use hyper::header::{CACHE_CONTROL, CONTENT_TYPE};
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Server};
 use notify_debouncer_full::new_debouncer;
@@ -179,6 +179,7 @@ impl DevServer {
 
                         return Ok(hyper::Response::builder()
                             .status(hyper::StatusCode::OK)
+                            .header(CACHE_CONTROL, "no-cache")
                             .header(CONTENT_TYPE, content_type)
                             .body(hyper::Body::from(res))
                             .unwrap());
