@@ -256,7 +256,9 @@ require("{SSU_MOCK_JS_FILE}");
 }}catch(e){{}};
 let patch = require._su_patch();
 console.log(patch);
+try{{
 {}
+}}catch(e){{}}
 module.export = Promise.all(
     patch.map((d)=>__mako_require__.ensure(d))
 ).then(()=>{{
@@ -566,7 +568,7 @@ requireModule._su_patch = function(){{
         cssChunksIdToUrlMap[key] = css_patch[key];
     }}
     return Object.keys(js_patch).sort();
-}}
+}};
 "#,
                 serde_json::to_string(&cache.js_patch_map).unwrap(),
                 serde_json::to_string(&cache.css_patch_map).unwrap(),
@@ -598,7 +600,7 @@ requireModule._su_patch = function(){
         cssChunksIdToUrlMap[key] = css_patch[key];
     }
   return ["node_modules"];
-}"#
+};"#
             .to_string()])
         }
     }

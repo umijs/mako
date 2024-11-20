@@ -61,7 +61,7 @@ impl Plugin for CentralChunkEnsure {
   let map = {ensure_map};
   requireModule.updateEnsure2Map = function(newMapping) {{
     map = newMapping;
-  }}
+  }};
   requireModule.ensure2 = function(chunkId){{
     let toEnsure = map[chunkId];
     if (toEnsure) {{
