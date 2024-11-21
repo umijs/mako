@@ -173,7 +173,7 @@ impl DevServer {
                 // staticfile has 302 problems when modify tooooo fast in 1 second
                 // it will response 302 and we will get the old file
                 // TODO: fix the 302 problem?
-                if !context.config.write_to_disk {
+                if context.config.dev_server.is_none() {
                     if let Some(res) = context.get_static_content(path_without_slash_start) {
                         debug!("serve with context.get_static_content: {}", path);
 
