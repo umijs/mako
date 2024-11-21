@@ -21,6 +21,7 @@ use crate::generate::optimize_chunk::OptimizeChunksInfo;
 use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams};
 use crate::plugins;
+use crate::plugins::module_federation::ModuleFederationPlugin;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::share::helpers::SWC_HELPERS;
 use crate::stats::StatsInfo;
@@ -288,6 +289,10 @@ impl Compiler {
                 0,
                 Arc::new(plugins::bundless_compiler::BundlessCompilerPlugin {}),
             );
+        }
+
+        if let Some(mf_cfg) = config.module_federation.as_ref() {
+            plugins.push(Arc::new(ModuleFederationPlugin::new(mf_cfg.clone())));
         }
 
         if std::env::var("DEBUG_GRAPH").is_ok_and(|v| v == "true") {

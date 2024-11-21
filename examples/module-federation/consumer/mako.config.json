@@ -1,0 +1,14 @@
+{
+  "entry": {
+    "consumerHost": "./src/index.ts"
+  },
+  "moduleFederation": {
+    "remotes": {
+      "provider": "provider@http://localhost:3000/mf-manifest.json"
+    }
+  },
+  "optimization": {
+    "skipModules": false,
+    "concatenateModules": false
+  }
+}

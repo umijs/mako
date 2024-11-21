@@ -1,0 +1,14 @@
+{
+  "entry": {
+    "providerHost": "./src/index.ts"
+  },
+  "moduleFederation": {
+    "exposes": {
+      "provider": "./src/provider.ts"
+    }
+  },
+  "optimization": {
+    "skipModules": false,
+    "concatenateModules": false
+  }
+}

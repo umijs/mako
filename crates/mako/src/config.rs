@@ -12,6 +12,7 @@ mod macros;
 mod manifest;
 mod minifish;
 mod mode;
+mod module_federation;
 mod module_id_strategy;
 mod optimization;
 mod output;
@@ -54,6 +55,7 @@ pub use manifest::{deserialize_manifest, ManifestConfig};
 use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSpan};
 pub use minifish::{deserialize_minifish, MinifishConfig};
 pub use mode::Mode;
+pub use module_federation::ModuleFederationConfig;
 pub use module_id_strategy::ModuleIdStrategy;
 pub use optimization::{deserialize_optimization, OptimizationConfig};
 use output::get_default_chunk_loading_global;
@@ -219,6 +221,7 @@ pub struct Config {
         default
     )]
     pub check_duplicate_package: Option<DuplicatePackageCheckerConfig>,
+    pub module_federation: Option<ModuleFederationConfig>,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
