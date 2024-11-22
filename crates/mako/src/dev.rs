@@ -72,8 +72,12 @@ impl DevServer {
                     Ok::<_, hyper::Error>(service_fn(move |req| {
                         let context = context.clone();
                         let txws = txws.clone();
-                        let staticfile =
-                            hyper_staticfile::Static::new(context.config.output.path.clone());
+                        let staticfile = {
+                            let mut sf =
+                                hyper_staticfile::Static::new(context.config.output.path.clone());
+                            sf.cache_headers(Some(0));
+                            sf
+                        };
                         async move { Self::handle_requests(req, context, staticfile, txws).await }
                     }))
                 }
@@ -173,7 +177,7 @@ impl DevServer {
                 // staticfile has 302 problems when modify tooooo fast in 1 second
                 // it will response 302 and we will get the old file
                 // TODO: fix the 302 problem?
-                if context.config.write_to_disk {
+                if !context.config.write_to_disk {
                     if let Some(res) = context.get_static_content(path_without_slash_start) {
                         debug!("serve with context.get_static_content: {}", path);
 
