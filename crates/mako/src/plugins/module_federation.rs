@@ -104,6 +104,7 @@ impl ModuleFederationPlugin {
         let entry_runtime_code = self.get_entry_runtime_code();
 
         let content_hash = md5_hash(&entry_runtime_code, 32);
+
         let dep_path = root.join(format!("node_modules/.entry.{}.js", content_hash));
         let dep_parent_path = dep_path.parent().unwrap();
         if !fs::exists(dep_parent_path).unwrap() {
@@ -117,8 +118,13 @@ impl ModuleFederationPlugin {
     }
 
     fn get_entry_runtime_code(&self) -> String {
-        let embed_runtime_codes = format!(
-            r#"if(!{federation_global}.runtime) {{
+        let (plugins_imports, plugins_instantiations) = self.get_mf_runtime_plugins_code();
+
+        format!(
+            r#"import federation from "{federation_impl}";
+{plugins_imports}
+
+if(!{federation_global}.runtime) {{
   var preFederation = {federation_global};
   {federation_global} = {{}};
   for(var key in federation) {{
@@ -127,23 +133,41 @@ impl ModuleFederationPlugin {
   for(var key in preFederation) {{
     {federation_global}[key] = preFederation[key];
   }}
-}}"#,
-            federation_global = FEDERATION_GLOBAL
-        );
+}}
 
+if(!{federation_global}.instance) {{
+  {plugins_instantiations}
+  {federation_global}.instance = {federation_global}.runtime.init({federation_global}.initOptions);
+  if({federation_global}.attachShareScopeMap) {{
+    {federation_global}.attachShareScopeMap({mako_require});
+  }}
+  if({federation_global}.installInitialConsumes) {{
+    {federation_global}.installInitialConsumes();
+  }}
+}}
+"#,
+            plugins_imports = plugins_imports,
+            plugins_instantiations = plugins_instantiations,
+            federation_impl = self.config.implementation,
+            federation_global = FEDERATION_GLOBAL,
+            mako_require = MAKO_REQUIRE
+        )
+    }
+
+    fn get_mf_runtime_plugins_code(&self) -> (String, String) {
         let (imported_plugin_names, import_plugin_stmts) =
             self.config.runtime_plugins.iter().enumerate().fold(
                 (Vec::new(), Vec::new()),
-                |(mut names, mut stmts), (plugin, index)| {
+                |(mut names, mut stmts), (index, plugin)| {
                     names.push(format!("plugin_{}", index));
-                    stmts.push(format!(r#"import plugin_{} from "{}""#, index, plugin));
+                    stmts.push(format!(r#"import plugin_{} from "{}";"#, index, plugin));
                     (names, stmts)
                 },
             );
 
-        let plugins_imports = import_plugin_stmts.join(";");
+        let plugins_imports = import_plugin_stmts.join("\n");
 
-        let plugins_collection = if imported_plugin_names.is_empty() {
+        let plugins_instantiations = if imported_plugin_names.is_empty() {
             "".to_string()
         } else {
             format!(
@@ -159,29 +183,6 @@ impl ModuleFederationPlugin {
                 federation_global = FEDERATION_GLOBAL
             )
         };
-
-        format!(
-            r#"import federation from "{federation_impl}";
-{plugins_imports}
-{embed_runtime_codes}
-
-if(!{federation_global}.instance) {{
-  {plugins_collection}
-  {federation_global}.instance = {federation_global}.runtime.init({federation_global}.initOptions);
-  if({federation_global}.attachShareScopeMap) {{
-    {federation_global}.attachShareScopeMap({mako_require});
-  }}
-  if({federation_global}.installInitialConsumes) {{
-    {federation_global}.installInitialConsumes();
-  }}
-}}
-"#,
-            embed_runtime_codes = embed_runtime_codes,
-            plugins_imports = plugins_imports,
-            plugins_collection = plugins_collection,
-            federation_impl = self.config.implementation,
-            federation_global = FEDERATION_GLOBAL,
-            mako_require = MAKO_REQUIRE
-        )
+        (plugins_imports, plugins_instantiations)
     }
 }
