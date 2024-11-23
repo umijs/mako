@@ -5,7 +5,8 @@
   "moduleFederation": {
     "exposes": {
       "provider": "./src/provider.ts"
-    }
+    },
+    "implementation": "/Users/xusd/codes/github/mako/packages/mako/node_modules/@module-federation/webpack-bundler-runtime"
   },
   "optimization": {
     "skipModules": false,

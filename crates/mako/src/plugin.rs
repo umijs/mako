@@ -66,6 +66,7 @@ pub trait Plugin: Any + Send + Sync {
         &self,
         _content: &mut Content,
         _path: &str,
+        _is_entry: bool,
         _context: &Arc<Context>,
     ) -> Result<Option<Content>> {
         Ok(None)
@@ -434,10 +435,11 @@ impl PluginDriver {
         &self,
         content: &mut Content,
         path: &str,
+        _is_entry: bool,
         context: &Arc<Context>,
     ) -> Result<Content> {
         for plugin in &self.plugins {
-            if let Some(transformed) = plugin.load_transform(content, path, context)? {
+            if let Some(transformed) = plugin.load_transform(content, path, _is_entry, context)? {
                 *content = transformed;
             }
         }

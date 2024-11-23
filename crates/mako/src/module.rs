@@ -212,7 +212,7 @@ impl Default for ModuleInfo {
     }
 }
 
-fn md5_hash(source_str: &str, lens: usize) -> String {
+pub fn md5_hash(source_str: &str, lens: usize) -> String {
     format!("{:x}", md5::compute(source_str))
         .chars()
         .take(lens)

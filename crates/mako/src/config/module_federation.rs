@@ -10,6 +10,7 @@ pub struct ModuleFederationConfig {
     pub remotes: Option<RemotesConfig>,
     #[serde(default)]
     pub runtime_plugins: Vec<String>,
+    pub implementation: String,
 }
 
 pub type ExposesConfig = HashMap<String, String>;

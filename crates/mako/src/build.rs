@@ -275,6 +275,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let content = context.plugin_driver.load_transform(
             &mut content,
             &file.path.to_string_lossy(),
+            file.is_entry,
             &context,
         )?;
         file.set_content(content);
