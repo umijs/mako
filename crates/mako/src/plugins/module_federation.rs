@@ -161,8 +161,6 @@ if(!{federation_global}.instance) {{
   }}
 }}
 "#,
-            plugins_imports = plugins_imports,
-            plugins_instantiations = plugins_instantiations,
             federation_impl = self.config.implementation,
             federation_global = FEDERATION_GLOBAL,
             mako_require = MAKO_REQUIRE
@@ -174,13 +172,19 @@ if(!{federation_global}.instance) {{
             self.config.runtime_plugins.iter().enumerate().fold(
                 (Vec::new(), Vec::new()),
                 |(mut names, mut stmts), (index, plugin)| {
-                    names.push(format!("plugin_{}", index));
-                    stmts.push(format!(r#"import plugin_{} from "{}";"#, index, plugin));
+                    names.push(format!("plugin_{index}"));
+                    stmts.push(format!(r#"import plugin_{index} from "{plugin}";"#));
                     (names, stmts)
                 },
             );
 
         let plugins_imports = import_plugin_instantiations.join("\n");
+
+        let plugins_to_add = imported_plugin_names
+            .iter()
+            .map(|item| format!(r#"{item} ? (item.default || item)() : false"#))
+            .collect::<Vec<_>>()
+            .join(",");
 
         let plugins_instantiations = if imported_plugin_names.is_empty() {
             "".to_string()
@@ -190,11 +194,6 @@ if(!{federation_global}.instance) {{
   {federation_global}.initOptions.plugins = {federation_global}.initOptions.plugins ?
     {federation_global}.initOptions.plugins.concat(pluginsToAdd) : pluginsToAdd;
 "#,
-                plugins_to_add = imported_plugin_names
-                    .iter()
-                    .map(|item| format!(r#"{item} ? (item.default || item)() : false"#))
-                    .collect::<Vec<_>>()
-                    .join(","),
                 federation_global = FEDERATION_GLOBAL
             )
         };
@@ -210,7 +209,8 @@ if(!{federation_global}.instance) {{
             .iter()
             .map(|(name, module)| {
                 format!(
-                    r#""{name}": () => import("{module}"),"#,
+                    r#""{name}": () => import(/* makoChunkName: "__mf_expose_{container_name}" */ "{module}"),"#,
+                    container_name = self.config.name,
                     module = root.join(module).to_string_lossy()
                 )
             })
@@ -247,7 +247,6 @@ var init = (shareScope, initScope, remoteEntryInitOptions) => {{
 
 export {{ get, init }};
 "#,
-            exposes_modules_code = exposes_modules_code,
             mako_require = MAKO_REQUIRE,
             share_scope = self.config.share_scope
         )
