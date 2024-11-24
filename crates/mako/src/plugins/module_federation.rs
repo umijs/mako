@@ -3,12 +3,13 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use tracing::warn;
 
 use crate::ast::file::Content;
-use crate::compiler::Context;
-use crate::config::ModuleFederationConfig;
+use crate::compiler::{Args, Context};
+use crate::config::module_federation::ModuleFederationConfig;
+use crate::config::Config;
 use crate::module::md5_hash;
 use crate::plugin::Plugin;
 use crate::visitors::mako_require::MAKO_REQUIRE;
@@ -30,24 +31,30 @@ impl Plugin for ModuleFederationPlugin {
         "module_federation"
     }
 
-    fn modify_config(
-        &self,
-        config: &mut crate::config::Config,
-        root: &std::path::Path,
-        _args: &crate::compiler::Args,
-    ) -> Result<()> {
+    fn modify_config(&self, config: &mut Config, root: &Path, _args: &Args) -> Result<()> {
         if let Some(exposes) = self.config.exposes.as_ref() {
-            for (name, import) in exposes.iter() {
-                match config.entry.entry(name.to_string()) {
+            let container_entry_name = &self.config.name;
+            if !exposes.is_empty() {
+                match config.entry.entry(container_entry_name.clone()) {
                     Occupied(_) => {
-                        warn!("mf exposed name {} is duplcated with entry config.", name);
+                        warn!(
+                            "mf exposed name {} is duplcated with entry config.",
+                            container_entry_name
+                        );
                     }
                     Vacant(vacant_entry) => {
-                        if let Ok(entry_path) = root.join(import).canonicalize() {
-                            vacant_entry.insert(entry_path);
-                        } else {
-                            return Err(anyhow!("mf exposed file :{} not found", import));
+                        let container_entry_code = self.get_container_entry_code(root);
+                        let container_entry_path = root.join(format!(
+                            "node_modules/.federation/.entry.container.{}.js",
+                            container_entry_name
+                        ));
+                        let container_entry_parent_path = container_entry_path.parent().unwrap();
+                        if !fs::exists(container_entry_parent_path).unwrap() {
+                            fs::create_dir(container_entry_parent_path).unwrap();
                         }
+                        fs::write(&container_entry_path, container_entry_code).unwrap();
+
+                        vacant_entry.insert(container_entry_path);
                     }
                 }
             }
@@ -71,7 +78,12 @@ impl Plugin for ModuleFederationPlugin {
                     let entry_runtime_dep_path = self.prepare_entry_runtime_dep(&_context.root);
                     js_content.content.insert_str(
                         0,
-                        format!(r#"import "{}";"#, entry_runtime_dep_path).as_str(),
+                        format!(
+                            r#"import "{}";
+"#,
+                            entry_runtime_dep_path
+                        )
+                        .as_str(),
                     );
                     Ok(Some(_content.clone()))
                 }
@@ -105,10 +117,13 @@ impl ModuleFederationPlugin {
 
         let content_hash = md5_hash(&entry_runtime_code, 32);
 
-        let dep_path = root.join(format!("node_modules/.entry.{}.js", content_hash));
+        let dep_path = root.join(format!(
+            "node_modules/.federation/.entry.{}.js",
+            content_hash
+        ));
         let dep_parent_path = dep_path.parent().unwrap();
         if !fs::exists(dep_parent_path).unwrap() {
-            fs::create_dir(dep_parent_path).unwrap();
+            fs::create_dir_all(dep_parent_path).unwrap();
         }
         if !fs::exists(&dep_path).unwrap() {
             fs::write(&dep_path, entry_runtime_code).unwrap();
@@ -155,7 +170,7 @@ if(!{federation_global}.instance) {{
     }
 
     fn get_mf_runtime_plugins_code(&self) -> (String, String) {
-        let (imported_plugin_names, import_plugin_stmts) =
+        let (imported_plugin_names, import_plugin_instantiations) =
             self.config.runtime_plugins.iter().enumerate().fold(
                 (Vec::new(), Vec::new()),
                 |(mut names, mut stmts), (index, plugin)| {
@@ -165,7 +180,7 @@ if(!{federation_global}.instance) {{
                 },
             );
 
-        let plugins_imports = import_plugin_stmts.join("\n");
+        let plugins_imports = import_plugin_instantiations.join("\n");
 
         let plugins_instantiations = if imported_plugin_names.is_empty() {
             "".to_string()
@@ -184,5 +199,57 @@ if(!{federation_global}.instance) {{
             )
         };
         (plugins_imports, plugins_instantiations)
+    }
+
+    fn get_container_entry_code(&self, root: &Path) -> String {
+        let exposes_modules_code = self
+            .config
+            .exposes
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|(name, module)| {
+                format!(
+                    r#""{name}": () => import("{module}"),"#,
+                    module = root.join(module).to_string_lossy()
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        format!(
+            r#"var moduleMap = {{
+ {exposes_modules_code}
+}};
+
+var get = (module, getScope) => {{
+    {mako_require}.R = getScope;
+	getScope = (
+	Object.prototype.hasOwnProperty.call(moduleMap, module)
+			? moduleMap[module]()
+			: Promise.resolve().then(() => {{
+				throw new Error('Module "' + module + '" does not exist in container.');
+			}})
+	);
+	{mako_require}.R = undefined;
+	return getScope;
+}};
+
+var init = (shareScope, initScope, remoteEntryInitOptions) => {{
+	return {mako_require}.federation.bundlerRuntime.initContainerEntry({{
+        webpackRequire: {mako_require},
+		shareScope: shareScope,
+		initScope: initScope,
+		remoteEntryInitOptions: remoteEntryInitOptions,
+		shareScopeKey: "{share_scope}"
+	}})
+}};
+
+export {{ get, init }};
+"#,
+            exposes_modules_code = exposes_modules_code,
+            mako_require = MAKO_REQUIRE,
+            share_scope = self.config.share_scope
+        )
     }
 }

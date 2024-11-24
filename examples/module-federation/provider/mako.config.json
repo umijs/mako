@@ -3,8 +3,9 @@
     "providerHost": "./src/index.ts"
   },
   "moduleFederation": {
+    "name": "provider",
     "exposes": {
-      "provider": "./src/provider.ts"
+      "./provider": "./src/provider.ts"
     },
     "runtimePlugins": [],
     "implementation": "/Users/xusd/codes/github/mako/packages/mako/node_modules/@module-federation/webpack-bundler-runtime"
