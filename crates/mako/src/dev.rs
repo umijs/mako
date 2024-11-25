@@ -72,8 +72,12 @@ impl DevServer {
                     Ok::<_, hyper::Error>(service_fn(move |req| {
                         let context = context.clone();
                         let txws = txws.clone();
-                        let staticfile =
-                            hyper_staticfile::Static::new(context.config.output.path.clone());
+                        let staticfile = {
+                            let mut sf =
+                                hyper_staticfile::Static::new(context.config.output.path.clone());
+                            sf.cache_headers(Some(0));
+                            sf
+                        };
                         async move { Self::handle_requests(req, context, staticfile, txws).await }
                     }))
                 }
@@ -196,6 +200,8 @@ impl DevServer {
                         Ok(hyper::Response::builder()
                             .status(hyper::StatusCode::OK)
                             .header(CONTENT_TYPE, content_type)
+                            .header(CACHE_CONTROL, "no-cache")
+                            .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                             .body(hyper::Body::from(bytes))
                             .unwrap())
                     });
