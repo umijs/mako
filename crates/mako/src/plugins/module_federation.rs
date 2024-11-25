@@ -3,7 +3,8 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use serde::Serialize;
 use tracing::warn;
 
 use crate::ast::file::Content;
@@ -93,20 +94,58 @@ impl Plugin for ModuleFederationPlugin {
     }
 
     fn runtime_plugins(&self, _context: &Arc<Context>) -> Result<Vec<String>> {
-        let code = r#"
+        fn parse_remote(remote: &str) -> Result<(String, String)> {
+            let (left, right) = remote
+                .split_once('@')
+                .ok_or(anyhow!("invalid remote {}", remote))?;
+            if left.is_empty() || right.is_empty() {
+                Err(anyhow!("invalid remote {}", remote))
+            } else {
+                Ok((left.to_string(), right.to_string()))
+            }
+        }
+
+        let runtime_remotes = self.config.remotes.as_ref().map_or(Vec::new(), |remotes| {
+            remotes
+                .iter()
+                .map(|(alias, remote)| {
+                    // FIXME: should not unwrap
+                    let (name, entry) = parse_remote(remote).unwrap();
+                    RuntimeRemoteItem {
+                        name,
+                        alias: alias.clone(),
+                        entry,
+                        share_scope: self.config.share_scope.clone(),
+                    }
+                })
+                .collect()
+        });
+        let init_options: RuntimeInitOptions = RuntimeInitOptions {
+            name: self.config.name.clone(),
+            remotes: runtime_remotes,
+            share_strategy: serde_json::to_value(&self.config.share_strategy)
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string(),
+        };
+        let init_options_code = serde_json::to_string(&init_options).unwrap();
+
+        let code = format!(
+            r#"
 /* mako/runtime/federation runtime */
-!(function() {
-  if(!requireModule.federation) {
-    requireModule.federation = {
-      initOptions: {},
-      chunkMatcher: undefined,
+!(function() {{
+  if(!requireModule.federation) {{
+    requireModule.federation = {{
+      initOptions: {init_options_code},
+      chunkMatcher: () => true,
       rootOutputDir: "",
       initialConsumes: undefined,
-      bundlerRuntimeOptions: {}
-    };
-  }
-})();"#
-            .to_string();
+      bundlerRuntimeOptions: {{}}
+    }};
+  }}
+}})();"#
+        );
         Ok(vec![code])
     }
 }
@@ -251,4 +290,19 @@ export {{ get, init }};
             share_scope = self.config.share_scope
         )
     }
+}
+
+#[derive(Serialize)]
+struct RuntimeInitOptions {
+    name: String,
+    remotes: Vec<RuntimeRemoteItem>,
+    share_strategy: String,
+}
+
+#[derive(Serialize)]
+struct RuntimeRemoteItem {
+    name: String,
+    alias: String,
+    entry: String,
+    share_scope: String,
 }

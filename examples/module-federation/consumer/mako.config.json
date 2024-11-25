@@ -3,9 +3,11 @@
     "consumerHost": "./src/index.ts"
   },
   "moduleFederation": {
+    "name": "consumer",
     "remotes": {
       "provider": "provider@http://localhost:3000/mf-manifest.json"
-    }
+    },
+    "implementation": "/Users/xusd/codes/github/mako/packages/mako/node_modules/@module-federation/webpack-bundler-runtime"
   },
   "optimization": {
     "skipModules": false,

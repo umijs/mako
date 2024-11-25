@@ -13,7 +13,7 @@ pub struct ModuleFederationConfig {
     pub runtime_plugins: Vec<String>,
     pub implementation: String,
     #[serde(default)]
-    pub share_strategy: SharedConfig,
+    pub share_strategy: ShareStrategy,
     #[serde(default = "default_share_scope")]
     pub share_scope: String,
 }
