@@ -33,6 +33,7 @@ impl Plugin for ModuleFederationPlugin {
     }
 
     fn modify_config(&self, config: &mut Config, root: &Path, _args: &Args) -> Result<()> {
+        // add containter entry
         if let Some(exposes) = self.config.exposes.as_ref() {
             let container_entry_name = &self.config.name;
             if !exposes.is_empty() {
@@ -71,6 +72,7 @@ impl Plugin for ModuleFederationPlugin {
         _is_entry: bool,
         _context: &Arc<Context>,
     ) -> Result<Option<Content>> {
+        // add containter entry runtime dependency
         if !_is_entry {
             Ok(None)
         } else {
@@ -94,59 +96,13 @@ impl Plugin for ModuleFederationPlugin {
     }
 
     fn runtime_plugins(&self, _context: &Arc<Context>) -> Result<Vec<String>> {
-        fn parse_remote(remote: &str) -> Result<(String, String)> {
-            let (left, right) = remote
-                .split_once('@')
-                .ok_or(anyhow!("invalid remote {}", remote))?;
-            if left.is_empty() || right.is_empty() {
-                Err(anyhow!("invalid remote {}", remote))
-            } else {
-                Ok((left.to_string(), right.to_string()))
-            }
-        }
+        let federation_runtime_code = self.get_federation_runtime_code();
+        let federation_container_references_code = self.get_container_references_code();
 
-        let runtime_remotes = self.config.remotes.as_ref().map_or(Vec::new(), |remotes| {
-            remotes
-                .iter()
-                .map(|(alias, remote)| {
-                    // FIXME: should not unwrap
-                    let (name, entry) = parse_remote(remote).unwrap();
-                    RuntimeRemoteItem {
-                        name,
-                        alias: alias.clone(),
-                        entry,
-                        share_scope: self.config.share_scope.clone(),
-                    }
-                })
-                .collect()
-        });
-        let init_options: RuntimeInitOptions = RuntimeInitOptions {
-            name: self.config.name.clone(),
-            remotes: runtime_remotes,
-            share_strategy: serde_json::to_value(&self.config.share_strategy)
-                .unwrap()
-                .as_str()
-                .unwrap()
-                .to_string(),
-        };
-        let init_options_code = serde_json::to_string(&init_options).unwrap();
-
-        let code = format!(
-            r#"
-/* mako/runtime/federation runtime */
-!(function() {{
-  if(!requireModule.federation) {{
-    requireModule.federation = {{
-      initOptions: {init_options_code},
-      chunkMatcher: () => true,
-      rootOutputDir: "",
-      initialConsumes: undefined,
-      bundlerRuntimeOptions: {{}}
-    }};
-  }}
-}})();"#
-        );
-        Ok(vec![code])
+        Ok(vec![
+            federation_runtime_code,
+            federation_container_references_code,
+        ])
     }
 }
 
@@ -289,6 +245,67 @@ export {{ get, init }};
             mako_require = MAKO_REQUIRE,
             share_scope = self.config.share_scope
         )
+    }
+
+    fn get_federation_runtime_code(&self) -> String {
+        fn parse_remote(remote: &str) -> Result<(String, String)> {
+            let (left, right) = remote
+                .split_once('@')
+                .ok_or(anyhow!("invalid remote {}", remote))?;
+            if left.is_empty() || right.is_empty() {
+                Err(anyhow!("invalid remote {}", remote))
+            } else {
+                Ok((left.to_string(), right.to_string()))
+            }
+        }
+
+        let runtime_remotes = self.config.remotes.as_ref().map_or(Vec::new(), |remotes| {
+            remotes
+                .iter()
+                .map(|(alias, remote)| {
+                    // FIXME: should not unwrap
+                    let (name, entry) = parse_remote(remote).unwrap();
+                    RuntimeRemoteItem {
+                        name,
+                        alias: alias.clone(),
+                        entry,
+                        share_scope: self.config.share_scope.clone(),
+                    }
+                })
+                .collect()
+        });
+        let init_options: RuntimeInitOptions = RuntimeInitOptions {
+            name: self.config.name.clone(),
+            remotes: runtime_remotes,
+            share_strategy: serde_json::to_value(&self.config.share_strategy)
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string(),
+        };
+        let init_options_code = serde_json::to_string(&init_options).unwrap();
+
+        let federation_runtime_code = format!(
+            r#"
+/* mako/runtime/federation runtime */
+!(function() {{
+  if(!requireModule.federation) {{
+    requireModule.federation = {{
+      initOptions: {init_options_code},
+      chunkMatcher: () => true,
+      rootOutputDir: "",
+      initialConsumes: undefined,
+      bundlerRuntimeOptions: {{}}
+    }};
+  }}
+}})();"#
+        );
+        federation_runtime_code
+    }
+
+    // TODO: impl remote module
+    fn get_container_references_code(&self) -> String {
+        "".to_string()
     }
 }
 
