@@ -218,7 +218,7 @@ pub fn mark_async(
         .filter_map(|m| {
             m.info
                 .as_ref()
-                .and_then(|i| if i.is_async { Some(m.id.clone()) } else { None })
+                .and_then(|i| i.is_async.then(|| m.id.clone()))
         })
         .collect::<VecDeque<_>>();
     let mut visited = HashSet::new();
