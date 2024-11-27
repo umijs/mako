@@ -364,7 +364,7 @@ impl ModuleAst {
         if let Self::Script(script) = self {
             script
         } else {
-            panic!("ModuleAst is not Css")
+            panic!("ModuleAst is not Script")
         }
     }
 }

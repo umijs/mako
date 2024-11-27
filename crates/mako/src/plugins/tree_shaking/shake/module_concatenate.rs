@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use concatenated_transformer::ConcatenatedTransform;
 use external_transformer::ExternalTransformer;
+use rayon::prelude::*;
 use swc_core::common::util::take::Take;
 use swc_core::common::GLOBALS;
 use swc_core::ecma::transforms::base::hygiene::hygiene;
@@ -242,25 +243,15 @@ pub fn optimize_module_graph(
         src_2_module_id
     }
 
-    GLOBALS.set(&context.meta.script.globals, || {
-        for config in &concat_configurations {
-            mako_profile_scope!("concatenate", &config.root.id);
+    let res = concat_configurations
+        .par_iter()
+        .map(|config| {
+            GLOBALS.set(&context.meta.script.globals, || {
+                mako_profile_scope!("concatenate", &config.root.id);
 
-            if let Some(info) = module_graph
-                .get_module_mut(&config.root)
-                .and_then(|module| module.info.as_mut())
-            {
-                let js_ast = info.ast.as_script_mut();
+                let mut new_deps = vec![];
 
-                js_ast.ast.visit_mut_with(&mut hygiene());
-                js_ast.ast.visit_mut_with(&mut resolver(
-                    js_ast.unresolved_mark,
-                    js_ast.top_level_mark,
-                    false,
-                ));
-            }
-
-            if let Ok(mut concatenate_context) = ConcatenateContext::init(config, module_graph) {
+                let mut concatenate_context = ConcatenateContext::init(config, module_graph);
                 let mut module_items = concatenate_context.interop_module_items.clone();
 
                 for id in &config.sorted_modules(module_graph) {
@@ -292,9 +283,8 @@ pub fn optimize_module_graph(
 
                         concatenate_context.add_external_names(id, exposed_names);
 
-                        module_graph.add_dependency(
-                            &config.root,
-                            id,
+                        new_deps.push((
+                            id.clone(),
                             Dependency {
                                 source: require_src,
                                 resolve_as: None,
@@ -302,7 +292,7 @@ pub fn optimize_module_graph(
                                 order: 0,
                                 span: None,
                             },
-                        );
+                        ));
                         continue;
                     }
 
@@ -318,10 +308,10 @@ pub fn optimize_module_graph(
                         }
                     });
 
-                    let module = module_graph.get_module_mut(id).unwrap();
+                    let module = module_graph.get_module(id).unwrap();
 
-                    let module_info = module.info.as_mut().unwrap();
-                    let script_ast = module_info.ast.script_mut().unwrap();
+                    let module_info = module.info.as_ref().unwrap();
+                    let mut script_ast = module_info.ast.as_script().unwrap().clone();
                     script_ast.ast.visit_mut_with(&mut hygiene());
                     script_ast.ast.visit_mut_with(&mut resolver(
                         script_ast.unresolved_mark,
@@ -365,9 +355,9 @@ pub fn optimize_module_graph(
                     module_items.append(&mut script_ast.ast.body.clone());
                 }
 
-                let root_module = module_graph.get_module_mut(&config.root).unwrap();
+                let root_module = module_graph.get_module(&config.root).unwrap();
 
-                let ast = &mut root_module.info.as_mut().unwrap().ast;
+                let mut ast = root_module.info.as_ref().unwrap().ast.clone();
 
                 let ast_script = ast.script_mut().unwrap();
                 let root_print = false;
@@ -380,6 +370,13 @@ pub fn optimize_module_graph(
                 let unresolved_mark = ast_script.unresolved_mark;
                 let top_level_mark = ast_script.top_level_mark;
                 let src_2_module_id = source_to_module_id(&config.root, module_graph);
+
+                root_module_ast.visit_mut_with(&mut hygiene());
+                root_module_ast.visit_mut_with(&mut resolver(
+                    unresolved_mark,
+                    top_level_mark,
+                    false,
+                ));
 
                 let mut ext_trans = ExternalTransformer {
                     src_to_module: &src_2_module_id,
@@ -396,7 +393,6 @@ pub fn optimize_module_graph(
                     top_level_mark,
                 )
                 .for_root();
-
                 root_module_ast.visit_mut_with(&mut ccn_trans_for_root);
 
                 if cfg!(debug_assertions) && root_print {
@@ -424,20 +420,31 @@ pub fn optimize_module_graph(
                     false,
                 ));
 
-                let root_module = module_graph.get_module_mut(&config.root).unwrap();
-                let ast = &mut root_module.info.as_mut().unwrap().ast;
-                let ast_script = ast.script_mut().unwrap();
-                ast_script.ast = root_module_ast;
+                (new_deps, root_module_ast)
+            })
+        })
+        .collect::<Vec<_>>();
 
-                for inner in config.inners.iter() {
-                    module_graph.remove_module(inner);
-                }
-            } else {
-                continue;
-            }
-        }
-        Ok(())
-    })
+    concat_configurations
+        .iter()
+        .zip(res)
+        .for_each(|(config, (new_deps, module_ast))| {
+            new_deps.into_iter().for_each(|(to, dep)| {
+                module_graph.add_dependency(&config.root, &to, dep);
+            });
+
+            config.inners.iter().for_each(|inner| {
+                module_graph.remove_module(inner);
+            });
+
+            let module = module_graph.get_module_mut(&config.root).unwrap();
+            let module_info = module.info.as_mut().unwrap();
+            let js_ast = module_info.ast.as_script_ast_mut();
+
+            *js_ast = module_ast;
+        });
+
+    Ok(())
 }
 
 #[derive(Debug)]
