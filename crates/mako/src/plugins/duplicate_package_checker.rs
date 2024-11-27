@@ -5,6 +5,7 @@ use std::sync::{Arc, RwLock};
 use semver::Version;
 
 use crate::compiler::Context;
+use crate::module::Module;
 use crate::module_graph::ModuleGraph;
 use crate::plugin::Plugin;
 use crate::resolve::ResolverResource;
@@ -44,6 +45,30 @@ fn clean_path_relative_to_context(module_path: &Path, context: &Path) -> PathBuf
     } else {
         cleaned_path
     }
+}
+
+fn extract_package_info(module: &Module) -> Option<PackageInfo> {
+    module
+        .info
+        .as_ref()
+        .and_then(|info| info.resolved_resource.as_ref())
+        .and_then(|resolver_resource| {
+            if let ResolverResource::Resolved(resource) = resolver_resource {
+                let package_json = resource.0.package_json()?;
+                let name = package_json.name.clone()?;
+                let raw_json = package_json.raw_json();
+                let version = raw_json.as_object()?.get("version")?;
+                let version = semver::Version::parse(version.as_str().unwrap()).ok()?;
+
+                Some(PackageInfo {
+                    name,
+                    version,
+                    path: package_json.path.clone(),
+                })
+            } else {
+                None
+            }
+        })
 }
 
 impl DuplicatePackageCheckerPlugin {
@@ -92,30 +117,10 @@ impl DuplicatePackageCheckerPlugin {
             .read()
             .unwrap()
             .modules()
-            .iter()
-            .for_each(|module| {
-                if let Some(ResolverResource::Resolved(resource)) = module
-                    .info
-                    .as_ref()
-                    .and_then(|info| info.resolved_resource.as_ref())
-                {
-                    if let Some(package_json) = resource.0.package_json() {
-                        let raw_json = package_json.raw_json();
-                        if let Some(name) = package_json.name.clone() {
-                            if let Some(version) = raw_json.as_object().unwrap().get("version") {
-                                let version = semver::Version::parse(version.as_str().unwrap());
-                                if let Ok(version) = version {
-                                    let package_info = PackageInfo {
-                                        name,
-                                        version,
-                                        path: package_json.path.clone(),
-                                    };
-                                    packages.push(package_info);
-                                }
-                            }
-                        }
-                    }
-                }
+            .into_iter()
+            .filter_map(extract_package_info)
+            .for_each(|package_info| {
+                packages.push(package_info);
             });
 
         Self::find_duplicates(packages)
