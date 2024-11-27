@@ -56,16 +56,11 @@ impl Plugin for WasmRuntimePlugin {
             for payload in Parser::new(0).parse_all(&buffer) {
                 if let Ok(Payload::ImportSection(imports)) = payload {
                     for import in imports {
-                        match import {
-                            Ok(Import { module, name, ty }) => {
-                                if let Some(import_obj) = import_objs_map.get_mut(module) {
-                                    import_obj.push(name.to_string());
-                                } else {
-                                    import_objs_map.insert(module, vec![name.to_string()]);
-                                }
-                            }
-                            Err(_) => {
-                                println!("import error");
+                        if let Ok(Import { module, name, ty }) = import {
+                            if let Some(import_obj) = import_objs_map.get_mut(module) {
+                                import_obj.push(name.to_string());
+                            } else {
+                                import_objs_map.insert(module, vec![name.to_string()]);
                             }
                         }
                     }
