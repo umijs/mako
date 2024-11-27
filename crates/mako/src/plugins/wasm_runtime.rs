@@ -50,13 +50,18 @@ impl Plugin for WasmRuntimePlugin {
             _context.emit_assets(origin_path, final_file_name.clone());
 
             let mut buffer = Vec::new();
-            File::open(file.path.as_path())?.read_to_end(&mut buffer)?;
+            File::open(&file.path)?.read_to_end(&mut buffer)?;
             // Parse wasm file to get imports
             let mut import_objs_map: HashMap<&str, Vec<String>> = HashMap::new();
             for payload in Parser::new(0).parse_all(&buffer) {
                 if let Ok(Payload::ImportSection(imports)) = payload {
                     for import in imports {
-                        if let Ok(Import { module, name, ty }) = import {
+                        if let Ok(Import {
+                            module,
+                            name,
+                            ty: _,
+                        }) = import
+                        {
                             if let Some(import_obj) = import_objs_map.get_mut(module) {
                                 import_obj.push(name.to_string());
                             } else {
@@ -82,7 +87,7 @@ impl Plugin for WasmRuntimePlugin {
                     module = key,
                     names = value
                         .iter()
-                        .map(|name| format!("{}: module{}.{}", name, index, name))
+                        .map(|name| format!("\"{}\": module{}[\"{}\"]", name, index, name))
                         .collect::<Vec<String>>()
                         .join(", ")
                 ));
