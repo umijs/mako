@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::iter::once;
 use std::sync::Arc;
 
 use anyhow::anyhow;
@@ -32,8 +33,9 @@ pub fn module_ensure_map(context: &Arc<Context>) -> anyhow::Result<BTreeMap<Stri
                 .iter()
                 .for_each(|chunk| {
                     let deps_chunks = cg
-                        .installable_descendants_chunk(&chunk.id)
+                        .sync_dependencies_chunk(&chunk.id)
                         .iter()
+                        .chain(once(&chunk.id))
                         .map(|chunk_id| chunk_id.generate(context))
                         .collect::<Vec<_>>();
 
