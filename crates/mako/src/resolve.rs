@@ -13,7 +13,7 @@ use tracing::debug;
 mod resolution;
 mod resource;
 pub use resolution::Resolution;
-pub use resource::{ExternalResource, ResolvedResource, ResolverResource};
+pub use resource::{ExternalResource, RemoteInfo, ResolvedResource, ResolverResource};
 
 use crate::ast::file::parse_path;
 use crate::compiler::Context;

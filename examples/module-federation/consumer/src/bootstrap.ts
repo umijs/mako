@@ -1,4 +1,4 @@
-// import provider from 'provider/provider';
+import provider from 'provider/provider';
 
 console.log('mf consomer host loaded.');
-// console.log(`provider loaded ${provider}`);
+console.log(`provider loaded ${provider}`);

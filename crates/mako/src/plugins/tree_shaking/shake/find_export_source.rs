@@ -470,6 +470,7 @@ mod tests {
         let mako_module = Module {
             id: "test.js".into(),
             is_entry: false,
+            is_remote: false,
             info: Some(ModuleInfo {
                 ast: ModuleAst::Script(ast),
                 file,

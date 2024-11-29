@@ -18,11 +18,12 @@ use crate::ast::file::win_path;
 use crate::config::{Config, ModuleIdStrategy, OutputMode};
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::generate::optimize_chunk::OptimizeChunksInfo;
+use crate::module::{Module, ModuleInfo};
 use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams};
 use crate::plugins;
 use crate::plugins::module_federation::ModuleFederationPlugin;
-use crate::resolve::{get_resolvers, Resolvers};
+use crate::resolve::{get_resolvers, RemoteInfo, ResolverResource, Resolvers};
 use crate::share::helpers::SWC_HELPERS;
 use crate::stats::StatsInfo;
 use crate::utils::id_helper::{assign_numeric_ids, compare_modules_by_incoming_edges};
@@ -493,5 +494,18 @@ impl Compiler {
             fs::remove_dir_all(output_path)?;
         }
         Ok(())
+    }
+
+    pub(crate) fn create_remote_module(remote_info: RemoteInfo) -> Module {
+        Module {
+            is_remote: true,
+            is_entry: false,
+            id: remote_info.module_id.as_str().into(),
+            info: Some(ModuleInfo {
+                resolved_resource: Some(ResolverResource::Remote(remote_info.clone())),
+                ..Default::default()
+            }),
+            side_effects: true,
+        }
     }
 }

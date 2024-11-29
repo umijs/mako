@@ -126,6 +126,9 @@ impl Compiler {
                         ResolverResource::Ignored(_) => {
                             Self::create_ignored_module(&path, self.context.clone())
                         }
+                        ResolverResource::Remote(remote_into) => {
+                            Self::create_remote_module(remote_into)
+                        }
                     };
 
                     // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加

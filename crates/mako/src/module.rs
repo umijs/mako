@@ -381,6 +381,8 @@ pub enum ModuleType {
 pub struct Module {
     pub id: ModuleId,
     pub is_entry: bool,
+    // only module federation remote module
+    pub is_remote: bool,
     pub info: Option<ModuleInfo>,
     pub side_effects: bool,
 }
@@ -390,6 +392,7 @@ impl Module {
         Self {
             id,
             is_entry,
+            is_remote: false,
             info,
             side_effects: is_entry,
         }

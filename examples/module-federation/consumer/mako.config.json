@@ -12,5 +12,8 @@
   "optimization": {
     "skipModules": false,
     "concatenateModules": false
+  },
+  "experimental": {
+    "centralEnsure": false
   }
 }
