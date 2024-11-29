@@ -3,6 +3,7 @@ pub mod bundless_compiler;
 pub mod central_ensure;
 pub mod context_module;
 pub mod copy;
+pub mod dependency_checker;
 pub mod detect_circular_dependence;
 pub mod duplicate_package_checker;
 pub mod emotion;
