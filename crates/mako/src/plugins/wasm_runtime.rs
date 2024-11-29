@@ -55,14 +55,17 @@ impl Plugin for WasmRuntimePlugin {
             File::open(&file.path)?.read_to_end(&mut buffer)?;
             // Parse wasm file to get imports
             let mut wasm_import_object_map: HashMap<&str, Vec<String>> = HashMap::new();
-            for payload in Parser::new(0).parse_all(&buffer) {
+            Parser::new(0).parse_all(&buffer).for_each(|payload| {
                 if let Ok(Payload::ImportSection(imports)) = payload {
-                    for import in imports {
-                        if let Ok(Import {
-                            module,
-                            name,
-                            ty: _,
-                        }) = import
+                    imports.into_iter_with_offsets().for_each(|import| {
+                        if let Ok((
+                            _,
+                            Import {
+                                module,
+                                name,
+                                ty: _,
+                            },
+                        )) = import
                         {
                             if let Some(import_object) = wasm_import_object_map.get_mut(module) {
                                 import_object.push(name.to_string());
@@ -70,9 +73,9 @@ impl Plugin for WasmRuntimePlugin {
                                 wasm_import_object_map.insert(module, vec![name.to_string()]);
                             }
                         }
-                    }
+                    });
                 }
-            }
+            });
 
             let mut module_import_code = String::new();
             let mut wasm_import_object_code = String::new();
