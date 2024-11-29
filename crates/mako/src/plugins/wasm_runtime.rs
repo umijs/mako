@@ -46,13 +46,15 @@ impl Plugin for WasmRuntimePlugin {
                 file.get_content_hash()?,
                 file.extname
             );
-            let origin_path = file.pathname.to_string_lossy().to_string();
-            _context.emit_assets(origin_path, final_file_name.clone());
+            _context.emit_assets(
+                file.pathname.to_string_lossy().to_string(),
+                final_file_name.clone(),
+            );
 
             let mut buffer = Vec::new();
             File::open(&file.path)?.read_to_end(&mut buffer)?;
             // Parse wasm file to get imports
-            let mut import_objs_map: HashMap<&str, Vec<String>> = HashMap::new();
+            let mut wasm_import_object_map: HashMap<&str, Vec<String>> = HashMap::new();
             for payload in Parser::new(0).parse_all(&buffer) {
                 if let Ok(Payload::ImportSection(imports)) = payload {
                     for import in imports {
@@ -62,27 +64,27 @@ impl Plugin for WasmRuntimePlugin {
                             ty: _,
                         }) = import
                         {
-                            if let Some(import_obj) = import_objs_map.get_mut(module) {
-                                import_obj.push(name.to_string());
+                            if let Some(import_object) = wasm_import_object_map.get_mut(module) {
+                                import_object.push(name.to_string());
                             } else {
-                                import_objs_map.insert(module, vec![name.to_string()]);
+                                wasm_import_object_map.insert(module, vec![name.to_string()]);
                             }
                         }
                     }
                 }
             }
 
-            let mut js_imports_str = String::new();
-            let mut import_objs_str = String::new();
+            let mut module_import_code = String::new();
+            let mut wasm_import_object_code = String::new();
 
-            for (index, (key, value)) in import_objs_map.iter().enumerate() {
-                js_imports_str.push_str(&format!(
+            for (index, (key, value)) in wasm_import_object_map.iter().enumerate() {
+                module_import_code.push_str(&format!(
                     "import * as module{module_idx} from \"{module}\";\n",
                     module_idx = index,
                     module = key
                 ));
 
-                import_objs_str.push_str(&format!(
+                wasm_import_object_code.push_str(&format!(
                     "\"{module}\": {{ {names} }}",
                     module = key,
                     names = value
@@ -94,9 +96,9 @@ impl Plugin for WasmRuntimePlugin {
             }
 
             let mut content = String::new();
-            content.push_str(&js_imports_str);
+            content.push_str(&module_import_code);
 
-            if import_objs_str.is_empty() {
+            if wasm_import_object_code.is_empty() {
                 content.push_str(&format!(
                     "module.exports = require._interopreRequireWasm(exports, \"{}\")",
                     final_file_name
@@ -104,7 +106,7 @@ impl Plugin for WasmRuntimePlugin {
             } else {
                 content.push_str(&format!(
                     "module.exports = require._interopreRequireWasm(exports, \"{}\", {{{}}})",
-                    final_file_name, import_objs_str
+                    final_file_name, wasm_import_object_code
                 ));
             }
 
