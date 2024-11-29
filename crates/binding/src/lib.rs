@@ -146,6 +146,7 @@ pub struct BuildParams {
     };
     optimization?: false | {
         skipModules?: boolean;
+        concatenateModules?: boolean;
     };
     react?: {
         runtime?: "automatic" | "classic";
