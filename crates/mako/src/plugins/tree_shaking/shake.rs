@@ -8,10 +8,14 @@ use std::ops::DerefMut;
 use std::sync::Arc;
 
 use anyhow::Result;
+use colored::Colorize;
 use rayon::prelude::*;
+use swc_core::common::sync::Lrc;
 use swc_core::common::util::take::Take;
-use swc_core::common::GLOBALS;
+use swc_core::common::{Mark, SourceMap, GLOBALS};
+use swc_core::ecma::ast::Ident;
 use swc_core::ecma::transforms::base::helpers::{Helpers, HELPERS};
+use swc_core::ecma::visit::{Visit, VisitWith};
 
 use self::skip_module::skip_module_optimize;
 use crate::compiler::Context;
@@ -176,6 +180,32 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
         }
     }
 
+    if !context.config.experimental.global_detect.is_empty() {
+        GLOBALS.set(&context.meta.script.globals, || {
+            module_graph.modules().into_iter().for_each(|module| {
+                let info = module.info.as_ref().unwrap();
+
+                if let ModuleAst::Script(js_ast) = &info.ast {
+                    let to_detect = context
+                        .config
+                        .experimental
+                        .global_detect
+                        .iter()
+                        .cloned()
+                        .collect();
+
+                    let mut dector = GlobalDetect {
+                        to_detect: &to_detect,
+                        unresolved_mark: js_ast.unresolved_mark,
+                        cm: context.meta.script.cm.clone(),
+                    };
+
+                    js_ast.ast.visit_with(&mut dector);
+                }
+            });
+        });
+    }
+
     if context
         .config
         .optimization
@@ -186,6 +216,32 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
     }
 
     Ok(())
+}
+
+struct GlobalDetect<'a> {
+    to_detect: &'a HashSet<String>,
+    unresolved_mark: Mark,
+    cm: Lrc<SourceMap>,
+}
+
+impl<'a> Visit for GlobalDetect<'a> {
+    fn visit_ident(&mut self, node: &Ident) {
+        if node.ctxt.outer() == self.unresolved_mark {
+            let name = node.sym.to_string();
+            if self.to_detect.contains(&name) {
+                if let Ok(file_line) = self.cm.span_to_lines(node.span) {
+                    println!(
+                        "{} [Global Detected]: `{}` at {}:{}:{}",
+                        "Warning".yellow(),
+                        name.red(),
+                        file_line.file.name,
+                        file_line.lines[0].line_index + 1,
+                        file_line.lines[0].start_col.0 + 1
+                    );
+                }
+            }
+        }
+    }
 }
 
 // Add all imported to used_exports

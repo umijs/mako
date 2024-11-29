@@ -13,6 +13,7 @@ pub struct ExperimentalConfig {
     #[serde(deserialize_with = "deserialize_detect_loop")]
     pub detect_circular_dependence: Option<DetectCircularDependence>,
     pub central_ensure: bool,
+    pub global_detect: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

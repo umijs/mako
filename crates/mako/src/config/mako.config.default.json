@@ -73,6 +73,7 @@
       "ignores": ["node_modules"],
       "graphviz": false
     },
+    "globalDetect": [],
     "centralEnsure": true
   },
   "useDefineForClassFields": true,
