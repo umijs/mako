@@ -122,3 +122,48 @@ impl Plugin for WasmRuntimePlugin {
         Ok(None)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::*;
+    use crate::ast::file::File;
+    use crate::compiler::Context;
+
+    #[test]
+    fn test_wasm_runtime_load_with_import_object() {
+        let plugin = WasmRuntimePlugin {};
+        let context = Arc::new(Context {
+            ..Default::default()
+        });
+        let wasm_relative_path =
+            std::path::Path::new("../../examples/import-resources/minus-wasm-pack/index_bg.wasm");
+        let wasm_path = std::fs::canonicalize(wasm_relative_path).unwrap();
+        let file = File::new(wasm_path.to_string_lossy().to_string(), context.clone());
+        let param = PluginLoadParam { file: &file };
+        let result: Option<Content> = plugin.load(&param, &context).unwrap();
+
+        assert!(result.is_some());
+        if let Some(Content::Js(js_content)) = result {
+            assert!(js_content.content.contains("import * as module0 from"));
+        }
+    }
+
+    #[test]
+    fn test_wasm_runtime_load_without_import_object() {
+        let plugin = WasmRuntimePlugin {};
+        let context = Arc::new(Context {
+            ..Default::default()
+        });
+        let wasm_relative_path = std::path::Path::new("../../examples/import-resources/add.wasm");
+        let wasm_path = std::fs::canonicalize(wasm_relative_path).unwrap();
+        let file = File::new(wasm_path.to_string_lossy().to_string(), context.clone());
+        let param = PluginLoadParam { file: &file };
+        let result = plugin.load(&param, &context).unwrap();
+        assert!(result.is_some());
+        if let Some(Content::Js(js_content)) = result {
+            assert!(!js_content.content.contains("import * as module0 from"))
+        }
+    }
+}
