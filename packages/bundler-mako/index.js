@@ -249,13 +249,13 @@ function checkConfig(opts) {
       `umi config mako.${key} is not supported`,
     );
   });
-  // 暂不支持 { from, to } 格式
   const { copy } = opts.config;
   if (copy) {
     for (const item of copy) {
       assert(
-        typeof item === 'string',
-        `copy config item must be string in Mako bundler, but got ${item}`,
+        typeof item === 'string' ||
+          (typeof item === 'object' && item.from && item.to),
+        `copy config item must be string or { from: string, to: string } in Mako bundler, but got ${JSON.stringify(item)}`,
       );
     }
   }
