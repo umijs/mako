@@ -124,6 +124,13 @@ pub enum Platform {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(untagged)]
+pub enum CopyConfig {
+    Basic(String),
+    Advanced { from: String, to: String },
+}
+
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     pub entry: HashMap<String, PathBuf>,
@@ -137,7 +144,7 @@ pub struct Config {
     pub devtool: Option<DevtoolConfig>,
     pub externals: HashMap<String, ExternalConfig>,
     pub providers: Providers,
-    pub copy: Vec<String>,
+    pub copy: Vec<CopyConfig>,
     pub public_path: String,
     pub inline_limit: usize,
     pub inline_excludes_extensions: Vec<String>,
