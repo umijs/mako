@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use fs_extra;
 use glob::glob;
 use notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
@@ -79,6 +79,12 @@ impl CopyPlugin {
                 CopyConfig::Advanced { from, to } => {
                     let src = context.root.join(from);
                     let target = dest.join(to.trim_start_matches("/"));
+
+                    let target = target.canonicalize()?;
+                    let dest_canonical = dest.canonicalize()?;
+                    if !target.starts_with(&dest_canonical) {
+                        return Err(anyhow!("Invalid target path: {:?}", target));
+                    }
 
                     if !target.exists() {
                         fs::create_dir_all(&target)?;
