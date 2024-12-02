@@ -80,9 +80,8 @@ impl CopyPlugin {
                     let src = context.root.join(from);
                     let target = dest.join(to.trim_start_matches("/"));
 
-                    let target = target.canonicalize()?;
-                    let dest_canonical = dest.canonicalize()?;
-                    if !target.starts_with(&dest_canonical) {
+                    let dest_path = dest.to_path_buf();
+                    if !target.starts_with(&dest_path) {
                         return Err(anyhow!("Invalid target path: {:?}", target));
                     }
 
