@@ -46,6 +46,8 @@ impl<'a> Visit for CollectExports<'a> {
                         ExportSpecifier::Named(named) => {
                             if let Some(ModuleExportName::Ident(ident)) = &named.exported {
                                 self.specifiers.remove(&ident.sym.to_string());
+                            } else if let ModuleExportName::Ident(ident) = &named.orig {
+                                self.specifiers.remove(&ident.sym.to_string());
                             }
                         }
                         ExportSpecifier::Namespace(name_spacing) => {

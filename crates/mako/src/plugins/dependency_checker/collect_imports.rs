@@ -42,27 +42,26 @@ impl<'a> Visit for CollectImports<'a> {
     }
 
     fn visit_named_export(&mut self, node: &NamedExport) {
-        let source = node.src.clone().unwrap().value;
-        if self
-            .imports_specifiers_with_source
-            .get(source.as_str())
-            .is_none()
-        {
-            self.imports_specifiers_with_source
-                .insert(source.to_string(), HashSet::new());
-        }
+        if let Some(src) = &node.src {
+            if self
+                .imports_specifiers_with_source
+                .get(src.value.as_str())
+                .is_none()
+            {
+                self.imports_specifiers_with_source
+                    .insert(src.value.to_string(), HashSet::new());
+            }
 
-        if node.src.is_some() {
             node.specifiers.iter().for_each(|specifier| {
                 if let ExportSpecifier::Named(named) = specifier {
                     if let ModuleExportName::Ident(ident) = &named.orig {
                         self.imports_specifiers_with_source
-                            .get_mut(source.as_str())
+                            .get_mut(src.value.as_str())
                             .unwrap()
                             .insert(ident.sym.to_string());
                     }
                 }
             })
-        }
+        };
     }
 }
