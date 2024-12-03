@@ -1,3 +1,20 @@
+## 0.9.7
+
+`2024-11-25`
+
+- 修复: 开发服务器未设置缓存头问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1692](https://github.com/umijs/mako/pull/1692) [#1699](https://github.com/umijs/mako/pull/1699)
+- 修复: SSU 补偿的 external 代码可能出错的情况 [@stormslowly](https://github.com/stormslowly) in [#1698](https://github.com/umijs/mako/pull/1698)
+
+## 0.9.6
+
+`2024-11-14`
+
+- 新增: 监听依赖变化时，处理依赖变化 by [@stormslowly](https://github.com/stormslowly) in [#1690](https://github.com/umijs/mako/pull/1690)
+- 新增: 将 ensure runtime 移动到 entry 插件中 by [@stormslowly](https://github.com/stormslowly) in [#1660](https://github.com/umijs/mako/pull/1660)
+- 新增: 保持未解析的 nodejs require 不变 by [@xusd320](https://github.com/xusd320) in [#1689](https://github.com/umijs/mako/pull/1689)
+- 修复: pnpm 监听文件过多问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1684](https://github.com/umijs/mako/pull/1684)
+- 修复: ts 注解的声明变量被视为顶级变量的问题 by [@stormslowly](https://github.com/stormslowly) in [#1682](https://github.com/umijs/mako/pull/1682)
+
 ## 0.9.5
 
 `2024-11-07`

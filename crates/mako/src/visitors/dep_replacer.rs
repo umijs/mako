@@ -23,14 +23,18 @@ pub struct DepReplacer<'a> {
     pub unresolved_mark: Mark,
 }
 
-type ResolvedModuleId = String;
-type ResolvedModulePath = String;
+#[derive(Debug, Clone)]
+pub struct ResolvedReplaceInfo {
+    pub chunk_id: Option<String>,
+    pub to_replace_source: String,
+    pub resolved_module_id: ModuleId,
+}
 
 #[derive(Debug, Clone)]
 pub struct DependenciesToReplace {
     // resolved stores the "source" maps to (generate_id, raw_module_id)
     // e.g. "react" => ("hashed_id", "/abs/to/react/index.js")
-    pub resolved: HashMap<String, (ResolvedModuleId, ResolvedModulePath)>,
+    pub resolved: HashMap<String, ResolvedReplaceInfo>,
     pub missing: HashMap<String, Dependency>,
 }
 
@@ -124,8 +128,9 @@ impl VisitMut for DepReplacer<'_> {
                     // css
                     // TODO: add testcases for this
                     let is_replaceable_css =
-                        if let Some((_, raw_id)) = self.to_replace.resolved.get(&source_string) {
-                            let (path, _search, query, _) = parse_path(raw_id).unwrap();
+                        if let Some(replace_info) = self.to_replace.resolved.get(&source_string) {
+                            let (path, _search, query, _) =
+                                parse_path(&replace_info.resolved_module_id.id).unwrap();
                             // when inline_css is enabled
                             // css is parsed as js modules
                             self.context.config.inline_css.is_none()
@@ -194,7 +199,7 @@ impl VisitMut for DepReplacer<'_> {
 impl DepReplacer<'_> {
     fn replace_source(&mut self, source: &mut Str) {
         if let Some(replacement) = self.to_replace.resolved.get(&source.value.to_string()) {
-            let module_id = replacement.0.clone();
+            let module_id = replacement.to_replace_source.clone();
             let span = source.span;
             *source = Str::from(module_id);
             source.span = span;
@@ -247,7 +252,7 @@ mod tests {
     use swc_core::common::GLOBALS;
     use swc_core::ecma::visit::VisitMutWith;
 
-    use super::{DepReplacer, DependenciesToReplace, ResolvedModuleId, ResolvedModulePath};
+    use super::{DepReplacer, DependenciesToReplace, ResolvedReplaceInfo};
     use crate::ast::tests::TestUtils;
     use crate::module::{Dependency, ImportType, ModuleId, ResolveType};
 
@@ -339,17 +344,14 @@ try {
         );
     }
 
-    fn build_resolved(
-        key: &str,
-        module_id: &str,
-    ) -> HashMap<String, (ResolvedModuleId, ResolvedModulePath)> {
+    fn build_resolved(key: &str, module_id: &str) -> HashMap<String, ResolvedReplaceInfo> {
         hashmap! {
             key.to_string() =>
-            (
-
-             module_id.to_string(),
-             "".to_string()
-            )
+            ResolvedReplaceInfo {
+                chunk_id: None,
+                to_replace_source: module_id.into(),
+                resolved_module_id: "".into(),
+            }
         }
     }
 
@@ -367,7 +369,7 @@ try {
 
     fn run(
         js_code: &str,
-        resolved: HashMap<String, (ResolvedModuleId, ResolvedModulePath)>,
+        resolved: HashMap<String, ResolvedReplaceInfo>,
         missing: HashMap<String, Dependency>,
     ) -> String {
         let mut test_utils = TestUtils::gen_js_ast(js_code);

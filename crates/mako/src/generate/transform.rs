@@ -27,7 +27,7 @@ use crate::utils::thread_pool;
 use crate::visitors::async_module::{mark_async, AsyncModule};
 use crate::visitors::common_js::common_js;
 use crate::visitors::css_imports::CSSImports;
-use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace};
+use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace, ResolvedReplaceInfo};
 use crate::visitors::dynamic_import::DynamicImport;
 use crate::visitors::mako_require::MakoRequire;
 use crate::visitors::meta_url_replacer::MetaUrlReplacer;
@@ -84,38 +84,53 @@ pub fn transform_modules_in_thread(
         thread_pool::spawn(move || {
             let module_graph = context.module_graph.read().unwrap();
             let deps = module_graph.get_dependencies(&module_id);
-            let mut resolved_deps: HashMap<String, (String, String)> = deps
-                .into_iter()
-                .map(|(id, dep)| {
-                    (
-                        dep.source.clone(),
-                        (
-                            match &dep.resolve_type {
-                                ResolveType::Worker(import_options) => {
-                                    let chunk_id = match import_options.get_chunk_name() {
-                                        Some(chunk_name) => {
-                                            generate_module_id(chunk_name, &context)
-                                        }
-                                        None => id.generate(&context),
-                                    };
-                                    let chunk_graph = context.chunk_graph.read().unwrap();
-                                    chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
-                                }
-                                ResolveType::DynamicImport(import_options) => {
-                                    match import_options.get_chunk_name() {
-                                        Some(chunk_name) => {
-                                            generate_module_id(chunk_name, &context)
-                                        }
-                                        None => id.generate(&context),
-                                    }
-                                }
-                                _ => id.generate(&context),
-                            },
-                            id.id.clone(),
-                        ),
-                    )
-                })
-                .collect();
+            let mut resolved_deps: HashMap<String, ResolvedReplaceInfo> = Default::default();
+
+            deps.into_iter().for_each(|(id, dep)| {
+                let replace_info = match &dep.resolve_type {
+                    ResolveType::Worker(import_options) => {
+                        let chunk_id = match import_options.get_chunk_name() {
+                            Some(chunk_name) => generate_module_id(chunk_name, &context),
+                            None => id.generate(&context),
+                        };
+                        let chunk_graph = context.chunk_graph.read().unwrap();
+                        let chunk_name = chunk_graph.chunk(&chunk_id.into()).unwrap().filename();
+
+                        ResolvedReplaceInfo {
+                            chunk_id: None,
+                            to_replace_source: chunk_name,
+                            resolved_module_id: id.clone(),
+                        }
+                    }
+                    ResolveType::DynamicImport(import_options) => {
+                        let chunk_id = Some(match import_options.get_chunk_name() {
+                            Some(chunk_name) => generate_module_id(chunk_name, &context),
+                            None => id.generate(&context),
+                        });
+
+                        ResolvedReplaceInfo {
+                            chunk_id,
+                            to_replace_source: id.generate(&context),
+                            resolved_module_id: id.clone(),
+                        }
+                    }
+                    _ => ResolvedReplaceInfo {
+                        chunk_id: None,
+                        to_replace_source: id.generate(&context),
+                        resolved_module_id: id.clone(),
+                    },
+                };
+
+                resolved_deps
+                    .entry(dep.source.clone())
+                    .and_modify(|info: &mut ResolvedReplaceInfo| {
+                        match (&replace_info.chunk_id, &info.chunk_id) {
+                            (None, _) => {}
+                            (Some(id), _) => info.chunk_id = Some(id.clone()),
+                        }
+                    })
+                    .or_insert(replace_info);
+            });
             insert_swc_helper_replace(&mut resolved_deps, &context);
             let module = module_graph.get_module(&module_id).unwrap();
             let info = module.info.as_ref().unwrap();
@@ -162,10 +177,20 @@ pub fn transform_modules_in_thread(
     Ok(())
 }
 
-fn insert_swc_helper_replace(map: &mut HashMap<String, (String, String)>, context: &Arc<Context>) {
+fn insert_swc_helper_replace(
+    map: &mut HashMap<String, ResolvedReplaceInfo>,
+    context: &Arc<Context>,
+) {
     SWC_HELPERS.into_iter().for_each(|h| {
         let m_id: ModuleId = h.to_string().into();
-        map.insert(m_id.id.clone(), (m_id.generate(context), h.to_string()));
+        map.insert(
+            m_id.id.clone(),
+            ResolvedReplaceInfo {
+                chunk_id: None,
+                to_replace_source: m_id.generate(context),
+                resolved_module_id: m_id,
+            },
+        );
     });
 }
 
@@ -247,6 +272,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                         let mut mako_require = MakoRequire {
                             ignores,
                             unresolved_mark,
+                            context: context.clone(),
                         };
                         ast.ast.visit_mut_with(&mut mako_require);
 
