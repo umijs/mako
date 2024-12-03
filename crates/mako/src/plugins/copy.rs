@@ -80,13 +80,18 @@ impl CopyPlugin {
                     let src = context.root.join(from);
                     let target = dest.join(to.trim_start_matches("/"));
 
-                    let dest_path = dest.to_path_buf();
-                    if !target.starts_with(&dest_path) {
+                    let was_created = if !target.exists() {
+                        fs::create_dir_all(&target).is_ok()
+                    } else {
+                        false
+                    };
+                    let canonical_target = target.canonicalize()?;
+                    let canonical_dest_path = dest.canonicalize()?;
+                    if !canonical_target.starts_with(&canonical_dest_path) {
+                        if was_created {
+                            fs::remove_dir_all(&target)?;
+                        }
                         return Err(anyhow!("Invalid target path: {:?}", target));
-                    }
-
-                    if !target.exists() {
-                        fs::create_dir_all(&target)?;
                     }
 
                     debug!("copy {:?} to {:?}", src, target);

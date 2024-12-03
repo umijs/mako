@@ -232,6 +232,7 @@ export interface BuildParams {
       | false
       | {
           skipModules?: boolean;
+          concatenateModules?: boolean;
         };
     react?: {
       runtime?: 'automatic' | 'classic';
