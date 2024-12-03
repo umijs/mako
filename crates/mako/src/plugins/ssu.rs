@@ -21,6 +21,8 @@ use crate::config::{
 use crate::generate::chunk::ChunkType;
 use crate::generate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
+use crate::generate::transform::transform_modules;
+use crate::module::ModuleId;
 use crate::plugin::{NextBuildParam, Plugin, PluginLoadParam};
 use crate::resolve::ResolverResource;
 
@@ -64,9 +66,17 @@ impl CacheState {
     }
 }
 
+#[derive(Debug, Copy, Clone, Default)]
+enum SSUScanStage {
+    #[default]
+    FirstBuild,
+    Updating,
+}
+
 pub struct SUPlus {
-    scanning: Arc<Mutex<bool>>,
-    enabled: Arc<Mutex<bool>>,
+    stage: Arc<Mutex<SSUScanStage>>,
+    cache_valid: Arc<Mutex<bool>>,
+    will_full_rebuild: Arc<Mutex<bool>>,
     dependence_node_module_files: DashSet<File>,
     cached_state: Arc<Mutex<CacheState>>,
     current_state: Arc<Mutex<CacheState>>,
@@ -89,13 +99,15 @@ impl From<bool> for CodeType {
 }
 
 const SSU_ENTRY_PREFIX: &str = "virtual:ssu:entry:node_modules:";
-const SSU_MOCK_CSS_FILE: &str = "virtual:C:/node_modules/css/css.css";
+const SSU_MOCK_CSS_FILE: &str = "virtual:C:/node_modules/_mako_css/css.css";
+const SSU_MOCK_JS_FILE: &str = "virtual:C:/node_modules/_mako_js/js.js";
 
 impl SUPlus {
     pub fn new() -> Self {
         SUPlus {
-            scanning: Arc::new(Mutex::new(true)),
-            enabled: Arc::new(Mutex::new(true)),
+            stage: Arc::new(Mutex::new(Default::default())),
+            cache_valid: Arc::new(Mutex::new(true)),
+            will_full_rebuild: Arc::new(Mutex::new(false)),
             dependence_node_module_files: Default::default(),
             cached_state: Default::default(),
             current_state: Default::default(),
@@ -127,24 +139,23 @@ impl SUPlus {
         alias_hash.wrapping_add(external_hash)
     }
 
-    fn start_scan(&self) {
-        let mut s = self.scanning.lock().unwrap();
-        *s = true;
-    }
-
-    fn stop_scan(&self) {
-        let mut s = self.scanning.lock().unwrap();
-        *s = false;
+    fn in_updating_stage(&self) {
+        let mut s = self.stage.lock().unwrap();
+        *s = SSUScanStage::Updating;
     }
 
     fn enable_cache(&self) {
-        let mut e = self.enabled.lock().unwrap();
+        let mut e = self.cache_valid.lock().unwrap();
         *e = true;
     }
 
     fn disable_cache(&self) {
-        let mut e = self.enabled.lock().unwrap();
+        let mut e = self.cache_valid.lock().unwrap();
         *e = false;
+    }
+
+    fn will_full_rebuild(&self) -> bool {
+        *self.will_full_rebuild.lock().unwrap()
     }
 }
 
@@ -227,17 +238,29 @@ impl Plugin for SUPlus {
             let port = context.config.dev_server.as_ref().unwrap().port.to_string();
             let host = &context.config.dev_server.as_ref().unwrap().host;
             let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
-            let hmr_runtime = include_str!("../runtime/runtime_hmr_entry.js")
-                .to_string()
-                .replace("__PORT__", &port)
-                .replace("__HOST__", host);
+            let hmr_runtime = if context.config.hmr.is_some() {
+                include_str!("../runtime/runtime_hmr_entry.js")
+                    .to_string()
+                    .replace("__PORT__", &port)
+                    .replace("__HOST__", host)
+            } else {
+                "".to_string()
+            };
 
             let content = format!(
                 r#"
 require("{SSU_MOCK_CSS_FILE}");
+try{{
+// it will throw due to the node_module chunk is not loaded yet
+require("{SSU_MOCK_JS_FILE}");
+}}catch(e){{}};
 let patch = require._su_patch();
 console.log(patch);
+try{{
 {}
+}}catch(e){{ 
+//ignore the error 
+}}
 module.export = Promise.all(
     patch.map((d)=>__mako_require__.ensure(d))
 ).then(()=>{{
@@ -263,6 +286,14 @@ module.export = Promise.all(
         if param.file.path.starts_with(SSU_MOCK_CSS_FILE) {
             return Ok(Some(Content::Css("._mako_mock_css { }".to_string())));
         }
+
+        if param.file.path.starts_with(SSU_MOCK_JS_FILE) {
+            return Ok(Some(Content::Js(JsContent {
+                is_jsx: false,
+                content: "console.log('_mako_ssu_placeholder')".to_string(),
+            })));
+        }
+
         Ok(None)
     }
 
@@ -284,7 +315,7 @@ module.export = Promise.all(
                 .to_string()
         );
 
-        match (from, to) {
+        let should_transform = match (from, to) {
             (CodeType::SourceCode, CodeType::Dependency) => {
                 if let ResolverResource::Resolved(resolved) = &next_build_param.resource {
                     self.dependence_node_module_files
@@ -304,14 +335,38 @@ module.export = Promise.all(
                             v.as_str().unwrap_or("0.0.0").to_string()
                         });
 
-                    self.current_state
-                        .lock()
-                        .unwrap()
-                        .cached_boundaries
-                        .insert(path_name, version);
+                    let mut ssu_state = self.current_state.lock().unwrap();
 
-                    let scanning = *self.scanning.lock().unwrap();
-                    !scanning
+                    let stage = self.stage.lock().unwrap();
+
+                    match *stage {
+                        SSUScanStage::FirstBuild => {
+                            ssu_state.cached_boundaries.insert(path_name, version);
+                            false
+                        }
+                        SSUScanStage::Updating => {
+                            let mut cache_valid = self.cache_valid.lock().unwrap();
+
+                            if *cache_valid {
+                                // cache hit
+                                if let Some(cached_version) =
+                                    ssu_state.cached_boundaries.get(&path_name)
+                                    && *cached_version == version
+                                {
+                                    false
+                                } else {
+                                    ssu_state.cached_boundaries.insert(path_name, version);
+                                    *cache_valid = false;
+                                    *self.will_full_rebuild.lock().unwrap() = true;
+
+                                    true
+                                }
+                            } else {
+                                ssu_state.cached_boundaries.insert(path_name, version);
+                                true
+                            }
+                        }
+                    }
                 } else {
                     true
                 }
@@ -337,7 +392,37 @@ module.export = Promise.all(
                 true
             }
             _ => true,
+        };
+
+        debug!(
+            "{} -> {} {should_transform}",
+            next_build_param.current_module.id,
+            next_build_param
+                .next_file
+                .pathname
+                .to_string_lossy()
+                .to_string()
+        );
+
+        should_transform
+    }
+
+    fn after_update(&self, compiler: &Compiler) -> Result<()> {
+        if self.will_full_rebuild() {
+            let files = self
+                .dependence_node_module_files
+                .iter()
+                .map(|f| f.clone())
+                .collect::<Vec<File>>();
+
+            debug!("start to build after update");
+            let mut modules = compiler.build(files.clone())?;
+
+            modules.extend(files.into_iter().map(|f| ModuleId::from(f.path)));
+
+            transform_modules(modules.into_iter().collect(), &compiler.context)?
         }
+        Ok(())
     }
 
     fn after_build(&self, _context: &Arc<Context>, compiler: &Compiler) -> Result<()> {
@@ -360,6 +445,7 @@ module.export = Promise.all(
 
         if cache_valid {
             self.enable_cache();
+            self.in_updating_stage();
             return Ok(());
         }
 
@@ -371,12 +457,10 @@ module.export = Promise.all(
             .map(|f| f.clone())
             .collect::<Vec<File>>();
 
-        self.stop_scan();
-
         debug!("start to build dep");
         compiler.build(files)?;
 
-        self.start_scan();
+        self.in_updating_stage();
 
         #[cfg(debug_assertions)]
         {
@@ -397,7 +481,8 @@ module.export = Promise.all(
         chunk_files: &[ChunkFile],
         context: &Arc<Context>,
     ) -> Result<()> {
-        if *self.enabled.lock().unwrap() {
+        if *self.cache_valid.lock().unwrap() {
+            debug!("cache valid skip generate chunk files");
             return Ok(());
         }
 
@@ -470,7 +555,7 @@ module.export = Promise.all(
     }
 
     fn runtime_plugins(&self, _context: &Arc<Context>) -> Result<Vec<String>> {
-        if *self.enabled.lock().unwrap() {
+        if *self.cache_valid.lock().unwrap() {
             let cache = self.cached_state.lock().unwrap();
 
             let code = format!(
@@ -485,7 +570,7 @@ requireModule._su_patch = function(){{
         cssChunksIdToUrlMap[key] = css_patch[key];
     }}
     return Object.keys(js_patch).sort();
-}}
+}};
 "#,
                 serde_json::to_string(&cache.js_patch_map).unwrap(),
                 serde_json::to_string(&cache.css_patch_map).unwrap(),
@@ -499,7 +584,7 @@ requireModule._su_patch = function(){{
                 .into_iter()
                 .filter(|c| c.chunk_type == ChunkType::Sync)
                 .for_each(|c| {
-                    println!("chunk: {}", c.filename());
+                    debug!("chunk: {}", c.filename());
                 });
 
             Ok(vec![r#"
@@ -517,7 +602,7 @@ requireModule._su_patch = function(){
         cssChunksIdToUrlMap[key] = css_patch[key];
     }
   return ["node_modules"];
-}"#
+};"#
             .to_string()])
         }
     }

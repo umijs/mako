@@ -67,11 +67,13 @@
   "experimental": {
     "webpackSyntaxValidate": [],
     "requireContext": true,
+    "ignoreNonLiteralRequire": false,
     "magicComment": true,
     "detectCircularDependence": {
       "ignores": ["node_modules"],
       "graphviz": false
-    }
+    },
+    "centralEnsure": true
   },
   "useDefineForClassFields": true,
   "emitDecoratorMetadata": false,

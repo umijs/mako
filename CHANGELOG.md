@@ -1,10 +1,25 @@
+## 0.9.7
+
+`2024-11-25`
+
+- fix: devserver response header add cacheControl no-cache by [@Jinbao1001](https://github.com/Jinbao1001) in [#1692](https://github.com/umijs/mako/pull/1692) [#1699](https://github.com/umijs/mako/pull/1699)
+- fix(ssu): in case external not available to all entries by [@stormslowly](https://github.com/stormslowly) in [#1698](https://github.com/umijs/mako/pull/1698)
+
+## 0.9.6
+
+`2024-11-14`
+
+- feat(ssu): handle dependence changing while watching by [@stormslowly](https://github.com/stormslowly) in [#1690](https://github.com/umijs/mako/pull/1690)
+- feat: move ensure runtime to entry  by [@stormslowly](https://github.com/stormslowly) in [#1660](https://github.com/umijs/mako/pull/1660)
+- feat: keep unresolved nodejs require by [@xusd320](https://github.com/xusd320) in [#1689](https://github.com/umijs/mako/pull/1689)
+- fix: pnpm workspace watch too many files by [@Jinbao1001](https://github.com/Jinbao1001) in [#1684](https://github.com/umijs/mako/pull/1684)
+- fix: ts annotated declare variable treat as top level variable by [@stormslowly](https://github.com/stormslowly) in [#1682](https://github.com/umijs/mako/pull/1682)
+
 ## 0.9.5
 
 `2024-11-07`
 
 - fix: skip module should skip async module by [@Jinbao1001](https://github.com/Jinbao1001) in [#1667](https://github.com/umijs/mako/pull/1662)
-
-
 
 ## 0.9.4
 

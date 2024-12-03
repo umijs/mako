@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako-win32-x64-msvc",
-  "version": "0.9.5",
+  "version": "0.9.7",
   "os": [
     "win32"
   ],

@@ -39,7 +39,7 @@ impl VisitMut for OptimizeDefineUtils {
                 call_expr.callee = member_expr!(
                     DUMMY_CTXT.apply_mark(self.unresolved_mark),
                     DUMMY_SP,
-                    require.d
+                    __mako_require__.d
                 )
                 .as_callee();
             } else {
@@ -64,7 +64,7 @@ impl VisitMut for OptimizeDefineUtils {
                     call_expr.callee = member_expr!(
                         DUMMY_CTXT.apply_mark(self.unresolved_mark),
                         DUMMY_SP,
-                        require.d
+                        __mako_require__.d
                     )
                     .as_callee();
                     return;
@@ -86,7 +86,7 @@ impl VisitMut for OptimizeDefineUtils {
                     call_expr.callee = member_expr!(
                         DUMMY_CTXT.apply_mark(self.unresolved_mark),
                         DUMMY_SP,
-                        require.e
+                        __mako_require__.e
                     )
                     .as_callee();
                     return;

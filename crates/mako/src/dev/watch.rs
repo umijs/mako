@@ -150,10 +150,11 @@ impl<'a> Watcher<'a> {
     }
 
     fn watch_file_or_dir(&mut self, path: PathBuf, ignore_list: &[PathBuf]) -> anyhow::Result<()> {
-        if Self::should_ignore_watch(&path, ignore_list) {
+        if Self::should_ignore_watch(&path, ignore_list)
+            || path.to_string_lossy().contains("node_modules")
+        {
             return Ok(());
         }
-
         if path.is_file() && !self.watched_files.contains(&path) {
             self.watcher
                 .watch(path.as_path(), notify::RecursiveMode::NonRecursive)?;
