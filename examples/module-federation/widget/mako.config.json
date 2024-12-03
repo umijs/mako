@@ -1,19 +1,17 @@
 {
   "entry": {
-    "consumerHost": "./src/index.ts"
+    "app2": "./src/index.ts"
   },
   "moduleFederation": {
-    "name": "consumer",
-    "remotes": {
-      "provider": "provider@http://localhost:3000/mf-manifest.json"
+    "name": "mfWidget",
+    "exposes": {
+      "./App": "./src/App.ts"
     },
+    "runtimePlugins": [],
     "implementation": "/Users/xusd/codes/github/mako/packages/mako/node_modules/@module-federation/webpack-bundler-runtime"
   },
   "optimization": {
     "skipModules": false,
     "concatenateModules": false
-  },
-  "experimental": {
-    "centralEnsure": false
   }
 }

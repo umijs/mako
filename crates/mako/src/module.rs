@@ -130,6 +130,7 @@ impl From<&NamedExport> for NamedExportType {
 pub struct ImportOptions {
     pub chunk_name: Option<String>,
     pub ignore: bool,
+    pub _is_federation_expose: bool,
 }
 
 impl ImportOptions {

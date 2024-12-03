@@ -473,6 +473,7 @@ impl Compiler {
                 self.context
                     .plugin_driver
                     .generate_end(&params, &self.context)?;
+
                 self.context.plugin_driver.write_bundle(&self.context)?;
                 Ok(())
             }

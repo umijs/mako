@@ -16,7 +16,7 @@ use crate::config::{
     ExternalAdvancedSubpathTarget, ExternalConfig,
 };
 use crate::module::md5_hash;
-use crate::plugin::{Plugin, PluginResolveIdParams};
+use crate::plugin::{Plugin, PluginGenerateEndParams, PluginResolveIdParams};
 use crate::resolve::{RemoteInfo, ResolverResource};
 use crate::visitors::mako_require::MAKO_REQUIRE;
 
@@ -134,9 +134,13 @@ if(!{federation_global}.instance) {{
             .iter()
             .map(|(name, module)| {
                 format!(
-                    r#""{name}": () => import(/* makoChunkName: "__mf_expose_{container_name}" */ "{module}"),"#,
-                    container_name = self.config.name,
-                    module = root.join(module).to_string_lossy()
+                    r#""{name}": () => import(
+                        /* makoChunkName: "__mf_expose_{striped_name}" */
+                        /* federationExpose: true */
+                        "{module}"
+),"#,
+                    module = root.join(module).canonicalize().unwrap().to_string_lossy(),
+                    striped_name = name.replace("./", "")
                 )
             })
             .collect::<Vec<String>>()
@@ -314,7 +318,7 @@ export {{ get, init }};
                         ));
                         let container_entry_parent_path = container_entry_path.parent().unwrap();
                         if !fs::exists(container_entry_parent_path).unwrap() {
-                            fs::create_dir(container_entry_parent_path).unwrap();
+                            fs::create_dir_all(container_entry_parent_path).unwrap();
                         }
                         fs::write(&container_entry_path, container_entry_code).unwrap();
 
@@ -345,6 +349,22 @@ export {{ get, init }};
                     }),
                 );
             });
+        }
+    }
+
+    fn get_federation_exposes_library_code(&self) -> String {
+        if let Some(exposes) = self.config.exposes.as_ref() {
+            if !exposes.is_empty() {
+                format!(
+                    r#"global["{}"] = requireModule(entryModuleId);
+"#,
+                    self.config.name
+                )
+            } else {
+                "".to_string()
+            }
+        } else {
+            "".to_string()
         }
     }
 }
@@ -414,11 +434,13 @@ impl Plugin for ModuleFederationPlugin {
 
     fn runtime_plugins(&self, context: &Arc<Context>) -> Result<Vec<String>> {
         let federation_runtime_code = self.get_federation_runtime_code();
+        let federation_exposes_library_code = self.get_federation_exposes_library_code();
         let federation_container_references_code = self.get_container_references_code(context);
 
         Ok(vec![
             federation_runtime_code,
             federation_container_references_code,
+            federation_exposes_library_code,
         ])
     }
 
@@ -453,6 +475,17 @@ impl Plugin for ModuleFederationPlugin {
                 })
             },
         ))
+    }
+
+    fn generate_end(
+        &self,
+        _params: &PluginGenerateEndParams,
+        _context: &Arc<Context>,
+    ) -> Result<()> {
+        // println!("----------");
+        // println!("{:#?}", _params.stats);
+        // println!("----------");
+        Ok(())
     }
 }
 
@@ -489,4 +522,68 @@ struct RemoteExternal {
     external_type: String,
     name: String,
     external_module_id: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FederationManifestTypes {
+    path: String,
+    name: String,
+    zip: String,
+    api: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FederationManifestMetaData {
+    name: String,
+    #[serde(rename = "type")]
+    type_: String,
+    build_info: FederationManifestBuildInfo,
+    remote_entry: FederationManifestRemoteEntry,
+    types: FederationManifestTypes,
+    global_name: String,
+    plugin_version: String,
+    public_path: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FederationManifestBuildInfo {
+    build_version: String,
+    build_name: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FederationManifestRemoteEntry {
+    name: String,
+    path: String,
+    #[serde(rename = "type")]
+    type_: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FederationManifestShared {
+    id: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FederationManifestRemote {}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FederationManifestExpose {}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FederationManifest {
+    id: String,
+    name: String,
+    meta_data: FederationManifestMetaData,
+    shared: Vec<FederationManifestShared>,
+    remotes: Vec<FederationManifestRemote>,
+    exposes: Vec<FederationManifestExpose>,
 }

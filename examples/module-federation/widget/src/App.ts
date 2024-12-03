@@ -1,0 +1,1 @@
+export default 'widget app';

@@ -6,6 +6,7 @@ import { type Options } from 'sass';
 import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
+import { generateMFManifest } from './mf/manifest';
 import { sassLoader } from './sassLoader';
 
 type Config = binding.BuildParams['config'] & {
@@ -131,6 +132,15 @@ export async function build(params: BuildParams) {
         if (!params.watch) {
           sass.terminate();
         }
+      },
+    });
+  }
+
+  if (makoConfig?.moduleFederation) {
+    params.config.plugins.push({
+      name: 'mf-manifest',
+      generateEnd(data) {
+        generateMFManifest(params.root, makoConfig.moduleFederation, data);
       },
     });
   }

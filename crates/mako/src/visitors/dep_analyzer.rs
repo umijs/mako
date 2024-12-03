@@ -66,7 +66,19 @@ impl DepAnalyzer {
                 })
         });
 
-        ImportOptions { chunk_name, ignore }
+        let _is_federation_expose = comments_texts.iter().any(|t| {
+            get_magic_federation_expose_regex()
+                .captures(t.trim())
+                .map_or(false, |cap| {
+                    cap.get(2).map_or(false, |m| m.as_str() == "true")
+                })
+        });
+
+        ImportOptions {
+            chunk_name,
+            ignore,
+            _is_federation_expose,
+        }
     }
 }
 
@@ -239,6 +251,10 @@ fn get_magic_comment_chunk_name_regex() -> Regex {
 
 fn get_magic_comment_ignore_regex() -> Regex {
     create_cached_regex(r#"(makoIgnore|webpackIgnore):\s*(true|false)"#)
+}
+
+fn get_magic_federation_expose_regex() -> Regex {
+    create_cached_regex(r#"(federationExpose):\s*(true|false)"#)
 }
 
 #[cfg(test)]
