@@ -21,12 +21,15 @@ impl CaseSensitivePlugin {
     }
 
     pub fn is_checkable(&self, _param: &PluginLoadParam, root: &String) -> bool {
-        let file_path = &_param.file.path.to_string_lossy().to_string();
-        if !file_path.starts_with(root) {
+        let file_path = &_param.file.path;
+        if !_param.file.path.starts_with(root) {
             return false;
         }
-        if file_path.contains("/node_modules/") {
-            return false;
+        let path_components = file_path.iter();
+        for component in path_components {
+            if component.to_string_lossy() == "node_modules" {
+                return false;
+            }
         }
         true
     }
@@ -36,7 +39,7 @@ impl CaseSensitivePlugin {
         let mut file_path = file.clone();
         let mut case_name = String::new();
         // 缓存map，file path做为key存在对应路径下的文件名和文件夹名
-        let mut cache_map = self.cache_map.lock().unwrap();
+        let mut cache_map = self.cache_map.lock().unwrap_or_else(|e| e.into_inner());
         while file_path.to_string_lossy().len() >= root.len() {
             if let Some(current) = file_path.file_name() {
                 let current_str = current.to_string_lossy().to_string();
