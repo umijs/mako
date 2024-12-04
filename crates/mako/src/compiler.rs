@@ -291,11 +291,6 @@ impl Compiler {
                 Arc::new(plugins::bundless_compiler::BundlessCompilerPlugin {}),
             );
         }
-
-        if let Some(mf_cfg) = config.module_federation.as_ref() {
-            plugins.push(Arc::new(ModuleFederationPlugin::new(mf_cfg.clone())));
-        }
-
         if std::env::var("DEBUG_GRAPH").is_ok_and(|v| v == "true") {
             plugins.push(Arc::new(plugins::graphviz::Graphviz {}));
         }
@@ -306,6 +301,10 @@ impl Compiler {
 
         if args.watch && config.experimental.central_ensure {
             plugins.push(Arc::new(plugins::central_ensure::CentralChunkEnsure {}));
+        }
+
+        if let Some(mf_cfg) = config.module_federation.as_ref() {
+            plugins.push(Arc::new(ModuleFederationPlugin::new(mf_cfg.clone())));
         }
 
         if let Some(minifish_config) = &config._minifish {
