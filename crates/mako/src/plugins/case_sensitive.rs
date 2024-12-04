@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use anyhow::{anyhow, Result};
@@ -34,9 +34,9 @@ impl CaseSensitivePlugin {
         true
     }
 
-    pub fn check_case_sensitive(&self, file: &PathBuf, root: &String) -> String {
+    pub fn check_case_sensitive(&self, file: &Path, root: &str) -> String {
         // 可变变量，在循环内会被修改
-        let mut file_path = file.clone();
+        let mut file_path = file.to_path_buf();
         let mut case_name = String::new();
         // 缓存map，file path做为key存在对应路径下的文件名和文件夹名
         let mut cache_map = self.cache_map.lock().unwrap_or_else(|e| e.into_inner());
@@ -50,12 +50,10 @@ impl CaseSensitivePlugin {
                         entries = i.to_vec();
                     } else {
                         if let Ok(files) = fs::read_dir(file_path.clone()) {
-                            for entry in files {
-                                if let Ok(entry) = entry {
-                                    // Here, `entry` is a `DirEntry`.
-                                    entries.push(entry.file_name().to_string_lossy().to_string());
-                                }
-                            }
+                            files.for_each(|entry| {
+                                entries
+                                    .push(entry.unwrap().file_name().to_string_lossy().to_string());
+                            });
                         }
                         cache_map.insert(dir.to_string(), entries.to_vec());
                     }
@@ -88,7 +86,7 @@ impl Plugin for CaseSensitivePlugin {
         println!("case_sensitive_plugin");
         let root = &_context.root.to_string_lossy().to_string();
         if self.is_checkable(_param, root) {
-            let dist_path = self.check_case_sensitive(&_param.file.path, root);
+            let dist_path = self.check_case_sensitive(_param.file.path.as_path(), root);
             if !dist_path.is_empty() {
                 return Err(anyhow!(
                     "{} does not match the corresponding path on disk [{}]",
