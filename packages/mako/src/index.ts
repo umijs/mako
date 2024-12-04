@@ -137,6 +137,15 @@ export async function build(params: BuildParams) {
   }
 
   if (makoConfig?.moduleFederation) {
+    // @ts-ignore
+    params.config.moduleFederation = makoConfig.moduleFederation;
+    // @ts-ignore
+    if (!params.config.moduleFederation.implementation) {
+      // @ts-ignore
+      params.config.moduleFederation.implementation = require.resolve(
+        '@module-federation/webpack-bundler-runtime',
+      );
+    }
     params.config.plugins.push({
       name: 'mf-manifest',
       generateEnd(data) {

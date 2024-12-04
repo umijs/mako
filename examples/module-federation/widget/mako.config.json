@@ -5,10 +5,10 @@
   "moduleFederation": {
     "name": "mfWidget",
     "exposes": {
-      "./App": "./src/App.ts"
+      "./App1": "./src/App1.tsx",
+      "./App2": "./src/App2.tsx"
     },
-    "runtimePlugins": [],
-    "implementation": "/Users/xusd/codes/github/mako/packages/mako/node_modules/@module-federation/webpack-bundler-runtime"
+    "runtimePlugins": []
   },
   "optimization": {
     "skipModules": false,

@@ -497,8 +497,8 @@ importers:
   packages/mako:
     dependencies:
       '@module-federation/webpack-bundler-runtime':
-        specifier: ^0.7.6
-        version: 0.7.6
+        specifier: ^0.8.0
+        version: 0.8.0
       '@swc/helpers':
         specifier: 0.5.1
         version: 0.5.1
@@ -4944,28 +4944,28 @@ packages:
     resolution: {integrity: sha512-9b8mPpKrfeGRuhFH5iO1iwCLeIIsV6+H1sRfxbkoGXIyQE2BTsPd9zqSqQJ+pv5sJ/hT5M1zvOFL02MnEezFug==}
     dev: true
 
-  /@module-federation/error-codes@0.7.6:
-    resolution: {integrity: sha512-XVzX/sRFj1h5JvOOVMoFppxq0t1t3o/AlEICHgWX+dybIwJgz9g4gihZOWVZfz5/xsKGcUwdH5X7Z2nkuYhJEw==}
+  /@module-federation/error-codes@0.8.0:
+    resolution: {integrity: sha512-xU0eUA0xTUx93Li/eYCZ+kuGP9qt+8fEaOu+i6U9jJP1RYONvPifibfLNo4SQszQTzqfGViyrx1O3uiA7XUYQQ==}
     dev: false
 
-  /@module-federation/runtime@0.7.6:
-    resolution: {integrity: sha512-TEEDbGwaohZ2dMa+Sk/Igq8XpcyfjqJfbL20mdAZeifSFVZYRSCaTd/xIXP7pEw8+5BaCMc4YfCf/XcjFAUrVA==}
+  /@module-federation/runtime@0.8.0:
+    resolution: {integrity: sha512-UfDsJYAFOyJoErpmjf1sy8d2WXHGitFsSQrIiDzNpDHv4SzHgjuhWQeAuJKlQq2zdE/F4IPhkHgTatQigRKZCA==}
     dependencies:
-      '@module-federation/error-codes': 0.7.6
-      '@module-federation/sdk': 0.7.6
+      '@module-federation/error-codes': 0.8.0
+      '@module-federation/sdk': 0.8.0
     dev: false
 
-  /@module-federation/sdk@0.7.6:
-    resolution: {integrity: sha512-MFE+RtsHnutZOCp2eKpa3A/yzZ8tOPmjX7QRdVnB2qqR9JA2SH3ZP5+cYq76tzFQZvU1BCWAQVNMvqGOW2yVZQ==}
+  /@module-federation/sdk@0.8.0:
+    resolution: {integrity: sha512-V2cNGO//sWCyHTaQ0iTcoslolqVgdBIBOkZVLyk9AkZ4B3CO49pe/TmIIaVs9jVg3GO+ZmmazBFKRkqdn2PdRg==}
     dependencies:
       isomorphic-rslog: 0.0.6
     dev: false
 
-  /@module-federation/webpack-bundler-runtime@0.7.6:
-    resolution: {integrity: sha512-kB9hQ0BfwNAcQWGskDEOxYP2z2bB/1ABXKr8MDomCFl2mbW3vvfYMQrb8UhJmJvE3rbGI/iXhJUdgBLNREnjUg==}
+  /@module-federation/webpack-bundler-runtime@0.8.0:
+    resolution: {integrity: sha512-NwkQbgUgh0ubwmPR/36YNuOaITkWPTYnJyYqi9vgxHBDp4tURnRI2b1ocG2Gw8c9sEW88ImWYMeF1qT58hQ32w==}
     dependencies:
-      '@module-federation/runtime': 0.7.6
-      '@module-federation/sdk': 0.7.6
+      '@module-federation/runtime': 0.8.0
+      '@module-federation/sdk': 0.8.0
     dev: false
 
   /@monaco-editor/loader@1.3.3(monaco-editor@0.38.0):
