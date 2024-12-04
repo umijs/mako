@@ -2,8 +2,7 @@ use std::sync::Arc;
 
 use swc_core::common::DUMMY_SP;
 use swc_core::ecma::ast::{
-    ArrayLit, ArrowExpr, BlockStmtOrExpr, Expr, ExprOrSpread, Ident, Lit, MemberExpr, Module, Stmt,
-    VarDeclKind,
+    ArrayLit, Expr, ExprOrSpread, Ident, Lit, MemberExpr, Module, Stmt, VarDeclKind,
 };
 use swc_core::ecma::utils::{
     member_expr, private_ident, quote_ident, quote_str, ExprFactory, IsDirective,
@@ -137,11 +136,11 @@ impl<'a> VisitMut for DynamicImport<'a> {
                             );
 
                         let dr_call_arg = if resolved_info._is_federation_expose {
-                            Expr::Arrow(ArrowExpr {
-                                body: Box::new(BlockStmtOrExpr::Expr(dr_call.into())),
-                                ..Default::default()
-                            })
-                            .as_arg()
+                            dr_call
+                                .as_call(call_expr.span, Vec::new())
+                                .into_lazy_fn(Vec::new())
+                                .into_lazy_fn(Vec::new())
+                                .as_arg()
                         } else {
                             dr_call.as_arg()
                         };
