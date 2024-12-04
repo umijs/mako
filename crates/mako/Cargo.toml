@@ -26,6 +26,7 @@ oxc_resolver     = { version = "=1.7.0", features = ["package_json_raw_json_api"
 percent-encoding = { version = "2.3.1" }
 serde            = { workspace = true }
 serde_json       = { workspace = true }
+swc_malloc       = { workspace = true }
 url              = { version = "2.5.0" }
 
 swc_core = { workspace = true, features = [
@@ -47,6 +48,7 @@ swc_core = { workspace = true, features = [
   "ecma_minifier",
   "ecma_minifier_concurrent",
   "ecma_parser",
+  "ecma_plugin_transform",
   "ecma_preset_env",
   "ecma_quote",
   "ecma_transforms_compat",
@@ -57,10 +59,11 @@ swc_core = { workspace = true, features = [
   "ecma_transforms_typescript",
   "ecma_utils",
   "ecma_visit_path",
+  "swc_common",
   "swc_ecma_quote_macros",
 ] }
 
-swc_emotion         = "0.72.19"
+swc_emotion         = "=0.72.22"
 swc_error_reporters = "0.21.0"
 swc_node_comments   = "0.24.0"
 
@@ -81,6 +84,7 @@ hyper-staticfile      = "0.9.6"
 hyper-tungstenite     = "0.10.0"
 indexmap              = "2.0.0"
 indicatif             = "0.17.8"
+libloading            = "0.8"
 md5                   = "0.7.0"
 mdxjs                 = "0.2.6"
 mime_guess            = "2.0.4"
@@ -90,8 +94,10 @@ parking_lot           = { version = "0.12", features = ["nightly"] }
 path-clean            = "1.0.1"
 pathdiff              = "0.2.1"
 petgraph              = "0.6.3"
+proc-macro2           = "1"
 puffin                = { version = "0.16.0", optional = true }
 puffin_egui           = { version = "0.22.0", optional = true }
+quote                 = "1"
 rayon                 = "1.7.0"
 regex                 = { workspace = true }
 sailfish              = "0.8.3"
@@ -99,6 +105,7 @@ semver                = "1.0.23"
 serde-xml-rs          = "0.6.0"
 serde_yaml            = "0.9.22"
 svgr-rs               = { path = "../svgr-rs" }
+syn                   = { version = "2", features = ["full"] }
 thiserror             = "1.0.43"
 tokio                 = { version = "1", features = ["rt-multi-thread", "sync"] }
 tokio-tungstenite     = "0.19.0"
@@ -107,12 +114,6 @@ tracing               = "0.1.37"
 tracing-subscriber    = { version = "0.3.17", features = ["env-filter"] }
 tungstenite           = "0.19.0"
 twox-hash             = "1.6.3"
-
-[target.'cfg(not(target_os = "linux"))'.dependencies]
-mimalloc-rust = { workspace = true }
-
-[target.'cfg(all(target_os = "linux", target_env = "gnu", any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
-tikv-jemallocator = { workspace = true }
 
 [dev-dependencies]
 insta  = { version = "1.30.0", features = ["yaml"] }
