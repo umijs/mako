@@ -68,7 +68,7 @@ impl Plugin for LoopDetector {
 
                 if detect_loop.graphviz {
                     let dot_content = loop_lines.join("\n");
-                    let dot = format!(r#"digraph Loop {{\n{}\n}}"#, dot_content);
+                    let dot = format!("digraph Loop {{\n{}\n}}\n", dot_content);
                     std::fs::write(context.root.join("_mako_loop_detector.dot"), dot)?;
                 }
             }
