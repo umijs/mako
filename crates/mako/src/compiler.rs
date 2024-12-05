@@ -18,7 +18,7 @@ use crate::ast::file::win_path;
 use crate::config::{Config, ModuleIdStrategy, OutputMode};
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::generate::optimize_chunk::OptimizeChunksInfo;
-use crate::module_graph::ModuleGraph;
+use crate::module_graph::{ModuleGraph, ModuleRegistry};
 use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams};
 use crate::plugins;
 use crate::resolve::{get_resolvers, Resolvers};
@@ -29,7 +29,9 @@ use crate::utils::{thread_pool, ParseRegex};
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
+    pub optimized_module_graph: RwLock<ModuleGraph>,
     pub chunk_graph: RwLock<ChunkGraph>,
+    pub module_registry: RwLock<ModuleRegistry>,
     pub assets_info: Mutex<HashMap<String, String>>,
     pub modules_with_missing_deps: RwLock<Vec<String>>,
     pub config: Config,
@@ -123,6 +125,8 @@ impl Default for Context {
             args: Args { watch: false },
             root: PathBuf::from(""),
             module_graph: RwLock::new(ModuleGraph::new()),
+            module_registry: Default::default(),
+            optimized_module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(ChunkGraph::new()),
             assets_info: Mutex::new(HashMap::new()),
             modules_with_missing_deps: RwLock::new(Vec::new()),
@@ -362,6 +366,8 @@ impl Compiler {
                 args,
                 root,
                 module_graph: RwLock::new(ModuleGraph::new()),
+                optimized_module_graph: RwLock::new(ModuleGraph::new()),
+                module_registry: Default::default(),
                 chunk_graph: RwLock::new(ChunkGraph::new()),
                 assets_info: Mutex::new(HashMap::new()),
                 modules_with_missing_deps: RwLock::new(Vec::new()),
@@ -428,11 +434,11 @@ impl Compiler {
             let module_graph = self.context.module_graph.read().unwrap();
             assign_numeric_ids(
                 module_graph.modules(),
-                |a, b| compare_modules_by_incoming_edges(&module_graph, &a.id, &b.id),
+                |a, b| compare_modules_by_incoming_edges(&module_graph, a, b),
                 |module, id| {
                     let mut numeric_ids_map = self.context.numeric_ids_map.write().unwrap();
                     // reserved ten indexes for swc helper and others runtime module
-                    numeric_ids_map.insert(module.id.id.clone(), id + 10);
+                    numeric_ids_map.insert(module.id.clone(), id + 10);
                 },
             )
         }
@@ -478,7 +484,8 @@ impl Compiler {
         crate::mako_profile_function!();
         let cg = self.context.chunk_graph.read().unwrap();
         let mg = self.context.module_graph.read().unwrap();
-        cg.full_hash(&mg)
+        let mr = self.context.module_registry.read().unwrap();
+        cg.full_hash(&mg, &mr)
     }
 
     fn clean_dist(&self) -> Result<()> {

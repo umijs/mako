@@ -19,6 +19,7 @@ use crate::generate::chunk_pot::util::file_content_hash;
 use crate::generate::chunk_pot::{get_css_chunk_filename, ChunkPot, CHUNK_FILE_NAME_HASH_LENGTH};
 use crate::generate::transform::transform_css_generate;
 use crate::module::{ModuleAst, ModuleId};
+use crate::module_graph::ModuleRegistry;
 use crate::utils::thread_pool;
 
 #[derive(Clone)]
@@ -141,7 +142,7 @@ impl Compiler {
             .par_iter()
             .map(|chunk| {
                 let context = self.context.clone();
-                let module_graph = context.module_graph.read().unwrap();
+                let module_registry = context.module_registry.read().unwrap();
                 let chunk_graph = self.context.chunk_graph.read().unwrap();
 
                 let (js_chunks_hash_placeholder, css_chunks_hash_placeholder) = chunk_graph
@@ -154,7 +155,7 @@ impl Compiler {
                             // TODO: maybe we can split chunks to chunk pots before generate, because normal chunks will be
                             // split here and fn generate_normal_chunk_files twice
                             let chunk_pot =
-                                ChunkPot::from(descendant_chunk, &module_graph, &context);
+                                ChunkPot::from(descendant_chunk, &module_registry, &context);
 
                             if self.context.config.hash {
                                 let placeholder = nanoid!(CHUNK_FILE_NAME_HASH_LENGTH);
@@ -188,7 +189,7 @@ impl Compiler {
                     );
 
                 let chunk_files = {
-                    let chunk_pot = ChunkPot::from(chunk, &module_graph, &context);
+                    let chunk_pot = ChunkPot::from(chunk, &module_registry, &context);
                     chunk_pot
                         .to_entry_chunk_files(
                             &context,
@@ -239,10 +240,10 @@ impl Compiler {
                 let context = self.context.clone();
                 let chunk_id = chunk.id.clone();
                 let chunk_graph = context.chunk_graph.read().unwrap();
-                let module_graph = context.module_graph.read().unwrap();
+                let module_registry = context.module_registry.read().unwrap();
                 let chunk = chunk_graph.chunk(&chunk_id).unwrap();
 
-                let chunk_files = ChunkPot::from(chunk, &module_graph, &context)
+                let chunk_files = ChunkPot::from(chunk, &module_registry, &context)
                     .to_normal_chunk_files(chunk, &context);
 
                 chunk_files
@@ -335,7 +336,7 @@ pub fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
 
 pub fn modules_to_js_stmts(
     module_ids: &IndexSet<ModuleId>,
-    module_graph: &std::sync::RwLockReadGuard<crate::module_graph::ModuleGraph>,
+    module_registry: &ModuleRegistry,
     context: &Arc<Context>,
 ) -> Result<(Vec<PropOrSpread>, Option<Stylesheet>)> {
     let mut js_stmts = vec![];
@@ -344,7 +345,7 @@ pub fn modules_to_js_stmts(
     let module_ids: Vec<_> = module_ids.iter().collect();
 
     for module_id in module_ids {
-        let module = module_graph.get_module(module_id).unwrap();
+        let module = module_registry.get_module(module_id).unwrap();
         let ast = module.info.as_ref().unwrap();
         let ast = &ast.ast;
 

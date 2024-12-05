@@ -503,7 +503,7 @@ import(/* webpackIgnore: true */ "./foo");
 - 类型：`"named" | "hashed"`
 - 默认值：当 mode 为 development 时为 `"named"`，mode 为 production 时为 `"hashed"`
 
-指定生成 moduleId 的策略。
+指定生成 module_id 的策略。
 
 ### nodePolyfill
 

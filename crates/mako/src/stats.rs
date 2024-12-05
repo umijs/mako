@@ -71,6 +71,7 @@ impl Compiler {
 
         let chunk_graph = self.context.chunk_graph.read().unwrap();
         let module_graph = self.context.module_graph.read().unwrap();
+        let module_registry = self.context.module_registry.read().unwrap();
         let chunks = chunk_graph.get_chunks();
 
         // 在 chunks 中获取 modules
@@ -142,7 +143,7 @@ impl Compiler {
                                 StatsJsonChunkOriginItem {
                                     module: id.id.clone(),
                                     module_identifier: id.id.clone(),
-                                    module_name: module_graph
+                                    module_name: module_registry
                                         .get_module(id)
                                         .and_then(|module| {
                                             module.info.as_ref().map(|info| {
@@ -385,18 +386,18 @@ impl StatsInfo {
     pub fn parse_modules(&self, context: Arc<Context>) {
         let module_graph = context.module_graph.read().unwrap();
         let mut modules = self.modules.lock().unwrap();
-        module_graph.modules().iter().for_each(|module| {
+        module_graph.modules().into_iter().for_each(|module| {
             let dependencies = module_graph
-                .get_dependencies(&module.id)
+                .get_dependencies(module)
                 .iter()
                 .map(|(id, _dep)| id.generate(&context))
                 .collect::<Vec<_>>();
             let dependents = module_graph
-                .get_dependents(&module.id)
+                .get_dependents(module)
                 .iter()
                 .map(|(id, _dep)| id.generate(&context))
                 .collect::<Vec<_>>();
-            let id = module.id.generate(&context);
+            let id = module.generate(&context);
             modules.insert(
                 id.clone(),
                 ModuleInfo {

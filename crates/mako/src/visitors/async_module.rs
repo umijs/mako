@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::ops::Deref;
 use std::sync::Arc;
 
 use swc_core::common::util::take::Take;
@@ -210,15 +211,19 @@ pub fn mark_async(
     context: &Arc<Context>,
 ) -> HashMap<ModuleId, Vec<Dependency>> {
     let mut async_deps_by_module_id = HashMap::new();
-    let mut module_graph = context.module_graph.write().unwrap();
+    let module_graph = context.module_graph.read().unwrap();
+    let mut modules_registry = context.module_registry.write().unwrap();
 
     let mut to_visit_queue = module_graph
         .modules()
-        .iter()
+        .into_iter()
         .filter_map(|m| {
-            m.info
-                .as_ref()
-                .and_then(|i| if i.is_async { Some(m.id.clone()) } else { None })
+            modules_registry.get_module(m).and_then(|module| {
+                module
+                    .info
+                    .as_ref()
+                    .and_then(|i| i.is_async.then(|| m.clone()))
+            })
         })
         .collect::<VecDeque<_>>();
     let mut visited = HashSet::new();
@@ -245,7 +250,7 @@ pub fn mark_async(
             .collect::<Vec<_>>()
             .iter()
             .for_each(|module_id| {
-                let m = module_graph.get_module_mut(module_id).unwrap();
+                let m = modules_registry.get_module_mut(module_id).unwrap();
                 m.info.as_mut().unwrap().is_async = true;
 
                 to_visit_queue.push_back(module_id.clone());
@@ -255,7 +260,7 @@ pub fn mark_async(
     }
 
     module_ids.iter().for_each(|module_id| {
-        let deps = module_graph.get_dependencies_info(module_id);
+        let deps = module_graph.get_dependencies_info(module_id, modules_registry.deref());
         let async_deps: Vec<Dependency> = deps
             .into_iter()
             .filter(|(_, dep, is_async)| dep.resolve_type.is_sync_esm() && *is_async)

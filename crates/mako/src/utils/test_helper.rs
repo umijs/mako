@@ -39,10 +39,10 @@ macro_rules! assert_debug_snapshot {
 }
 
 pub fn get_module(compiler: &Compiler, path: &str) -> Module {
-    let module_graph = compiler.context.module_graph.read().unwrap();
+    let registry = compiler.context.module_registry.read().unwrap();
     let cwd_path = &compiler.context.root;
     let module_id = ModuleId::from(cwd_path.join(path));
-    let module = module_graph.get_module(&module_id).unwrap();
+    let module = registry.get_module(&module_id).unwrap();
     module.clone()
 }
 

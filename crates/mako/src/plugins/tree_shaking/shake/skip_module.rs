@@ -15,7 +15,7 @@ use crate::ast::DUMMY_CTXT;
 use crate::build::analyze_deps;
 use crate::compiler::Context;
 use crate::module::{Dependency, ImportType, ModuleId, NamedExportType, ResolveType};
-use crate::module_graph::ModuleGraph;
+use crate::module_graph::{ModuleGraph, ModuleRegistry};
 use crate::plugins::tree_shaking::module::{is_ident_sym_equal, TreeShakeModule};
 use crate::plugins::tree_shaking::shake::strip_context;
 use crate::plugins::tree_shaking::statement_graph::{
@@ -165,6 +165,7 @@ impl From<&ReExportType> for ImportType {
 
 pub(super) fn skip_module_optimize(
     module_graph: &mut ModuleGraph,
+    module_registry: &mut ModuleRegistry,
     tree_shake_modules_ids: &[ModuleId],
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
     context: &Arc<Context>,
@@ -183,13 +184,14 @@ pub(super) fn skip_module_optimize(
         to_replace: &(StatementId, Vec<ReExportReplace>, String),
         module_id: &ModuleId,
         module_graph: &mut ModuleGraph,
+        module_registry: &mut ModuleRegistry,
         context: &Arc<Context>,
     ) {
         let stmt_id = to_replace.0;
         let replaces = &to_replace.1;
         let _source = &to_replace.2;
 
-        let module = module_graph.get_module_mut(module_id).unwrap();
+        let module = module_registry.get_module_mut(module_id).unwrap();
 
         let swc_module = module.info.as_mut().unwrap().ast.as_script_ast_mut();
 
@@ -498,10 +500,16 @@ pub(super) fn skip_module_optimize(
             // stmt_id is reversed order
             for to_replace in replaces.iter() {
                 // println!("{} apply with {:?}", module_id.id, to_replace.1);
-                apply_replace(to_replace, module_id, module_graph, context);
+                apply_replace(
+                    to_replace,
+                    module_id,
+                    module_graph,
+                    module_registry,
+                    context,
+                );
             }
 
-            let swc_module = module_graph
+            let swc_module = module_registry
                 .get_module(module_id)
                 .unwrap()
                 .info

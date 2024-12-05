@@ -22,7 +22,7 @@ use self::utils::uniq_module_prefix;
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::module::{Dependency, ImportType, ModuleId, ResolveType};
-use crate::module_graph::ModuleGraph;
+use crate::module_graph::{ModuleGraph, ModuleRegistry};
 use crate::plugins::tree_shaking::module::{AllExports, ModuleSystem, TreeShakeModule};
 use crate::plugins::tree_shaking::shake::module_concatenate::concatenate_context::{
     ConcatenateContext, RuntimeFlags,
@@ -32,6 +32,7 @@ use crate::{mako_profile_function, mako_profile_scope};
 
 pub fn optimize_module_graph(
     module_graph: &mut ModuleGraph,
+    module_registry: &mut ModuleRegistry,
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
     context: &Arc<Context>,
 ) -> anyhow::Result<()> {
@@ -71,7 +72,7 @@ pub fn optimize_module_graph(
                 can_be_inner = false;
             }
 
-            let deps = module_graph.get_dependencies_info(module_id);
+            let deps = module_graph.get_dependencies_info(module_id, module_registry);
 
             let has_not_supported_syntax = deps.iter().any(|(_, dep, is_async)| {
                 dep.resolve_type.is_dynamic_esm()
@@ -93,7 +94,7 @@ pub fn optimize_module_graph(
                 can_be_inner = false;
             }
 
-            module_graph
+            module_registry
                 .get_module(module_id)
                 .and_then(|module| module.info.as_ref())
                 .inspect(|info| {
@@ -164,10 +165,10 @@ pub fn optimize_module_graph(
     }
 
     fn extends_external_modules(config: &mut ConcatenateConfig, module_graph: &ModuleGraph) {
-        let mut visited = HashSet::new();
+        let mut all_visited = HashSet::new();
 
         for (ext, _) in config.externals.iter() {
-            if visited.contains(ext) {
+            if all_visited.contains(ext) {
                 continue;
             }
 
@@ -176,14 +177,14 @@ pub fn optimize_module_graph(
             while let Some(node) = dfs.next(&module_graph.graph) {
                 let m = &module_graph.graph[node];
 
-                if visited.contains(&m.id) {
+                if all_visited.contains(m) {
                     continue;
                 }
 
-                visited.insert(m.id.clone());
+                all_visited.insert(m.clone());
             }
         }
-        for visited in visited {
+        for visited in all_visited {
             if config.inners.contains(&visited) {
                 config.inners.remove(&visited);
                 config.externals.insert(visited, Default::default());
@@ -246,7 +247,7 @@ pub fn optimize_module_graph(
         for config in &concat_configurations {
             mako_profile_scope!("concatenate", &config.root.id);
 
-            if let Some(info) = module_graph
+            if let Some(info) = module_registry
                 .get_module_mut(&config.root)
                 .and_then(|module| module.info.as_mut())
             {
@@ -260,7 +261,7 @@ pub fn optimize_module_graph(
                 ));
             }
 
-            if let Ok(mut concatenate_context) = ConcatenateContext::init(config, module_graph) {
+            if let Ok(mut concatenate_context) = ConcatenateContext::init(config, module_registry) {
                 let mut module_items = concatenate_context.interop_module_items.clone();
 
                 for id in &config.sorted_modules(module_graph) {
@@ -318,7 +319,7 @@ pub fn optimize_module_graph(
                         }
                     });
 
-                    let module = module_graph.get_module_mut(id).unwrap();
+                    let module = module_registry.get_module_mut(id).unwrap();
 
                     let module_info = module.info.as_mut().unwrap();
                     let script_ast = module_info.ast.script_mut().unwrap();
@@ -365,7 +366,7 @@ pub fn optimize_module_graph(
                     module_items.append(&mut script_ast.ast.body.clone());
                 }
 
-                let root_module = module_graph.get_module_mut(&config.root).unwrap();
+                let root_module = module_registry.get_module_mut(&config.root).unwrap();
 
                 let ast = &mut root_module.info.as_mut().unwrap().ast;
 
@@ -424,7 +425,7 @@ pub fn optimize_module_graph(
                     false,
                 ));
 
-                let root_module = module_graph.get_module_mut(&config.root).unwrap();
+                let root_module = module_registry.get_module_mut(&config.root).unwrap();
                 let ast = &mut root_module.info.as_mut().unwrap().ast;
                 let ast_script = ast.script_mut().unwrap();
                 ast_script.ast = root_module_ast;

@@ -13,13 +13,19 @@ impl Plugin for AsyncRuntimePlugin {
     }
 
     fn runtime_plugins(&self, context: &Arc<Context>) -> anyhow::Result<Vec<String>> {
+        let modules_registry = context.module_registry.read().unwrap();
+
         if context
             .module_graph
             .read()
             .unwrap()
             .modules()
             .iter()
-            .any(|module| module.info.as_ref().is_some_and(|info| info.is_async))
+            .any(|module| {
+                modules_registry
+                    .module(module)
+                    .is_some_and(|module| module.info.as_ref().is_some_and(|info| info.is_async))
+            })
         {
             Ok(vec![
                 include_str!("./async_runtime/async_runtime.js").to_string()

@@ -7,7 +7,7 @@ use twox_hash::XxHash64;
 
 use crate::ast::file::parse_path;
 use crate::module::ModuleId;
-use crate::module_graph::ModuleGraph;
+use crate::module_graph::{ModuleGraph, ModuleRegistry};
 use crate::utils::url_safe_base64_encode;
 
 // TODO: Refact ChunkId
@@ -133,14 +133,14 @@ impl Chunk {
         self.modules.contains(module_id)
     }
 
-    pub fn hash(&self, mg: &ModuleGraph) -> u64 {
+    pub fn hash(&self, _mg: &ModuleGraph, registry: &ModuleRegistry) -> u64 {
         let mut sorted_module_ids = self.modules.iter().cloned().collect::<Vec<ModuleId>>();
         sorted_module_ids.sort_by_key(|m| m.id.clone());
 
         let mut hash: XxHash64 = Default::default();
 
         for id in sorted_module_ids {
-            let m = mg.get_module(&id).unwrap();
+            let m = registry.module(&id).unwrap();
 
             if let Some(info) = &m.info {
                 hash.write_u64(info.raw_hash);

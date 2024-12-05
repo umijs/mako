@@ -19,8 +19,9 @@ impl Compiler {
         module_ids: &IndexSet<ModuleId>,
         current_hash: u64,
     ) -> Result<(String, String)> {
-        let module_graph = &self.context.module_graph.read().unwrap();
-        let (js_stmts, _) = modules_to_js_stmts(module_ids, module_graph, &self.context).unwrap();
+        let module_registry = &self.context.module_registry.read().unwrap();
+        let (js_stmts, _) =
+            modules_to_js_stmts(module_ids, module_registry, &self.context).unwrap();
         let content = include_str!("../runtime/runtime_hmr.js").to_string();
 
         let runtime_code_snippets = [

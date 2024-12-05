@@ -39,10 +39,19 @@ impl Compiler {
         let context = &self.context;
         let module_ids = {
             let module_graph = context.module_graph.read().unwrap();
+            let module_registry = context.module_registry.read().unwrap();
             module_graph
                 .modules()
                 .into_iter()
-                .filter(|m| m.get_module_type() != ModuleType::PlaceHolder)
+                .filter_map(|m| {
+                    module_registry.get_module(m).and_then(|m| {
+                        if m.get_module_type() != ModuleType::PlaceHolder {
+                            Some(m.clone())
+                        } else {
+                            None
+                        }
+                    })
+                })
                 .map(|m| m.id.clone())
                 .collect::<Vec<_>>()
         };
@@ -83,6 +92,7 @@ pub fn transform_modules_in_thread(
 
         thread_pool::spawn(move || {
             let module_graph = context.module_graph.read().unwrap();
+            let module_registry = context.module_registry.read().unwrap();
             let deps = module_graph.get_dependencies(&module_id);
             let mut resolved_deps: HashMap<String, ResolvedReplaceInfo> = Default::default();
 
@@ -132,7 +142,7 @@ pub fn transform_modules_in_thread(
                     .or_insert(replace_info);
             });
             insert_swc_helper_replace(&mut resolved_deps, &context);
-            let module = module_graph.get_module(&module_id).unwrap();
+            let module = module_registry.get_module(&module_id).unwrap();
             let info = module.info.as_ref().unwrap();
             let ast = info.ast.clone();
             let deps_to_replace = DependenciesToReplace {
@@ -167,9 +177,9 @@ pub fn transform_modules_in_thread(
         transform_map.insert(module_id, ast);
     }
 
-    let mut module_graph = context.module_graph.write().unwrap();
+    let mut module_registry = context.module_registry.write().unwrap();
     for (module_id, ast) in transform_map {
-        let module = module_graph.get_module_mut(&module_id).unwrap();
+        let module = module_registry.get_module_mut(&module_id).unwrap();
         let info = module.info.as_mut().unwrap();
         info.ast = ast;
     }

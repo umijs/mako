@@ -7,8 +7,8 @@ function createRuntime(makoModules, entryModuleId, global) {
   var modulesRegistry = {};
 <% } %>
 
-  function requireModule(moduleId) {
-    var cachedModule = modulesRegistry[moduleId];
+  function requireModule(module_id) {
+    var cachedModule = modulesRegistry[module_id];
 
     if (cachedModule !== undefined) {
 <% if has_hmr { %>
@@ -20,18 +20,18 @@ function createRuntime(makoModules, entryModuleId, global) {
     }
 
     var module = {
-      id: moduleId,
+      id: module_id,
       exports: {},
     };
-    modulesRegistry[moduleId] = module;
+    modulesRegistry[module_id] = module;
 
 <% if has_hmr { %>
     try {
 <% } %>
       var execOptions = {
-        id: moduleId,
+        id: module_id,
         module: module,
-        factory: makoModules[moduleId],
+        factory: makoModules[module_id],
         require: requireModule,
       };
       requireModule.requireInterceptors.forEach(function (interceptor) {
@@ -45,7 +45,7 @@ function createRuntime(makoModules, entryModuleId, global) {
       );
 <% if has_hmr { %>
     } catch (e) {
-      modulesRegistry[moduleId].error = e;
+      modulesRegistry[module_id].error = e;
       throw e;
     }
 <% } %>

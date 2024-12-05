@@ -23,12 +23,12 @@ pub fn module_ensure_map(context: &Arc<Context>) -> anyhow::Result<BTreeMap<Stri
 
     mg.modules().iter().for_each(|module| {
         let be_dynamic_imported = mg
-            .get_dependents(&module.id)
+            .get_dependents(module)
             .iter()
             .any(|(_, dep)| dep.resolve_type.is_dynamic_esm());
 
         if be_dynamic_imported {
-            cg.get_async_chunk_for_module(&module.id)
+            cg.get_async_chunk_for_module(module)
                 .iter()
                 .for_each(|chunk| {
                     let deps_chunks = cg
@@ -37,7 +37,7 @@ pub fn module_ensure_map(context: &Arc<Context>) -> anyhow::Result<BTreeMap<Stri
                         .map(|chunk_id| chunk_id.generate(context))
                         .collect::<Vec<_>>();
 
-                    chunk_async_map.insert(generate_module_id(&module.id.id, context), deps_chunks);
+                    chunk_async_map.insert(generate_module_id(&module.id, context), deps_chunks);
                 });
         }
     });

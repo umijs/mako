@@ -128,10 +128,10 @@ impl Compiler {
             clear_resolver_cache(&self.context.resolvers);
             let mut modules_with_missing_deps =
                 self.context.modules_with_missing_deps.write().unwrap();
-            let mut module_graph = self.context.module_graph.write().unwrap();
+            let mut module_registry = self.context.module_registry.write().unwrap();
             for module_id in modules_with_missing_deps.clone().iter() {
                 let id = ModuleId::new(module_id.clone());
-                let module = module_graph.get_module_mut(&id).unwrap();
+                let module = module_registry.get_module_mut(&id).unwrap();
                 let missing_deps = module.info.clone().unwrap().deps.missing_deps;
                 for (_source, dep) in missing_deps {
                     let resolved =
@@ -365,6 +365,8 @@ impl Compiler {
         let mut dep_changed_module_ids = HashSet::new();
 
         let mut module_graph = self.context.module_graph.write().unwrap();
+
+        let mut module_registry = self.context.module_registry.write().unwrap();
         for (modified_module, diff, mut dependence_modules, dependencies) in modified_results {
             if diff.dependence_changed(&modified_module.id, &module_graph, &dependencies) {
                 dep_changed_module_ids.insert(modified_module.id.clone());
@@ -397,7 +399,8 @@ impl Compiler {
                     added.push(add_module_id.to_path());
                 }
 
-                module_graph.add_module(add_module);
+                module_graph.add_module(&add_module);
+                module_registry.add_module(add_module);
 
                 deps.iter().for_each(|&dep| {
                     module_graph.add_dependency(&modified_module.id, add_module_id, dep.clone());
@@ -421,7 +424,8 @@ impl Compiler {
             modified_module_ids.insert(modified_module.id.clone());
 
             // replace module
-            module_graph.replace_module(modified_module);
+            // module_graph.replace_module(modified_module);
+            module_registry.add_module(modified_module);
         }
 
         Result::Ok((modified_module_ids, dep_changed_module_ids, added))

@@ -11,10 +11,41 @@ use tracing::{debug, warn};
 
 use crate::module::{Dependencies, Dependency, Module, ModuleId};
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
+pub struct ModuleRegistry {
+    inner: HashMap<ModuleId, Module>,
+}
+
+impl ModuleRegistry {
+    pub fn module(&self, module_id: &ModuleId) -> Option<&Module> {
+        self.inner.get(module_id)
+    }
+
+    pub fn get_module(&self, module_id: &ModuleId) -> Option<&Module> {
+        self.inner.get(module_id)
+    }
+
+    pub fn get_module_mut(&mut self, module_id: &ModuleId) -> Option<&mut Module> {
+        self.inner.get_mut(module_id)
+    }
+
+    pub fn add_module(&mut self, m: Module) {
+        self.inner.insert(m.id.clone(), m);
+    }
+
+    pub fn module_ids(&self) -> Vec<&ModuleId> {
+        self.inner.keys().collect()
+    }
+
+    pub fn modules(&self) -> Vec<&Module> {
+        self.inner.values().collect()
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ModuleGraph {
     pub id_index_map: HashMap<ModuleId, NodeIndex<DefaultIx>>,
-    pub graph: StableDiGraph<Module, Dependencies>,
+    pub graph: StableDiGraph<ModuleId, Dependencies>,
     entries: HashSet<ModuleId>,
 }
 
@@ -31,12 +62,12 @@ impl ModuleGraph {
         self.entries.iter().cloned().collect()
     }
 
-    pub fn add_module(&mut self, module: Module) {
+    pub fn add_module(&mut self, module: &Module) {
         // TODO: module.id 能否用引用以减少内存占用？
         let id_for_map = module.id.clone();
         let id_for_entry = module.id.clone();
         let is_entry = module.is_entry;
-        let idx = self.graph.add_node(module);
+        let idx = self.graph.add_node(module.id.clone());
         self.id_index_map.insert(id_for_map, idx);
         if is_entry {
             self.entries.insert(id_for_entry);
@@ -47,17 +78,17 @@ impl ModuleGraph {
         self.id_index_map.contains_key(module_id)
     }
 
-    pub fn get_module(&self, module_id: &ModuleId) -> Option<&Module> {
+    pub fn get_module(&self, module_id: &ModuleId) -> Option<&ModuleId> {
         self.id_index_map
             .get(module_id)
             .and_then(|i| self.graph.node_weight(*i))
     }
 
-    pub fn modules(&self) -> Vec<&Module> {
+    pub fn modules(&self) -> Vec<&ModuleId> {
         self.graph.node_weights().collect()
     }
 
-    pub fn remove_module_and_deps(&mut self, module_id: &ModuleId) -> Module {
+    pub fn remove_module_and_deps(&mut self, module_id: &ModuleId) -> ModuleId {
         let mut deps_module_ids = vec![];
         self.get_dependencies(module_id)
             .into_iter()
@@ -71,7 +102,7 @@ impl ModuleGraph {
     }
 
     #[allow(dead_code)]
-    pub fn remove_module(&mut self, module_id: &ModuleId) -> Module {
+    pub fn remove_module(&mut self, module_id: &ModuleId) -> ModuleId {
         let index = self
             .id_index_map
             .remove(module_id)
@@ -79,30 +110,14 @@ impl ModuleGraph {
         self.graph.remove_node(index).unwrap()
     }
 
-    pub fn get_module_mut(&mut self, module_id: &ModuleId) -> Option<&mut Module> {
+    pub fn x_get_module_mut(&mut self, module_id: &ModuleId) -> Option<&mut ModuleId> {
         self.id_index_map
             .get(module_id)
             .and_then(|i| self.graph.node_weight_mut(*i))
     }
 
     pub fn get_module_ids(&self) -> Vec<ModuleId> {
-        self.graph
-            .node_weights()
-            .map(|node| node.id.clone())
-            .collect()
-    }
-
-    pub fn replace_module(&mut self, module: Module) {
-        let i = self
-            .id_index_map
-            .get(&module.id)
-            .unwrap_or_else(|| panic!("module_id {:?} should in the module graph", module.id));
-        self.graph[*i] = module;
-    }
-
-    #[allow(dead_code)]
-    pub fn get_modules_mut(&mut self) -> Vec<&mut Module> {
-        self.graph.node_weights_mut().collect()
+        self.graph.node_weights().cloned().collect()
     }
 
     pub fn clear_dependency(&mut self, from: &ModuleId, to: &ModuleId) {
@@ -228,7 +243,7 @@ impl ModuleGraph {
             let dependencies = self.graph.edge_weight(edge_index).unwrap();
             let module = self.graph.node_weight(node_index).unwrap();
             dependencies.iter().for_each(|dep| {
-                deps.push((&module.id, dep));
+                deps.push((module, dep));
             })
         }
         deps.sort_by_key(|(_, dep)| dep.order);
@@ -242,7 +257,7 @@ impl ModuleGraph {
             let dependencies = self.graph.edge_weight(edge_index).unwrap();
             let module = self.graph.node_weight(node_index).unwrap();
             dependencies.iter().for_each(|dep| {
-                deps.push((&module.id, dep));
+                deps.push((module, dep));
             })
         }
         deps.sort_by_key(|(_, dep)| dep.order);
@@ -252,6 +267,7 @@ impl ModuleGraph {
     pub fn get_dependencies_info(
         &self,
         module_id: &ModuleId,
+        module_registry: &ModuleRegistry,
     ) -> Vec<(&ModuleId, &Dependency, bool)> {
         let mut edges = self.get_edges(module_id, Direction::Outgoing);
         let mut deps = vec![];
@@ -259,11 +275,11 @@ impl ModuleGraph {
             let dependencies = self.graph.edge_weight(edge_index).unwrap();
             let module = self.graph.node_weight(node_index).unwrap();
             dependencies.iter().for_each(|dep| {
-                let is_async = module
-                    .info
-                    .as_ref()
-                    .is_some_and(|module_info| module_info.is_async);
-                deps.push((&module.id, dep, is_async));
+                let is_async = module_registry
+                    .module(module)
+                    .is_some_and(|m| m.info.as_ref().is_some_and(|info| info.is_async));
+
+                deps.push((module, dep, is_async));
             })
         }
         deps.sort_by_key(|(_, dep, _)| dep.order);
@@ -287,7 +303,7 @@ impl ModuleGraph {
         let mut targets: Vec<ModuleId> = vec![];
         while let Some((_, node_index)) = edges.next(&self.graph) {
             let module = self.graph.node_weight(node_index).unwrap();
-            targets.push(module.id.clone());
+            targets.push(module.clone());
         }
 
         targets
@@ -298,7 +314,7 @@ impl ModuleGraph {
         let mut targets: Vec<ModuleId> = vec![];
         while let Some((_, node_index)) = edges.next(&self.graph) {
             let module = self.graph.node_weight(node_index).unwrap();
-            targets.push(module.id.clone());
+            targets.push(module.clone());
         }
 
         targets
@@ -389,8 +405,8 @@ impl ModuleGraph {
             .graph
             .edge_references()
             .map(|edge| {
-                let source = &self.graph[edge.source()].id.id;
-                let target = &self.graph[edge.target()].id.id;
+                let source = &self.graph[edge.source()].id;
+                let target = &self.graph[edge.target()].id;
                 format!("{} -> {}", source, target)
             })
             .collect::<Vec<_>>();
@@ -405,13 +421,9 @@ impl ModuleGraph {
 
 impl fmt::Display for ModuleGraph {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut nodes = self
-            .graph
-            .node_weights()
-            .map(|node| &node.id.id)
-            .collect::<Vec<_>>();
+        let mut nodes = self.graph.node_weights().collect::<Vec<_>>();
         let references = self.get_reference();
-        nodes.sort_by_key(|id| id.to_string());
+        nodes.sort_by_key(|id| id.id.clone());
         write!(
             f,
             "graph\n nodes:{:?} \n references:{:?}",

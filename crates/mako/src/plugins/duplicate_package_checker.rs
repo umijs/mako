@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 use semver::Version;
 
 use crate::compiler::Context;
-use crate::module_graph::ModuleGraph;
+use crate::module_graph::{ModuleGraph, ModuleRegistry};
 use crate::plugin::Plugin;
 use crate::resolve::ResolverResource;
 
@@ -85,6 +85,7 @@ impl DuplicatePackageCheckerPlugin {
     fn check_duplicates(
         &self,
         module_graph: &RwLock<ModuleGraph>,
+        module_registry: &ModuleRegistry,
     ) -> HashMap<String, Vec<PackageInfo>> {
         let mut packages = Vec::new();
 
@@ -93,24 +94,27 @@ impl DuplicatePackageCheckerPlugin {
             .unwrap()
             .modules()
             .iter()
-            .for_each(|module| {
-                if let Some(ResolverResource::Resolved(resource)) = module
-                    .info
-                    .as_ref()
-                    .and_then(|info| info.resolved_resource.as_ref())
-                {
-                    if let Some(package_json) = resource.0.package_json() {
-                        let raw_json = package_json.raw_json();
-                        if let Some(name) = package_json.name.clone() {
-                            if let Some(version) = raw_json.as_object().unwrap().get("version") {
-                                let version = semver::Version::parse(version.as_str().unwrap());
-                                if let Ok(version) = version {
-                                    let package_info = PackageInfo {
-                                        name,
-                                        version,
-                                        path: package_json.path.clone(),
-                                    };
-                                    packages.push(package_info);
+            .for_each(|module_id| {
+                if let Some(module) = module_registry.module(module_id) {
+                    if let Some(ResolverResource::Resolved(resource)) = module
+                        .info
+                        .as_ref()
+                        .and_then(|info| info.resolved_resource.as_ref())
+                    {
+                        if let Some(package_json) = resource.0.package_json() {
+                            let raw_json = package_json.raw_json();
+                            if let Some(name) = package_json.name.clone() {
+                                if let Some(version) = raw_json.as_object().unwrap().get("version")
+                                {
+                                    let version = semver::Version::parse(version.as_str().unwrap());
+                                    if let Ok(version) = version {
+                                        let package_info = PackageInfo {
+                                            name,
+                                            version,
+                                            path: package_json.path.clone(),
+                                        };
+                                        packages.push(package_info);
+                                    }
                                 }
                             }
                         }
@@ -132,7 +136,8 @@ impl Plugin for DuplicatePackageCheckerPlugin {
         context: &Arc<Context>,
         _compiler: &crate::compiler::Compiler,
     ) -> anyhow::Result<()> {
-        let duplicates = self.check_duplicates(&context.module_graph);
+        let module_registry = context.module_registry.read().unwrap();
+        let duplicates = self.check_duplicates(&context.module_graph, &module_registry);
 
         if !duplicates.is_empty() && self.verbose {
             let mut message = String::new();
