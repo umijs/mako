@@ -5,11 +5,8 @@
   "moduleFederation": {
     "name": "mfHost",
     "remotes": {
-      "widget": "widget@http://localhost:3000/mf-manifest.json"
-    }
-  },
-  "optimization": {
-    "skipModules": false,
-    "concatenateModules": false
+      "widget": "mfWidget@http://localhost:3000/mf-manifest.json"
+    },
+    "implementation": "/Users/xusd/codes/github/mako/packages/mako/node_modules/@module-federation/webpack-bundler-runtime"
   }
 }

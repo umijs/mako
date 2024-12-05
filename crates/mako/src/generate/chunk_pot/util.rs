@@ -25,7 +25,7 @@ use crate::config::Mode;
 use crate::generate::chunk_pot::ChunkPot;
 use crate::generate::runtime::AppRuntimeTemplate;
 use crate::module::{relative_to_root, Module, ModuleAst};
-use crate::utils::get_pkg_name;
+use crate::utils::get_app_info;
 
 pub(crate) fn render_module_js(
     ast: &SwcModule,
@@ -113,7 +113,7 @@ pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
             .cross_origin_loading
             .clone()
             .map(|s| s.to_string()),
-        pkg_name: get_pkg_name(&context.root),
+        pkg_name: get_app_info(&context.root).0,
         concatenate_enabled: context
             .config
             .optimization

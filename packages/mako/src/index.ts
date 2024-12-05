@@ -6,7 +6,6 @@ import { type Options } from 'sass';
 import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
-import { generateMFManifest } from './mf/manifest';
 import { sassLoader } from './sassLoader';
 
 type Config = binding.BuildParams['config'] & {
@@ -146,12 +145,6 @@ export async function build(params: BuildParams) {
         '@module-federation/webpack-bundler-runtime',
       );
     }
-    params.config.plugins.push({
-      name: 'mf-manifest',
-      generateEnd(data) {
-        generateMFManifest(params.root, makoConfig.moduleFederation, data);
-      },
-    });
   }
   // support dump mako config
   if (process.env.DUMP_MAKO_CONFIG) {

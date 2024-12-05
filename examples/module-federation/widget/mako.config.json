@@ -8,10 +8,7 @@
       "./App1": "./src/App1.tsx",
       "./App2": "./src/App2.tsx"
     },
-    "runtimePlugins": []
-  },
-  "optimization": {
-    "skipModules": false,
-    "concatenateModules": false
+    "runtimePlugins": [],
+    "implementation": "/Users/xusd/codes/github/mako/packages/mako/node_modules/@module-federation/webpack-bundler-runtime"
   }
 }

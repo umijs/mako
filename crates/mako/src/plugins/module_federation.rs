@@ -5,20 +5,27 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use manifest::{
+    Manifest, ManifestAssets, ManifestAssetsItem, ManifestExpose, ManifestMetaBuildInfo,
+    ManifestMetaData, ManifestMetaRemoteEntry, ManifestRemote,
+};
 use serde::Serialize;
 use tracing::warn;
 
-use crate::ast::file::{Content, JsContent};
+use crate::ast::file::Content;
 use crate::compiler::{Args, Context};
 use crate::config::module_federation::ModuleFederationConfig;
 use crate::config::{
     Config, ExternalAdvanced, ExternalAdvancedSubpath, ExternalAdvancedSubpathRule,
     ExternalAdvancedSubpathTarget, ExternalConfig,
 };
-use crate::module::md5_hash;
+use crate::module::{md5_hash, ModuleId};
 use crate::plugin::{Plugin, PluginGenerateEndParams, PluginResolveIdParams};
 use crate::resolve::{RemoteInfo, ResolverResource};
+use crate::utils::get_app_info;
 use crate::visitors::mako_require::MAKO_REQUIRE;
+
+mod manifest;
 
 pub struct ModuleFederationPlugin {
     pub config: ModuleFederationConfig,
@@ -31,6 +38,8 @@ const FEDERATION_REMOTE_MODULE_PREFIX: &str = "mako/container/remote/";
 const FEDERATION_REMOTE_REFERENCE_PREFIX: &str = "mako/container/reference/";
 
 const FEDERATION_SHARED_REFERENCE_PREFIX: &str = "mako/sharing/consume/";
+
+const FEDERATION_EXPOSE_CHUNK_PREFIX: &str = "__mf_expose_";
 
 impl ModuleFederationPlugin {
     pub fn new(config: ModuleFederationConfig) -> Self {
@@ -135,10 +144,11 @@ if(!{federation_global}.instance) {{
             .map(|(name, module)| {
                 format!(
                     r#""{name}": () => import(
-                        /* makoChunkName: "__mf_expose_{striped_name}" */
+                        /* makoChunkName: "{prefix}{striped_name}" */
                         /* federationExpose: true */
                         "{module}"
 ),"#,
+                    prefix = FEDERATION_EXPOSE_CHUNK_PREFIX,
                     module = root.join(module).canonicalize().unwrap().to_string_lossy(),
                     striped_name = name.replace("./", "")
                 )
@@ -226,7 +236,6 @@ export {{ get, init }};
         federation_runtime_code
     }
 
-    // TODO: impl remote module
     fn get_container_references_code(&self, context: &Arc<Context>) -> String {
         let module_graph = context.module_graph.read().unwrap();
         let chunk_graph = context.chunk_graph.read().unwrap();
@@ -306,7 +315,7 @@ export {{ get, init }};
                 match config.entry.entry(container_entry_name.clone()) {
                     Occupied(_) => {
                         warn!(
-                            "mf exposed name {} is duplcated with entry config.",
+                            "mf exposed name {} is conflicting with entry config.",
                             container_entry_name
                         );
                     }
@@ -380,26 +389,6 @@ impl Plugin for ModuleFederationPlugin {
         self.append_remotes_externals(config);
 
         Ok(())
-    }
-
-    fn load(
-        &self,
-        _param: &crate::plugin::PluginLoadParam,
-        _context: &Arc<Context>,
-    ) -> Result<Option<Content>> {
-        Ok(_param.file.path().map_or_else(
-            || None,
-            |path| {
-                if path.starts_with(FEDERATION_REMOTE_MODULE_PREFIX) {
-                    Some(Content::Js(JsContent {
-                        is_jsx: false,
-                        content: "".to_string(),
-                    }))
-                } else {
-                    None
-                }
-            },
-        ))
     }
 
     fn load_transform(
@@ -477,14 +466,141 @@ impl Plugin for ModuleFederationPlugin {
         ))
     }
 
-    fn generate_end(
-        &self,
-        _params: &PluginGenerateEndParams,
-        _context: &Arc<Context>,
-    ) -> Result<()> {
-        // println!("----------");
-        // println!("{:#?}", _params.stats);
-        // println!("----------");
+    fn generate_end(&self, params: &PluginGenerateEndParams, context: &Arc<Context>) -> Result<()> {
+        fs::write(
+            context.root.join("./dist/stats.json"),
+            serde_json::to_string_pretty(&params.stats)?,
+        )
+        .unwrap();
+        let chunk_graph = context.chunk_graph.read().unwrap();
+        let app_info = get_app_info(&context.root);
+        let manifest = Manifest {
+            id: self.config.name.clone(),
+            name: self.config.name.clone(),
+            exposes: self.config.exposes.as_ref().map_or(Vec::new(), |exposes| {
+                exposes
+                    .iter()
+                    .map(|(path, module)| {
+                        let name = path.replace("./", "");
+                        let remote_module_id: ModuleId = context
+                            .root
+                            .join(module)
+                            .canonicalize()
+                            .unwrap()
+                            .to_string_lossy()
+                            .to_string()
+                            .into();
+                        let exposes_sync_chunks = chunk_graph
+                            .graph
+                            .node_weights()
+                            .filter_map(|c| {
+                                if c.id.id.starts_with(FEDERATION_EXPOSE_CHUNK_PREFIX)
+                                    && c.has_module(&remote_module_id)
+                                {
+                                    Some(c.id.clone())
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<ModuleId>>();
+
+                        let exposes_sync_chunk_dependencies =
+                            exposes_sync_chunks.iter().fold(Vec::new(), |mut acc, cur| {
+                                let sync_deps = chunk_graph.sync_dependencies_chunk(cur);
+                                acc.splice(0..sync_deps.len(), sync_deps);
+                                acc
+                            });
+                        let (sync_js_files, sync_css_files) =
+                            [exposes_sync_chunk_dependencies, exposes_sync_chunks]
+                                .concat()
+                                .iter()
+                                .fold(
+                                    (Vec::<String>::new(), Vec::<String>::new()),
+                                    |mut acc, cur| {
+                                        if let Some(c) =
+                                            params.stats.chunks.iter().find(|c| c.id == cur.id)
+                                        {
+                                            c.files.iter().for_each(|f| {
+                                                if f.ends_with(".js") {
+                                                    acc.0.push(f.clone());
+                                                }
+                                                if f.ends_with(".css") {
+                                                    acc.1.push(f.clone());
+                                                }
+                                            });
+                                        }
+                                        acc
+                                    },
+                                );
+                        ManifestExpose {
+                            id: format!("{}:{}", self.config.name, name),
+                            name,
+                            path: path.clone(),
+                            assets: ManifestAssets {
+                                js: ManifestAssetsItem {
+                                    sync: sync_js_files,
+                                    r#async: Vec::new(),
+                                },
+                                css: ManifestAssetsItem {
+                                    sync: sync_css_files,
+                                    r#async: Vec::new(),
+                                },
+                            },
+                        }
+                    })
+                    .collect()
+            }),
+            shared: Vec::new(),
+            remotes: params
+                .stats
+                .chunk_modules
+                .iter()
+                .filter_map(|cm| {
+                    if cm.id.starts_with(FEDERATION_REMOTE_MODULE_PREFIX) {
+                        let data = cm.id.split('/').collect::<Vec<&str>>();
+                        Some(ManifestRemote {
+                            entry: parse_remote(
+                                self.config.remotes.as_ref().unwrap().get(data[3]).unwrap(),
+                            )
+                            .unwrap()
+                            .1,
+                            module_name: data[4].to_string(),
+                            alias: data[3].to_string(),
+                            federation_container_name: data[3].to_string(),
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+            meta_data: ManifestMetaData {
+                name: self.config.name.clone(),
+                build_info: ManifestMetaBuildInfo {
+                    build_name: app_info.0.unwrap_or("default".to_string()),
+                    build_version: app_info.1.unwrap_or("".to_string()),
+                },
+                global_name: self.config.name.clone(),
+                public_path: "auto".to_string(),
+                r#type: "global".to_string(),
+                remote_entry: self.config.exposes.as_ref().and_then(|exposes| {
+                    if exposes.is_empty() {
+                        None
+                    } else {
+                        Some(ManifestMetaRemoteEntry {
+                            name: format!("{}.js", self.config.name),
+                            path: "".to_string(),
+                            r#type: "global".to_string(),
+                        })
+                    }
+                }),
+                ..Default::default()
+            },
+        };
+        fs::write(
+            context.root.join("./dist/mf-manifest.json"),
+            serde_json::to_string_pretty(&manifest)?,
+        )
+        .unwrap();
         Ok(())
     }
 }
@@ -522,68 +638,4 @@ struct RemoteExternal {
     external_type: String,
     name: String,
     external_module_id: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct FederationManifestTypes {
-    path: String,
-    name: String,
-    zip: String,
-    api: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct FederationManifestMetaData {
-    name: String,
-    #[serde(rename = "type")]
-    type_: String,
-    build_info: FederationManifestBuildInfo,
-    remote_entry: FederationManifestRemoteEntry,
-    types: FederationManifestTypes,
-    global_name: String,
-    plugin_version: String,
-    public_path: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct FederationManifestBuildInfo {
-    build_version: String,
-    build_name: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct FederationManifestRemoteEntry {
-    name: String,
-    path: String,
-    #[serde(rename = "type")]
-    type_: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct FederationManifestShared {
-    id: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct FederationManifestRemote {}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct FederationManifestExpose {}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct FederationManifest {
-    id: String,
-    name: String,
-    meta_data: FederationManifestMetaData,
-    shared: Vec<FederationManifestShared>,
-    remotes: Vec<FederationManifestRemote>,
-    exposes: Vec<FederationManifestExpose>,
 }

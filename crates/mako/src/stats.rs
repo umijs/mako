@@ -505,9 +505,9 @@ pub struct StatsJsonMap {
     root_path: String,
     output_path: String,
     assets: Vec<StatsJsonAssetsItem>,
-    chunk_modules: Vec<StatsJsonChunkModuleItem>,
+    pub chunk_modules: Vec<StatsJsonChunkModuleItem>,
     modules: HashMap<String, ModuleInfo>,
-    chunks: Vec<StatsJsonChunkItem>,
+    pub chunks: Vec<StatsJsonChunkItem>,
     entrypoints: HashMap<String, StatsJsonEntryItem>,
     rsc_client_components: Vec<RscClientInfo>,
     #[serde(rename = "rscCSSModules")]

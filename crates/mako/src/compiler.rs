@@ -505,7 +505,7 @@ impl Compiler {
                 resolved_resource: Some(ResolverResource::Remote(remote_info.clone())),
                 ..Default::default()
             }),
-            side_effects: true,
+            side_effects: false,
         }
     }
 }
