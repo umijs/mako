@@ -15,7 +15,7 @@ use crate::module::{ModuleId, ModuleSystem};
 use crate::module_graph::ModuleGraph;
 use crate::plugin::Plugin;
 
-pub struct DependencyChecker {}
+pub struct ImportsChecker {}
 
 fn pick_no_export_specifiers_with_imports_info(
     module_id: &ModuleId,
@@ -52,9 +52,9 @@ fn pick_no_export_specifiers_with_imports_info(
         }
     }
 }
-impl Plugin for DependencyChecker {
+impl Plugin for ImportsChecker {
     fn name(&self) -> &str {
-        "dependency_checker"
+        "imports_checker"
     }
     fn after_build(&self, context: &Arc<Context>, _compiler: &Compiler) -> Result<()> {
         let mut modules_imports_map: HashMap<&ModuleId, HashMap<String, HashSet<String>>> =

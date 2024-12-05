@@ -258,8 +258,8 @@ impl Compiler {
 
         let mut config = config;
 
-        if config.mode == Mode::Production {
-            plugins.push(Arc::new(plugins::dependency_checker::DependencyChecker {}));
+        if config.mode == Mode::Production && config.experimental.imports_checker {
+            plugins.push(Arc::new(plugins::imports_checker::ImportsChecker {}));
         }
 
         if let Some(progress) = &config.progress {
