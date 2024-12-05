@@ -400,6 +400,7 @@ export {{ get, init }};
                             .to_string_lossy()
                             .to_string()
                             .into();
+                        // FIXME: this may be slow
                         let exposes_sync_chunks = chunk_graph
                             .graph
                             .node_weights()
