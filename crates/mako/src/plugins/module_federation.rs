@@ -467,11 +467,6 @@ impl Plugin for ModuleFederationPlugin {
     }
 
     fn generate_end(&self, params: &PluginGenerateEndParams, context: &Arc<Context>) -> Result<()> {
-        fs::write(
-            context.root.join("./dist/stats.json"),
-            serde_json::to_string_pretty(&params.stats)?,
-        )
-        .unwrap();
         let chunk_graph = context.chunk_graph.read().unwrap();
         let app_info = get_app_info(&context.root);
         let manifest = Manifest {
