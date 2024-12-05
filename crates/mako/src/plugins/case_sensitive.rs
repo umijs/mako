@@ -20,9 +20,9 @@ impl CaseSensitivePlugin {
         }
     }
 
-    pub fn is_checkable(&self, _param: &PluginLoadParam, root: &String) -> bool {
-        let file_path = &_param.file.path;
-        if !_param.file.path.starts_with(root) {
+    pub fn is_checkable(&self, load_param: &PluginLoadParam, root: &String) -> bool {
+        let file_path = &load_param.file.path;
+        if !load_param.file.path.starts_with(root) {
             return false;
         }
         for component in file_path.iter() {
