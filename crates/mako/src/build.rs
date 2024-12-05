@@ -235,6 +235,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
 
             ModuleInfo {
                 file,
+                module_system: get_module_system(&ast),
                 ast,
                 is_ignored: true,
                 ..Default::default()
