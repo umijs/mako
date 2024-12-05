@@ -47,20 +47,11 @@ impl CaseSensitivePlugin {
                 if let Some(dir) = file_path.to_str() {
                     if let Some(i) = cache_map.get(dir as &str) {
                         entries = i.to_vec();
-                    } else {
-                        match fs::read_dir(dir) {
-                            Ok(files) => {
-                                files.for_each(|entry| {
-                                    entries.push(
-                                        entry.unwrap().file_name().to_string_lossy().to_string(),
-                                    );
-                                });
-                                cache_map.insert(dir.to_string(), entries.to_vec());
-                            }
-                            Err(_) => {
-                                break;
-                            }
-                        }
+                    } else if let Ok(files) = fs::read_dir(dir) {
+                        files.for_each(|entry| {
+                            entries.push(entry.unwrap().file_name().to_string_lossy().to_string());
+                        });
+                        cache_map.insert(dir.to_string(), entries.to_vec());
                     }
                 }
                 if !entries.contains(&current_str) {
@@ -87,14 +78,18 @@ impl Plugin for CaseSensitivePlugin {
         "case_sensitive_plugin"
     }
 
-    fn load(&self, _param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        let root = &_context.root.to_string_lossy().to_string();
-        if self.is_checkable(_param, root) {
-            let dist_path = self.check_case_sensitive(_param.file.path.as_path(), root);
+    fn load(
+        &self,
+        load_param: &PluginLoadParam,
+        context: &Arc<Context>,
+    ) -> Result<Option<Content>> {
+        let root = &context.root.to_string_lossy().to_string();
+        if self.is_checkable(load_param, root) {
+            let dist_path = self.check_case_sensitive(load_param.file.path.as_path(), root);
             if !dist_path.is_empty() {
                 return Err(anyhow!(
                     "{} does not match the corresponding path on disk [{}]",
-                    _param.file.path.to_string_lossy().to_string(),
+                    load_param.file.path.to_string_lossy().to_string(),
                     dist_path
                 ));
             }
