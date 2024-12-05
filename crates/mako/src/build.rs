@@ -13,6 +13,7 @@ use colored::Colorize;
 use thiserror::Error;
 
 use crate::ast::file::{Content, File, JsContent};
+use crate::ast::utils::get_module_system;
 use crate::compiler::{Compiler, Context};
 use crate::generate::chunk_pot::util::hash_hashmap;
 use crate::module::{Module, ModuleAst, ModuleId, ModuleInfo};
@@ -186,6 +187,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let raw = file.get_content_raw();
         let info = ModuleInfo {
             file,
+            module_system: get_module_system(&ast),
             ast,
             external: Some(external_name),
             is_async,
@@ -210,6 +212,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let raw = file.get_content_raw();
         let info = ModuleInfo {
             file,
+            module_system: get_module_system(&ast),
             ast,
             raw,
             ..Default::default()
@@ -235,6 +238,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
 
             ModuleInfo {
                 file,
+                module_system: get_module_system(&ast),
                 ast,
                 is_ignored: true,
                 ..Default::default()
@@ -315,6 +319,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let info = ModuleInfo {
             file,
             deps,
+            module_system: get_module_system(&ast),
             ast,
             resolved_resource: parent_resource,
             source_map_chain,

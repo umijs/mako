@@ -15,7 +15,7 @@ use tracing::debug;
 
 use crate::ast::comments::Comments;
 use crate::ast::file::win_path;
-use crate::config::{Config, ModuleIdStrategy, OutputMode};
+use crate::config::{Config, Mode, ModuleIdStrategy, OutputMode};
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::generate::optimize_chunk::OptimizeChunksInfo;
 use crate::module_graph::{ModuleGraph, ModuleRegistry};
@@ -261,6 +261,10 @@ impl Compiler {
         plugins.extend(builtin_plugins);
 
         let mut config = config;
+
+        if config.mode == Mode::Production && config.experimental.imports_checker {
+            plugins.push(Arc::new(plugins::imports_checker::ImportsChecker {}));
+        }
 
         if let Some(progress) = &config.progress {
             plugins.push(Arc::new(plugins::progress::ProgressPlugin::new(

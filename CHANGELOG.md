@@ -1,3 +1,10 @@
+## 0.9.7
+
+`2024-11-25`
+
+- fix: devserver response header add cacheControl no-cache by [@Jinbao1001](https://github.com/Jinbao1001) in [#1692](https://github.com/umijs/mako/pull/1692) [#1699](https://github.com/umijs/mako/pull/1699)
+- fix(ssu): in case external not available to all entries by [@stormslowly](https://github.com/stormslowly) in [#1698](https://github.com/umijs/mako/pull/1698)
+
 ## 0.9.6
 
 `2024-11-14`

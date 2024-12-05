@@ -1,3 +1,10 @@
+## 0.9.7
+
+`2024-11-25`
+
+- 修复: 开发服务器未设置缓存头问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1692](https://github.com/umijs/mako/pull/1692) [#1699](https://github.com/umijs/mako/pull/1699)
+- 修复: SSU 补偿的 external 代码可能出错的情况 [@stormslowly](https://github.com/stormslowly) in [#1698](https://github.com/umijs/mako/pull/1698)
+
 ## 0.9.6
 
 `2024-11-14`

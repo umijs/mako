@@ -15,9 +15,9 @@ use swc_core::ecma::transforms::base::helpers::{Helpers, HELPERS};
 
 use self::skip_module::skip_module_optimize;
 use crate::compiler::Context;
-use crate::module::{ModuleAst, ModuleId, ModuleType, ResolveType};
+use crate::module::{ModuleAst, ModuleId, ModuleSystem, ModuleType, ResolveType};
 use crate::module_graph::{ModuleGraph, ModuleRegistry};
-use crate::plugins::tree_shaking::module::{AllExports, ModuleSystem, TreeShakeModule};
+use crate::plugins::tree_shaking::module::{AllExports, TreeShakeModule};
 use crate::plugins::tree_shaking::shake::module_concatenate::optimize_module_graph;
 use crate::plugins::tree_shaking::statement_graph::{ExportInfo, ExportSpecifierInfo, ImportInfo};
 use crate::plugins::tree_shaking::{module, remove_useless_stmts, statement_graph};

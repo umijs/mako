@@ -10,7 +10,7 @@ use anyhow::{self, Result};
 use colored::Colorize;
 use futures::{SinkExt, StreamExt};
 use get_if_addrs::get_if_addrs;
-use hyper::header::CONTENT_TYPE;
+use hyper::header::{ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_TYPE};
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Server};
 use notify_debouncer_full::new_debouncer;
@@ -72,8 +72,12 @@ impl DevServer {
                     Ok::<_, hyper::Error>(service_fn(move |req| {
                         let context = context.clone();
                         let txws = txws.clone();
-                        let staticfile =
-                            hyper_staticfile::Static::new(context.config.output.path.clone());
+                        let staticfile = {
+                            let mut sf =
+                                hyper_staticfile::Static::new(context.config.output.path.clone());
+                            sf.cache_headers(Some(0));
+                            sf
+                        };
                         async move { Self::handle_requests(req, context, staticfile, txws).await }
                     }))
                 }
@@ -179,6 +183,8 @@ impl DevServer {
 
                         return Ok(hyper::Response::builder()
                             .status(hyper::StatusCode::OK)
+                            .header(CACHE_CONTROL, "no-cache")
+                            .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                             .header(CONTENT_TYPE, content_type)
                             .body(hyper::Body::from(res))
                             .unwrap());
@@ -194,6 +200,8 @@ impl DevServer {
                         Ok(hyper::Response::builder()
                             .status(hyper::StatusCode::OK)
                             .header(CONTENT_TYPE, content_type)
+                            .header(CACHE_CONTROL, "no-cache")
+                            .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                             .body(hyper::Body::from(bytes))
                             .unwrap())
                     });
