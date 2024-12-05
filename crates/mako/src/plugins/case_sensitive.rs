@@ -25,9 +25,8 @@ impl CaseSensitivePlugin {
         if !_param.file.path.starts_with(root) {
             return false;
         }
-        let path_components = file_path.iter();
-        for component in path_components {
-            if component.to_string_lossy() == "node_modules" {
+        for component in file_path.iter() {
+            if component.eq_ignore_ascii_case("node_modules") {
                 return false;
             }
         }
@@ -49,13 +48,19 @@ impl CaseSensitivePlugin {
                     if let Some(i) = cache_map.get(dir as &str) {
                         entries = i.to_vec();
                     } else {
-                        if let Ok(files) = fs::read_dir(file_path.clone()) {
-                            files.for_each(|entry| {
-                                entries
-                                    .push(entry.unwrap().file_name().to_string_lossy().to_string());
-                            });
+                        match fs::read_dir(dir) {
+                            Ok(files) => {
+                                files.for_each(|entry| {
+                                    entries.push(
+                                        entry.unwrap().file_name().to_string_lossy().to_string(),
+                                    );
+                                });
+                                cache_map.insert(dir.to_string(), entries.to_vec());
+                            }
+                            Err(_) => {
+                                break;
+                            }
                         }
-                        cache_map.insert(dir.to_string(), entries.to_vec());
                     }
                 }
                 if !entries.contains(&current_str) {
@@ -83,7 +88,6 @@ impl Plugin for CaseSensitivePlugin {
     }
 
     fn load(&self, _param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        println!("case_sensitive_plugin");
         let root = &_context.root.to_string_lossy().to_string();
         if self.is_checkable(_param, root) {
             let dist_path = self.check_case_sensitive(_param.file.path.as_path(), root);
