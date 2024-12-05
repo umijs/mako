@@ -73,7 +73,8 @@
       "ignores": ["node_modules"],
       "graphviz": false
     },
-    "centralEnsure": true
+    "centralEnsure": true,
+    "importsChecker": false
   },
   "useDefineForClassFields": true,
   "emitDecoratorMetadata": false,

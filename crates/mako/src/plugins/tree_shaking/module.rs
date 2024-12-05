@@ -4,7 +4,7 @@ use std::fmt::Display;
 use swc_core::common::SyntaxContext;
 use swc_core::ecma::ast::{Module as SwcModule, ModuleItem};
 
-use crate::module::{Module, ModuleId};
+use crate::module::{Module, ModuleId, ModuleSystem};
 use crate::plugins::tree_shaking::statement_graph::{
     ExportInfo, ExportInfoMatch, ExportSource, ExportSpecifierInfo, ImportInfo, StatementGraph,
     StatementId,
@@ -32,13 +32,6 @@ impl Display for UsedIdent {
         };
         write!(f, "{}", str)
     }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum ModuleSystem {
-    CommonJS,
-    ESModule,
-    Custom,
 }
 
 #[derive(Debug, Clone)]
@@ -285,7 +278,7 @@ impl TreeShakeModule {
 
         let mut unresolved_ctxt = SyntaxContext::empty();
         // 1. generate statement graph
-        let mut module_system = ModuleSystem::CommonJS;
+        let module_system = module_info.module_system.clone();
         let stmt_graph = match &module_info.ast {
             crate::module::ModuleAst::Script(module) => {
                 let is_esm = module
@@ -294,21 +287,14 @@ impl TreeShakeModule {
                     .iter()
                     .any(|s| matches!(s, ModuleItem::ModuleDecl(_)));
                 if is_esm {
-                    module_system = ModuleSystem::ESModule;
                     unresolved_ctxt = unresolved_ctxt.apply_mark(module.unresolved_mark);
                     StatementGraph::new(&module.ast, unresolved_ctxt)
                 } else {
                     StatementGraph::empty()
                 }
             }
-            crate::module::ModuleAst::Css(_) => {
-                module_system = ModuleSystem::Custom;
-                StatementGraph::empty()
-            }
-            crate::module::ModuleAst::None => {
-                module_system = ModuleSystem::Custom;
-                StatementGraph::empty()
-            }
+            crate::module::ModuleAst::Css(_) => StatementGraph::empty(),
+            crate::module::ModuleAst::None => StatementGraph::empty(),
         };
 
         let used_exports = if module.is_entry {
