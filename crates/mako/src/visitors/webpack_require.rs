@@ -35,7 +35,6 @@ impl WebpackRequire {
 impl VisitMut for WebpackRequire {
     // find the "typeof __webpack_require__" in the ast tree
     fn visit_mut_unary_expr(&mut self, unary_expr: &mut UnaryExpr) {
-        println!("aaaa{:?}", unary_expr.op.as_str());
         if unary_expr.op.as_str() == "typeof"
             && let Some(arg_ident) = unary_expr.arg.as_ident()
             && self.is_ident_webpack(arg_ident, &self.unresolved_mark)
