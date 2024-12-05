@@ -39,10 +39,12 @@ impl<'a> Visit for CollectExports<'a> {
                 let source = all.src.value.to_string();
                 self.exports_star_sources.push(source);
             }
-            // export {a, b} || export {default as c} from 'd'
+            // export {a, b} || export {default as c} from 'd' || export a from 'b'
             ModuleDecl::ExportNamed(named) => {
-                named.specifiers.iter().for_each(|specifier| {
-                    match &specifier {
+                named
+                    .specifiers
+                    .iter()
+                    .for_each(|specifier| match &specifier {
                         ExportSpecifier::Named(named) => {
                             if let Some(ModuleExportName::Ident(ident)) = &named.exported {
                                 self.specifiers.remove(&ident.sym.to_string());
@@ -55,11 +57,10 @@ impl<'a> Visit for CollectExports<'a> {
                                 self.specifiers.remove(&ident.sym.to_string());
                             }
                         }
-                        _ => {
-                            //@todo what is ExportDefaultSpecifier?
+                        ExportSpecifier::Default(default) => {
+                            self.specifiers.remove(&default.exported.sym.to_string());
                         }
-                    }
-                })
+                    })
             }
             _ => {}
         }
