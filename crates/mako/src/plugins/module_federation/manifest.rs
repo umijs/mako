@@ -1,4 +1,158 @@
+use std::fs;
+use std::sync::Arc;
+
 use serde::Serialize;
+
+use super::constants::FEDERATION_EXPOSE_CHUNK_PREFIX;
+use super::util::parse_remote;
+use super::{constants, ModuleFederationPlugin};
+use crate::compiler::Context;
+use crate::module::ModuleId;
+use crate::plugin::PluginGenerateEndParams;
+use crate::utils::get_app_info;
+
+impl ModuleFederationPlugin {
+    pub(super) fn generate_federation_manifest(
+        &self,
+        context: &Arc<Context>,
+        params: &PluginGenerateEndParams,
+    ) -> Result<(), anyhow::Error> {
+        let chunk_graph = context.chunk_graph.read().unwrap();
+        let app_info = get_app_info(&context.root);
+        let manifest = Manifest {
+            id: self.config.name.clone(),
+            name: self.config.name.clone(),
+            exposes: self.config.exposes.as_ref().map_or(Vec::new(), |exposes| {
+                exposes
+                    .iter()
+                    .map(|(path, module)| {
+                        let name = path.replace("./", "");
+                        let remote_module_id: ModuleId = context
+                            .root
+                            .join(module)
+                            .canonicalize()
+                            .unwrap()
+                            .to_string_lossy()
+                            .to_string()
+                            .into();
+                        // FIXME: this may be slow
+                        let exposes_sync_chunks = chunk_graph
+                            .graph
+                            .node_weights()
+                            .filter_map(|c| {
+                                if c.id.id.starts_with(FEDERATION_EXPOSE_CHUNK_PREFIX)
+                                    && c.has_module(&remote_module_id)
+                                {
+                                    Some(c.id.clone())
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<ModuleId>>();
+
+                        let exposes_sync_chunk_dependencies =
+                            exposes_sync_chunks.iter().fold(Vec::new(), |mut acc, cur| {
+                                let sync_deps = chunk_graph.sync_dependencies_chunk(cur);
+                                acc.splice(0..sync_deps.len(), sync_deps);
+                                acc
+                            });
+                        let (sync_js_files, sync_css_files) =
+                            [exposes_sync_chunk_dependencies, exposes_sync_chunks]
+                                .concat()
+                                .iter()
+                                .fold(
+                                    (Vec::<String>::new(), Vec::<String>::new()),
+                                    |mut acc, cur| {
+                                        if let Some(c) =
+                                            params.stats.chunks.iter().find(|c| c.id == cur.id)
+                                        {
+                                            c.files.iter().for_each(|f| {
+                                                if f.ends_with(".js") {
+                                                    acc.0.push(f.clone());
+                                                }
+                                                if f.ends_with(".css") {
+                                                    acc.1.push(f.clone());
+                                                }
+                                            });
+                                        }
+                                        acc
+                                    },
+                                );
+                        ManifestExpose {
+                            id: format!("{}:{}", self.config.name, name),
+                            name,
+                            path: path.clone(),
+                            assets: ManifestAssets {
+                                js: ManifestAssetsItem {
+                                    sync: sync_js_files,
+                                    r#async: Vec::new(),
+                                },
+                                css: ManifestAssetsItem {
+                                    sync: sync_css_files,
+                                    r#async: Vec::new(),
+                                },
+                            },
+                        }
+                    })
+                    .collect()
+            }),
+            shared: Vec::new(),
+            remotes: params
+                .stats
+                .chunk_modules
+                .iter()
+                .filter_map(|cm| {
+                    if cm
+                        .id
+                        .starts_with(constants::FEDERATION_REMOTE_MODULE_PREFIX)
+                    {
+                        let data = cm.id.split('/').collect::<Vec<&str>>();
+                        Some(ManifestRemote {
+                            entry: parse_remote(
+                                self.config.remotes.as_ref().unwrap().get(data[3]).unwrap(),
+                            )
+                            .unwrap()
+                            .1,
+                            module_name: data[4].to_string(),
+                            alias: data[3].to_string(),
+                            federation_container_name: data[3].to_string(),
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+            meta_data: ManifestMetaData {
+                name: self.config.name.clone(),
+                build_info: ManifestMetaBuildInfo {
+                    build_name: app_info.0.unwrap_or("default".to_string()),
+                    build_version: app_info.1.unwrap_or("".to_string()),
+                },
+                global_name: self.config.name.clone(),
+                public_path: "auto".to_string(),
+                r#type: "global".to_string(),
+                remote_entry: self.config.exposes.as_ref().and_then(|exposes| {
+                    if exposes.is_empty() {
+                        None
+                    } else {
+                        Some(ManifestMetaRemoteEntry {
+                            name: format!("{}.js", self.config.name),
+                            path: "".to_string(),
+                            r#type: "global".to_string(),
+                        })
+                    }
+                }),
+                ..Default::default()
+            },
+        };
+        fs::write(
+            context.root.join("./dist/mf-manifest.json"),
+            serde_json::to_string_pretty(&manifest)?,
+        )
+        .unwrap();
+        Ok(())
+    }
+}
 
 #[derive(Serialize, Default)]
 pub struct ManifestAssetsItem {
