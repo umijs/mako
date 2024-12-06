@@ -73,39 +73,6 @@ if(!{federation_global}.instance) {{
         )
     }
 
-    pub(super) fn get_mf_runtime_plugins_code(&self) -> (String, String) {
-        let (imported_plugin_names, import_plugin_instantiations) =
-            self.config.runtime_plugins.iter().enumerate().fold(
-                (Vec::new(), Vec::new()),
-                |(mut names, mut stmts), (index, plugin)| {
-                    names.push(format!("plugin_{index}"));
-                    stmts.push(format!(r#"import plugin_{index} from "{plugin}";"#));
-                    (names, stmts)
-                },
-            );
-
-        let plugins_imports = import_plugin_instantiations.join("\n");
-
-        let plugins_to_add = imported_plugin_names
-            .iter()
-            .map(|item| format!(r#"{item} ? (item.default || item)() : false"#))
-            .collect::<Vec<_>>()
-            .join(",");
-
-        let plugins_instantiations = if imported_plugin_names.is_empty() {
-            "".to_string()
-        } else {
-            format!(
-                r#"var pluginsToAdd = [{plugins_to_add}].filter(Boolean);
-  {federation_global}.initOptions.plugins = {federation_global}.initOptions.plugins ?
-    {federation_global}.initOptions.plugins.concat(pluginsToAdd) : pluginsToAdd;
-"#,
-                federation_global = FEDERATION_GLOBAL
-            )
-        };
-        (plugins_imports, plugins_instantiations)
-    }
-
     pub(super) fn add_container_entry(&self, config: &mut Config, root: &Path) {
         // add containter entry
         if let Some(exposes) = self.config.exposes.as_ref() {
@@ -255,6 +222,7 @@ export {{ get, init }};
         }
     }
 
+    #[allow(dead_code)]
     pub(super) fn append_remotes_externals(&self, config: &mut Config) {
         if let Some(remotes) = &self.config.remotes {
             remotes.iter().for_each(|remote| {
@@ -276,6 +244,39 @@ export {{ get, init }};
                 );
             });
         }
+    }
+
+    pub(super) fn get_mf_runtime_plugins_code(&self) -> (String, String) {
+        let (imported_plugin_names, import_plugin_instantiations) =
+            self.config.runtime_plugins.iter().enumerate().fold(
+                (Vec::new(), Vec::new()),
+                |(mut names, mut stmts), (index, plugin)| {
+                    names.push(format!("plugin_{index}"));
+                    stmts.push(format!(r#"import plugin_{index} from "{plugin}";"#));
+                    (names, stmts)
+                },
+            );
+
+        let plugins_imports = import_plugin_instantiations.join("\n");
+
+        let plugins_to_add = imported_plugin_names
+            .iter()
+            .map(|item| format!(r#"{item} ? (item.default || item)() : false"#))
+            .collect::<Vec<_>>()
+            .join(",");
+
+        let plugins_instantiations = if imported_plugin_names.is_empty() {
+            "".to_string()
+        } else {
+            format!(
+                r#"var pluginsToAdd = [{plugins_to_add}].filter(Boolean);
+  {federation_global}.initOptions.plugins = {federation_global}.initOptions.plugins ?
+    {federation_global}.initOptions.plugins.concat(pluginsToAdd) : pluginsToAdd;
+"#,
+                federation_global = FEDERATION_GLOBAL
+            )
+        };
+        (plugins_imports, plugins_instantiations)
     }
 }
 

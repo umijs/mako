@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use serde::Serialize;
+
 use super::ModuleFederationPlugin;
 use crate::compiler::Context;
-use crate::plugins::module_federation::RemoteExternal;
 
 impl ModuleFederationPlugin {
     pub(super) fn get_container_references_code(&self, context: &Arc<Context>) -> String {
@@ -76,4 +77,12 @@ impl ModuleFederationPlugin {
 )()"#,
         )
     }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RemoteExternal {
+    external_type: String,
+    name: String,
+    external_module_id: String,
 }

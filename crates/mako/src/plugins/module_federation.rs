@@ -36,7 +36,7 @@ impl Plugin for ModuleFederationPlugin {
     fn modify_config(&self, config: &mut Config, root: &Path, _args: &Args) -> Result<()> {
         self.add_container_entry(config, root);
 
-        self.append_remotes_externals(config);
+        // self.append_remotes_externals(config);
 
         Ok(())
     }
