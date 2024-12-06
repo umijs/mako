@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use constants::{FEDERATION_REMOTE_MODULE_PREFIX, FEDERATION_REMOTE_REFERENCE_PREFIX};
-use serde::Serialize;
 
 use crate::ast::file::Content;
 use crate::compiler::{Args, Context};
@@ -120,12 +119,4 @@ impl Plugin for ModuleFederationPlugin {
         self.generate_federation_manifest(context, params)?;
         Ok(())
     }
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RemoteExternal {
-    external_type: String,
-    name: String,
-    external_module_id: String,
 }
