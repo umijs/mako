@@ -24,6 +24,8 @@ impl Node {
                 "^(node:)?({})(/.+|$)",
                 Self::get_all_node_modules().join("|")
             ));
+            // If it starts with "node:", they are all built-in node modules.
+            config.ignores.push("^(node:)(.+)".to_string());
             // polifyll __dirname & __filename is supported with MockFilenameAndDirname Visitor
         } else {
             // polyfill __dirname & __filename for browser
