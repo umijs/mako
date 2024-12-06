@@ -27,6 +27,7 @@ percent-encoding = { version = "2.3.1" }
 serde            = { workspace = true }
 serde_json       = { workspace = true }
 url              = { version = "2.5.0" }
+wasmparser       = "0.207.0"
 
 swc_core = { workspace = true, features = [
   "base",
