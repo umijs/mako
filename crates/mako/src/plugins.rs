@@ -1,5 +1,6 @@
 pub mod async_runtime;
 pub mod bundless_compiler;
+pub mod case_sensitive;
 pub mod central_ensure;
 pub mod context_module;
 pub mod copy;
