@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { Suspense } from 'react';
+
+const Lazy = React.lazy(() => import('./lazy'));
 
 const App = () => {
   return (
@@ -11,6 +13,11 @@ const App = () => {
       }}
     >
       <h1>Widget App1</h1>
+      <h2>
+        <Suspense fallback="loading">
+          <Lazy />
+        </Suspense>
+      </h2>
     </div>
   );
 };
