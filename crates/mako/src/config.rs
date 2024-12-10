@@ -306,7 +306,9 @@ impl Config {
                 .define
                 .insert("NODE_ENV".to_string(), serde_json::Value::String(mode));
 
-            if config.public_path != "runtime" && !config.public_path.ends_with('/') {
+            if ["runtime", "auto"].iter().all(|p| *p != config.public_path)
+                && !config.public_path.ends_with('/')
+            {
                 return Err(anyhow!("public_path must end with '/' or be 'runtime'"));
             }
 

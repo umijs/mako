@@ -26,20 +26,46 @@ impl Plugin for MakoRuntime {
 impl MakoRuntime {
     fn public_path(&self, context: &Arc<Context>) -> String {
         let public_path = context.config.public_path.clone();
-        let public_path = if public_path == "runtime" {
-            "(typeof globalThis !== 'undefined' ? globalThis : self).publicPath || '/'".to_string()
-        } else {
-            format!("\"{}\"", public_path)
-        };
-
-        format!(
-            r#"
+        match public_path.as_str() {
+            "runtime" => {
+            r#"/* mako/runtime/publicPath */
+  !function () {{
+    requireModule.publicPath= (typeof globalThis !== 'undefined' ? globalThis : self).publicPath || '/';
+  }}();"#.to_string()
+            }
+            "auto" => {
+r#"/* mako/runtime/publicPath */
+!function() {{
+  var scriptUrl;
+  if (!self.document && self.importScripts) {
+    scriptUrl = self.location + "";
+  }
+  if (!scriptUrl && document) {
+    if (document.currentScript && document.currentScript.tagName.toUpperCase() === 'SCRIPT')
+      scriptUrl = document.currentScript.src;
+      if (!scriptUrl) {
+  	  var scripts = document.getElementsByTagName("script");
+  	  if(scripts.length) {
+  		var i = scripts.length - 1;
+  		  while (i > -1 && (!scriptUrl || !/^http(s?):/.test(scriptUrl))) scriptUrl = scripts[i--].src;
+  	  }
+    }
+  }
+  if (!scriptUrl) throw new Error("Automatic publicPath is not supported in this browser");
+  scriptUrl = scriptUrl.replace(/#.*$/, "").replace(/\?.*$/, "").replace(/\/[^\/]+$/, "/");
+  requireModule.publicPath = scriptUrl;
+}}();"#
+            }
+            .to_string(),
+            _ => format!(
+                r#"
   /* mako/runtime/publicPath */
   !function () {{
-    requireModule.publicPath= {};
+    requireModule.publicPath= "{}";
   }}();"#,
-            public_path
-        )
+                public_path
+            ),
+        }
     }
 
     fn helper_runtime(&self, context: &Arc<Context>) -> Result<String> {
