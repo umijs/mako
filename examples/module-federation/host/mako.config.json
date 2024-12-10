@@ -5,7 +5,7 @@
   "moduleFederation": {
     "name": "mfHost",
     "remotes": {
-      "widget": "mfWidget@http://localhost:3000/mf-manifest.json"
+      "widget": "mfWidget@http://localhost:3000/mfWidget.js"
     },
     "implementation": "/Users/xusd/codes/github/mako/packages/mako/node_modules/@module-federation/webpack-bundler-runtime"
   }

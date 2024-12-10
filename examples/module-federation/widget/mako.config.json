@@ -2,6 +2,7 @@
   "entry": {
     "app2": "./src/index.ts"
   },
+  "publicPath": "auto",
   "moduleFederation": {
     "name": "mfWidget",
     "exposes": {

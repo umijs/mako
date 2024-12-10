@@ -9,6 +9,7 @@ use super::{constants, ModuleFederationPlugin};
 use crate::compiler::Context;
 use crate::module::ModuleId;
 use crate::plugin::PluginGenerateEndParams;
+use crate::stats::StatsJsonMap;
 use crate::utils::get_app_info;
 
 impl ModuleFederationPlugin {
@@ -56,28 +57,26 @@ impl ModuleFederationPlugin {
                                 acc.splice(0..sync_deps.len(), sync_deps);
                                 acc
                             });
+                        let all_exposes_sync_chunks =
+                            [exposes_sync_chunk_dependencies, exposes_sync_chunks].concat();
+                        let all_exposes_async_chunks: Vec<ModuleId> =
+                            all_exposes_sync_chunks.iter().fold(vec![], |mut acc, cur| {
+                                acc.extend(chunk_graph.installable_descendants_chunk(cur));
+                                acc
+                            });
                         let (sync_js_files, sync_css_files) =
-                            [exposes_sync_chunk_dependencies, exposes_sync_chunks]
-                                .concat()
-                                .iter()
-                                .fold(
-                                    (Vec::<String>::new(), Vec::<String>::new()),
-                                    |mut acc, cur| {
-                                        if let Some(c) =
-                                            params.stats.chunks.iter().find(|c| c.id == cur.id)
-                                        {
-                                            c.files.iter().for_each(|f| {
-                                                if f.ends_with(".js") {
-                                                    acc.0.push(f.clone());
-                                                }
-                                                if f.ends_with(".css") {
-                                                    acc.1.push(f.clone());
-                                                }
-                                            });
-                                        }
-                                        acc
-                                    },
-                                );
+                            extrac_assets(all_exposes_sync_chunks, &params.stats);
+
+                        let (async_js_files, async_css_files) =
+                            extrac_assets(all_exposes_async_chunks, &params.stats);
+                        let async_js_files = async_js_files
+                            .into_iter()
+                            .filter(|f| !sync_js_files.contains(f))
+                            .collect();
+                        let async_css_files = async_css_files
+                            .into_iter()
+                            .filter(|f| !sync_js_files.contains(f))
+                            .collect();
                         ManifestExpose {
                             id: format!("{}:{}", self.config.name, name),
                             name,
@@ -85,11 +84,11 @@ impl ModuleFederationPlugin {
                             assets: ManifestAssets {
                                 js: ManifestAssetsItem {
                                     sync: sync_js_files,
-                                    r#async: Vec::new(),
+                                    r#async: async_js_files,
                                 },
                                 css: ManifestAssetsItem {
                                     sync: sync_css_files,
-                                    r#async: Vec::new(),
+                                    r#async: async_css_files,
                                 },
                             },
                         }
@@ -152,6 +151,28 @@ impl ModuleFederationPlugin {
         .unwrap();
         Ok(())
     }
+}
+
+fn extrac_assets(
+    all_exposes_sync_chunks: Vec<ModuleId>,
+    stats: &StatsJsonMap,
+) -> (Vec<String>, Vec<String>) {
+    all_exposes_sync_chunks.iter().fold(
+        (Vec::<String>::new(), Vec::<String>::new()),
+        |mut acc, cur| {
+            if let Some(c) = stats.chunks.iter().find(|c| c.id == cur.id) {
+                c.files.iter().for_each(|f| {
+                    if f.ends_with(".js") {
+                        acc.0.push(f.clone());
+                    }
+                    if f.ends_with(".css") {
+                        acc.1.push(f.clone());
+                    }
+                });
+            }
+            acc
+        },
+    )
 }
 
 #[derive(Serialize, Default)]
