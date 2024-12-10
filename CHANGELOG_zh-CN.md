@@ -1,3 +1,21 @@
+# 0.9.8
+
+`2024-12-06`
+- feat: esm 明确导出检测插件 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1709]https://github.com/umijs/mako/pull/1709
+- 重构: 减少 ensure2 映射空间 by [@stormslowly](https://github.com/stormslowly) in [#1707](https://github.com/umijs/mako/pull/1707)
+- 修复: optimization.concatenateModules 字段配置丢失 by [@sorrycc](https://github.com/sorrycc) in [#1692](https://github.com/umijs/mako/pull/1708)
+- 修复: stats 字段支持模块配置 by [@stormslowly](https://github.com/stormslowly) in [#1712](https://github.com/umijs/mako/pull/1712)
+
+
+
+
+## 0.9.7
+
+`2024-11-25`
+
+- 修复: 开发服务器未设置缓存头问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1692](https://github.com/umijs/mako/pull/1692) [#1699](https://github.com/umijs/mako/pull/1699)
+- 修复: SSU 补偿的 external 代码可能出错的情况 [@stormslowly](https://github.com/stormslowly) in [#1698](https://github.com/umijs/mako/pull/1698)
+
 ## 0.9.6
 
 `2024-11-14`

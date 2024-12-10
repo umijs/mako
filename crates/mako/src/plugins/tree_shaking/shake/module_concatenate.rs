@@ -21,9 +21,9 @@ use self::concatenate_context::EsmDependantFlags;
 use self::utils::uniq_module_prefix;
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
-use crate::module::{Dependency, ImportType, ModuleId, ResolveType};
+use crate::module::{Dependency, ImportType, ModuleId, ModuleSystem, ResolveType};
 use crate::module_graph::ModuleGraph;
-use crate::plugins::tree_shaking::module::{AllExports, ModuleSystem, TreeShakeModule};
+use crate::plugins::tree_shaking::module::{AllExports, TreeShakeModule};
 use crate::plugins::tree_shaking::shake::module_concatenate::concatenate_context::{
     ConcatenateContext, RuntimeFlags,
 };

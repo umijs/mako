@@ -1,3 +1,20 @@
+# 0.9.8
+
+`2024-12-06`
+- feat: ensure esm imports exists when mode is production by [@Jinbao1001](https://github.com/Jinbao1001) in [#1709]https://github.com/umijs/mako/pull/1709
+- refactor(dev): reduce ensure2 chunk map size by [@stormslowly](https://github.com/stormslowly) in [#1707](https://github.com/umijs/mako/pull/1707)
+- fix: optimization.concatenateModules dts lost by [@sorrycc](https://github.com/sorrycc) in [#1692](https://github.com/umijs/mako/pull/1708)
+- fix: typing of stats  by [@stormslowly](https://github.com/stormslowly) in [#1712](https://github.com/umijs/mako/pull/1712)
+
+
+
+## 0.9.7
+
+`2024-11-25`
+
+- fix: devserver response header add cacheControl no-cache by [@Jinbao1001](https://github.com/Jinbao1001) in [#1692](https://github.com/umijs/mako/pull/1692) [#1699](https://github.com/umijs/mako/pull/1699)
+- fix(ssu): in case external not available to all entries by [@stormslowly](https://github.com/stormslowly) in [#1698](https://github.com/umijs/mako/pull/1698)
+
 ## 0.9.6
 
 `2024-11-14`
