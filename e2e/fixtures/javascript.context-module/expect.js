@@ -1,6 +1,6 @@
 const assert = require("assert");
-const { parseBuildResult, moduleReg } = require("../../../scripts/test-utils");
-const { files } = parseBuildResult(__dirname);
+const {parseBuildResult, moduleReg} = require("../../../scripts/test-utils");
+const {files} = parseBuildResult(__dirname);
 
 const names = Object.keys(files);
 const content = files["index.js"];
@@ -11,26 +11,30 @@ assert.match(
   moduleReg(
     "src\\?context&glob=\\*\\*/\\*",
     [
-      "'./ext/json.ts': ()=>__mako_require__(\"src/ext/json.ts\")",
-      "'./ext/json': ()=>__mako_require__(\"src/ext/json.ts\")",
-      "'./fake.js': ()=>__mako_require__(\"src/fake.js/index.js\")",
-      "'./fake': ()=>__mako_require__(\"src/fake.js/index.js\")",
-      "'./fake.js/a.js': ()=>__mako_require__(\"src/fake.js/a.js\")",
-      "'./fake.js/a': ()=>__mako_require__(\"src/fake.js/a.js\")",
-      "'./fake.js/aa.js': ()=>__mako_require__(\"src/fake.js/aa.js\")",
-      "'./fake.js/aa': ()=>__mako_require__(\"src/fake.js/aa.js\")",
-      "'./fake.js/index.js': ()=>__mako_require__(\"src/fake.js/index.js\")",
-      "'./fake.js/index': ()=>__mako_require__(\"src/fake.js/index.js\")",
-      "'./fake.js': ()=>__mako_require__(\"src/fake.js/index.js\")",
-      "'./fake.js/': ()=>__mako_require__(\"src/fake.js/index.js\")",
-      "'./i18n/en-US.json': ()=>__mako_require__(\"src/i18n/en-US.json\")",
-      "'./i18n/en-US': ()=>__mako_require__(\"src/i18n/en-US.json\")",
-      "'./i18n/zh-CN.json': ()=>__mako_require__(\"src/i18n/zh-CN.json\")",
-      "'./i18n/zh-CN': ()=>__mako_require__(\"src/i18n/zh-CN.json\")",
-      "'./index.ts': ()=>__mako_require__(\"src/index.ts\")",
-      "'./index': ()=>__mako_require__(\"src/index.ts\")",
-      "'.': ()=>__mako_require__(\"src/index.ts\")",
-      "'./': ()=>__mako_require__(\"src/index.ts\")"
+      `'.': ()=>__mako_require__("src/index.ts")`,
+      `'./': ()=>__mako_require__("src/index.ts")`,
+      `'./ext/json': ()=>__mako_require__("src/ext/json.ts")`,
+      `'./ext/json.ts': ()=>__mako_require__("src/ext/json.ts")`,
+      `'./fake.js': ()=>__mako_require__("src/fake.js/index.js")`,
+      `'./fake.js/': ()=>__mako_require__("src/fake.js/index.js")`,
+      `'./fake.js/a': ()=>__mako_require__("src/fake.js/a.js")`,
+      `'./fake.js/a.js': ()=>__mako_require__("src/fake.js/a.js")`,
+      `'./fake.js/aa': ()=>__mako_require__("src/fake.js/aa.js")`,
+      `'./fake.js/aa.js': ()=>__mako_require__("src/fake.js/aa.js")`,
+      `'./fake.js/index': ()=>__mako_require__("src/fake.js/index.js")`,
+      `'./fake.js/index.js': ()=>__mako_require__("src/fake.js/index.js")`,
+      `'./first_empty_quasis': ()=>__mako_require__("src/first_empty_quasis/index.js")`,
+      `'./first_empty_quasis/': ()=>__mako_require__("src/first_empty_quasis/index.js")`,
+      `'./first_empty_quasis/index': ()=>__mako_require__("src/first_empty_quasis/index.js")`,
+      `'./first_empty_quasis/index.js': ()=>__mako_require__("src/first_empty_quasis/index.js")`,
+      `'./first_empty_quasis/other': ()=>__mako_require__("src/first_empty_quasis/other.js")`,
+      `'./first_empty_quasis/other.js': ()=>__mako_require__("src/first_empty_quasis/other.js")`,
+      `'./i18n/en-US': ()=>__mako_require__("src/i18n/en-US.json")`,
+      `'./i18n/en-US.json': ()=>__mako_require__("src/i18n/en-US.json")`,
+      `'./i18n/zh-CN': ()=>__mako_require__("src/i18n/zh-CN.json")`,
+      `'./i18n/zh-CN.json': ()=>__mako_require__("src/i18n/zh-CN.json")`,
+      `'./index': ()=>__mako_require__("src/index.ts")`,
+      `'./index.ts': ()=>__mako_require__("src/index.ts")`
     ].join(',\n\\s+'),
     true,
   ),
@@ -42,14 +46,14 @@ assert.match(
   moduleReg(
     "src/fake.js\\?context&glob=\\*\\*/\\*",
     [
-      "'./a.js': ()=>__mako_require__(\"src/fake.js/a.js\")",
-      "'./a': ()=>__mako_require__(\"src/fake.js/a.js\")",
-      "'./aa.js': ()=>__mako_require__(\"src/fake.js/aa.js\")",
-      "'./aa': ()=>__mako_require__(\"src/fake.js/aa.js\")",
-      "'./index.js': ()=>__mako_require__(\"src/fake.js/index.js\")",
-      "'./index': ()=>__mako_require__(\"src/fake.js/index.js\")",
       "'.': ()=>__mako_require__(\"src/fake.js/index.js\")",
       "'./': ()=>__mako_require__(\"src/fake.js/index.js\")",
+      "'./a': ()=>__mako_require__(\"src/fake.js/a.js\")",
+      "'./a.js': ()=>__mako_require__(\"src/fake.js/a.js\")",
+      "'./aa': ()=>__mako_require__(\"src/fake.js/aa.js\")",
+      "'./aa.js': ()=>__mako_require__(\"src/fake.js/aa.js\")",
+      "'./index': ()=>__mako_require__(\"src/fake.js/index.js\")",
+      "'./index.js': ()=>__mako_require__(\"src/fake.js/index.js\")",
     ].join(',\n\\s+'),
     true,
   ),
@@ -125,3 +129,5 @@ assert.doesNotMatch(
   /glob=\*\*\/\*\s*\*\//,
   "should escape glob pattern in module id debug comment"
 );
+
+assert.match(content, /src\/first_empty_quasis\?context&glob=\*\*\/\*&async/g, "should handle template string with first empty quasis");
