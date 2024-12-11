@@ -65,10 +65,10 @@ impl ModuleFederationPlugin {
                                 acc
                             });
                         let (sync_js_files, sync_css_files) =
-                            extrac_assets(all_exposes_sync_chunks, &params.stats);
+                            extract_assets(all_exposes_sync_chunks, &params.stats);
 
                         let (async_js_files, async_css_files) =
-                            extrac_assets(all_exposes_async_chunks, &params.stats);
+                            extract_assets(all_exposes_async_chunks, &params.stats);
                         let async_js_files = async_js_files
                             .into_iter()
                             .filter(|f| !sync_js_files.contains(f))
@@ -153,7 +153,7 @@ impl ModuleFederationPlugin {
     }
 }
 
-fn extrac_assets(
+fn extract_assets(
     all_exposes_sync_chunks: Vec<ModuleId>,
     stats: &StatsJsonMap,
 ) -> (Vec<String>, Vec<String>) {

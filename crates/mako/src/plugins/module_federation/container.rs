@@ -74,7 +74,7 @@ if(!{federation_global}.instance) {{
     }
 
     pub(super) fn add_container_entry(&self, config: &mut Config, root: &Path) {
-        // add containter entry
+        // add container entry
         if let Some(exposes) = self.config.exposes.as_ref() {
             let container_entry_name = &self.config.name;
             if !exposes.is_empty() {

@@ -47,7 +47,7 @@ impl Plugin for ModuleFederationPlugin {
         _is_entry: bool,
         _context: &Arc<Context>,
     ) -> Result<Option<Content>> {
-        // add containter entry runtime dependency
+        // add container entry runtime dependency
         if !_is_entry {
             Ok(None)
         } else {
