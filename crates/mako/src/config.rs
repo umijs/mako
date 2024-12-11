@@ -384,12 +384,10 @@ impl Config {
 
             // support relative alias
             config.resolve.alias.iter_mut().for_each(|(_, v)| {
-                *v = if v.starts_with('.') {
-                    #[allow(clippy::needless_borrows_for_generic_args)]
-                    root.join(&v).to_string_lossy().to_string()
-                } else {
-                    v.clone()
-                };
+                #[allow(clippy::needless_borrows_for_generic_args)]
+                if v.starts_with('.') {
+                    *v = root.join(&v).to_string_lossy().to_string()
+                }
             });
 
             // dev 环境下不产生 hash, prod 环境下根据用户配置
