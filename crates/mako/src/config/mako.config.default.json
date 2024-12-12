@@ -75,6 +75,7 @@
     "centralEnsure": true,
     "importsChecker": false
   },
+  "legacyInterop": false,
   "useDefineForClassFields": true,
   "emitDecoratorMetadata": false,
   "watch": { "ignorePaths": [], "_nodeModulesRegexes": [] },
