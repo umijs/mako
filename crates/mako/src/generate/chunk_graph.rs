@@ -9,7 +9,7 @@ use twox_hash::XxHash64;
 
 use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::module::ModuleId;
-use crate::module_graph::ModuleGraph;
+use crate::module_graph::{ModuleGraph, ModuleRegistry};
 
 pub struct ChunkGraph {
     pub(crate) graph: StableDiGraph<Chunk, ()>,
@@ -104,13 +104,13 @@ impl ChunkGraph {
         self.graph.node_weights().map(|c| c.filename()).collect()
     }
 
-    pub fn full_hash(&self, module_graph: &ModuleGraph) -> u64 {
+    pub fn full_hash(&self, module_graph: &ModuleGraph, module_registry: &ModuleRegistry) -> u64 {
         let mut chunks = self.get_all_chunks();
         chunks.sort_by_key(|c| c.id.id.clone());
 
         let mut hasher: XxHash64 = Default::default();
         for c in chunks {
-            hasher.write_u64(c.hash(module_graph))
+            hasher.write_u64(c.hash(module_graph, module_registry))
         }
         hasher.finish()
     }

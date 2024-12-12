@@ -2776,6 +2776,7 @@ dependencies = [
  "indexmap 2.5.0",
  "indicatif",
  "insta",
+ "log",
  "maplit",
  "md5",
  "mdxjs",

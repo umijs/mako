@@ -17,7 +17,7 @@ pub use crate::generate::chunk_pot::util::CHUNK_FILE_NAME_HASH_LENGTH;
 use crate::generate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::generate::generate_chunks::ChunkFile;
 use crate::module::{Module, ModuleAst, ModuleId};
-use crate::module_graph::ModuleGraph;
+use crate::module_graph::ModuleRegistry;
 use crate::ternary;
 
 pub struct ChunkPot<'a> {
@@ -31,7 +31,7 @@ pub struct ChunkPot<'a> {
 impl<'cp> ChunkPot<'cp> {
     pub fn from<'a: 'cp>(
         chunk: &'a Chunk,
-        mg: &'a ModuleGraph,
+        mg: &'a ModuleRegistry,
         context: &'cp Arc<Context>,
     ) -> Self {
         let (js_modules, stylesheet) = ChunkPot::split_modules(chunk.get_modules(), mg, context);
@@ -143,7 +143,7 @@ impl<'cp> ChunkPot<'cp> {
 
     fn split_modules<'a>(
         module_ids: &LinkedHashSet<ModuleId>,
-        module_graph: &'a ModuleGraph,
+        registry: &'a ModuleRegistry,
         context: &'a Arc<Context>,
     ) -> (JsModules<'a>, Option<CssModules<'a>>) {
         crate::mako_profile_function!(module_ids.len().to_string());
@@ -154,7 +154,7 @@ impl<'cp> ChunkPot<'cp> {
         let mut css_raw_hashes = vec![];
 
         module_ids.iter().for_each(|module_id| {
-            let module = module_graph.get_module(module_id).unwrap();
+            let module = registry.module(module_id).unwrap();
 
             if module.info.is_none() {
                 return;

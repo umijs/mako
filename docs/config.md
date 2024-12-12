@@ -505,7 +505,7 @@ Specify the build mode, `"development"` or `"production"`.
 - Type: `"named" | "hashed" | "numeric"`
 - Default: `"named"` when mode is development, `"hashed"` when mode is production
 
-Specify the strategy for generating moduleId.
+Specify the strategy for generating module_id.
 
 ### nodePolyfill
 

@@ -17,7 +17,7 @@ use swc_core::ecma::visit::{Visit, VisitWith};
 
 use crate::ast::DUMMY_CTXT;
 use crate::module::{ImportType, ModuleId, NamedExportType, ResolveType};
-use crate::module_graph::ModuleGraph;
+use crate::module_graph::ModuleRegistry;
 use crate::plugins::tree_shaking::shake::module_concatenate::ConcatenateConfig;
 
 bitflags! {
@@ -279,10 +279,10 @@ pub struct ConcatenateContext {
 }
 
 impl ConcatenateContext {
-    pub fn init(config: &ConcatenateConfig, module_graph: &ModuleGraph) -> Result<Self> {
+    pub fn init(config: &ConcatenateConfig, module_registry: &ModuleRegistry) -> Result<Self> {
         let mut all_used_globals = HashSet::new();
         config.inners.iter().for_each(|inner| {
-            let module = module_graph.get_module(inner).unwrap();
+            let module = module_registry.get_module(inner).unwrap();
             let ast = &module.as_script().unwrap();
             all_used_globals.extend(ConcatenateContext::global_vars(
                 &ast.ast,

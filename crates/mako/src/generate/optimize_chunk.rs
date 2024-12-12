@@ -232,7 +232,7 @@ impl Compiler {
 
         // continue split chunk if chunk size is greater than max_size
         let mut extra_optimize_infos = vec![];
-        let module_graph = self.context.module_graph.read().unwrap();
+        let module_graph = self.context.module_registry.read().unwrap();
         for info in &mut *optimize_chunks_infos {
             let mut split_chunk_count = 0;
             let mut chunk_size = *chunk_size_map.get(&info.group_options.name).unwrap();
@@ -533,15 +533,15 @@ impl Compiler {
     }
 
     fn get_module_size(&self, module_id: &ModuleId) -> Option<usize> {
-        let module_graph = self.context.module_graph.read().unwrap();
-        module_graph
+        let module_registry = self.context.module_registry.read().unwrap();
+        module_registry
             .get_module(module_id)
             .map(|m| m.get_module_size())
     }
 
     fn get_package_name(&self, module_id: &ModuleId) -> Option<String> {
-        let module_graph = self.context.module_graph.read().unwrap();
-        match module_graph.get_module(module_id) {
+        let module_registry = self.context.module_registry.read().unwrap();
+        match module_registry.get_module(module_id) {
             Some(Module {
                 info:
                     Some(ModuleInfo {
