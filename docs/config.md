@@ -116,7 +116,7 @@ Specify the code splitting strategy. Use `auto` or `granular` strategy for SPA, 
 
 ### copy
 
-- Type: `string[]`
+- Type: `(string | { from: string; to: string })[]`
 - Default: `["public"]`
 
 Specify the files or directories to be copied. By default, the files under the `public` directory will be copied to the output directory.
