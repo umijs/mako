@@ -61,7 +61,6 @@
   },
   "emitAssets": true,
   "cssModulesExportOnlyLocales": false,
-  "inlineCSS": false,
   "rscServer": false,
   "rscClient": false,
   "experimental": {
