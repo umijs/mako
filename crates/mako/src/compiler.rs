@@ -244,6 +244,7 @@ impl Compiler {
             Arc::new(plugins::copy::CopyPlugin {}),
             Arc::new(plugins::import::ImportPlugin {}),
             // file types
+            Arc::new(plugins::case_sensitive::CaseSensitivePlugin::new()),
             Arc::new(plugins::context_module::ContextModulePlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
             Arc::new(plugins::invalid_webpack_syntax::InvalidWebpackSyntaxPlugin {}),
