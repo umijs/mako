@@ -20,7 +20,7 @@ impl Compiler {
 
         let mut visited = HashSet::new();
         let mut edges = vec![];
-        let module_graph = self.context.module_graph.read().unwrap();
+        let module_graph = self.context.optimized_module_graph.read().unwrap();
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
         chunk_graph.clear();
 
@@ -282,6 +282,7 @@ impl Compiler {
                 self.hot_update_module_chunks(first_modified_module, &mut chunk_graph);
 
             // collect added async chunks modules from module_graph
+            // FIXME: it should be optimized module graph
             let module_graph = self.context.module_graph.read().unwrap();
             let async_chunk_modules = update_result
                 .added

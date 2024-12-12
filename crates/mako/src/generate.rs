@@ -84,12 +84,17 @@ impl Compiler {
 
         let async_dep_map = self.mark_async();
 
+        {
+            let m = self.context.module_graph.read().unwrap();
+            *self.context.optimized_module_graph.write().unwrap() = m.clone();
+        };
+
         // Disable tree shaking in watch mode temporarily
         // ref: https://github.com/umijs/mako/issues/396
         if !self.context.args.watch {
             match self.context.config._tree_shaking {
                 Some(TreeShakingStrategy::Basic) => {
-                    let mut module_graph = self.context.module_graph.write().unwrap();
+                    let mut module_graph = self.context.optimized_module_graph.write().unwrap();
 
                     crate::mako_profile_scope!("tree shake");
                     self.context
