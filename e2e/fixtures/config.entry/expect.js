@@ -9,3 +9,5 @@ assert(content, `should have foo.js`);
 assert(content.includes(`"src/bar.ts":`), `should have src/bar.ts module define`);
 assert(content.includes(`"src/foo.ts":`), `should have src/foo.ts module define`);
 assert(names.includes('hoo/hoo.js'), `should have hoo/hoo.js`);
+assert(names.includes('soo.js'), `should have soo.js`);
+assert(names.includes('yoo.js'), `should have yoo.js`);
