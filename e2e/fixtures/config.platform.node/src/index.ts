@@ -17,3 +17,5 @@ try {
 } catch {
   hasCrypto = false
 }
+
+require('node:sqlite');
