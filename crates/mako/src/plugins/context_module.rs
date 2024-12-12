@@ -1,3 +1,4 @@
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -38,25 +39,34 @@ impl Plugin for ContextModulePlugin {
             let glob_pattern = param.file.pathname.clone().join(glob_pattern);
             let paths = glob(glob_pattern.to_str().unwrap())?;
 
-            let mut key_values = vec![];
+            let mut key_values = BTreeMap::new();
+            let load_by = if param.file.has_param("async") {
+                "import"
+            } else {
+                "require"
+            };
 
             for path in paths {
                 let path = path?;
                 let rlt_path = path.strip_prefix(&param.file.pathname)?;
+                let is_file = path.is_file();
 
-                // full path `./i18n/zh_CN.json`
-                let mut keys: Vec<String> = vec![];
+                // full path `./i18n/jzh_CN.json`
+                let mut keys = HashSet::new();
+
                 let metadata = fs::metadata(&path);
                 if let Ok(md) = metadata {
                     if md.is_dir() && !has_index_file_in_directory(&path) {
                         continue;
                     }
                 }
-                keys.push(format!("./{}", rlt_path.to_string_lossy()));
+                keys.insert(format!("./{}", rlt_path.to_string_lossy()));
                 // omit ext `./i18n/zh_CN`
                 if let Some(ext) = rlt_path.extension() {
-                    if get_module_extensions().contains(&format!(".{}", ext.to_string_lossy())) {
-                        keys.push(format!(
+                    if is_file
+                        && get_module_extensions().contains(&format!(".{}", ext.to_string_lossy()))
+                    {
+                        keys.insert(format!(
                             "./{}",
                             rlt_path.with_extension("").to_string_lossy()
                         ));
@@ -85,16 +95,11 @@ impl Plugin for ContextModulePlugin {
                     }
                 }
 
-                let is_async = param.file.has_param("async");
-
                 for key in keys {
-                    let load_by = if is_async { "import" } else { "require" };
-                    key_values.push(format!(
-                        "'{}': () => {}('{}')",
-                        key,
-                        load_by,
-                        path.to_string_lossy()
-                    ));
+                    let map_entry =
+                        format!("'{}': () => {}('{}')", key, load_by, path.to_string_lossy());
+
+                    key_values.insert(key, map_entry);
                 }
             }
 
@@ -113,7 +118,10 @@ module.exports = (id) => {{
     }}
 }};
 "#,
-                key_values.join(",\n")
+                key_values
+                    .into_values()
+                    .collect::<Vec<String>>()
+                    .join(",\n")
             );
             Ok(Some(Content::Js(JsContent {
                 content,
@@ -245,9 +253,16 @@ fn try_replace_context_arg(
         }
 
         // handle `./foo/${bar}.ext`
+        //        `${bar}` will be handle as `./${bar}`
         Expr::Tpl(tpl) => {
             if !tpl.exprs.is_empty() {
-                let pre_quasis = tpl.quasis.first().unwrap().raw.to_string();
+                let first_quasis_str = tpl.quasis.first().unwrap().raw.to_string();
+                let pre_quasis = if first_quasis_str.is_empty() {
+                    "./".to_string()
+                } else {
+                    first_quasis_str
+                };
+
                 let (prefix, remainder) = if let Some(pos) = pre_quasis.rfind('/') {
                     (
                         pre_quasis[..=pos].to_string(),

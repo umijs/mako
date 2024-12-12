@@ -1,3 +1,22 @@
+## 0.9.9
+
+`2024-12-12`
+
+* feat: supports publicPath: auto by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1717
+* feat: auto resolve entry file extension by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1718
+* fix: context module source with first empty quasis by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/1719
+* fix: inline css config deserialize by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1720
+* fix: node ignore should support node: prefixed only built-in modules by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1721
+
+## 0.9.8
+
+`2024-12-06`
+
+- feat: ensure esm imports exists when mode is production by [@Jinbao1001](https://github.com/Jinbao1001) in [#1709]https://github.com/umijs/mako/pull/1709
+- refactor(dev): reduce ensure2 chunk map size by [@stormslowly](https://github.com/stormslowly) in [#1707](https://github.com/umijs/mako/pull/1707)
+- fix: optimization.concatenateModules dts lost by [@sorrycc](https://github.com/sorrycc) in [#1692](https://github.com/umijs/mako/pull/1708)
+- fix: typing of stats  by [@stormslowly](https://github.com/stormslowly) in [#1712](https://github.com/umijs/mako/pull/1712)
+
 ## 0.9.7
 
 `2024-11-25`

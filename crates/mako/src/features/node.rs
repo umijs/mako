@@ -21,8 +21,12 @@ impl Node {
             config.targets = HashMap::from([("node".into(), *target)]);
             // ignore all built-in node modules
             config.ignores.push(format!(
-                "^(node:)?({})(/.+|$)",
-                Self::get_all_node_modules().join("|")
+                "^({})(/.+|$)",
+                Self::get_all_builtin_modules_besides_node_prefixed_only().join("|")
+            ));
+            config.ignores.push(format!(
+                "^node:({})(/.+|$)",
+                Self::get_all_builtin_modules().join("|")
             ));
             // polifyll __dirname & __filename is supported with MockFilenameAndDirname Visitor
         } else {
@@ -123,7 +127,17 @@ impl Node {
         .collect()
     }
 
-    fn get_all_node_modules() -> Vec<String> {
+    fn get_node_prefixed_only_builtin_modules() -> Vec<String> {
+        ["sqlite", "test"].iter().map(|s| s.to_string()).collect()
+    }
+
+    fn get_all_builtin_modules() -> Vec<String> {
+        let mut modules = Self::get_all_builtin_modules_besides_node_prefixed_only();
+        modules.extend(Self::get_node_prefixed_only_builtin_modules());
+        modules
+    }
+
+    fn get_all_builtin_modules_besides_node_prefixed_only() -> Vec<String> {
         let mut modules = Self::get_polyfill_modules();
         modules.extend(Self::get_empty_modules());
         modules

@@ -60,5 +60,9 @@
     "zx": "^7.2.3"
   },
   "packageManager": "pnpm@8.15.8",
-  "repository": "git@github.com:umijs/mako.git"
+  "repository": "git@github.com:umijs/mako.git",
+  "volta": {
+    "node": "20.18.1",
+    "pnpm": "8.15.9"
+  }
 }

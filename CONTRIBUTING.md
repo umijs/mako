@@ -24,6 +24,12 @@ $ cargo install just
 $ cargo install cargo-binstall
 ```
 
+It's recommended to use [Volta](https://volta.sh/) to manage the node and pnpm version. And you need to set the `VOLTA_FEATURE_PNPM` environment variable to enable pnpm support.
+
+```bash
+export VOLTA_FEATURE_PNPM=1
+```
+
 ### Development
 
 ```bash
