@@ -396,7 +396,7 @@ function createRuntime(makoModules, entryModuleId, global) {
 <% } %>
   return {
 <% if umd.is_some() || cjs { %>
-    exports: exports,
+    exports: <% if umd_export.is_empty() { %> exports <% } else { %> exports.<%= umd_export.join(".") %> <% } %>,
 <% } %>
     requireModule: requireModule,
 <% if has_dynamic_chunks { %>

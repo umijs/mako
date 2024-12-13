@@ -815,7 +815,7 @@ babel-plugin-import 的简化版本，仅支持三个配置项：libraryName，l
 
 ### umd
 
-- 类型：`false | string`
+- 类型：`false | string | { name: string, export?: string[] }`
 - 默认值：`false`
 
 是否输出 umd 格式。

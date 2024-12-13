@@ -1,0 +1,1 @@
+{ "umd": {"name":"foooo", "export": ["default", "x"]} }
