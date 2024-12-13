@@ -85,7 +85,6 @@ impl DevServer {
             let server = Server::bind(&addr).serve(make_svc);
             // TODO: print when mako is run standalone
             if std::env::var("MAKO_CLI").is_ok() {
-                println!();
                 if config_port != port {
                     println!(
                         "{}",

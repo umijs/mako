@@ -45,31 +45,29 @@ impl ModuleFederationPlugin {
             r#"import federation from "{federation_impl}";
 {plugins_imports}
 
-if(!{federation_global}.runtime) {{
-  var preFederation = {federation_global};
-  {federation_global} = {{}};
+if(!{FEDERATION_GLOBAL}.runtime) {{
+  var preFederation = {FEDERATION_GLOBAL};
+  {FEDERATION_GLOBAL} = {{}};
   for(var key in federation) {{
-    {federation_global}[key] = federation[key];
+    {FEDERATION_GLOBAL}[key] = federation[key];
   }}
   for(var key in preFederation) {{
-    {federation_global}[key] = preFederation[key];
+    {FEDERATION_GLOBAL}[key] = preFederation[key];
   }}
 }}
 
-if(!{federation_global}.instance) {{
+if(!{FEDERATION_GLOBAL}.instance) {{
   {plugins_instantiations}
-  {federation_global}.instance = {federation_global}.runtime.init({federation_global}.initOptions);
-  if({federation_global}.attachShareScopeMap) {{
-    {federation_global}.attachShareScopeMap({mako_require});
+  {FEDERATION_GLOBAL}.instance = {FEDERATION_GLOBAL}.runtime.init({FEDERATION_GLOBAL}.initOptions);
+  if({FEDERATION_GLOBAL}.attachShareScopeMap) {{
+    {FEDERATION_GLOBAL}.attachShareScopeMap({MAKO_REQUIRE});
   }}
-  if({federation_global}.installInitialConsumes) {{
-    {federation_global}.installInitialConsumes();
+  if({FEDERATION_GLOBAL}.installInitialConsumes) {{
+    {FEDERATION_GLOBAL}.installInitialConsumes();
   }}
 }}
 "#,
             federation_impl = self.config.implementation,
-            federation_global = FEDERATION_GLOBAL,
-            mako_require = MAKO_REQUIRE
         )
     }
 
@@ -114,11 +112,10 @@ if(!{federation_global}.instance) {{
             .map(|(name, module)| {
                 format!(
                     r#""{name}": () => import(
-                        /* makoChunkName: "{prefix}{striped_name}" */
+                        /* makoChunkName: "{FEDERATION_EXPOSE_CHUNK_PREFIX}{striped_name}" */
                         /* federationExpose: true */
                         "{module}"
 ),"#,
-                    prefix = FEDERATION_EXPOSE_CHUNK_PREFIX,
                     module = root.join(module).canonicalize().unwrap().to_string_lossy(),
                     striped_name = name.replace("./", "")
                 )
@@ -132,7 +129,7 @@ if(!{federation_global}.instance) {{
 }};
 
 var get = (module, getScope) => {{
-    {mako_require}.R = getScope;
+    {MAKO_REQUIRE}.R = getScope;
 	getScope = (
 	Object.prototype.hasOwnProperty.call(moduleMap, module)
 			? moduleMap[module]()
@@ -140,13 +137,13 @@ var get = (module, getScope) => {{
 				throw new Error('Module "' + module + '" does not exist in container.');
 			}})
 	);
-	{mako_require}.R = undefined;
+	{MAKO_REQUIRE}.R = undefined;
 	return getScope;
 }};
 
 var init = (shareScope, initScope, remoteEntryInitOptions) => {{
-	return {mako_require}.federation.bundlerRuntime.initContainerEntry({{
-        webpackRequire: {mako_require},
+	return {FEDERATION_GLOBAL}bundlerRuntime.initContainerEntry({{
+        webpackRequire: {MAKO_REQUIRE},
 		shareScope: shareScope,
 		initScope: initScope,
 		remoteEntryInitOptions: remoteEntryInitOptions,
@@ -156,7 +153,6 @@ var init = (shareScope, initScope, remoteEntryInitOptions) => {{
 
 export {{ get, init }};
 "#,
-            mako_require = MAKO_REQUIRE,
             share_scope = self.config.share_scope
         )
     }
@@ -270,10 +266,9 @@ export {{ get, init }};
         } else {
             format!(
                 r#"var pluginsToAdd = [{plugins_to_add}].filter(Boolean);
-  {federation_global}.initOptions.plugins = {federation_global}.initOptions.plugins ?
-    {federation_global}.initOptions.plugins.concat(pluginsToAdd) : pluginsToAdd;
+  {FEDERATION_GLOBAL}.initOptions.plugins = {FEDERATION_GLOBAL}.initOptions.plugins ?
+    {FEDERATION_GLOBAL}.initOptions.plugins.concat(pluginsToAdd) : pluginsToAdd;
 "#,
-                federation_global = FEDERATION_GLOBAL
             )
         };
         (plugins_imports, plugins_instantiations)
