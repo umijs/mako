@@ -126,7 +126,7 @@ pub struct BuildParams {
     autoCSSModules?: boolean;
     ignoreCSSParserErrors?: boolean;
     dynamicImportToRequire?: boolean;
-    umd?: false | string | { name: string, export?: string: [] };
+    umd?: false | string | { name: string, export?: string[] };
     cjs?: boolean;
     writeToDisk?: boolean;
     transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
