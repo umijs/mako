@@ -3,8 +3,11 @@ use std::sync::Arc;
 
 use serde::Serialize;
 
-use super::ModuleFederationPlugin;
+use super::{
+    ModuleFederationPlugin, FEDERATION_REMOTE_MODULE_PREFIX, FEDERATION_REMOTE_REFERENCE_PREFIX,
+};
 use crate::compiler::Context;
+use crate::resolve::{RemoteInfo, ResolverResource};
 
 impl ModuleFederationPlugin {
     pub(super) fn get_container_references_code(&self, context: &Arc<Context>) -> String {
@@ -76,6 +79,36 @@ impl ModuleFederationPlugin {
 }}
 )()"#,
         )
+    }
+
+    pub(super) fn resolve_remote(
+        &self,
+        source: &str,
+    ) -> std::result::Result<Option<ResolverResource>, anyhow::Error> {
+        let source_parts = source
+            .split_once("/")
+            .map_or((source.to_string(), ".".to_string()), |(part_0, part_1)| {
+                (part_0.to_string(), part_1.to_string())
+            });
+        Ok(self.config.remotes.as_ref().map_or_else(
+            || None,
+            |remotes| {
+                remotes.get(&source_parts.0).map(|_remote| {
+                    ResolverResource::Remote(RemoteInfo {
+                        module_id: format!("{}{}", FEDERATION_REMOTE_MODULE_PREFIX, source),
+                        external_refenrence_id: format!(
+                            "{}{}",
+                            FEDERATION_REMOTE_REFERENCE_PREFIX, source_parts.0
+                        ),
+                        // FIXME: hard code now
+                        external_type: "script".to_string(),
+                        sub_path: format!("./{}", source_parts.1),
+                        name: source_parts.0.to_string(),
+                        share_scope: self.config.share_scope.clone(),
+                    })
+                })
+            },
+        ))
     }
 }
 

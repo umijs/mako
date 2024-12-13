@@ -9,7 +9,7 @@ use crate::compiler::{Args, Context};
 use crate::config::module_federation::ModuleFederationConfig;
 use crate::config::Config;
 use crate::plugin::{Plugin, PluginGenerateEndParams, PluginResolveIdParams};
-use crate::resolve::{RemoteInfo, ResolverResource};
+use crate::resolve::ResolverResource;
 
 mod constants;
 mod container;
@@ -42,18 +42,18 @@ impl Plugin for ModuleFederationPlugin {
 
     fn load_transform(
         &self,
-        _content: &mut Content,
+        content: &mut Content,
         _path: &str,
         _is_entry: bool,
-        _context: &Arc<Context>,
+        context: &Arc<Context>,
     ) -> Result<Option<Content>> {
         // add container entry runtime dependency
         if !_is_entry {
             Ok(None)
         } else {
-            match _content {
+            match content {
                 Content::Js(js_content) => {
-                    let entry_runtime_dep_path = self.prepare_entry_runtime_dep(&_context.root);
+                    let entry_runtime_dep_path = self.prepare_entry_runtime_dep(&context.root);
                     js_content.content.insert_str(
                         0,
                         format!(
@@ -63,7 +63,7 @@ impl Plugin for ModuleFederationPlugin {
                         )
                         .as_str(),
                     );
-                    Ok(Some(_content.clone()))
+                    Ok(Some(content.clone()))
                 }
                 _ => Ok(None),
             }
@@ -89,30 +89,7 @@ impl Plugin for ModuleFederationPlugin {
         _params: &PluginResolveIdParams,
         _context: &Arc<Context>,
     ) -> Result<Option<ResolverResource>> {
-        let source_parts = source
-            .split_once("/")
-            .map_or((source.to_string(), ".".to_string()), |(part_0, part_1)| {
-                (part_0.to_string(), part_1.to_string())
-            });
-        Ok(self.config.remotes.as_ref().map_or_else(
-            || None,
-            |remotes| {
-                remotes.get(&source_parts.0).map(|_remote| {
-                    ResolverResource::Remote(RemoteInfo {
-                        module_id: format!("{}{}", FEDERATION_REMOTE_MODULE_PREFIX, source),
-                        external_refenrence_id: format!(
-                            "{}{}",
-                            FEDERATION_REMOTE_REFERENCE_PREFIX, source_parts.0
-                        ),
-                        // FIXME: hard code now
-                        external_type: "script".to_string(),
-                        sub_path: format!("./{}", source_parts.1),
-                        name: source_parts.0.to_string(),
-                        share_scope: self.config.share_scope.clone(),
-                    })
-                })
-            },
-        ))
+        self.resolve_remote(source)
     }
 
     fn generate_end(&self, params: &PluginGenerateEndParams, context: &Arc<Context>) -> Result<()> {
