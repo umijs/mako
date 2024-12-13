@@ -7,11 +7,13 @@ use anyhow::{anyhow, Ok, Result};
 use rayon::prelude::*;
 use tracing::debug;
 
+use crate::ast::file::File;
 use crate::build::BuildError;
 use crate::compiler::Compiler;
 use crate::generate::transform::transform_modules;
 use crate::module::{Dependency, Module, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
+use crate::plugin::NextBuildParam;
 use crate::resolve::{self, clear_resolver_cache};
 
 #[derive(Debug, Clone)]
@@ -253,6 +255,9 @@ impl Compiler {
         update_result.added.extend(added_module_ids);
 
         debug!("update_result: {:?}", &update_result);
+
+        self.context.plugin_driver.after_update(self)?;
+
         Result::Ok(update_result)
     }
 
@@ -326,14 +331,20 @@ impl Compiler {
                 resolved_deps.iter().for_each(|dep| {
                     let resolved_path = dep.resolver_resource.get_resolved_path();
                     let is_external = dep.resolver_resource.get_external().is_some();
-                    let module_id = ModuleId::new(resolved_path.clone());
-                    let module = if is_external {
+                    let dep_module_id = ModuleId::new(resolved_path.clone());
+                    let dep_module = if is_external {
                         Self::create_external_module(&dep.resolver_resource, self.context.clone())
                     } else {
-                        Self::create_empty_module(&module_id)
+                        Self::create_empty_module(&dep_module_id)
                     };
-                    target_dependencies.push((module_id.clone(), dep.dependency.clone()));
-                    dependence_modules.insert(module_id, module);
+                    target_dependencies.push((dep_module_id.clone(), dep.dependency.clone()));
+                    dependence_modules.insert(dep_module_id, dep_module);
+
+                    self.context.plugin_driver.next_build(&NextBuildParam {
+                        current_module: &module.id,
+                        next_file: &File::new(resolved_path.clone(), self.context.clone()),
+                        resource: &dep.resolver_resource,
+                    });
                 });
 
                 let modules_diff = diff(&current_dependencies, &target_dependencies);

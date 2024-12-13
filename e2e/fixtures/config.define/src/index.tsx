@@ -1,5 +1,7 @@
 process.env.NODE_ENV;
 
+declare var FOO: string;
+
 it("defined string value should be right", () => {
   expect(AAA).toEqual("aaa")
 });
@@ -39,3 +41,7 @@ it("defined stringified object value should be right", () => {
   expect(III).toEqual({ v: 1 })
 });
 
+
+it("should replace ts declare shallowed value", ()=>{
+  expect(FOO).toEqual("bar")
+});

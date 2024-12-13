@@ -33,6 +33,13 @@ pub struct Dependency {
     pub span: Option<Span>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ModuleSystem {
+    CommonJS,
+    ESModule,
+    Custom,
+}
+
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
     pub struct ResolveTypeFlags: u16 {
@@ -192,11 +199,13 @@ pub struct ModuleInfo {
     pub resolved_resource: Option<ResolverResource>,
     /// The transformed source map chain of this module
     pub source_map_chain: Vec<Vec<u8>>,
+    pub module_system: ModuleSystem,
 }
 
 impl Default for ModuleInfo {
     fn default() -> Self {
         Self {
+            module_system: ModuleSystem::CommonJS,
             ast: ModuleAst::None,
             file: Default::default(),
             deps: Default::default(),

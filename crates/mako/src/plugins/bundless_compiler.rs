@@ -24,7 +24,7 @@ use crate::compiler::{Args, Context};
 use crate::config::Config;
 use crate::module::{ModuleAst, ModuleId};
 use crate::plugin::{Plugin, PluginTransformJsParam};
-use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace};
+use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace, ResolvedReplaceInfo};
 use crate::visitors::dynamic_import::DynamicImport;
 
 pub struct BundlessCompiler {
@@ -80,11 +80,18 @@ impl BundlessCompiler {
                             }
                         };
 
-                        Ok((dep.source.clone(), (replacement.clone(), replacement)))
+                        Ok((
+                            dep.source.clone(),
+                            ResolvedReplaceInfo {
+                                chunk_id: None,
+                                to_replace_source: replacement,
+                                resolved_module_id: id.clone(),
+                            },
+                        ))
                     })
                     .collect::<Result<Vec<_>>>();
 
-                let resolved_deps: HashMap<String, (String, String)> =
+                let resolved_deps: HashMap<String, ResolvedReplaceInfo> =
                     resolved_deps?.into_iter().collect();
 
                 drop(module_graph);

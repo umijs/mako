@@ -4,6 +4,8 @@ use swc_core::ecma::ast::{
     MetaPropExpr, MetaPropKind, Module, ModuleItem,
 };
 
+use crate::module::{ModuleAst, ModuleSystem};
+
 pub fn is_remote_or_data(url: &str) -> bool {
     let lower_url = url.to_lowercase();
     // ref:
@@ -147,4 +149,23 @@ pub fn require_ensure(source: String) -> Expr {
             expr: Box::new(Expr::Lit(Lit::Str(source.into()))),
         }],
     )
+}
+
+pub fn get_module_system(ast: &ModuleAst) -> ModuleSystem {
+    match ast {
+        ModuleAst::Script(module) => {
+            let is_esm = module
+                .ast
+                .body
+                .iter()
+                .any(|s| matches!(s, ModuleItem::ModuleDecl(_)));
+            if is_esm {
+                ModuleSystem::ESModule
+            } else {
+                ModuleSystem::CommonJS
+            }
+        }
+        crate::module::ModuleAst::Css(_) => ModuleSystem::Custom,
+        crate::module::ModuleAst::None => ModuleSystem::Custom,
+    }
 }

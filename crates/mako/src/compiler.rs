@@ -15,7 +15,7 @@ use tracing::debug;
 
 use crate::ast::comments::Comments;
 use crate::ast::file::win_path;
-use crate::config::{Config, ModuleIdStrategy, OutputMode};
+use crate::config::{Config, Mode, ModuleIdStrategy, OutputMode};
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::generate::optimize_chunk::OptimizeChunksInfo;
 use crate::module_graph::ModuleGraph;
@@ -258,6 +258,10 @@ impl Compiler {
 
         let mut config = config;
 
+        if config.mode == Mode::Production && config.experimental.imports_checker {
+            plugins.push(Arc::new(plugins::imports_checker::ImportsChecker {}));
+        }
+
         if let Some(progress) = &config.progress {
             plugins.push(Arc::new(plugins::progress::ProgressPlugin::new(
                 plugins::progress::ProgressPluginOptions {
@@ -296,6 +300,10 @@ impl Compiler {
 
         if args.watch && std::env::var("SSU").is_ok_and(|v| v == "true") {
             plugins.push(Arc::new(plugins::ssu::SUPlus::new()));
+        }
+
+        if args.watch && config.experimental.central_ensure {
+            plugins.push(Arc::new(plugins::central_ensure::CentralChunkEnsure {}));
         }
 
         if let Some(minifish_config) = &config._minifish {

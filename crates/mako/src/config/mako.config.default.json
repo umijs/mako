@@ -61,17 +61,19 @@
   },
   "emitAssets": true,
   "cssModulesExportOnlyLocales": false,
-  "inlineCSS": false,
   "rscServer": false,
   "rscClient": false,
   "experimental": {
     "webpackSyntaxValidate": [],
     "requireContext": true,
+    "ignoreNonLiteralRequire": false,
     "magicComment": true,
     "detectCircularDependence": {
       "ignores": ["node_modules"],
       "graphviz": false
-    }
+    },
+    "centralEnsure": true,
+    "importsChecker": false
   },
   "useDefineForClassFields": true,
   "emitDecoratorMetadata": false,
