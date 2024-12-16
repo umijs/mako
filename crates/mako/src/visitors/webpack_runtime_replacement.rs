@@ -19,11 +19,11 @@ pub const WEBPACK_VALUES: [&str; 14] = [
     "__webpack_base_uri__",
 ];
 
-pub struct WebpackRequire {
+pub struct WebpackRuntimeReplacement {
     pub unresolved_mark: Mark,
 }
 
-impl WebpackRequire {
+impl WebpackRuntimeReplacement {
     pub fn new(unresolved_mark: Mark) -> Self {
         Self { unresolved_mark }
     }
@@ -32,7 +32,7 @@ impl WebpackRequire {
     }
 }
 
-impl VisitMut for WebpackRequire {
+impl VisitMut for WebpackRuntimeReplacement {
     // find the "typeof __webpack_require__" in the ast tree
     fn visit_mut_unary_expr(&mut self, unary_expr: &mut UnaryExpr) {
         if unary_expr.op.as_str() == "typeof"
@@ -51,7 +51,7 @@ mod tests {
     use swc_core::common::GLOBALS;
     use swc_core::ecma::visit::VisitMutWith;
 
-    use super::WebpackRequire;
+    use super::WebpackRuntimeReplacement;
     use crate::ast::tests::TestUtils;
 
     #[test]
@@ -78,7 +78,7 @@ mod tests {
         let mut test_utils = TestUtils::gen_js_ast(js_code);
         let ast = test_utils.ast.js_mut();
         GLOBALS.set(&test_utils.context.meta.script.globals, || {
-            let mut visitor = WebpackRequire {
+            let mut visitor = WebpackRuntimeReplacement {
                 unresolved_mark: ast.unresolved_mark,
             };
             ast.ast.visit_mut_with(&mut visitor);
