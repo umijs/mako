@@ -133,6 +133,8 @@ pub(crate) fn render_css_chunk(
         file_name: get_css_chunk_filename(&chunk_pot.js_name),
         chunk_id: chunk_pot.chunk_id.clone(),
         file_type: ChunkFileType::Css,
+        chunk_name: chunk_pot.chunk_name.clone(),
+        file_name_template: None,
     })
 }
 
@@ -181,8 +183,10 @@ pub(crate) fn render_normal_js_chunk(
         hash,
         source_map,
         file_name: chunk_pot.js_name.clone(),
+        chunk_name: chunk_pot.chunk_name.clone(),
         chunk_id: chunk_pot.chunk_id.clone(),
         file_type: ChunkFileType::JS,
+        file_name_template: None,
     })
 }
 
@@ -222,6 +226,8 @@ pub(crate) fn render_entry_js_chunk(
         file_name: pot.js_name.clone(),
         chunk_id: pot.chunk_id.clone(),
         file_type: ChunkFileType::JS,
+        chunk_name: pot.chunk_name.clone(),
+        file_name_template: context.config.output.filename.clone(),
     })
 }
 
