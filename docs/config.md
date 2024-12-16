@@ -820,7 +820,7 @@ e.g.
 
 ### umd
 
-- Type: `false | string`
+- Type: `false | string | { name: string, export?: string [] }`
 - Default: `false`
 
 Whether to output umd format.
