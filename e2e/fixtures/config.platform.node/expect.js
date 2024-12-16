@@ -35,3 +35,4 @@ assert.match(
   "should transform __dirname"
 );
 assert(content.includes(`require('crypto');`), `should keep require for crypto`);
+assert(content.includes(`require('node:sqlite');`), `should keep require for node:sqlite`);

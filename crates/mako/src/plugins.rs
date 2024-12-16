@@ -11,6 +11,7 @@ pub mod graphviz;
 pub mod hmr_runtime;
 pub mod ignore;
 pub mod import;
+pub mod imports_checker;
 pub mod invalid_webpack_syntax;
 pub mod manifest;
 pub mod minifish;

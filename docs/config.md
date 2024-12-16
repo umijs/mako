@@ -629,7 +629,11 @@ Buffer;
 - Type: `string`
 - Default: `"/"`
 
-publicPath configuration. Note: There is a special value `"runtime"`, which means that it will switch to runtime mode and use the runtime `window.publicPath` as publicPath.
+publicPath configuration. Note: There is two special values
+
+- `"runtime"`, which means that it will switch to runtime mode and use the runtime `window.publicPath` as publicPath.
+
+- `"auto"`, which is just like `publicPath: "auto"` in webpack
 
 If you want to set the `publicPath` in the runtime, use `__mako_public_path__`. (Notice: `__webpack_public_path__` is also supported)
 
@@ -816,7 +820,7 @@ e.g.
 
 ### umd
 
-- Type: `false | string`
+- Type: `false | string | { name: string, export?: string [] }`
 - Default: `false`
 
 Whether to output umd format.
