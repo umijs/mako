@@ -74,6 +74,7 @@ pub use tree_shaking::{deserialize_tree_shaking, TreeShakingStrategy};
 pub use umd::{deserialize_umd, Umd};
 pub use watch::WatchConfig;
 
+use crate::build::load::JS_EXTENSIONS;
 use crate::features::node::Node;
 
 #[derive(Debug, Diagnostic)]
@@ -328,7 +329,9 @@ impl Config {
                 .define
                 .insert("NODE_ENV".to_string(), serde_json::Value::String(mode));
 
-            if config.public_path != "runtime" && !config.public_path.ends_with('/') {
+            if ["runtime", "auto"].iter().all(|p| *p != config.public_path)
+                && !config.public_path.ends_with('/')
+            {
                 return Err(anyhow!("public_path must end with '/' or be 'runtime'"));
             }
 
@@ -353,12 +356,14 @@ impl Config {
 
             // support default entries
             if config.entry.is_empty() {
-                let file_paths = vec!["src/index.tsx", "src/index.ts", "index.tsx", "index.ts"];
-                for file_path in file_paths {
-                    let file_path = root.join(file_path);
-                    if file_path.exists() {
-                        config.entry.insert("index".to_string(), file_path);
-                        break;
+                let file_paths = ["src/index", "index"];
+                'outer: for file_path in file_paths {
+                    for ext in JS_EXTENSIONS {
+                        let file_path = root.join(file_path).with_extension(ext);
+                        if file_path.exists() {
+                            config.entry.insert("index".to_string(), file_path);
+                            break 'outer;
+                        }
                     }
                 }
                 if config.entry.is_empty() {
@@ -367,35 +372,45 @@ impl Config {
             }
 
             // normalize entry
-            let entry_tuples = config
-                .entry
-                .clone()
-                .into_iter()
-                .map(|(k, v)| {
-                    if let Ok(entry_path) = root.join(v).canonicalize() {
-                        Ok((k, entry_path))
-                    } else {
-                        Err(anyhow!("entry:{} not found", k,))
+            config.entry.iter_mut().try_for_each(|(k, v)| {
+                #[allow(clippy::needless_borrows_for_generic_args)]
+                if let Ok(entry_path) = root.join(&v).canonicalize()
+                    && entry_path.is_file()
+                {
+                    *v = entry_path;
+                } else {
+                    for ext in JS_EXTENSIONS {
+                        #[allow(clippy::needless_borrows_for_generic_args)]
+                        if let Ok(entry_path) = root.join(&v).with_extension(ext).canonicalize()
+                            && entry_path.is_file()
+                        {
+                            *v = entry_path;
+                            return Ok(());
+                        }
+
+                        if let Ok(entry_path) = root
+                            .join(&v)
+                            .join("index")
+                            .with_extension(ext)
+                            .canonicalize()
+                            && entry_path.is_file()
+                        {
+                            *v = entry_path;
+                            return Ok(());
+                        }
                     }
-                })
-                .collect::<Result<Vec<_>>>()?;
-            config.entry = entry_tuples.into_iter().collect();
+                    return Err(anyhow!("entry:{} not found", k,));
+                }
+                Ok(())
+            })?;
 
             // support relative alias
-            config.resolve.alias = config
-                .resolve
-                .alias
-                .clone()
-                .into_iter()
-                .map(|(k, v)| {
-                    let v = if v.starts_with('.') {
-                        root.join(v).to_string_lossy().to_string()
-                    } else {
-                        v
-                    };
-                    (k, v)
-                })
-                .collect();
+            config.resolve.alias.iter_mut().for_each(|(_, v)| {
+                #[allow(clippy::needless_borrows_for_generic_args)]
+                if v.starts_with('.') {
+                    *v = root.join(&v).to_string_lossy().to_string()
+                }
+            });
 
             // dev 环境下不产生 hash, prod 环境下根据用户配置
             if config.mode == Mode::Development {

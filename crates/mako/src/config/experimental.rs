@@ -20,6 +20,7 @@ pub struct ExperimentalConfig {
     pub detect_circular_dependence: Option<DetectCircularDependence>,
     pub rust_plugins: Vec<RustPlugin>,
     pub central_ensure: bool,
+    pub imports_checker: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

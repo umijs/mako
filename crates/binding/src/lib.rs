@@ -109,7 +109,9 @@ pub struct BuildParams {
         selectorDoubleList?: string[];
         mediaQuery?: boolean;
     };
-    stats?: boolean;
+    stats?: false | {
+        modules?: boolean;
+    };
     hash?: boolean;
     autoCSSModules?: boolean;
     ignoreCSSParserErrors?: boolean;
@@ -136,6 +138,7 @@ pub struct BuildParams {
     };
     optimization?: false | {
         skipModules?: boolean;
+        concatenateModules?: boolean;
     };
     react?: {
         runtime?: "automatic" | "classic";

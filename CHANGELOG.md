@@ -1,10 +1,44 @@
+## 0.9.9
+
+`2024-12-12`
+
+* feat: supports publicPath: auto by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1717
+* feat: auto resolve entry file extension by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1718
+* fix: context module source with first empty quasis by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/1719
+* fix: inline css config deserialize by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1720
+* fix: node ignore should support node: prefixed only built-in modules by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1721
+
+## 0.9.8
+
+`2024-12-06`
+
+- feat: ensure esm imports exists when mode is production by [@Jinbao1001](https://github.com/Jinbao1001) in [#1709]https://github.com/umijs/mako/pull/1709
+- refactor(dev): reduce ensure2 chunk map size by [@stormslowly](https://github.com/stormslowly) in [#1707](https://github.com/umijs/mako/pull/1707)
+- fix: optimization.concatenateModules dts lost by [@sorrycc](https://github.com/sorrycc) in [#1692](https://github.com/umijs/mako/pull/1708)
+- fix: typing of stats  by [@stormslowly](https://github.com/stormslowly) in [#1712](https://github.com/umijs/mako/pull/1712)
+
+## 0.9.7
+
+`2024-11-25`
+
+- fix: devserver response header add cacheControl no-cache by [@Jinbao1001](https://github.com/Jinbao1001) in [#1692](https://github.com/umijs/mako/pull/1692) [#1699](https://github.com/umijs/mako/pull/1699)
+- fix(ssu): in case external not available to all entries by [@stormslowly](https://github.com/stormslowly) in [#1698](https://github.com/umijs/mako/pull/1698)
+
+## 0.9.6
+
+`2024-11-14`
+
+- feat(ssu): handle dependence changing while watching by [@stormslowly](https://github.com/stormslowly) in [#1690](https://github.com/umijs/mako/pull/1690)
+- feat: move ensure runtime to entry  by [@stormslowly](https://github.com/stormslowly) in [#1660](https://github.com/umijs/mako/pull/1660)
+- feat: keep unresolved nodejs require by [@xusd320](https://github.com/xusd320) in [#1689](https://github.com/umijs/mako/pull/1689)
+- fix: pnpm workspace watch too many files by [@Jinbao1001](https://github.com/Jinbao1001) in [#1684](https://github.com/umijs/mako/pull/1684)
+- fix: ts annotated declare variable treat as top level variable by [@stormslowly](https://github.com/stormslowly) in [#1682](https://github.com/umijs/mako/pull/1682)
+
 ## 0.9.5
 
 `2024-11-07`
 
 - fix: skip module should skip async module by [@Jinbao1001](https://github.com/Jinbao1001) in [#1667](https://github.com/umijs/mako/pull/1662)
-
-
 
 ## 0.9.4
 

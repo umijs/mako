@@ -34,3 +34,4 @@ console.log(loadFile('/zh-CN.json'));
 console.log(loadFile2('/a.js'));
 console.log(loadFile3('a.js'));
 
+require("./first_empty_quasis")
