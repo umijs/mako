@@ -396,7 +396,7 @@ function createRuntime(makoModules, entryModuleId, global) {
 <% } %>
   return {
 <% if umd.is_some() || cjs { %>
-    exports: <% if umd_export.is_empty() { %> exports <% } else { %> exports.<%= umd_export.join(".") %> <% } %>,
+    exports: exports,
 <% } %>
     requireModule: requireModule,
 <% if has_dynamic_chunks { %>
@@ -431,7 +431,7 @@ root.makoModuleHotUpdate = runtime._makoModuleHotUpdate;
   else if (typeof exports === 'object') exports['<%= umd.clone().unwrap() %>'] = factory();
   else root['<%= umd.clone().unwrap() %>'] = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
-  return runtime.exports;
+  return runtime.exports<% if umd_export.is_empty() { %><% } else { %><%-umd_export.join("")%><% } %>;
 });
 <% } %>
 
