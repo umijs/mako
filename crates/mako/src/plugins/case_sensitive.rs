@@ -60,10 +60,6 @@ impl CaseSensitivePlugin {
                         .find(|&x| x.to_lowercase() == current_str.to_lowercase())
                     {
                         case_name = correct_name.clone();
-                        println!(
-                            "File name is case-insensitive. Correct name is: {}",
-                            correct_name
-                        );
                         break;
                     }
                 }
