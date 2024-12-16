@@ -221,7 +221,7 @@ pub struct Compiler {
 
 impl Compiler {
     pub fn new(
-        mut config: Config,
+        config: Config,
         root: PathBuf,
         args: Args,
         extra_plugins: Option<Vec<Arc<dyn Plugin>>>,
@@ -270,6 +270,8 @@ impl Compiler {
         ];
         plugins.extend(external_plugins);
         plugins.extend(builtin_plugins);
+
+        let mut config = config;
 
         if let Some(progress) = &config.progress {
             plugins.push(Arc::new(plugins::progress::ProgressPlugin::new(

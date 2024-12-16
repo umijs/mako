@@ -1,3 +1,5 @@
+#![feature(box_patterns)]
+
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens};
@@ -33,14 +35,14 @@ fn handle_local(_attr: TokenStream2, item: TokenStream2) -> TokenStream2 {
     items.iter().for_each(|impl_item| {
         if let ImplItem::Fn(f) = impl_item {
             let body = &f.block;
-            let mut inputs = f.sig.inputs.clone().into_iter();
-            let has_context = inputs.any(|f| {
-                if let FnArg::Typed(PatType { pat, .. }) = f {
-                    if let Pat::Ident(i) = *pat {
-                        i.ident.to_string().contains("context")
-                    } else {
-                        false
-                    }
+
+            let has_context = f.sig.inputs.iter().any(|f| {
+                if let FnArg::Typed(PatType {
+                    pat: box Pat::Ident(i),
+                    ..
+                }) = f
+                {
+                    i.ident.to_string().contains("context")
                 } else {
                     false
                 }
