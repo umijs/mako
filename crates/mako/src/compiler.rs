@@ -273,7 +273,7 @@ impl Compiler {
                 },
             )));
         }
-        #[cfg(target_os = "macos")]
+
         if config.case_sensitive_check {
             plugins.push(Arc::new(plugins::case_sensitive::CaseSensitivePlugin::new()));
         }
