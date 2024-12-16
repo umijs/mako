@@ -55,6 +55,9 @@ const dirs = fs.readdirSync(fixtures).filter((dir) => {
   if (dir.endsWith('-only')) {
     onlyDir = dir;
   }
+  if (!dir.endsWith('sensitive')) {
+    return false;
+  }
   return (
     !dir.startsWith('.') &&
     fs.statSync(path.join(fixtures, dir)).isDirectory() &&

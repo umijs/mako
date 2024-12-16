@@ -244,7 +244,6 @@ impl Compiler {
             Arc::new(plugins::copy::CopyPlugin {}),
             Arc::new(plugins::import::ImportPlugin {}),
             // file types
-            Arc::new(plugins::case_sensitive::CaseSensitivePlugin::new()),
             Arc::new(plugins::context_module::ContextModulePlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
             Arc::new(plugins::invalid_webpack_syntax::InvalidWebpackSyntaxPlugin {}),
@@ -269,6 +268,10 @@ impl Compiler {
                     progress_chars: progress.progress_chars.clone(),
                 },
             )));
+        }
+        #[cfg(target_os = "macos")]
+        if config.case_sensitive_check {
+            plugins.push(Arc::new(plugins::case_sensitive::CaseSensitivePlugin::new()));
         }
 
         if let Some(duplicate_package_checker) = &config.check_duplicate_package {

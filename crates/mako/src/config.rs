@@ -219,6 +219,13 @@ pub struct Config {
         default
     )]
     pub check_duplicate_package: Option<DuplicatePackageCheckerConfig>,
+    // 是否开启 case sensitive 检查,只有mac平台才需要开启
+    #[serde(rename = "caseSensitiveCheck", default = "default_case_sensitive")]
+    pub case_sensitive_check: bool,
+}
+
+fn default_case_sensitive() -> bool {
+    std::env::consts::OS == "macos"
 }
 
 const CONFIG_FILE: &str = "mako.config.json";

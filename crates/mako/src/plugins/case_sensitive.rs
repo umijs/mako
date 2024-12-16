@@ -97,28 +97,3 @@ impl Plugin for CaseSensitivePlugin {
         Ok(None)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use std::path::PathBuf;
-
-    use crate::ast::file::File;
-    use crate::plugin::Plugin;
-    use crate::plugins::case_sensitive::{CaseSensitivePlugin, PluginLoadParam};
-    use crate::utils::test_helper::setup_compiler;
-
-    #[test]
-    fn test_case_sensitive_checker() {
-        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test/build/case-sensitive");
-        let compiler = setup_compiler("test/build/case-sensitive", false);
-        let plugin = CaseSensitivePlugin::new();
-        let file = &File::new(
-            root.join("Assets/umi-logo.png")
-                .to_string_lossy()
-                .to_string(),
-            compiler.context.clone(),
-        );
-        let result = plugin.load(&PluginLoadParam { file }, &compiler.context);
-        assert!(result.is_err());
-    }
-}
