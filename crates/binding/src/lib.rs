@@ -119,7 +119,9 @@ pub struct BuildParams {
         selectorDoubleList?: string[];
         mediaQuery?: boolean;
     };
-    stats?: boolean;
+    stats?: false | {
+        modules?: boolean;
+    };
     hash?: boolean;
     autoCSSModules?: boolean;
     ignoreCSSParserErrors?: boolean;

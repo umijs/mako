@@ -189,6 +189,7 @@ mod tests {
     use super::TreeShakeModule;
     use crate::ast::file::{Content, File, JsContent};
     use crate::ast::js_ast::JsAst;
+    use crate::ast::utils::get_module_system;
     use crate::compiler::Context;
     use crate::module::{Module, ModuleAst, ModuleInfo};
     use crate::plugins::tree_shaking::shake::skip_module::ReExportSource;
@@ -465,13 +466,13 @@ mod tests {
             }),
             context.clone(),
         );
-        let ast = JsAst::new(&file, context.clone()).unwrap();
-
+        let ast = ModuleAst::Script(JsAst::new(&file, context.clone()).unwrap());
         let mako_module = Module {
             id: "test.js".into(),
             is_entry: false,
             info: Some(ModuleInfo {
-                ast: ModuleAst::Script(ast),
+                module_system: get_module_system(&ast),
+                ast,
                 file,
                 ..Default::default()
             }),
