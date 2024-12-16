@@ -856,3 +856,17 @@ e.g. If you want to ignore the `foo` directory under root directory, you can set
 
 Whether to write the build result to disk when mode is development.
 
+### caseSensitiveCheck
+
+- Type: `boolean`
+- Default: `true`
+
+Whether to enable case-sensitive check.
+
+e.g.
+
+```ts
+{
+  caseSensitiveCheck: false,
+}
+```

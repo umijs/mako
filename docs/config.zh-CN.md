@@ -850,3 +850,18 @@ babel-plugin-import 的简化版本，仅支持三个配置项：libraryName，l
 - 默认值：`true`
 
 是否在开发模式下将构建结果写入磁盘。
+
+### caseSensitiveCheck
+
+- 类型：`boolean`
+- 默认值：`true`
+
+是否启用大小写敏感检查。
+
+e.g.
+
+```ts
+{
+  caseSensitiveCheck: false,
+}
+```
