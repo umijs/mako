@@ -434,3 +434,25 @@ fn hash_too_long_file_name(file_name: &String) -> String {
 
     format_file_name.to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_simple_template_render() {
+        let chunk_file = ChunkFile {
+            raw_hash: 0,
+            content: vec![],
+            source_map: None,
+            hash: Some("hash999".to_string()),
+            chunk_name: "chunk".to_string(),
+            file_name: "index.js".to_string(),
+            chunk_id: "c_id".to_string(),
+            file_type: ChunkFileType::JS,
+            file_name_template: Some("[name].[hash].[id].js".to_string()),
+        };
+
+        assert_eq!(chunk_file.disk_name(), "chunk.hash999.c_id.js");
+    }
+}
