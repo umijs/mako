@@ -78,5 +78,6 @@
   "useDefineForClassFields": true,
   "emitDecoratorMetadata": false,
   "watch": { "ignorePaths": [], "_nodeModulesRegexes": [] },
-  "devServer": { "host": "127.0.0.1", "port": 3000 }
+  "devServer": { "host": "127.0.0.1", "port": 3000 },
+  "caseSensitiveCheck": false
 }
