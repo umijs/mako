@@ -36,6 +36,22 @@ Whether to automatically enable CSS Modules.
 
 If not enabled, only files with `.module.css` or `.module.less` will be treated as CSS Modules; if enabled, named imports like `import styles from './a.css'` will also be treated as CSS Modules.
 
+### caseSensitiveCheck
+
+- Type: `boolean`
+- Default: `true`
+
+Whether to enable case-sensitive check.
+
+e.g.
+
+```ts
+{
+  caseSensitiveCheck: false,
+}
+```
+
+
 ### clean
 
 - Type: `boolean`
@@ -856,17 +872,3 @@ e.g. If you want to ignore the `foo` directory under root directory, you can set
 
 Whether to write the build result to disk when mode is development.
 
-### caseSensitiveCheck
-
-- Type: `boolean`
-- Default: `true`
-
-Whether to enable case-sensitive check.
-
-e.g.
-
-```ts
-{
-  caseSensitiveCheck: false,
-}
-```
