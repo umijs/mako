@@ -48,7 +48,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
     if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
     steps:
