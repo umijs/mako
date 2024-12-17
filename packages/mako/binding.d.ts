@@ -70,6 +70,9 @@ export interface JsHooks {
   ) => Promise<{ content: string; type: 'css' | 'js' } | void> | void;
   transformInclude?: (filePath: string) => Promise<bool> | bool;
 }
+export interface JsPluginContext {
+  root: string;
+}
 export interface WriteFile {
   path: string;
   content: Buffer;

@@ -8,8 +8,8 @@ use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam, PluginResol
 use mako::resolve::{ExternalResource, Resolution, ResolvedResource, ResolverResource};
 
 use crate::js_hook::{
-    LoadResult, ResolveIdParams, ResolveIdResult, TransformResult, TsFnHooks, WatchChangesParams,
-    WriteFile,
+    LoadResult, ResolveIdParams, ResolveIdResult, TransformResult, TsFnHooks,
+    WatchChangesParams, WriteFile,
 };
 
 fn content_from_result(result: TransformResult) -> Result<Content> {
@@ -62,7 +62,9 @@ impl Plugin for JsPlugin {
             {
                 return Ok(None);
             }
-            let x: Option<LoadResult> = hook.call(param.file.path.to_string_lossy().to_string())?;
+            let x: Option<LoadResult> = hook.call(
+                param.file.path.to_string_lossy().to_string(),
+            )?;
             if let Some(x) = x {
                 return content_from_result(TransformResult {
                     content: x.content,

@@ -134,6 +134,28 @@ export async function build(params: BuildParams) {
       },
     });
   }
+
+  // add context to each plugin's hook
+  params.config.plugins.forEach((plugin: any) => {
+    Object.keys(plugin).forEach((key) => {
+      const oldValue = plugin[key];
+      if (typeof oldValue === 'function') {
+        plugin[key] = (context: any, ...args: any[]) => {
+          const c = {
+            ...(context || {}),
+            // error: (err: any) => {
+            //   console.error(err);
+            // },
+            // log: (...args: any[]) => {
+            //   console.log(...args);
+            // },
+          };
+          return oldValue.apply(c, [...args]);
+        };
+      }
+    });
+  });
+
   // support dump mako config
   if (process.env.DUMP_MAKO_CONFIG) {
     const configFile = path.join(params.root, 'mako.config.json');

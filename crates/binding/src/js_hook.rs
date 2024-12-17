@@ -1,4 +1,5 @@
 use napi::bindgen_prelude::*;
+use napi::JsObject;
 use napi::NapiRaw;
 use napi_derive::napi;
 use serde_json::Value;
@@ -80,6 +81,29 @@ pub struct JsHooks {
     #[napi(ts_type = "(filePath: string) => Promise<bool> | bool;")]
     pub transform_include: Option<JsFunction>,
 }
+
+// #[napi(object)]
+// pub struct JsPluginContext {
+//     pub root: String,
+//     pub error: Option<JsFunction>,
+// }
+
+// impl JsPluginContext {
+//     pub fn new() -> Self {
+//         Self {
+//             root: "root".to_string(),
+//             // error: None,
+//         }
+//     }
+
+//     #[napi]
+//     pub async fn testtest(&self, err: Error) {
+//         println!(">>> error: {}", err.to_string());
+//     }
+// }
+
+// pub unsafe fn create_js_plugin_context(env: Env) -> Result<JsPluginContext> {
+// }
 
 pub struct TsFnHooks {
     pub build_start: Option<ThreadsafeFunction<(), ()>>,

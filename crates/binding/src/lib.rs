@@ -17,6 +17,7 @@ use napi_derive::napi;
 mod js_hook;
 mod js_plugin;
 mod threadsafe_function;
+mod context;
 
 #[cfg(not(target_os = "linux"))]
 #[global_allocator]
