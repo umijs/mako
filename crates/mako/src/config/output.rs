@@ -12,6 +12,7 @@ use crate::utils::get_pkg_name;
 #[serde(rename_all = "camelCase")]
 pub struct OutputConfig {
     pub path: PathBuf,
+    pub filename: Option<String>,
     pub mode: OutputMode,
     pub es_version: EsVersion,
     pub meta: bool,
