@@ -43,7 +43,7 @@ pub struct ChunkFile {
 impl ChunkFile {
     pub fn disk_name(&self) -> String {
         if let Some(tmpl) = &self.file_name_template {
-            tmpl.to_string()
+            self.render_tmpl(tmpl)
         } else {
             self.default_disk_name()
         }

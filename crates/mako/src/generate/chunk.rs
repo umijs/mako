@@ -73,11 +73,11 @@ impl Chunk {
         }
     }
 
-    pub fn filename(&self) -> String {
+    pub fn name(&self) -> String {
         match &self.chunk_type {
-            ChunkType::Runtime => "runtime.js".into(),
+            ChunkType::Runtime => "runtime".into(),
             // foo/bar.tsx -> bar.js
-            ChunkType::Entry(_, name, _) => format!("{}.js", name),
+            ChunkType::Entry(_, name, _) => name.clone(),
             // foo/bar.tsx -> foo_bar_tsx-async.js
             ChunkType::Async | ChunkType::Sync | ChunkType::Worker(_) => {
                 let (path, search, ..) = parse_path(&self.id.id).unwrap();
@@ -105,7 +105,7 @@ impl Chunk {
                 }
 
                 format!(
-                    "{}-{}.js",
+                    "{}-{}",
                     name,
                     if matches!(self.chunk_type, ChunkType::Worker(_)) {
                         "worker"
@@ -115,6 +115,10 @@ impl Chunk {
                 )
             }
         }
+    }
+
+    pub fn filename(&self) -> String {
+        format!("{}.js", self.name())
     }
 
     pub fn add_module(&mut self, module_id: ModuleId) {
