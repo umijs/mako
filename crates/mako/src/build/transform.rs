@@ -49,6 +49,7 @@ use crate::visitors::try_resolve::TryResolve;
 use crate::visitors::ts_strip::ts_strip;
 use crate::visitors::tsx_strip::tsx_strip;
 use crate::visitors::virtual_css_modules::VirtualCSSModules;
+use crate::visitors::webpack_runtime_replacement::WebpackRuntimeReplacement;
 use crate::visitors::worker_module::WorkerModule;
 
 pub struct Transform {}
@@ -111,6 +112,7 @@ impl Transform {
                                         unresolved_mark,
                                     }),
                                     Box::new(WorkerModule::new(unresolved_mark)),
+                                    Box::new(WebpackRuntimeReplacement::new(unresolved_mark)),
                                 ];
 
                                 // named default export
