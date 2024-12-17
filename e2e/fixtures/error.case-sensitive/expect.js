@@ -1,17 +1,20 @@
 const assert = require("assert");
 const os = require("os");
-const {
-  parseBuildResult,
-} = require("../../../scripts/test-utils");
-const { files } = parseBuildResult(__dirname);
 
 module.exports = (err) => {
-  if (os.platform() === 'darwin') {
+  if (os.platform() === "darwin") {
     assert(
-      err.stderr.includes(`/Assets/umi-logo.png does not match the corresponding path on disk [assets]`),
+      err.stderr.includes(
+        `/Assets/umi-logo.png does not match the corresponding path on disk [assets]`
+      ),
       "should throw error"
     );
   } else {
-    assert("index.js" in files, "should have file: index.js");
+    assert(
+      err.stderr.includes(
+        `Module not found: Can't resolve './Assets/umi-logo.png'`
+      ),
+      "should throw error"
+    );
   }
 };
