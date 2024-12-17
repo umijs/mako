@@ -68,13 +68,13 @@ impl ChunkFile {
     }
 
     fn render_tmpl(&self, tpl: &str) -> String {
-        let hash_string = self.hash.clone().unwrap_or_else(|| "notHashed".to_string());
+        let hash_string = self.hash.as_deref().unwrap_or("notHashed");
 
         tpl.replace("[name]", self.chunk_name.as_str())
             .replace("[id]", self.chunk_id.as_str())
             .replace("[file]", self.file_name.as_str())
-            .replace("[hash]", &hash_string)
-            .replace("[contenthash]", &hash_string)
+            .replace("[hash]", hash_string)
+            .replace("[contenthash]", hash_string)
     }
 }
 
