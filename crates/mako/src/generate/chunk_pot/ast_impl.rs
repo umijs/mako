@@ -330,7 +330,12 @@ fn render_entry_chunk_js_without_full_hash(
 
     let (buf, source_map_buf) = util::render_module_js(&ast.ast, context)?;
 
-    let hash = Some(file_content_hash(&buf));
+    let hash = if context.config.hash || context.config.output.filename.is_some() {
+        crate::mako_profile_scope!("entryHash");
+        Some(file_content_hash(&buf))
+    } else {
+        None
+    };
 
     Ok(RenderedChunk {
         content: buf,
