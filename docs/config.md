@@ -36,6 +36,22 @@ Whether to automatically enable CSS Modules.
 
 If not enabled, only files with `.module.css` or `.module.less` will be treated as CSS Modules; if enabled, named imports like `import styles from './a.css'` will also be treated as CSS Modules.
 
+### caseSensitiveCheck
+
+- Type: `boolean`
+- Default: `true`
+
+Whether to enable case-sensitive check.
+
+e.g.
+
+```ts
+{
+  caseSensitiveCheck: false,
+}
+```
+
+
 ### clean
 
 - Type: `boolean`
