@@ -21,6 +21,7 @@ where
             name,
             ..Default::default()
         })),
+        serde_json::Value::Bool(false) => Ok(None),
         _ => Err(serde::de::Error::custom(format!(
             "invalid `{}` value: {}",
             stringify!(deserialize_umd).replace("deserialize_", ""),
