@@ -7,5 +7,8 @@ export async function rustPluginResolver(plugins: Array<[string, any]>) {
     else return import(pluginPath);
   });
   const result = await Promise.all(promises);
-  return result.map((resolved, i) => [resolved.default, plugins[i][1]]);
+  return result.map<[string, any]>((resolved, i) => [
+    resolved.default,
+    plugins[i][1],
+  ]);
 }
