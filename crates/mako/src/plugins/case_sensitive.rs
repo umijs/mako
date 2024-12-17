@@ -22,7 +22,7 @@ impl CaseSensitivePlugin {
 
     pub fn is_checkable(&self, load_param: &PluginLoadParam, root: &String) -> bool {
         let file_path = &load_param.file.path;
-        if !load_param.file.path.starts_with(root) {
+        if !file_path.starts_with(root) {
             return false;
         }
         for component in file_path.iter() {
@@ -59,7 +59,7 @@ impl CaseSensitivePlugin {
                         .iter()
                         .find(|&x| x.to_lowercase() == current_str.to_lowercase())
                     {
-                        case_name = correct_name.clone();
+                        case_name = correct_name.to_string();
                         break;
                     }
                 }
