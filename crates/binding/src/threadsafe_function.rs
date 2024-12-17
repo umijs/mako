@@ -1,13 +1,12 @@
 use std::marker::PhantomData;
 
 use anyhow::{anyhow, Result};
-use napi::bindgen_prelude::{spawn, FromNapiValue, JsValuesTupleIntoVec, Promise};
+use napi::bindgen_prelude::{spawn, FromNapiValue, JsValuesTupleIntoVec, Promise, ToNapiValue};
 use napi::sys::{napi_env, napi_value};
 use napi::threadsafe_function::{
     ErrorStrategy, ThreadsafeFunction as Tsfn, ThreadsafeFunctionCallMode,
 };
-use napi::JsUnknown;
-use napi::JsObject;
+use napi::{JsObject, JsUnknown};
 use oneshot::channel;
 
 use crate::context::create_js_context;
@@ -20,9 +19,16 @@ pub struct ThreadsafeFunction<P: 'static, R> {
 
 struct Args<P>(JsObject, P);
 
-impl<P> JsValuesTupleIntoVec for Args<P> {
+impl<P> JsValuesTupleIntoVec for Args<P>
+where
+    P: JsValuesTupleIntoVec,
+{
     fn into_vec(self, env: napi::sys::napi_env) -> napi::Result<Vec<napi::sys::napi_value>> {
-        Ok(vec![(self.0).to_napi_value(env)?, self.1.into()])
+        Ok([
+            vec![unsafe { ToNapiValue::to_napi_value(env, self.0)? }],
+            JsValuesTupleIntoVec::into_vec(self.1, env)?,
+        ]
+        .concat())
     }
 }
 
@@ -50,9 +56,7 @@ impl<P: 'static + JsValuesTupleIntoVec, R> FromNapiValue for ThreadsafeFunction<
 impl<P: 'static, R: FromNapiValue + Send + 'static> ThreadsafeFunction<P, R> {
     pub fn call(&self, value: P) -> Result<R> {
         let (sender, receiver) = channel();
-        let ctx = unsafe {
-            create_js_context(self.env)
-        };
+        let ctx = unsafe { create_js_context(self.env) };
         // load(path)
         // load(ctx, path)
         self.tsfn.call_with_return_value(
