@@ -265,6 +265,7 @@ export interface BuildParams {
       ignoredPaths?: string[];
       _nodeModulesRegexes?: string[];
     };
+    caseSensitiveCheck?: boolean;
   };
   plugins: Array<JsHooks>;
   watch: boolean;
