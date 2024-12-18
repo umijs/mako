@@ -173,6 +173,7 @@ pub struct BuildParams {
         ignoredPaths?: string[];
         _nodeModulesRegexes?: string[];
     };
+    caseSensitiveCheck?: boolean;
 }"#)]
     pub config: serde_json::Value,
     pub plugins: Vec<JsHooks>,

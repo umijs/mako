@@ -220,6 +220,9 @@ pub struct Config {
         default
     )]
     pub check_duplicate_package: Option<DuplicatePackageCheckerConfig>,
+    // 是否开启 case sensitive 检查,只有mac平台才需要开启
+    #[serde(rename = "caseSensitiveCheck")]
+    pub case_sensitive_check: bool,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
