@@ -33,19 +33,19 @@ pub struct ChunkFile {
     pub content: Vec<u8>,
     pub source_map: Option<Vec<u8>>,
     pub hash: Option<String>,
+    pub chunk_name: String,
     pub file_name: String,
     pub chunk_id: String,
     pub file_type: ChunkFileType,
+    pub file_name_template: Option<String>,
 }
 
 impl ChunkFile {
     pub fn disk_name(&self) -> String {
-        let format_file_name = hash_too_long_file_name(&self.file_name);
-
-        if let Some(hash) = &self.hash {
-            hash_file_name(&format_file_name, hash)
+        if let Some(tmpl) = &self.file_name_template {
+            self.render_tmpl(tmpl)
         } else {
-            format_file_name
+            self.default_disk_name()
         }
     }
 
@@ -55,6 +55,26 @@ impl ChunkFile {
 
     pub fn source_map_name(&self) -> String {
         format!("{}.map", self.file_name)
+    }
+
+    fn default_disk_name(&self) -> String {
+        let format_file_name = hash_too_long_file_name(&self.file_name);
+
+        if let Some(hash) = &self.hash {
+            hash_file_name(&format_file_name, hash)
+        } else {
+            format_file_name
+        }
+    }
+
+    fn render_tmpl(&self, tpl: &str) -> String {
+        let hash_string = self.hash.as_deref().unwrap_or("notHashed");
+
+        tpl.replace("[name]", self.chunk_name.as_str())
+            .replace("[id]", self.chunk_id.as_str())
+            .replace("[file]", self.file_name.as_str())
+            .replace("[hash]", hash_string)
+            .replace("[contenthash]", hash_string)
     }
 }
 
@@ -102,26 +122,26 @@ impl Compiler {
                 );
 
             entry_chunk_files_with_placeholder
-                .par_iter_mut()
-                .try_for_each(
-                    |(chunk_files, js_chunks_hash_placeholder, css_chunks_hash_placeholder)| -> Result<()>{
-                        replace_chunks_placeholder(
-                            chunk_files,
-                            js_chunks_hash_placeholder,
-                            &js_chunks_hash_replacer,
-                        )?;
-                        replace_chunks_placeholder(
-                            chunk_files,
-                            css_chunks_hash_placeholder,
-                            &css_chunks_hash_replacer,
-                        )?;
-                        chunk_files.iter_mut().for_each(|cf| {
-                            cf.hash = Some(file_content_hash(&cf.content));
-                        });
+        .par_iter_mut()
+        .try_for_each(
+          |(chunk_files, js_chunks_hash_placeholder, css_chunks_hash_placeholder)| -> Result<()>{
+            replace_chunks_placeholder(
+              chunk_files,
+              js_chunks_hash_placeholder,
+              &js_chunks_hash_replacer,
+            )?;
+            replace_chunks_placeholder(
+              chunk_files,
+              css_chunks_hash_placeholder,
+              &css_chunks_hash_replacer,
+            )?;
+            chunk_files.iter_mut().for_each(|cf| {
+              cf.hash = Some(file_content_hash(&cf.content));
+            });
 
-                        Ok(())
-                    },
-                )?;
+            Ok(())
+          },
+        )?;
         }
 
         let entry_chunk_files = entry_chunk_files_with_placeholder
@@ -278,48 +298,48 @@ fn replace_chunks_placeholder(
     chunks_hash_replacer: &ChunksHashReplacer,
 ) -> Result<()> {
     chunks_hash_placeholder.iter().try_for_each(
-        |(chunk_id, placeholder)| match chunks_hash_replacer.get(chunk_id) {
-            Some(replacer) => {
-                chunk_files
-                    .iter_mut()
-                    .filter(|cf| matches!(cf.file_type, ChunkFileType::JS))
-                    .try_for_each(|cf| {
-                        if cf.content.is_empty() {
-                            warn!("Chunk content of \"{}\" is empty.", cf.chunk_id);
-                        }
+    |(chunk_id, placeholder)| match chunks_hash_replacer.get(chunk_id) {
+      Some(replacer) => {
+        chunk_files
+          .iter_mut()
+          .filter(|cf| matches!(cf.file_type, ChunkFileType::JS))
+          .try_for_each(|cf| {
+            if cf.content.is_empty() {
+              warn!("Chunk content of \"{}\" is empty.", cf.chunk_id);
+            }
 
-                        let position = cf
-                            .content
-                            .windows(placeholder.len())
-                            .position(|w| w == placeholder.as_bytes());
+            let position = cf
+              .content
+              .windows(placeholder.len())
+              .position(|w| w == placeholder.as_bytes());
 
-                        position.map_or(
-                            {
-                                Err(anyhow!(
+            position.map_or(
+              {
+                Err(anyhow!(
                                     "Generate \"{}\" failed, placeholder \"{}\" for \"{}\" not existed in chunk file.",
                                     cf.chunk_id,
                                     placeholder,
                                     chunk_id
                                 ))
-                            },
-                            |pos| {
-                                cf.content.splice(
-                                    pos..pos + replacer.len(),
-                                    replacer.as_bytes().to_vec(),
-                                );
-                                Ok(())
-                            },
-                        )
-                    })?;
+              },
+              |pos| {
+                cf.content.splice(
+                  pos..pos + replacer.len(),
+                  replacer.as_bytes().to_vec(),
+                );
                 Ok(())
-            }
-            _ => Err(anyhow!(
+              },
+            )
+          })?;
+        Ok(())
+      }
+      _ => Err(anyhow!(
                 "Generate \"{}\" failed, replacer not found for placeholder \"{}\".",
                 chunk_id,
                 placeholder
             )),
-        },
-    )
+    },
+  )
 }
 
 pub fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
@@ -413,4 +433,26 @@ fn hash_too_long_file_name(file_name: &String) -> String {
     }
 
     format_file_name.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_simple_template_render() {
+        let chunk_file = ChunkFile {
+            raw_hash: 0,
+            content: vec![],
+            source_map: None,
+            hash: Some("hash999".to_string()),
+            chunk_name: "chunk".to_string(),
+            file_name: "index.js".to_string(),
+            chunk_id: "c_id".to_string(),
+            file_type: ChunkFileType::JS,
+            file_name_template: Some("[name].[hash].[id].js".to_string()),
+        };
+
+        assert_eq!(chunk_file.disk_name(), "chunk.hash999.c_id.js");
+    }
 }
