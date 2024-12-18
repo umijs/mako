@@ -116,7 +116,7 @@ pub struct BuildParams {
     autoCSSModules?: boolean;
     ignoreCSSParserErrors?: boolean;
     dynamicImportToRequire?: boolean;
-    umd?: false | string;
+    umd?: false | string | { name: string, export?: string[] };
     cjs?: boolean;
     writeToDisk?: boolean;
     transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
@@ -164,6 +164,7 @@ pub struct BuildParams {
         ignoredPaths?: string[];
         _nodeModulesRegexes?: string[];
     };
+    caseSensitiveCheck?: boolean;
 }"#)]
     pub config: serde_json::Value,
     pub plugins: Vec<JsHooks>,

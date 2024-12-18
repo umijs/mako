@@ -95,7 +95,13 @@ pub(crate) fn empty_module_fn_expr() -> FnExpr {
 }
 
 pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
-    let umd = context.config.umd.clone();
+    let umd = context.config.umd.as_ref().map(|umd| umd.name.clone());
+    let umd_export = context.config.umd.as_ref().map_or(vec![], |umd| {
+        umd.export
+            .iter()
+            .map(|e| format!("[{}]", serde_json::to_string(e).unwrap()))
+            .collect()
+    });
     let chunk_graph = context.chunk_graph.read().unwrap();
     let has_dynamic_chunks = chunk_graph.get_all_chunks().len() > 1;
     let has_hmr = context.args.watch;
@@ -103,6 +109,7 @@ pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
         has_dynamic_chunks,
         has_hmr,
         umd,
+        umd_export,
         is_browser: matches!(context.config.platform, crate::config::Platform::Browser),
         cjs: context.config.cjs,
         chunk_loading_global: serde_json::to_string(&context.config.output.chunk_loading_global)

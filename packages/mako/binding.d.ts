@@ -190,7 +190,7 @@ export interface BuildParams {
     autoCSSModules?: boolean;
     ignoreCSSParserErrors?: boolean;
     dynamicImportToRequire?: boolean;
-    umd?: false | string;
+    umd?: false | string | { name: string; export?: string[] };
     cjs?: boolean;
     writeToDisk?: boolean;
     transformImport?: {

@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako-linux-arm64-gnu",
-  "version": "0.9.9",
+  "version": "0.9.10-canary.20241218.1",
   "os": [
     "linux"
   ],

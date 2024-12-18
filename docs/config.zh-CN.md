@@ -36,6 +36,22 @@
 
 如果未启用，只有 `.module.css` 或 `.module.less` 的文件会被视为 CSS Modules；如果启用，像 `import styles from './a.css'` 这样的命名导入也会被视为 CSS Modules。
 
+### caseSensitiveCheck
+
+- 类型：`boolean`
+- 默认值：`true`
+
+是否启用大小写敏感检查。
+
+e.g.
+
+```ts
+{
+  caseSensitiveCheck: false,
+}
+```
+
+
 ### clean
 
 - 类型：`boolean`
@@ -815,7 +831,7 @@ babel-plugin-import 的简化版本，仅支持三个配置项：libraryName，l
 
 ### umd
 
-- 类型：`false | string`
+- 类型：`false | string | { name: string, export?: string[] }`
 - 默认值：`false`
 
 是否输出 umd 格式。
@@ -850,3 +866,4 @@ babel-plugin-import 的简化版本，仅支持三个配置项：libraryName，l
 - 默认值：`true`
 
 是否在开发模式下将构建结果写入磁盘。
+
