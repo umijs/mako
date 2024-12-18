@@ -13,7 +13,6 @@ pub(crate) mod dep_replacer;
 pub(crate) mod dynamic_import;
 pub(crate) mod dynamic_import_to_require;
 pub(crate) mod env_replacer;
-pub(crate) mod fix_helper_inject_position;
 pub(crate) mod fix_symbol_conflict;
 pub(crate) mod import_meta_env_replacer;
 pub(crate) mod import_template_to_string_literal;

@@ -37,7 +37,6 @@ use crate::visitors::css_px2rem::Px2Rem;
 use crate::visitors::default_export_namer::DefaultExportNamer;
 use crate::visitors::dynamic_import_to_require::DynamicImportToRequire;
 use crate::visitors::env_replacer::{build_env_map, EnvReplacer};
-use crate::visitors::fix_helper_inject_position::FixHelperInjectPosition;
 use crate::visitors::fix_symbol_conflict::FixSymbolConflict;
 use crate::visitors::import_meta_env_replacer::ImportMetaEnvReplacer;
 use crate::visitors::import_template_to_string_literal::ImportTemplateToStringLiteral;
@@ -101,10 +100,6 @@ impl Transform {
                                         top_level_mark,
                                         is_ts || is_tsx,
                                     )),
-                                    // fix helper inject position
-                                    // should be removed after upgrade to latest swc
-                                    // ref: https://github.com/umijs/mako/issues/1193
-                                    Box::new(FixHelperInjectPosition::new()),
                                     Box::new(FixSymbolConflict::new(top_level_mark)),
                                     Box::new(NewUrlAssets {
                                         context: context.clone(),
