@@ -8,6 +8,7 @@ use anyhow::{anyhow, Error, Result};
 use colored::Colorize;
 use libloading::Library;
 use regex::Regex;
+use serde_json::Value;
 use swc_core::common::sync::Lrc;
 use swc_core::common::{Globals, SourceMap, DUMMY_SP};
 use swc_core::ecma::ast::Ident;
@@ -245,7 +246,7 @@ impl Compiler {
             for rust_plugin in config.experimental.rust_plugins.clone() {
                 let lib = Arc::new(Library::new(rust_plugin.path)?);
                 let plugin_create_fn: libloading::Symbol<
-                    unsafe extern "C" fn(option: String) -> Arc<dyn Plugin>,
+                    unsafe extern "C" fn(option: Value) -> Arc<dyn Plugin>,
                 > = lib.get(b"_plugin_create").unwrap();
                 let plugin = plugin_create_fn(rust_plugin.options);
                 external_plugins.push(plugin);

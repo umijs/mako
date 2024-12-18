@@ -15,7 +15,7 @@ fn handler_create(input: TokenStream2) -> TokenStream2 {
     let struct_name = &ast.ident;
     let ts = quote! {
       #[no_mangle]
-      pub fn _plugin_create(option: std::string::String) -> std::sync::Arc<dyn Plugin> {
+      pub fn _plugin_create(option: serde_json::Value) -> std::sync::Arc<dyn Plugin> {
         std::sync::Arc::new(#struct_name::new(option))
       }
     };

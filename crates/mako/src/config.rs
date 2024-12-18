@@ -75,6 +75,7 @@ pub use umd::{deserialize_umd, Umd};
 pub use watch::WatchConfig;
 
 use crate::build::load::JS_EXTENSIONS;
+use crate::config::experimental::RustPlugin;
 use crate::features::node::Node;
 
 #[derive(Debug, Diagnostic)]
@@ -233,7 +234,7 @@ impl Config {
     ) -> Result<Self> {
         let abs_config_file = root.join(CONFIG_FILE);
         let abs_config_file = abs_config_file.to_str().unwrap();
-        let mut overrides_json: Option<String> = None;
+        let mut overrides_json: Option<Value> = None;
         let c = config::Config::builder();
         // default config
         let c = c.add_source(config::File::from_str(
@@ -245,13 +246,11 @@ impl Config {
         let c = if let Some(default_config) = default_config {
             let result: Result<Value, serde_json::Error> = serde_json::from_str(default_config);
             if let Ok(config) = result {
-                if let Some(experimental) = config.get("experimental") {
-                    overrides_json = Some(
-                        serde_json::to_string(&json!({
-                            "experimental": experimental
-                        }))
-                        .unwrap(),
-                    );
+                if let Some(rust_plugins) = config
+                    .get("experimental")
+                    .and_then(|experimental| experimental.get("rustPlugins"))
+                {
+                    overrides_json = Some(json!({ "rust_plugins": rust_plugins }));
                 }
             };
             c.add_source(config::File::from_str(
@@ -274,20 +273,19 @@ impl Config {
         } else {
             c
         };
-        // overrides config
-        let c = if let Some(overrides) = overrides_json {
-            c.add_source(config::File::from_str(
-                overrides.as_str(),
-                config::FileFormat::Json5,
-            ))
-        } else {
-            c
-        };
 
         let c = c.build()?;
         let mut ret = c.try_deserialize::<Config>();
         // normalize & check
         if let Ok(config) = &mut ret {
+            // overrides  config
+
+            if let Some(overrides) = overrides_json {
+                let rust_plugins: Vec<RustPlugin> =
+                    serde_json::from_value(overrides.get("rust_plugins").unwrap().clone())?;
+                config.experimental.rust_plugins = rust_plugins;
+            }
+
             // normalize output
             if config.output.path.is_relative() {
                 config.output.path = root.join(config.output.path.to_string_lossy().to_string());

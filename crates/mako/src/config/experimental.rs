@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::create_deserialize_fn;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct RustPlugin {
     pub path: String,
-    pub options: String,
+    pub options: Value,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
