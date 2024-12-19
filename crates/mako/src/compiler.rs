@@ -6,7 +6,9 @@ use std::time::Instant;
 
 use anyhow::{anyhow, Error, Result};
 use colored::Colorize;
+use libloading::Library;
 use regex::Regex;
+use serde_json::Value;
 use swc_core::common::sync::Lrc;
 use swc_core::common::{Globals, SourceMap, DUMMY_SP};
 use swc_core::ecma::ast::Ident;
@@ -238,6 +240,19 @@ impl Compiler {
         if let Some(extra_plugins) = extra_plugins {
             plugins.extend(extra_plugins);
         }
+
+        let mut external_plugins: Vec<Arc<dyn Plugin>> = vec![];
+        unsafe {
+            for rust_plugin in config.experimental.rust_plugins.clone() {
+                let lib = Arc::new(Library::new(rust_plugin.path)?);
+                let plugin_create_fn: libloading::Symbol<
+                    unsafe extern "C" fn(option: Value) -> Arc<dyn Plugin>,
+                > = lib.get(b"_plugin_create").unwrap();
+                let plugin = plugin_create_fn(rust_plugin.options);
+                external_plugins.push(plugin);
+            }
+        }
+
         let builtin_plugins: Vec<Arc<dyn Plugin>> = vec![
             // features
             Arc::new(plugins::manifest::ManifestPlugin {}),
@@ -254,6 +269,7 @@ impl Compiler {
             Arc::new(plugins::tree_shaking::FarmTreeShake {}),
             Arc::new(plugins::detect_circular_dependence::LoopDetector {}),
         ];
+        plugins.extend(external_plugins);
         plugins.extend(builtin_plugins);
 
         let mut config = config;
@@ -488,7 +504,6 @@ impl Compiler {
         let mg = self.context.module_graph.read().unwrap();
         cg.full_hash(&mg)
     }
-
     fn clean_dist(&self) -> Result<()> {
         // compiler 前清除 dist，如果后续 dev 环境不在 output_path 里，需要再补上 dev 的逻辑
         let output_path = &self.context.config.output.path;

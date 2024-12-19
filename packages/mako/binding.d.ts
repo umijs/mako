@@ -260,6 +260,7 @@ export interface BuildParams {
         };
     experimental?: {
       webpackSyntaxValidate?: string[];
+      rustPlugins?: Array<[string, any]>;
     };
     watch?: {
       ignoredPaths?: string[];
