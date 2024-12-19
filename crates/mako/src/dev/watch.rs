@@ -53,7 +53,7 @@ impl<'a> Watcher<'a> {
 
         self.watch_dir_recursive(self.root.into(), &self.get_ignore_list(true))?;
 
-        let module_graph = self.compiler.context.module_graph.read().unwrap();
+        let module_graph = self.compiler.context.module_registry.read().unwrap();
         let mut dirs = HashSet::new();
         module_graph.modules().iter().for_each(|module| {
             if let Some(ResolverResource::Resolved(resource)) = module

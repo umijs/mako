@@ -12,7 +12,7 @@ use tracing::error;
 
 use crate::compiler::{Compiler, Context};
 use crate::module::{ModuleId, ModuleSystem};
-use crate::module_graph::ModuleGraph;
+use crate::module_graph::{ModuleGraph, ModuleRegistry};
 use crate::plugin::Plugin;
 
 pub struct ImportsChecker {}
@@ -20,10 +20,11 @@ pub struct ImportsChecker {}
 fn pick_no_export_specifiers_with_imports_info(
     module_id: &ModuleId,
     module_graph: &RwLockReadGuard<ModuleGraph>,
+    module_registry: &RwLockReadGuard<ModuleRegistry>,
     specifiers: &mut HashSet<String>,
 ) {
     if !specifiers.is_empty() {
-        let dep_module = module_graph.get_module(module_id).unwrap();
+        let dep_module = module_registry.get_module(module_id).unwrap();
         if let Some(info) = &dep_module.info {
             match info.module_system {
                 ModuleSystem::ESModule => {
@@ -40,6 +41,7 @@ fn pick_no_export_specifiers_with_imports_info(
                             pick_no_export_specifiers_with_imports_info(
                                 id,
                                 module_graph,
+                                module_registry,
                                 specifiers,
                             );
                         }
@@ -61,21 +63,25 @@ impl Plugin for ImportsChecker {
             HashMap::new();
 
         let module_graph = context.module_graph.read().unwrap();
+        let module_registry = context.module_registry.read().unwrap();
         let modules = module_graph.modules();
 
-        for m in modules {
-            if let Some(info) = &m.info {
-                if !info.file.is_under_node_modules
-                    && matches!(info.module_system, ModuleSystem::ESModule)
-                {
-                    // 收集 imports
-                    let ast = &info.ast.as_script().unwrap().ast;
-                    let mut import_specifiers: HashMap<String, HashSet<String>> = HashMap::new();
+        for module_id in modules {
+            if let Some(m) = module_registry.get_module(module_id) {
+                if let Some(info) = &m.info {
+                    if !info.file.is_under_node_modules
+                        && matches!(info.module_system, ModuleSystem::ESModule)
+                    {
+                        // 收集 imports
+                        let ast = &info.ast.as_script().unwrap().ast;
+                        let mut import_specifiers: HashMap<String, HashSet<String>> =
+                            HashMap::new();
 
-                    ast.visit_with(&mut CollectImports {
-                        imports_specifiers_with_source: &mut import_specifiers,
-                    });
-                    modules_imports_map.insert(&m.id, import_specifiers);
+                        ast.visit_with(&mut CollectImports {
+                            imports_specifiers_with_source: &mut import_specifiers,
+                        });
+                        modules_imports_map.insert(&m.id, import_specifiers);
+                    }
                 }
             }
         }
@@ -92,6 +98,7 @@ impl Plugin for ImportsChecker {
                             pick_no_export_specifiers_with_imports_info(
                                 dep_module_id,
                                 &module_graph,
+                                &module_registry,
                                 specifiers,
                             );
                         }

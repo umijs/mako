@@ -6,7 +6,7 @@ use semver::Version;
 
 use crate::compiler::Context;
 use crate::module::Module;
-use crate::module_graph::ModuleGraph;
+use crate::module_graph::{ModuleGraph, ModuleRegistry};
 use crate::plugin::Plugin;
 use crate::resolve::ResolverResource;
 
@@ -110,6 +110,7 @@ impl DuplicatePackageCheckerPlugin {
     fn check_duplicates(
         &self,
         module_graph: &RwLock<ModuleGraph>,
+        module_registry: &ModuleRegistry,
     ) -> HashMap<String, Vec<PackageInfo>> {
         let mut packages = Vec::new();
 
@@ -118,7 +119,11 @@ impl DuplicatePackageCheckerPlugin {
             .unwrap()
             .modules()
             .into_iter()
-            .filter_map(extract_package_info)
+            .filter_map(|module_id| {
+                module_registry
+                    .get_module(module_id)
+                    .and_then(extract_package_info)
+            })
             .for_each(|package_info| {
                 packages.push(package_info);
             });
@@ -137,7 +142,8 @@ impl Plugin for DuplicatePackageCheckerPlugin {
         context: &Arc<Context>,
         _compiler: &crate::compiler::Compiler,
     ) -> anyhow::Result<()> {
-        let duplicates = self.check_duplicates(&context.module_graph);
+        let module_registry = context.module_registry.read().unwrap();
+        let duplicates = self.check_duplicates(&context.module_graph, &module_registry);
 
         if !duplicates.is_empty() && self.verbose {
             let mut message = String::new();

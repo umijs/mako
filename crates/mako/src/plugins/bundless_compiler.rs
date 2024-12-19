@@ -98,8 +98,8 @@ impl BundlessCompiler {
 
                 // let deps: Vec<(&ModuleId, &crate::module::Dependency)> =
                 //     module_graph.get_dependencies(module_id);
-                let mut module_graph = context.module_graph.write().unwrap();
-                let module = module_graph.get_module_mut(module_id).unwrap();
+                let mut module_registry = context.module_registry.write().unwrap();
+                let module = module_registry.get_module_mut(module_id).unwrap();
                 let info = module.info.as_mut().unwrap();
                 let ast = &mut info.ast;
 
@@ -141,9 +141,9 @@ impl BundlessCompiler {
     pub(crate) fn generate(&self) -> Result<()> {
         self.transform_all()?;
 
-        let mg = self.context.module_graph.read().unwrap();
+        let mg = self.context.module_registry.read().unwrap();
 
-        let ids = mg.get_module_ids();
+        let ids = mg.module_ids();
 
         // TODO try tokio fs later
         ids.iter().for_each(|id| {

@@ -84,14 +84,13 @@ pub(crate) fn render_css_chunk(
         None => None,
         _ => {
             mako_profile_scope!("build_source_map");
-
-            let module_graph = context.module_graph.read().unwrap();
+            let registry = context.module_registry.read().unwrap();
             let chunk_source_map = build_source_map(&source_map, cm);
 
             let mut chain_map = HashMap::<String, Vec<swc_sourcemap::SourceMap>>::new();
 
             chunk.get_modules().iter().for_each(|module_id| {
-                if let Some(module) = module_graph.get_module(module_id) {
+                if let Some(module) = registry.module(module_id) {
                     if let Some(info) = module.info.as_ref()
                         && matches!(info.ast, crate::module::ModuleAst::Css(_))
                     {
