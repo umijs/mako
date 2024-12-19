@@ -1,6 +1,7 @@
 module.exports = [
   {
-    async load(path) {
+    async load(ctx,path) {
+      ctx.warn("22222222");
       if (path.endsWith("foo.bar")) {
         return {
           content: `export default () => <Foooo>foo.bar</Foooo>;`,

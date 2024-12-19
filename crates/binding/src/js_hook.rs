@@ -3,6 +3,7 @@ use napi::NapiRaw;
 use napi_derive::napi;
 use serde_json::Value;
 
+use crate::js_plugin::PluginContext;
 use crate::threadsafe_function::ThreadsafeFunction;
 
 #[napi(object)]
@@ -86,7 +87,7 @@ pub struct TsFnHooks {
     pub build_end: Option<ThreadsafeFunction<(), ()>>,
     pub write_bundle: Option<ThreadsafeFunction<(), ()>>,
     pub generate_end: Option<ThreadsafeFunction<Value, ()>>,
-    pub load: Option<ThreadsafeFunction<String, Option<LoadResult>>>,
+    pub load: Option<ThreadsafeFunction<(PluginContext, String), Option<LoadResult>>>,
     pub load_include: Option<ThreadsafeFunction<String, Option<bool>>>,
     pub watch_changes: Option<ThreadsafeFunction<(String, WatchChangesParams), ()>>,
     pub resolve_id:

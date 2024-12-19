@@ -6,6 +6,7 @@ use mako::ast::file::{Content, JsContent};
 use mako::compiler::Context;
 use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam, PluginResolveIdParams};
 use mako::resolve::{ExternalResource, Resolution, ResolvedResource, ResolverResource};
+use napi_derive::napi;
 
 use crate::js_hook::{
     LoadResult, ResolveIdParams, ResolveIdResult, TransformResult, TsFnHooks, WatchChangesParams,
@@ -31,6 +32,17 @@ pub struct JsPlugin {
     pub hooks: TsFnHooks,
     pub name: Option<String>,
     pub enforce: Option<String>,
+}
+
+#[napi]
+pub struct PluginContext {}
+
+#[napi]
+impl PluginContext {
+    #[napi]
+    pub fn warn(&self, msg: String) {
+        println!("WARN: {}", msg)
+    }
 }
 
 impl Plugin for JsPlugin {
@@ -62,7 +74,10 @@ impl Plugin for JsPlugin {
             {
                 return Ok(None);
             }
-            let x: Option<LoadResult> = hook.call(param.file.path.to_string_lossy().to_string())?;
+            let x: Option<LoadResult> = hook.call((
+                PluginContext {},
+                param.file.path.to_string_lossy().to_string(),
+            ))?;
             if let Some(x) = x {
                 return content_from_result(TransformResult {
                     content: x.content,
