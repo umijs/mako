@@ -6,10 +6,11 @@ use mako::ast::file::{Content, JsContent};
 use mako::compiler::Context;
 use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam, PluginResolveIdParams};
 use mako::resolve::{ExternalResource, Resolution, ResolvedResource, ResolverResource};
+use napi_derive::napi;
 
 use crate::js_hook::{
-    LoadResult, ResolveIdParams, ResolveIdResult, TransformResult, TsFnHooks,
-    WatchChangesParams, WriteFile,
+    LoadResult, ResolveIdParams, ResolveIdResult, TransformResult, TsFnHooks, WatchChangesParams,
+    WriteFile,
 };
 
 fn content_from_result(result: TransformResult) -> Result<Content> {
@@ -24,6 +25,17 @@ fn content_from_result(result: TransformResult) -> Result<Content> {
         })),
         "css" => Ok(Content::Css(result.content)),
         _ => Err(anyhow!("Unsupported content type: {}", result.content_type)),
+    }
+}
+
+#[napi]
+pub struct PluginContext {}
+
+#[napi]
+impl PluginContext {
+    #[napi]
+    pub fn warn(&self, msg: String) {
+        println!("WARN: {}", msg)
     }
 }
 
@@ -44,7 +56,7 @@ impl Plugin for JsPlugin {
 
     fn build_start(&self, _context: &Arc<Context>) -> Result<()> {
         if let Some(hook) = &self.hooks.build_start {
-            hook.call(())?
+            hook.call(PluginContext {})?
         }
         Ok(())
     }
@@ -52,19 +64,17 @@ impl Plugin for JsPlugin {
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
         if let Some(hook) = &self.hooks.load {
             if self.hooks.load_include.is_some()
-                && self
-                    .hooks
-                    .load_include
-                    .as_ref()
-                    .unwrap()
-                    .call(param.file.path.to_string_lossy().to_string())?
-                    == Some(false)
+                && self.hooks.load_include.as_ref().unwrap().call((
+                    PluginContext {},
+                    param.file.path.to_string_lossy().to_string(),
+                ))? == Some(false)
             {
                 return Ok(None);
             }
-            let x: Option<LoadResult> = hook.call(
+            let x: Option<LoadResult> = hook.call((
+                PluginContext {},
                 param.file.path.to_string_lossy().to_string(),
-            )?;
+            ))?;
             if let Some(x) = x {
                 return content_from_result(TransformResult {
                     content: x.content,
@@ -85,6 +95,7 @@ impl Plugin for JsPlugin {
     ) -> Result<Option<ResolverResource>> {
         if let Some(hook) = &self.hooks.resolve_id {
             let x: Option<ResolveIdResult> = hook.call((
+                PluginContext {},
                 source.to_string(),
                 importer.to_string(),
                 ResolveIdParams {
@@ -116,10 +127,10 @@ impl Plugin for JsPlugin {
         // keep generate_end for compatibility
         // since build_end does not have none error params in unplugin's api spec
         if let Some(hook) = &self.hooks.generate_end {
-            hook.call(serde_json::to_value(param)?)?
+            hook.call((PluginContext {}, serde_json::to_value(param)?))?
         }
         if let Some(hook) = &self.hooks.build_end {
-            hook.call(())?
+            hook.call(PluginContext {})?
         }
         Ok(())
     }
@@ -127,6 +138,7 @@ impl Plugin for JsPlugin {
     fn watch_changes(&self, id: &str, event: &str, _context: &Arc<Context>) -> Result<()> {
         if let Some(hook) = &self.hooks.watch_changes {
             hook.call((
+                PluginContext {},
                 id.to_string(),
                 WatchChangesParams {
                     event: event.to_string(),
@@ -138,17 +150,20 @@ impl Plugin for JsPlugin {
 
     fn write_bundle(&self, _context: &Arc<Context>) -> Result<()> {
         if let Some(hook) = &self.hooks.write_bundle {
-            hook.call(())?
+            hook.call(PluginContext {})?
         }
         Ok(())
     }
 
     fn before_write_fs(&self, path: &std::path::Path, content: &[u8]) -> Result<()> {
         if let Some(hook) = &self.hooks._on_generate_file {
-            hook.call(WriteFile {
-                path: path.to_string_lossy().to_string(),
-                content: content.to_vec(),
-            })?;
+            hook.call((
+                PluginContext {},
+                WriteFile {
+                    path: path.to_string_lossy().to_string(),
+                    content: content.to_vec(),
+                },
+            ))?;
         }
         Ok(())
     }
@@ -160,7 +175,7 @@ impl Plugin for JsPlugin {
         _context: &Arc<Context>,
     ) -> Result<Option<Content>> {
         if let Some(hook) = &self.hooks.transform_include {
-            if hook.call(path.to_string())? == Some(false) {
+            if hook.call((PluginContext {}, path.to_string()))? == Some(false) {
                 return Ok(None);
             }
         }
@@ -172,7 +187,8 @@ impl Plugin for JsPlugin {
                 _ => return Ok(None),
             };
 
-            let result: Option<TransformResult> = hook.call((content_str, path.to_string()))?;
+            let result: Option<TransformResult> =
+                hook.call((PluginContext {}, content_str, path.to_string()))?;
 
             if let Some(result) = result {
                 return content_from_result(result).map(Some);
