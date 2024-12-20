@@ -18,11 +18,6 @@ build({
 
 function getPlugins() {
   let plugins = [];
-  const hooksPath = path.join(cwd, 'hooks.config.js');
-  if (fs.existsSync(hooksPath)) {
-    let hooks = require(hooksPath);
-    plugins.push(hooks);
-  }
   const pluginsPath = path.join(cwd, 'plugins.config.js');
   if (fs.existsSync(pluginsPath)) {
     plugins.push(...require(pluginsPath));

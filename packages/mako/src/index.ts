@@ -141,6 +141,7 @@ export async function build(params: BuildParams) {
       },
     });
   }
+
   // support dump mako config
   if (process.env.DUMP_MAKO_CONFIG) {
     const configFile = path.join(params.root, 'mako.config.json');
@@ -191,6 +192,24 @@ export async function build(params: BuildParams) {
       );
     }
   });
+
+  // add context to each plugin's hook
+  plugins.forEach((plugin: any) => {
+    Object.keys(plugin).forEach((key) => {
+      const oldValue = plugin[key];
+      if (typeof oldValue === 'function') {
+        plugin[key] = (context: any, ...args: any[]) => {
+          return oldValue.apply(
+            {
+              warn: context.warn.bind(context),
+            },
+            [...args],
+          );
+        };
+      }
+    });
+  });
+
   params.config = omit(params.config, [
     'less',
     'sass',
