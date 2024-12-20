@@ -27,16 +27,6 @@ use crate::stats::StatsInfo;
 use crate::utils::id_helper::{assign_numeric_ids, compare_modules_by_incoming_edges};
 use crate::utils::{thread_pool, ParseRegex};
 
-#[derive(Default)]
-pub struct PluginContext {
-}
-
-impl PluginContext {
-    pub fn error(&self, err: Error) {
-        println!("{}", err.to_string().red());
-    }
-}
-
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
     pub chunk_graph: RwLock<ChunkGraph>,
@@ -48,7 +38,6 @@ pub struct Context {
     pub root: PathBuf,
     pub meta: Meta,
     pub plugin_driver: PluginDriver,
-    pub plugin_context: Arc<PluginContext>,
     pub stats_info: StatsInfo,
     pub resolvers: Resolvers,
     pub static_cache: RwLock<MemoryChunkFileCache>,
@@ -139,7 +128,6 @@ impl Default for Context {
             modules_with_missing_deps: RwLock::new(Vec::new()),
             meta: Meta::new(),
             plugin_driver: Default::default(),
-            plugin_context: Arc::new(Default::default()),
             stats_info: StatsInfo::new(),
             resolvers,
             optimize_infos: Mutex::new(None),
@@ -383,7 +371,6 @@ impl Compiler {
                 modules_with_missing_deps: RwLock::new(Vec::new()),
                 meta: Meta::new(),
                 plugin_driver,
-                plugin_context: Default::default(),
                 numeric_ids_map: RwLock::new(numeric_ids_map),
                 stats_info: StatsInfo::new(),
                 resolvers,

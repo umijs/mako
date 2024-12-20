@@ -2831,7 +2831,6 @@ dependencies = [
  "napi-build",
  "napi-derive",
  "oneshot",
- "parking_lot",
  "serde",
  "serde_json",
  "tikv-jemallocator",
