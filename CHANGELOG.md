@@ -1,3 +1,14 @@
+## 0.10.0
+
+`2024-12-19`
+
+- feat: supports umd export by [@xusd320](https://github.com/xusd320) in [#1723](https://github.com/umijs/mako/pull/1723)
+- feat: support case sensitive by [@notcold](https://github.com/notcold) in [#1714](https://github.com/umijs/mako/pull/1714)
+- feat: output filename config by [@stormslowly](https://github.com/stormslowly) in [#1725](https://github.com/umijs/mako/pull/1725)
+- feat: native plugin init by [@Jinbao1001](https://github.com/Jinbao1001) in [#1691](https://github.com/umijs/mako/pull/1691)
+- fix: replace the "typeof **webpack\_require**" content by [@notcold](https://github.com/notcold) in [#1688](https://github.com/umijs/mako/pull/1688)
+- fix: umd config deserialization by [@xusd320](https://github.com/xusd320) in [#1726](https://github.com/umijs/mako/pull/1726)
+
 ## 0.9.9
 
 `2024-12-12`
