@@ -7,7 +7,8 @@ use serde_json::Value;
 use swc_core::common::{Mark, Span, DUMMY_SP};
 use swc_core::ecma::ast::{
     ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Ident, IdentName, KeyValueProp, Lit,
-    MemberExpr, MemberProp, ModuleItem, Null, Number, ObjectLit, Prop, PropOrSpread, Stmt, Str,
+    MemberExpr, MemberProp, ModuleItem, Null, Number, ObjectLit, OptChainBase, OptChainExpr, Prop,
+    PropOrSpread, Stmt, Str,
 };
 use swc_core::ecma::utils::{quote_ident, ExprExt};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
@@ -33,7 +34,48 @@ impl EnvReplacer {
     fn get_define_env(&self, key: &str) -> Option<Expr> {
         self.define.get(key).cloned()
     }
+
+    fn extract_prop_name(&self, prop: &MemberProp) -> Option<String> {
+        match prop {
+            // handle obj.property
+            MemberProp::Ident(ident) => Some(ident.sym.to_string()),
+            // handle obj.['property'] or obj[1]
+            MemberProp::Computed(computed) => match computed.expr.as_ref() {
+                Expr::Lit(Lit::Str(str_lit)) => Some(str_lit.value.to_string()),
+                Expr::Lit(Lit::Num(num_lit)) => Some(num_lit.value.to_string()),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn process_chain_expr(&self, expr: &Expr, parts: &mut Vec<String>) -> bool {
+        match expr {
+            Expr::Member(member_expr) => {
+                if let Some(prop_name) = self.extract_prop_name(&member_expr.prop) {
+                    parts.push(prop_name);
+                    return self.process_chain_expr(&member_expr.obj, parts);
+                }
+            }
+            Expr::OptChain(OptChainExpr {
+                base: box OptChainBase::Member(member_expr),
+                ..
+            }) => {
+                if let Some(prop_name) = self.extract_prop_name(&member_expr.prop) {
+                    parts.push(prop_name);
+                    return self.process_chain_expr(&member_expr.obj, parts);
+                }
+            }
+            Expr::Ident(ident) if ident.ctxt.outer() == self.unresolved_mark => {
+                parts.push(ident.sym.to_string());
+                return true;
+            }
+            _ => (),
+        }
+        false
+    }
 }
+
 impl VisitMut for EnvReplacer {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Ident(Ident { ctxt, .. }) = expr {
@@ -45,6 +87,25 @@ impl VisitMut for EnvReplacer {
         }
 
         match expr {
+            Expr::OptChain(OptChainExpr { base, .. }) => {
+                if let OptChainBase::Member(member) = base.as_ref() {
+                    let mut parts = Vec::new();
+
+                    if let Some(prop_name) = self.extract_prop_name(&member.prop) {
+                        parts.push(prop_name);
+
+                        if self.process_chain_expr(&member.obj, &mut parts) {
+                            parts.reverse();
+                            let full_path = parts.join(".");
+
+                            if let Some(env) = self.get_define_env(&full_path) {
+                                *expr = env
+                            }
+                        }
+                    }
+                }
+            }
+
             Expr::Member(MemberExpr { obj, prop, .. }) => {
                 let mut member_visit_path = match prop {
                     MemberProp::Ident(IdentName { sym, .. }) => sym.to_string(),
@@ -481,6 +542,84 @@ mod tests {
                 }
             ),
             "log(A.v);"
+        );
+    }
+
+    #[test]
+    fn test_optional_chaining_basic() {
+        assert_eq!(
+            run(
+                r#"log(A?.B)"#,
+                hashmap! {
+                    "A.B".to_string() => json!(1)
+                }
+            ),
+            "log(1);"
+        );
+    }
+
+    #[test]
+    fn test_optional_chaining_nested() {
+        assert_eq!(
+            run(
+                r#"log(A?.B?.C)"#,
+                hashmap! {
+                    "A.B.C".to_string() => json!("\"test\"")
+                }
+            ),
+            "log(\"test\");"
+        );
+    }
+
+    #[test]
+    fn test_optional_chaining_with_computed() {
+        assert_eq!(
+            run(
+                r#"log(A?.["B"]?.C)"#,
+                hashmap! {
+                    "A.B.C".to_string() => json!(true)
+                }
+            ),
+            "log(true);"
+        );
+    }
+
+    #[test]
+    fn test_optional_chaining_with_number_computed() {
+        assert_eq!(
+            run(
+                r#"log(A?.[1]?.B)"#,
+                hashmap! {
+                    "A.1.B".to_string() => json!(42)
+                }
+            ),
+            "log(42);"
+        );
+    }
+
+    #[test]
+    fn test_optional_chaining_mixed() {
+        assert_eq!(
+            run(
+                r#"log(A?.B?.["C"]?.D)"#,
+                hashmap! {
+                    "A.B.C.D".to_string() => json!({"\"value\"": true})
+                }
+            ),
+            "log({\"value\": true});"
+        );
+    }
+
+    #[test]
+    fn test_optional_chaining_not_defined() {
+        assert_eq!(
+            run(
+                r#"log(A?.B?.C)"#,
+                hashmap! {
+                    "X.Y.Z".to_string() => json!(1)
+                }
+            ),
+            "log(A?.B?.C);"
         );
     }
 
