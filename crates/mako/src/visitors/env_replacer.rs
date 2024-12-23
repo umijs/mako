@@ -623,6 +623,47 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_mixed_optional_and_normal_chain() {
+        assert_eq!(
+            run(
+                r#"log(A.B?.C)"#,
+                hashmap! {
+                    "A.B.C".to_string() => json!(42)
+                }
+            ),
+            "log(42);"
+        );
+    }
+
+    #[test]
+    fn test_optional_chain_in_computed_prop() {
+        assert_eq!(
+            run(
+                r#"log(A[x?.y])"#,
+                hashmap! {
+                    "x.y".to_string() => json!("\"prop\""),
+                    "A.prop".to_string() => json!(123)
+                }
+            ),
+            r#"log(A["prop"]);"#
+        );
+    }
+
+    #[test]
+    fn test_nested_optional_chain_in_computed_prop() {
+        assert_eq!(
+            run(
+                r#"log(A[x?.y?.z])"#,
+                hashmap! {
+                    "x.y.z".to_string() => json!("\"test\""),
+                    "A.test".to_string() => json!(true)
+                }
+            ),
+            r#"log(A["test"]);"#
+        );
+    }
+
     fn run(js_code: &str, envs: HashMap<String, Value>) -> String {
         let mut test_utils = TestUtils::gen_js_ast(js_code);
         let envs = build_env_map(envs, &test_utils.context).unwrap();
