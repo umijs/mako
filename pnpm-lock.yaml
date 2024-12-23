@@ -181,6 +181,8 @@ importers:
 
   examples/config-externals: {}
 
+  examples/dead-simple: {}
+
   examples/import-resources:
     dependencies:
       react:
