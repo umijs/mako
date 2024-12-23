@@ -15,7 +15,7 @@ Mako `['mɑːkoʊ]` is an **extremely fast**, **production-grade** web bundler b
 ✨ See more at [makojs.dev](https://makojs.dev).
 </div>
 
-## Who's using Mako?
+## Who's using Mako
 
 - Web App，Hybrid App, Mini Program (Partly), Low Code, Serverless in [Ant Group](https://www.antgroup.com/)
 - [Ant Design](https://github.com/ant-design/ant-design/) using Mako for its website
