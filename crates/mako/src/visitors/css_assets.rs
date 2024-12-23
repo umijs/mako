@@ -28,14 +28,12 @@ impl VisitMut for CSSAssets {
             box UrlValue::Raw(s) => s.value.to_string(),
         };
 
-        if is_remote_or_data_or_hash(&url) {
+        if is_remote_or_data_or_hash(&url) || url.is_empty() {
             return;
         }
+
         let url = remove_first_tilde(url);
 
-        if url.is_empty() {
-            return;
-        }
         let dep = Dependency {
             source: url,
             resolve_as: None,
@@ -111,6 +109,14 @@ mod tests {
         assert_eq!(
             run(r#".foo { background: url(should-not-exists.png) }"#),
             ".foo{background:url(should-not-exists.png)}"
+        );
+    }
+
+    #[test]
+    fn test_empty_url() {
+        assert_eq!(
+            run(r#".foo { background: url("") }"#),
+            r#".foo{background:url("")}"#
         );
     }
 
