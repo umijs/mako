@@ -1,0 +1,8 @@
+{
+  "name": "dead-simple",
+  "version": "0.0.0",
+  "description": "just for demo",
+  "dependencies": {
+  },
+  "repository": "git@github.com:umijs/mako.git"
+}
