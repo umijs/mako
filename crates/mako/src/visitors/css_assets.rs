@@ -32,6 +32,10 @@ impl VisitMut for CSSAssets {
             return;
         }
         let url = remove_first_tilde(url);
+
+        if url.is_empty() {
+            return;
+        }
         let dep = Dependency {
             source: url,
             resolve_as: None,
