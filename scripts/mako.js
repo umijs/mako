@@ -11,10 +11,14 @@ build({
   root: cwd,
   config,
   watch: process.argv.includes('--watch'),
-}).catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+})
+  .then(() => {
+    process.exit(0);
+  })
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
 
 function getPlugins() {
   let plugins = [];

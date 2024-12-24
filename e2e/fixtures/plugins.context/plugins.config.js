@@ -13,6 +13,10 @@ module.exports = [
           message: 'test warn with object',
         });
         this.error('error: ' + path);
+        this.emitFile({
+          fileName: 'test.txt',
+          source: 'test',
+        });
         return {
           content: `export default () => <Foooo>.hoo</Foooo>;`,
           type: 'jsx',

@@ -1,4 +1,5 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { omit } from 'lodash';
 import resolve from 'resolve';
@@ -194,6 +195,26 @@ export async function build(params: BuildParams) {
         plugin[key] = (context: any, ...args: any[]) => {
           return oldValue.apply(
             {
+              emitFile(file: {
+                name?: string;
+                fileName?: string;
+                source?: string | Uint8Array;
+              }) {
+                if (file.name && !file.fileName) {
+                  throw new Error(
+                    'name in emitFile is not supported yet, please supply fileName instead',
+                  );
+                }
+                // Since assets_info in mako is a <origin_path, output_path> map,
+                // we need to generate a tmp file to store the content, and then emit it
+                // TODO: we should use a better way to handle this
+                const tmpFile = path.join(
+                  os.tmpdir(),
+                  Math.random().toString(36).substring(2, 15),
+                );
+                fs.writeFileSync(tmpFile, file.source!);
+                context.emitFile(tmpFile, file.fileName!);
+              },
               warn(
                 message:
                   | string
