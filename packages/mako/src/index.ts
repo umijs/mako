@@ -195,9 +195,16 @@ export async function build(params: BuildParams) {
         plugin[key] = (context: any, ...args: any[]) => {
           return oldValue.apply(
             {
+              // https://rollupjs.org/plugin-development/#this-parse
               parse(_code: string) {
                 throw new Error('parse is not supported');
               },
+              // https://rollupjs.org/plugin-development/#this-addwatchfile
+              addWatchFile(_file: string) {
+                throw new Error('addWatchFile is not supported');
+              },
+              // https://rollupjs.org/plugin-development/#this-emitfile
+              // only support asset type
               emitFile(file: {
                 type: 'asset' | 'chunk' | 'prebuilt-chunk';
                 name?: string;
