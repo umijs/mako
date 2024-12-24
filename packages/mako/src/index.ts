@@ -191,7 +191,6 @@ export async function build(params: BuildParams) {
   plugins.forEach((plugin: any) => {
     Object.keys(plugin).forEach((key) => {
       const oldValue = plugin[key];
-      const shouldAdapt = key === 'load' || key === 'transform';
       if (typeof oldValue === 'function') {
         plugin[key] = (context: any, ...args: any[]) => {
           let result = oldValue.apply(
@@ -274,12 +273,24 @@ export async function build(params: BuildParams) {
             [...args],
           );
           // adapter mako hooks for unplugin
-          if (shouldAdapt) {
+          if (key === 'load' || key === 'transform') {
+            // if result is null, return the original code
+            if (result === null) {
+              result = args[0];
+            }
             const isPromise = typeof result === 'object' && result.then;
             if (isPromise) {
               result = result.then((result: any) => adapterResult(result));
             } else {
               result = adapterResult(result);
+            }
+          }
+          if (key === 'resolveId') {
+            if (typeof result === 'string') {
+              result = {
+                id: result,
+                external: false,
+              };
             }
           }
           return result;

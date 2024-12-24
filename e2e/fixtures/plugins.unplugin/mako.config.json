@@ -1,3 +1,7 @@
 {
+  "externals": {
+    "react": "React",
+    "react/jsx-dev-runtime": "React.jsx"
+  },
   "minify": false
 }
