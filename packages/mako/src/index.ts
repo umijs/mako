@@ -194,8 +194,46 @@ export async function build(params: BuildParams) {
         plugin[key] = (context: any, ...args: any[]) => {
           return oldValue.apply(
             {
-              warn: context.warn.bind(context),
-              error: context.error.bind(context),
+              warn(
+                message:
+                  | string
+                  | { message: string; pluginCode?: string; meta?: string },
+              ) {
+                if (typeof message === 'object') {
+                  const msg = [
+                    message.message,
+                    message.pluginCode
+                      ? `pluginCode: ${message.pluginCode}`
+                      : '',
+                    message.meta ? `meta: ${message.meta}` : '',
+                  ]
+                    .filter(Boolean)
+                    .join('\n');
+                  context.warn(msg);
+                } else {
+                  context.warn(message);
+                }
+              },
+              error(
+                message:
+                  | string
+                  | { message: string; pluginCode?: string; meta?: string },
+              ) {
+                if (typeof message === 'object') {
+                  const msg = [
+                    message.message,
+                    message.pluginCode
+                      ? `pluginCode: ${message.pluginCode}`
+                      : '',
+                    message.meta ? `meta: ${message.meta}` : '',
+                  ]
+                    .filter(Boolean)
+                    .join('\n');
+                  context.error(msg);
+                } else {
+                  context.error(message);
+                }
+              },
             },
             [...args],
           );
