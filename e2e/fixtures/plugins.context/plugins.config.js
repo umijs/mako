@@ -7,7 +7,6 @@ module.exports = [
     },
     async load(path) {
       if (path.endsWith('.hoo')) {
-        // console.log('load', path, this, this.warn);
         this.warn('load: ' + path);
         this.warn({
           message: 'test warn with object',

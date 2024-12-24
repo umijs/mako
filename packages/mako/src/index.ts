@@ -199,15 +199,13 @@ export async function build(params: BuildParams) {
                 throw new Error('parse is not supported');
               },
               emitFile(file: {
-                type: 'asset' | 'chunk' | 'prebuilt-chunk',
+                type: 'asset' | 'chunk' | 'prebuilt-chunk';
                 name?: string;
                 fileName?: string;
                 source?: string | Uint8Array;
               }) {
                 if (file.type !== 'asset') {
-                  throw new Error(
-                    'emitFile only support asset type',
-                  );
+                  throw new Error('emitFile only support asset type');
                 }
                 if (file.name && !file.fileName) {
                   throw new Error(
