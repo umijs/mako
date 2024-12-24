@@ -191,9 +191,10 @@ export async function build(params: BuildParams) {
   plugins.forEach((plugin: any) => {
     Object.keys(plugin).forEach((key) => {
       const oldValue = plugin[key];
+      const shouldAdapt = key === 'load' || key === 'transform';
       if (typeof oldValue === 'function') {
         plugin[key] = (context: any, ...args: any[]) => {
-          return oldValue.apply(
+          let result = oldValue.apply(
             {
               // https://rollupjs.org/plugin-development/#this-parse
               parse(_code: string) {
@@ -272,6 +273,16 @@ export async function build(params: BuildParams) {
             },
             [...args],
           );
+          // adapter mako hooks for unplugin
+          if (shouldAdapt) {
+            const isPromise = typeof result === 'object' && result.then;
+            if (isPromise) {
+              result = result.then((result: any) => adapterResult(result));
+            } else {
+              result = adapterResult(result);
+            }
+          }
+          return result;
         };
       }
     });
@@ -295,4 +306,19 @@ export async function build(params: BuildParams) {
     });
     forkTypeChecker.runTypeCheckInChildProcess();
   }
+}
+
+function adapterResult(result: any) {
+  if (typeof result === 'string') {
+    return {
+      content: result,
+      type: 'tsx',
+    };
+  } else if (typeof result === 'object' && result.code) {
+    return {
+      content: result.code,
+      type: 'tsx',
+    };
+  }
+  return result;
 }

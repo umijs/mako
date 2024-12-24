@@ -55,6 +55,7 @@
     "semver": "^7.5.4",
     "typescript": "^5.4.3",
     "umi": "^4.3.1",
+    "unplugin-replace": "^0.3.3",
     "wait-port": "^1.1.0",
     "webpack": "^5.0.0",
     "zx": "^7.2.3"

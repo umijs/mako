@@ -13,6 +13,7 @@ module.exports = [
         });
         this.error('error: ' + path);
         this.emitFile({
+          type: 'asset',
           fileName: 'test.txt',
           source: 'test',
         });
