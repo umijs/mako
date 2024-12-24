@@ -280,7 +280,7 @@ fn do_resolve(
                 }
                 _ => {
                     eprintln!(
-                        "failed to resolve {} from {} with resolver err: {:?}",
+                        "failed to resolve `{}` from `{}` with resolver err: {:?}",
                         source,
                         path.to_string_lossy(),
                         oxc_resolve_err
