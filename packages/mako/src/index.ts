@@ -195,6 +195,7 @@ export async function build(params: BuildParams) {
           return oldValue.apply(
             {
               warn: context.warn.bind(context),
+              error: context.error.bind(context),
             },
             [...args],
           );

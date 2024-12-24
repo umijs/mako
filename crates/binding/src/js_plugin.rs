@@ -37,6 +37,10 @@ impl PluginContext {
     pub fn warn(&self, msg: String) {
         println!("WARN: {}", msg)
     }
+    #[napi]
+    pub fn error(&self, msg: String) {
+        println!("ERROR: {}", msg)
+    }
 }
 
 pub struct JsPlugin {

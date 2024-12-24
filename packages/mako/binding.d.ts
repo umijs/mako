@@ -272,4 +272,5 @@ export interface BuildParams {
 export declare function build(buildParams: BuildParams): Promise<void>;
 export class PluginContext {
   warn(msg: string): void;
+  error(msg: string): void;
 }
