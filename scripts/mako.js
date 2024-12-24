@@ -7,13 +7,16 @@ const cwd = process.argv[2];
 
 console.log('> run mako build for', cwd);
 const config = getMakoConfig();
+const watch = process.argv.includes('--watch');
 build({
   root: cwd,
   config,
-  watch: process.argv.includes('--watch'),
+  watch,
 })
   .then(() => {
-    process.exit(0);
+    if (!watch) {
+      process.exit(0);
+    }
   })
   .catch((e) => {
     console.error(e);
