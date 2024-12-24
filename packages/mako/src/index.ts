@@ -195,11 +195,20 @@ export async function build(params: BuildParams) {
         plugin[key] = (context: any, ...args: any[]) => {
           return oldValue.apply(
             {
+              parse(_code: string) {
+                throw new Error('parse is not supported');
+              },
               emitFile(file: {
+                type: 'asset' | 'chunk' | 'prebuilt-chunk',
                 name?: string;
                 fileName?: string;
                 source?: string | Uint8Array;
               }) {
+                if (file.type !== 'asset') {
+                  throw new Error(
+                    'emitFile only support asset type',
+                  );
+                }
                 if (file.name && !file.fileName) {
                   throw new Error(
                     'name in emitFile is not supported yet, please supply fileName instead',
