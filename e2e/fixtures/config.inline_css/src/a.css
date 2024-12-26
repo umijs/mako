@@ -4,3 +4,7 @@
 .a {
   color: red;
 }
+
+.a:before {
+  content: "\002F";
+}
