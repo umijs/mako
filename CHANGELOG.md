@@ -1,3 +1,12 @@
+## 0.11.0
+
+`2024-12-27`
+
+- fix: support optional chaining in environment variable by [@yezaoshu](https://github.com/yezaoshu) in [#1730](https://github.com/umijs/mako/pull/1730)
+- refactor: 🎨 no need to resolve empty url in css by [@stormslowly](https://github.com/stormslowly) in [#1732](https://github.com/umijs/mako/pull/1732)
+- feat: support unplugin context by [@sorrycc](https://github.com/sorrycc) in [#1728](https://github.com/umijs/mako/pull/1728)
+- fix: legacy octal escape is not permitted in strict mode by [@xusd320](https://github.com/xusd320) in [#1736](https://github.com/umijs/mako/pull/1736)
+
 ## 0.10.0
 
 `2024-12-19`

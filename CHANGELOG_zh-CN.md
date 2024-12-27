@@ -1,3 +1,13 @@
+## 0.11.0
+
+`2024-12-27`
+
+- define env 支持 optional chain by [@yezaoshu](https://github.com/yezaoshu) in [#1730](https://github.com/umijs/mako/pull/1730)
+- css url 地址未空时不进行依赖解析 by [@stormslowly](https://github.com/stormslowly) in [#1732](https://github.com/umijs/mako/pull/1732)
+- 支持 unplugin context by [@sorrycc](https://github.com/sorrycc) in [#1728](https://github.com/umijs/mako/pull/1728)
+- 修复源码中包含八进制字面量时解析 ast 会失败 [@xusd320](https://github.com/xusd320) in [#1736](https://github.com/umijs/mako/pull/1736)
+
+
 ## 0.10.0
 
 `2024-12-19`
