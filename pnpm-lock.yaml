@@ -252,12 +252,6 @@ importers:
         specifier: 18.2.0
         version: 18.2.0(react@18.2.0)
 
-  examples/ppp-ssu-case-1:
-    dependencies:
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
-
   examples/react:
     dependencies:
       react:
@@ -453,7 +447,7 @@ importers:
         specifier: ^4.0.81
         version: 4.1.6
       '@umijs/mako':
-        specifier: 0.10.0
+        specifier: 0.11.0
         version: link:../mako
       chalk:
         specifier: ^4.1.2
@@ -554,29 +548,26 @@ importers:
         version: 21.1.1
     optionalDependencies:
       '@umijs/mako-darwin-arm64':
-        specifier: 0.10.0
-        version: 0.10.0
+        specifier: 0.11.0
+        version: 0.11.0
       '@umijs/mako-darwin-x64':
-        specifier: 0.10.0
-        version: 0.10.0
+        specifier: 0.11.0
+        version: 0.11.0
       '@umijs/mako-linux-arm64-gnu':
-        specifier: 0.10.0
-        version: 0.10.0
+        specifier: 0.11.0
+        version: 0.11.0
       '@umijs/mako-linux-arm64-musl':
-        specifier: 0.10.0
-        version: 0.10.0
+        specifier: 0.11.0
+        version: 0.11.0
       '@umijs/mako-linux-x64-gnu':
-        specifier: 0.10.0
-        version: 0.10.0
-      '@umijs/mako-linux-x64-musl':
-        specifier: 0.10.0
-        version: 0.10.0
+        specifier: 0.11.0
+        version: 0.11.0
       '@umijs/mako-win32-ia32-msvc':
-        specifier: 0.10.0
-        version: 0.10.0
+        specifier: 0.11.0
+        version: 0.11.0
       '@umijs/mako-win32-x64-msvc':
-        specifier: 0.10.0
-        version: 0.10.0
+        specifier: 0.11.0
+        version: 0.11.0
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.18.0
@@ -6577,8 +6568,8 @@ packages:
       - typescript
     dev: true
 
-  /@umijs/mako-darwin-arm64@0.10.0:
-    resolution: {integrity: sha512-49gVuDPHqYsTFtMVNT5E9CvbJMCk3X4lKsvkMZw7odr1+AF/hZMFWCtJzVm6k0wGXWBMJ/F0TCIEmWm8MggwNg==}
+  /@umijs/mako-darwin-arm64@0.11.0:
+    resolution: {integrity: sha512-hpj63Q44Q+TyMbAY+NBouuTeFjj+mXECfA/BsuFMpuIAQ4Ihb0dskoeQOdv7rfyvSQR4SW62U851j+EUgOf/uw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -6595,8 +6586,8 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-darwin-x64@0.10.0:
-    resolution: {integrity: sha512-SfLSQ5B+b6imomOZDm3uaxL0j9JP3eRSmqM6GuZvC8Nv0N/0jeOmRF/utqzePqNCd+08cHSKnQcEMRzz5he6OQ==}
+  /@umijs/mako-darwin-x64@0.11.0:
+    resolution: {integrity: sha512-2OaybOYnQsh0l5bQPNTyqYmzcVIeOY18AZGr49q7CinHvOirBeJ6pzjrjWtqxTGRyGtwu0+gy9gIsEInUnM9YA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -6613,8 +6604,8 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-linux-arm64-gnu@0.10.0:
-    resolution: {integrity: sha512-z9pblrmRE/rLqp00uo6U8NPC1wUsr1wCEQ0Oi6AQH1WmkHFsgwHLjnKovE8zHt5tBTW4pc72M30zmopdBrc7UQ==}
+  /@umijs/mako-linux-arm64-gnu@0.11.0:
+    resolution: {integrity: sha512-sEfF/OSm5YQyVhTWayxzSHnAIgVOC1DDgvpYIWY/QmB9rupZBw84zkeolZHJloBEPsEHB40vz9k3xxP9wpJJ0g==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
@@ -6622,8 +6613,8 @@ packages:
     dev: false
     optional: true
 
-  /@umijs/mako-linux-arm64-musl@0.10.0:
-    resolution: {integrity: sha512-yqrKEpKJL7dgmPIy+/qfwLY55rDfmffRD2Tv8EpZSwLC2BMXL3l9vm3dFOay0WqRACf/IrOmQtvw4x27UiISVg==}
+  /@umijs/mako-linux-arm64-musl@0.11.0:
+    resolution: {integrity: sha512-9FyKUOKmppKbvibCDj+vV06c9v+/lUIp69Wf48BudeOdqd2gjFASKzz7974CkGwCrvNqdKPkj0fhB5+N9CAKKg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
@@ -6631,8 +6622,8 @@ packages:
     dev: false
     optional: true
 
-  /@umijs/mako-linux-x64-gnu@0.10.0:
-    resolution: {integrity: sha512-yUkj1AYHSuAptvb+ChEC0ayf3rvEd5qKuuKs480ynMk0Z/1D3Uh87+LkeYO382D9q6bTTX8ZaXc+SgnRJ4QVgw==}
+  /@umijs/mako-linux-x64-gnu@0.11.0:
+    resolution: {integrity: sha512-aiVMZLR61rqSNEygZNg8SmCvvb9QQibgWawpHbnrf4qcw+7XzqeJH+JuiS8ko046GbYuTc5AhMnL0CPkZdfmvQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -6649,15 +6640,6 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-linux-x64-musl@0.10.0:
-    resolution: {integrity: sha512-barNywgK+8PC1H2tFCDUo2j1HF5VhxZuxNY8wAERL6zAtfIteQJ7q09BlOFJN7ZNZqVwI307dFgzlO+wujZ9Sg==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [linux]
-    requiresBuild: true
-    dev: false
-    optional: true
-
   /@umijs/mako-linux-x64-musl@0.7.4:
     resolution: {integrity: sha512-49DhDNy8mHjCkduLvahOAVXY0X9c+R4pwgh5W3FjQgB61AT9jiJfPXyMnBIMvGu2hsk0tGzVWmRmRyfAuLmogQ==}
     engines: {node: '>= 10'}
@@ -6667,8 +6649,8 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-win32-ia32-msvc@0.10.0:
-    resolution: {integrity: sha512-ueBjgnyDnsGmiYz5yuh9uRxhRJL2zRQHvd119M2pTGKWlKSYKQqq9hNi4yFAHZI3rqm0ltjkjT1/pcNobROdqg==}
+  /@umijs/mako-win32-ia32-msvc@0.11.0:
+    resolution: {integrity: sha512-0fRzltplomki7ZecFw4bdsI/O+I4/Rm0zv//LwkHsGqs2Qe+XbKSl/M/bTOloAUjRGUscrarvPDURXAyeeesDQ==}
     engines: {node: '>= 10'}
     cpu: [ia32]
     os: [win32]
@@ -6676,8 +6658,8 @@ packages:
     dev: false
     optional: true
 
-  /@umijs/mako-win32-x64-msvc@0.10.0:
-    resolution: {integrity: sha512-UjO/pZA71OrkyvN94ZrQCTZRzSmqPgIrdXvPfVOQY+SPEDAX3Mt2+SWOpxRFcgSfZSNGUQy0W9xzxrgSFCK70g==}
+  /@umijs/mako-win32-x64-msvc@0.11.0:
+    resolution: {integrity: sha512-+QpzljCDMh9n+EbeM1SZdyrKML2hL8IEgNbJGbAWNtawJJqws03n8qqJeYxbXUUY1S5+xKDzZCZ1kl/AEzdqVA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
@@ -12351,6 +12333,7 @@ packages:
 
   /lodash-es@4.17.21:
     resolution: {integrity: sha512-mKnC+QJ9pWVzv+C4/U3rRsHapFfHvQFoFB92e52xeyGMcX6/OlIl78je1u8vePzYZSkkogMPJ2yjxxsb89cxyw==}
+    dev: true
 
   /lodash.debounce@4.0.8:
     resolution: {integrity: sha512-FT1yDzDYEoYWhnSGnpE/4Kj1fLZkDFyqRb7fNt6FdYOSxlUWAtp42Eh6Wb0rGIv/m9Bgo7x4GhQbm5Ys4SG5ow==}
