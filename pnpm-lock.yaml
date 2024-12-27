@@ -562,6 +562,9 @@ importers:
       '@umijs/mako-linux-x64-gnu':
         specifier: 0.11.0
         version: 0.11.0
+      '@umijs/mako-linux-x64-musl':
+        specifier: 0.11.0
+        version: 0.11.0
       '@umijs/mako-win32-ia32-msvc':
         specifier: 0.11.0
         version: 0.11.0
@@ -6638,6 +6641,15 @@ packages:
     os: [linux]
     requiresBuild: true
     dev: true
+    optional: true
+
+  /@umijs/mako-linux-x64-musl@0.11.0:
+    resolution: {integrity: sha512-mGb2krkpewaXrJUFtqvytAz8wmwQlJT2vd7+ycsbmIbdrB/ZYM7HkU5BbVhPQ9TC9qqsTmPnW7PUdPmQplROAQ==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
     optional: true
 
   /@umijs/mako-linux-x64-musl@0.7.4:
