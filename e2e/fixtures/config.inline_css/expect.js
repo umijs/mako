@@ -18,5 +18,5 @@ assert(
   content.includes(`__mako_require__("src/b.css")`, `should support deps in css`),
 );
 assert(
-  content.includes(`@import "//c";`, `should keep remote imports`),
+  content.includes(`@import \\"\/\/c\\";`, `should keep remote imports`),
 );
