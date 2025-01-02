@@ -3,7 +3,6 @@ use napi::NapiRaw;
 use napi_derive::napi;
 use serde_json::Value;
 
-use crate::js_plugin::PluginContext;
 use crate::threadsafe_function::ThreadsafeFunction;
 
 #[napi(object)]
@@ -82,21 +81,19 @@ pub struct JsHooks {
     pub transform_include: Option<JsFunction>,
 }
 
-type ResolveIdFuncParams = (PluginContext, String, String, ResolveIdParams);
-
 pub struct TsFnHooks {
-    pub build_start: Option<ThreadsafeFunction<PluginContext, ()>>,
-    pub build_end: Option<ThreadsafeFunction<PluginContext, ()>>,
-    pub write_bundle: Option<ThreadsafeFunction<PluginContext, ()>>,
-    pub generate_end: Option<ThreadsafeFunction<(PluginContext, Value), ()>>,
-    pub load: Option<ThreadsafeFunction<(PluginContext, String), Option<LoadResult>>>,
-    pub load_include: Option<ThreadsafeFunction<(PluginContext, String), Option<bool>>>,
-    pub watch_changes: Option<ThreadsafeFunction<(PluginContext, String, WatchChangesParams), ()>>,
-    pub resolve_id: Option<ThreadsafeFunction<ResolveIdFuncParams, Option<ResolveIdResult>>>,
-    pub _on_generate_file: Option<ThreadsafeFunction<(PluginContext, WriteFile), ()>>,
-    pub transform:
-        Option<ThreadsafeFunction<(PluginContext, String, String), Option<TransformResult>>>,
-    pub transform_include: Option<ThreadsafeFunction<(PluginContext, String), Option<bool>>>,
+    pub build_start: Option<ThreadsafeFunction<(), ()>>,
+    pub build_end: Option<ThreadsafeFunction<(), ()>>,
+    pub write_bundle: Option<ThreadsafeFunction<(), ()>>,
+    pub generate_end: Option<ThreadsafeFunction<Value, ()>>,
+    pub load: Option<ThreadsafeFunction<String, Option<LoadResult>>>,
+    pub load_include: Option<ThreadsafeFunction<String, Option<bool>>>,
+    pub watch_changes: Option<ThreadsafeFunction<(String, WatchChangesParams), ()>>,
+    pub resolve_id:
+        Option<ThreadsafeFunction<(String, String, ResolveIdParams), Option<ResolveIdResult>>>,
+    pub _on_generate_file: Option<ThreadsafeFunction<WriteFile, ()>>,
+    pub transform: Option<ThreadsafeFunction<(String, String), Option<TransformResult>>>,
+    pub transform_include: Option<ThreadsafeFunction<String, Option<bool>>>,
 }
 
 impl TsFnHooks {
