@@ -304,7 +304,6 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`);
 }
 
-const { PluginContext, build } = nativeBinding;
+const { build } = nativeBinding;
 
-module.exports.PluginContext = PluginContext;
 module.exports.build = build;

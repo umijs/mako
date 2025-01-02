@@ -572,6 +572,7 @@ import(/* webpackIgnore: true */ "./foo");
 指定使用的插件。
 
 ```ts
+// JSHooks
 {
   name?: string;
   enforce?: "pre" | "post";
@@ -596,15 +597,12 @@ import(/* webpackIgnore: true */ "./foo");
 }
 ```
 
-你还可以在 hook 函数里用以下方法。
+JSHooks 是一组用来扩展 Mako 编译过程的钩子函数。
 
-- `this.emitFile({ type: 'asset', fileName: string, source: string | Uint8Array })`, 添加文件到输出目录
-- `this.warn(message: string)`, 添加一个警告
-- `this.error(message: string)`, 添加一个错误
-- `this.parse(code: string)`, 解析代码 (CURRENTLY NOT SUPPORTED)
-- `this.addWatchFile(filePath: string)`, 添加一个监听文件 (CURRENTLY NOT SUPPORTED)
-
-Plugins 兼容 [unplugin](https://unplugin.unjs.io/)，所以你可以使用 unplugin 的插件，比如 [unplugin-icons](https://github.com/unplugin/unplugin-icons), [unplugin-replace](https://github.com/unplugin/unplugin-replace) 等。
+- `name`，插件名称
+- `buildStart`，构建开始前调用
+- `load`，用于加载文件，返回文件内容和类型，类型支持 `css`、`js`、`jsx`、`ts`、`tsx`
+- `generateEnd`，生成完成后调用，`isFirstCompile` 可用于判断是否为首次编译，`time` 为编译时间，`stats` 是编译统计信息
 
 ### progress
 
