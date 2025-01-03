@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use swc_core::common::Mark;
 use swc_core::ecma::ast::{
-    AssignExpr, BlockStmt, CallExpr, Decl, Expr, ExprOrSpread, ExprStmt, ReturnStmt, Stmt, TryStmt,
+    AssignExpr, BinExpr, BlockStmt, CallExpr, Decl, Expr, ExprOrSpread, ExprStmt, ReturnStmt, Stmt,
+    TryStmt,
 };
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
@@ -95,9 +96,19 @@ impl VisitMut for TryResolve {
                             if let Some(Expr::Call(call_expr)) = decl.init.as_deref_mut() {
                                 self.handle_call_expr(call_expr);
                             }
-                            // support `const a = 1 && require('not-found-module');`
-                            // when decl.init is BinaryExpression, handle left and right recursively
-                            // ref: https://github.com/umijs/mako/issues/1007
+                            if let Some(Expr::Bin(BinExpr {
+                                right: right_expr,
+                                left: left_expr,
+                                ..
+                            })) = decl.init.as_deref_mut()
+                            {
+                                if let Some(call_expr) = left_expr.as_mut_call() {
+                                    self.handle_call_expr(call_expr);
+                                }
+                                if let Some(call_expr) = right_expr.as_mut_call() {
+                                    self.handle_call_expr(call_expr);
+                                }
+                            }
                         }
                     }
                     _ => {}
@@ -209,6 +220,23 @@ try {
     require('foo');
 } catch (e) {}
         "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_try_require_handle_require_binary_defined() {
+        assert_eq!(
+            run(r#"try{const a=0||require('foo');}catch(e){}"#),
+            r#"
+try {
+    const a = 0 || require(Object(function makoMissingModule() {
+        var e = new Error("Cannot find module 'foo'");
+        e.code = "MODULE_NOT_FOUND";
+        throw e;
+    }()));
+} catch (e) {}
+         "#
             .trim()
         );
     }
