@@ -574,7 +574,6 @@ Notice: When using `"node"`, you also need to set `dynamicImportToRequire` to `t
 Specify the plugins to use.
 
 ```ts
-// JSHooks
 {
   name?: string;
   enforce?: "pre" | "post";
@@ -599,12 +598,15 @@ Specify the plugins to use.
 }
 ```
 
-JSHooks is a set of hook functions used to extend the compilation process of Mako.
+And you can also use this methods in hook functions.
 
-- `name`, plugin name
-- `buildStart`, called before Build starts
-- `load`, used to load files, return file content and type, type supports `css`, `js`, `jsx`, `ts`, `tsx`
-- `generateEnd`, called after Generate completes, `isFirstCompile` can be used to determine if it is the first compilation, `time` is the compilation time, and `stats` is the compilation statistics information
+- `this.emitFile({ type: 'asset', fileName: string, source: string | Uint8Array })`, emit a file
+- `this.warn(message: string)`, emit a warning
+- `this.error(message: string)`, emit a error
+- `this.parse(code: string)`, parse the code (CURRENTLY NOT SUPPORTED)
+- `this.addWatchFile(filePath: string)`, add a watch file (CURRENTLY NOT SUPPORTED)
+
+Plugins is compatible with [unplugin](https://unplugin.unjs.io/), so you can use plugins from unplugin like [unplugin-icons](https://github.com/unplugin/unplugin-icons), [unplugin-replace](https://github.com/unplugin/unplugin-replace) and so on.
 
 ### progress
 
