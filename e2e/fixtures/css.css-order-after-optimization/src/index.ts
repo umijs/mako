@@ -1,0 +1,2 @@
+import "./red";
+import "./blue";
