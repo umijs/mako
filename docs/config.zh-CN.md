@@ -132,7 +132,7 @@ e.g.
 
 ### copy
 
-- 类型：`string[]`
+- 类型：`(string | { from: string; to: string })[]`
 - 默认值：`["public"]`
 
 指定需要复制的文件或目录。默认情况下，会将 `public` 目录下的文件复制到输出目录。
