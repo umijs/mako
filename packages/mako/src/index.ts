@@ -1,6 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import chalk from 'chalk';
 import { omit } from 'lodash';
 import resolve from 'resolve';
 import { type Options } from 'sass';
@@ -41,6 +42,13 @@ function blockStdout() {
 
 export async function build(params: BuildParams) {
   blockStdout();
+
+  // if mako is running in local build, print a notice
+  if (!__dirname.includes('node_modules')) {
+    console.log(
+      chalk.red('NOTICE: Mako is running in DEBUG mode with local build...'),
+    );
+  }
 
   params.config.plugins = params.config.plugins || [];
   params.config.resolve = params.config.resolve || {};
