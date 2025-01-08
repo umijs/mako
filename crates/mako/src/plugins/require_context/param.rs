@@ -8,6 +8,7 @@ use swc_core::ecma::ast::{Expr, ExprOrSpread, Lit, Regex};
 use thiserror::Error;
 
 use super::VIRTUAL_REQUIRE_CONTEXT_MODULE;
+use crate::ast::file::win_path;
 use crate::compiler::Context;
 
 #[derive(Debug)]
@@ -34,9 +35,9 @@ impl ContextParam {
         Ok(format!(
             "{}?root={}&sub={}&reg={}&mode={}&ig={}",
             VIRTUAL_REQUIRE_CONTEXT_MODULE,
-            encode(relative_path.to_string_lossy().as_ref(),),
+            encode(win_path(relative_path.to_string_lossy().as_ref()).as_str()),
             self.use_subdirectories,
-            encode(self.reg_expr.exp.as_ref()),
+            encode(win_path(self.reg_expr.exp.as_ref()).as_str()),
             self.mode,
             ignore_case,
         ))
