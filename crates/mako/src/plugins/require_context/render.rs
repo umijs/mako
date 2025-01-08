@@ -8,6 +8,7 @@ use pathdiff::diff_paths;
 use regex::RegexBuilder;
 
 use super::param::ContextLoadMode;
+use crate::ast::file::win_path;
 use crate::compiler::Context;
 use crate::module::ModuleId;
 
@@ -24,18 +25,30 @@ impl ContextLoadMode {
         let mut map_str = String::from(r#"var _map_lazy = {"#);
         map.iter().for_each(|(key, value)| match self {
             ContextLoadMode::Sync => {
+                println!(
+                    "... render_module_import1: {} -> {}",
+                    win_path(key),
+                    win_path(value)
+                );
                 map_str.push_str(&format!(
                     r#"
   "{}": ()=> require("{}"),"#,
-                    key, value
+                    win_path(key),
+                    win_path(value)
                 ));
             }
 
             ContextLoadMode::Lazy => {
+                println!(
+                    "... render_module_import2: {} -> {}",
+                    win_path(key),
+                    win_path(value)
+                );
                 map_str.push_str(&format!(
                     r#"
   "{}": ()=> import("{}"),"#,
-                    key, value
+                    win_path(key),
+                    win_path(value)
                 ));
             }
             ContextLoadMode::Eager | ContextLoadMode::Weak | ContextLoadMode::LazyOnce => {
@@ -71,8 +84,8 @@ impl ContextLoadMode {
       var e = new Error("Cannot find module '" + req + "'");
       e.code = 'MODULE_NOT_FOUND';
       return Promise.reject(e)
-    }} 
-  }};  
+    }}
+  }};
 "#
             .to_string(),
             ContextLoadMode::Eager | ContextLoadMode::Weak | ContextLoadMode::LazyOnce => {
@@ -147,11 +160,12 @@ impl VirtualContextModuleRender {
     pub fn module_id_map(&self, map: &BTreeMap<String, String>, context: &Arc<Context>) -> String {
         let mut map_str = String::from(r#"var _map = {"#);
         for (key, value) in map.iter() {
+            println!("... replace key: {} -> {}", key, win_path(key));
             map_str.push_str(&format!(
                 r#"
   "{}": "{}","#,
-                key,
-                ModuleId::from(value.as_str()).generate(context)
+                win_path(key),
+                win_path(ModuleId::from(value.as_str()).generate(context).as_str())
             ));
         }
         map_str.push_str("\n};\n");
@@ -175,7 +189,7 @@ impl VirtualContextModuleRender {
             r#"
 // context Map
 {}
-// context lazy require function Map 
+// context lazy require function Map
 {}
 // context require
 {}
@@ -183,16 +197,16 @@ module.exports.resolve  = function(req) {{
     var r = _map[req];
     if(r){{
         return r
-    }}else{{    
+    }}else{{
       var e = new Error("Cannot find module '" + req + "'");
 	  e.code = 'MODULE_NOT_FOUND';
-	  throw e;    
+	  throw e;
     }}
 }};
 
-module.exports.keys = function() {{ return Object.keys(_map); }}       
-            
-module.exports.id = "{id}";            
+module.exports.keys = function() {{ return Object.keys(_map); }}
+
+module.exports.id = "{id}";
 "#,
             self.module_id_map(&source_to_path, &context),
             self.module_import(&source_to_path),

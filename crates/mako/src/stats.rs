@@ -11,6 +11,7 @@ use pathdiff::diff_paths;
 use serde::Serialize;
 use swc_core::common::source_map::SmallPos;
 
+use crate::ast::file::win_path;
 use crate::compiler::{Compiler, Context};
 use crate::features::rsc::{RscClientInfo, RscCssModules};
 use crate::generate::chunk::ChunkType;
@@ -216,7 +217,7 @@ impl Compiler {
         let abs_path = &self.context.root;
         let output_path = &self.context.config.output.path;
         let dist_path = diff_paths(output_path, abs_path).unwrap_or_else(|| output_path.clone());
-        let mut path_str = dist_path.to_str().unwrap().to_string();
+        let mut path_str = win_path(dist_path.to_str().unwrap());
         if !path_str.ends_with('/') {
             path_str.push('/');
         }
