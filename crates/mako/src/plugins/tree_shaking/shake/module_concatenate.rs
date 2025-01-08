@@ -263,6 +263,7 @@ pub fn optimize_module_graph(
             if let Ok(mut concatenate_context) = ConcatenateContext::init(config, module_graph) {
                 let mut module_items = concatenate_context.interop_module_items.clone();
 
+                let mut order: usize = 0;
                 for id in &config.sorted_modules(module_graph) {
                     if id.eq(&config.root) {
                         continue;
@@ -299,10 +300,11 @@ pub fn optimize_module_graph(
                                 source: require_src,
                                 resolve_as: None,
                                 resolve_type: ResolveType::Require,
-                                order: 0,
+                                order,
                                 span: None,
                             },
                         );
+                        order += 1;
                         continue;
                     }
 

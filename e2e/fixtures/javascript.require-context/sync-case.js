@@ -1,6 +1,6 @@
 let context = require.context("./context", false, /^\.\/(A|B)\.js$/i, "sync");
 
-it("sync: no sub directorie", () => {
+it("sync: no sub directories", () => {
   it("  should get list of context files", () => {
     expect(context.keys().sort()).toStrictEqual(["./a.js", "./b.js"]);
   });
