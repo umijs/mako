@@ -12,7 +12,7 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::{member_expr, quote_ident, quote_str, ExprExt, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
-use crate::ast::file::{Content, JsContent};
+use crate::ast::file::{win_path, Content, JsContent};
 use crate::ast::utils::{is_commonjs_require, is_dynamic_import};
 use crate::ast::DUMMY_CTXT;
 use crate::build::load::JS_EXTENSIONS;
@@ -120,6 +120,7 @@ module.exports = (id) => {{
 "#,
                 key_values
                     .into_values()
+                    .map(|v| win_path(v.as_str()))
                     .collect::<Vec<String>>()
                     .join(",\n")
             );
