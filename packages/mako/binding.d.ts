@@ -190,7 +190,7 @@ export interface BuildParams {
     autoCSSModules?: boolean;
     ignoreCSSParserErrors?: boolean;
     dynamicImportToRequire?: boolean;
-    umd?: false | string;
+    umd?: false | string | { name: string; export?: string[] };
     cjs?: boolean;
     writeToDisk?: boolean;
     transformImport?: {
@@ -260,13 +260,20 @@ export interface BuildParams {
         };
     experimental?: {
       webpackSyntaxValidate?: string[];
+      rustPlugins?: Array<[string, any]>;
     };
     watch?: {
       ignoredPaths?: string[];
       _nodeModulesRegexes?: string[];
     };
+    caseSensitiveCheck?: boolean;
   };
   plugins: Array<JsHooks>;
   watch: boolean;
 }
 export declare function build(buildParams: BuildParams): Promise<void>;
+export class PluginContext {
+  warn(msg: string): void;
+  error(msg: string): void;
+  emitFile(originPath: string, outputPath: string): void;
+}

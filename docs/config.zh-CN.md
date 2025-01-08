@@ -36,6 +36,22 @@
 
 如果未启用，只有 `.module.css` 或 `.module.less` 的文件会被视为 CSS Modules；如果启用，像 `import styles from './a.css'` 这样的命名导入也会被视为 CSS Modules。
 
+### caseSensitiveCheck
+
+- 类型：`boolean`
+- 默认值：`true`
+
+是否启用大小写敏感检查。
+
+e.g.
+
+```ts
+{
+  caseSensitiveCheck: false,
+}
+```
+
+
 ### clean
 
 - 类型：`boolean`
@@ -556,7 +572,6 @@ import(/* webpackIgnore: true */ "./foo");
 指定使用的插件。
 
 ```ts
-// JSHooks
 {
   name?: string;
   enforce?: "pre" | "post";
@@ -581,12 +596,15 @@ import(/* webpackIgnore: true */ "./foo");
 }
 ```
 
-JSHooks 是一组用来扩展 Mako 编译过程的钩子函数。
+你还可以在 hook 函数里用以下方法。
 
-- `name`，插件名称
-- `buildStart`，构建开始前调用
-- `load`，用于加载文件，返回文件内容和类型，类型支持 `css`、`js`、`jsx`、`ts`、`tsx`
-- `generateEnd`，生成完成后调用，`isFirstCompile` 可用于判断是否为首次编译，`time` 为编译时间，`stats` 是编译统计信息
+- `this.emitFile({ type: 'asset', fileName: string, source: string | Uint8Array })`, 添加文件到输出目录
+- `this.warn(message: string)`, 添加一个警告
+- `this.error(message: string)`, 添加一个错误
+- `this.parse(code: string)`, 解析代码 (CURRENTLY NOT SUPPORTED)
+- `this.addWatchFile(filePath: string)`, 添加一个监听文件 (CURRENTLY NOT SUPPORTED)
+
+Plugins 兼容 [unplugin](https://unplugin.unjs.io/)，所以你可以使用 unplugin 的插件，比如 [unplugin-icons](https://github.com/unplugin/unplugin-icons), [unplugin-replace](https://github.com/unplugin/unplugin-replace) 等。
 
 ### progress
 
@@ -815,7 +833,7 @@ babel-plugin-import 的简化版本，仅支持三个配置项：libraryName，l
 
 ### umd
 
-- 类型：`false | string`
+- 类型：`false | string | { name: string, export?: string[] }`
 - 默认值：`false`
 
 是否输出 umd 格式。
@@ -850,3 +868,4 @@ babel-plugin-import 的简化版本，仅支持三个配置项：libraryName，l
 - 默认值：`true`
 
 是否在开发模式下将构建结果写入磁盘。
+

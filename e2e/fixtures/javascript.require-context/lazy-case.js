@@ -5,7 +5,7 @@ let context = require.context(
   "lazy",
 );
 
-it("lazy: no sub directorie", () => {
+it("lazy: no sub directories", () => {
   it("  should get list of context files", () => {
     expect(context.keys().sort()).toStrictEqual(["./a.js", "./b.js"]);
   });

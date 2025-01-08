@@ -184,7 +184,12 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
-    fn before_write_fs(&self, _path: &Path, _content: &[u8]) -> Result<()> {
+    fn before_write_fs(
+        &self,
+        _path: &Path,
+        _content: &[u8],
+        _context: &Arc<Context>,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -422,9 +427,10 @@ impl PluginDriver {
         &self,
         path: P,
         content: C,
+        context: &Arc<Context>,
     ) -> Result<()> {
         for p in &self.plugins {
-            p.before_write_fs(path.as_ref(), content.as_ref())?;
+            p.before_write_fs(path.as_ref(), content.as_ref(), context)?;
         }
 
         Ok(())

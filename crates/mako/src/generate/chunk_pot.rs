@@ -26,6 +26,7 @@ pub struct ChunkPot<'a> {
     pub module_map: HashMap<String, (&'a Module, u64)>,
     pub js_hash: u64,
     pub stylesheet: Option<CssModules<'a>>,
+    pub chunk_name: String,
 }
 
 impl<'cp> ChunkPot<'cp> {
@@ -41,6 +42,7 @@ impl<'cp> ChunkPot<'cp> {
             chunk_id: chunk.id.id.clone(),
             module_map: js_modules.module_map,
             js_hash: js_modules.raw_hash,
+            chunk_name: chunk.name(),
             stylesheet,
         }
     }

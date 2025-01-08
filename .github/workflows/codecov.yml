@@ -49,4 +49,4 @@ jobs:
           # token: # optional
           # Specify whether the Codecov output should be verbose
           verbose: true
-          fail_ci_if_error: true
+          fail_ci_if_error: false

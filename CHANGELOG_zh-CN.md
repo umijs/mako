@@ -1,3 +1,25 @@
+## 0.11.0
+
+`2024-12-27`
+
+- define env 支持 optional chain by [@yezaoshu](https://github.com/yezaoshu) in [#1730](https://github.com/umijs/mako/pull/1730)
+- css url 地址未空时不进行依赖解析 by [@stormslowly](https://github.com/stormslowly) in [#1732](https://github.com/umijs/mako/pull/1732)
+- 支持 unplugin context by [@sorrycc](https://github.com/sorrycc) in [#1728](https://github.com/umijs/mako/pull/1728)
+- 修复源码中包含八进制字面量时解析 ast 会失败 [@xusd320](https://github.com/xusd320) in [#1736](https://github.com/umijs/mako/pull/1736)
+
+
+## 0.10.0
+
+`2024-12-19`
+
+- 支持 UMD 配置 export 参数 by [@xusd320](https://github.com/xusd320) in [#1723](https://github.com/umijs/mako/pull/1723)
+- 支持导入文件名大小写检查 by [@notcold](https://github.com/notcold) in [#1714](https://github.com/umijs/mako/pull/1714)
+- 支持 output 配置的 filename 参数 by [@stormslowly](https://github.com/stormslowly) in [#1725](https://github.com/umijs/mako/pull/1725)
+- 支持原生 SWC 插件 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1691](https://github.com/umijs/mako/pull/1691)
+- 修复 "typeof **webpack\_require**" 报错 by [@notcold](https://github.com/notcold) in [#1688](https://github.com/umijs/mako/pull/1688)
+- 修复 umd 配置反序列化的错误 by [@xusd320](https://github.com/xusd320) in [#1726](https://github.com/umijs/mako/pull/1726)
+
+
 
 ## 0.9.9
 

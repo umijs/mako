@@ -76,7 +76,12 @@ impl JsAst {
         // handle ast errors
         let mut ast_errors = parser.take_errors();
         // ignore with syntax error in strict mode
-        ast_errors.retain_mut(|error| !matches!(error.kind(), SyntaxError::WithInStrict));
+        ast_errors.retain(|error| {
+            !matches!(
+                error.kind(),
+                SyntaxError::WithInStrict | SyntaxError::LegacyOctal
+            )
+        });
         if ast.is_err() {
             ast_errors.push(ast.clone().unwrap_err());
         }
@@ -268,6 +273,14 @@ mod tests {
         run(r#"
 @foo()
 class Bar {}
+        "#);
+    }
+
+    #[test]
+    fn test_legacy_octal() {
+        // no panic
+        run(r#"
+console.log("\002F");
         "#);
     }
 

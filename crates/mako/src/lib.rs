@@ -10,7 +10,7 @@ pub mod config;
 pub mod dev;
 mod features;
 mod generate;
-mod module;
+pub mod module;
 mod module_graph;
 pub mod plugin;
 mod plugins;
@@ -19,6 +19,8 @@ pub mod share;
 pub mod stats;
 pub mod utils;
 mod visitors;
+
+pub use {swc_core, swc_malloc};
 
 #[macro_export]
 macro_rules! mako_profile_scope {

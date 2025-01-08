@@ -1,7 +1,31 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-use crate::create_deserialize_fn;
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+pub struct Umd {
+    pub name: String,
+    #[serde(default)]
+    pub export: Vec<String>,
+}
 
-pub type Umd = String;
-
-create_deserialize_fn!(deserialize_umd, Umd);
+pub fn deserialize_umd<'de, D>(deserializer: D) -> Result<Option<Umd>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value: serde_json::Value = serde_json::Value::deserialize(deserializer)?;
+    match value {
+        serde_json::Value::Object(obj) => Ok(Some(
+            serde_json::from_value::<Umd>(serde_json::Value::Object(obj))
+                .map_err(serde::de::Error::custom)?,
+        )),
+        serde_json::Value::String(name) => Ok(Some(Umd {
+            name,
+            ..Default::default()
+        })),
+        serde_json::Value::Bool(false) => Ok(None),
+        _ => Err(serde::de::Error::custom(format!(
+            "invalid `{}` value: {}",
+            stringify!(deserialize_umd).replace("deserialize_", ""),
+            value
+        ))),
+    }
+}
