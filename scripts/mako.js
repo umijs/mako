@@ -7,22 +7,24 @@ const cwd = process.argv[2];
 
 console.log('> run mako build for', cwd);
 const config = getMakoConfig();
+const watch = process.argv.includes('--watch');
 build({
   root: cwd,
   config,
-  watch: process.argv.includes('--watch'),
-}).catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+  watch,
+})
+  .then(() => {
+    if (!watch) {
+      process.exit(0);
+    }
+  })
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
 
 function getPlugins() {
   let plugins = [];
-  const hooksPath = path.join(cwd, 'hooks.config.js');
-  if (fs.existsSync(hooksPath)) {
-    let hooks = require(hooksPath);
-    plugins.push(hooks);
-  }
   const pluginsPath = path.join(cwd, 'plugins.config.js');
   if (fs.existsSync(pluginsPath)) {
     plugins.push(...require(pluginsPath));

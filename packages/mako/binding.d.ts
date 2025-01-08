@@ -272,3 +272,8 @@ export interface BuildParams {
   watch: boolean;
 }
 export declare function build(buildParams: BuildParams): Promise<void>;
+export class PluginContext {
+  warn(msg: string): void;
+  error(msg: string): void;
+  emitFile(originPath: string, outputPath: string): void;
+}
