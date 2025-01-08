@@ -38,7 +38,9 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
             let module_type = module.get_module_type();
 
             // skip non script modules and external modules
-            if module_type != ModuleType::Script || module.is_external() {
+            if (module_type != ModuleType::Script && !module.is_provide_share())
+                || module.is_external()
+            {
                 if module_type != ModuleType::Script && !module.is_external() {
                     // mark all non script modules' script dependencies as side_effects
                     for dep_id in module_graph.dependence_module_ids(module_id) {

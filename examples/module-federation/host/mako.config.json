@@ -7,6 +7,10 @@
     "remotes": {
       "widget": "mfWidget@http://localhost:3000/mfWidget.js"
     },
+    "shared": { "react": {}, "react-dom": {} },
     "implementation": "/Users/xusd/codes/github/mako/packages/mako/node_modules/@module-federation/webpack-bundler-runtime"
+  },
+  "experimental": {
+    "centralEnsure": false
   }
 }

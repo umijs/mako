@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use crate::build::analyze_deps::AnalyzeDepsResult;
 use crate::resolve::Resolution;
 
 #[derive(Debug, Clone)]
@@ -10,6 +11,35 @@ pub struct RemoteInfo {
     pub sub_path: String,
     pub name: String,
     pub share_scope: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConsumeShareInfo {
+    pub module_id: String,
+    pub name: String,
+    pub share_scope: String,
+    pub version: String,
+    pub full_path: String,
+    pub eager: bool,
+    pub required_version: Option<String>,
+    pub strict_version: bool,
+    pub singletion: bool,
+    pub deps: AnalyzeDepsResult,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProvideShareInfo {
+    pub module_id: String,
+    pub name: String,
+    pub import: String,
+    pub import_resolved: String,
+    pub share_key: String,
+    pub share_scope: String,
+    pub required_version: Option<String>,
+    pub package_name: String,
+    pub eager: bool,
+    pub strict_version: bool,
+    pub singletion: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -29,6 +59,8 @@ pub enum ResolverResource {
     Ignored(PathBuf),
     Virtual(PathBuf),
     Remote(RemoteInfo),
+    ProviderShare(ProvideShareInfo),
+    ConsumeShare(ConsumeShareInfo),
 }
 
 impl ResolverResource {
@@ -41,6 +73,8 @@ impl ResolverResource {
             ResolverResource::Ignored(path) => path.to_string_lossy().to_string(),
             ResolverResource::Virtual(path) => path.to_string_lossy().to_string(),
             ResolverResource::Remote(info) => info.module_id.to_string(),
+            ResolverResource::ProviderShare(info) => info.import_resolved.clone(),
+            ResolverResource::ConsumeShare(info) => info.full_path.clone(),
         }
     }
     pub fn get_external(&self) -> Option<String> {
@@ -62,4 +96,33 @@ impl ResolverResource {
             _ => None,
         }
     }
+
+    pub fn get_pkg_info(&self) -> Option<PkgInfo> {
+        match self {
+            ResolverResource::Resolved(ResolvedResource(resolution)) => Some(PkgInfo {
+                file_path: resolution.full_path().to_string_lossy().to_string(),
+                name: resolution.package_json().and_then(|p| {
+                    p.raw_json()
+                        .get("name")
+                        .and_then(|v| v.as_str().map(|v| v.to_string()))
+                }),
+                version: resolution.package_json().and_then(|p| {
+                    p.raw_json()
+                        .get("version")
+                        .and_then(|v| v.as_str().map(|v| v.to_string()))
+                }),
+            }),
+            ResolverResource::ConsumeShare(info) => {
+                info.deps.resolved_deps[0].resolver_resource.get_pkg_info()
+            }
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct PkgInfo {
+    pub file_path: String,
+    pub name: Option<String>,
+    pub version: Option<String>,
 }

@@ -84,6 +84,7 @@ if(!{FEDERATION_GLOBAL}.instance) {{
                         );
                     }
                     Vacant(vacant_entry) => {
+                        // TODO: refactor with virtual entry
                         let container_entry_code = self.get_container_entry_code(root);
                         let container_entry_path = root.join(format!(
                             "node_modules/.federation/.entry.container.{}.js",
@@ -142,7 +143,7 @@ var get = (module, getScope) => {{
 }};
 
 var init = (shareScope, initScope, remoteEntryInitOptions) => {{
-	return {FEDERATION_GLOBAL}bundlerRuntime.initContainerEntry({{
+	return {FEDERATION_GLOBAL}.bundlerRuntime.initContainerEntry({{
         webpackRequire: {MAKO_REQUIRE},
 		shareScope: shareScope,
 		initScope: initScope,

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::result::Result;
 use std::sync::Arc;
 
 use serde::Serialize;
@@ -7,6 +8,7 @@ use super::{
     ModuleFederationPlugin, FEDERATION_REMOTE_MODULE_PREFIX, FEDERATION_REMOTE_REFERENCE_PREFIX,
 };
 use crate::compiler::Context;
+use crate::module::FedereationModuleType;
 use crate::resolve::{RemoteInfo, ResolverResource};
 
 impl ModuleFederationPlugin {
@@ -21,7 +23,9 @@ impl ModuleFederationPlugin {
         all_chunks.iter().for_each(|c| {
             c.modules.iter().for_each(|m| {
                 if let Some(m) = module_graph.get_module(m) {
-                    if m.is_remote {
+                    if let Some(info) = m.info.as_ref()
+                        && let Some(FedereationModuleType::Remote) = info.federation.as_ref()
+                    {
                         {
                             chunk_mapping
                                 .entry(c.id.id.as_str())
@@ -84,7 +88,7 @@ impl ModuleFederationPlugin {
     pub(super) fn resolve_remote(
         &self,
         source: &str,
-    ) -> std::result::Result<Option<ResolverResource>, anyhow::Error> {
+    ) -> Result<Option<ResolverResource>, anyhow::Error> {
         let source_parts = source
             .split_once("/")
             .map_or((source.to_string(), ".".to_string()), |(part_0, part_1)| {

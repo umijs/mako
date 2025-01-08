@@ -13,7 +13,10 @@ use tracing::debug;
 mod resolution;
 mod resource;
 pub use resolution::Resolution;
-pub use resource::{ExternalResource, RemoteInfo, ResolvedResource, ResolverResource};
+pub use resource::{
+    ConsumeShareInfo, ExternalResource, ProvideShareInfo, RemoteInfo, ResolvedResource,
+    ResolverResource,
+};
 
 use crate::ast::file::parse_path;
 use crate::compiler::Context;
@@ -49,9 +52,6 @@ pub fn resolve(
     resolvers: &Resolvers,
     context: &Arc<Context>,
 ) -> Result<ResolverResource> {
-    crate::mako_profile_function!();
-    crate::mako_profile_scope!("resolve", &dep.source);
-
     // plugin first
     if let Some(resolved) = context.plugin_driver.resolve_id(
         &dep.source,
@@ -59,7 +59,10 @@ pub fn resolve(
         // it's a compatibility feature for unplugin hooks
         // is_entry is always false for dependencies
         // since entry file does not need be be resolved
-        &PluginResolveIdParams { is_entry: false },
+        &PluginResolveIdParams {
+            is_entry: false,
+            dep,
+        },
         context,
     )? {
         return Ok(resolved);
@@ -231,7 +234,7 @@ fn get_external_target_from_global_obj(global_obj_name: &str, external: &str) ->
     format!("{}{}", global_obj_name, external)
 }
 
-fn do_resolve(
+pub fn do_resolve(
     path: &str,
     source: &str,
     resolver: &Resolver,

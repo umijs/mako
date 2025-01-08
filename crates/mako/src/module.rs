@@ -201,6 +201,7 @@ pub struct ModuleInfo {
     /// The transformed source map chain of this module
     pub source_map_chain: Vec<Vec<u8>>,
     pub module_system: ModuleSystem,
+    pub federation: Option<FedereationModuleType>,
 }
 
 impl Default for ModuleInfo {
@@ -218,6 +219,7 @@ impl Default for ModuleInfo {
             resolved_resource: None,
             source_map_chain: vec![],
             is_ignored: false,
+            federation: None,
         }
     }
 }
@@ -387,12 +389,18 @@ pub enum ModuleType {
     PlaceHolder,
 }
 
+#[derive(Clone, Debug)]
+pub enum FedereationModuleType {
+    Remote,
+    ConsumeShare,
+    ProvideShare,
+}
+
 #[derive(Clone)]
 pub struct Module {
     pub id: ModuleId,
     pub is_entry: bool,
     // only module federation remote module
-    pub is_remote: bool,
     pub info: Option<ModuleInfo>,
     pub side_effects: bool,
 }
@@ -402,7 +410,6 @@ impl Module {
         Self {
             id,
             is_entry,
-            is_remote: false,
             info,
             side_effects: is_entry,
         }
@@ -424,6 +431,16 @@ impl Module {
         self.info
             .as_ref()
             .map_or(false, |info| info.external.is_some())
+    }
+
+    pub fn is_provide_share(&self) -> bool {
+        if let Some(info) = self.info.as_ref()
+            && let Some(FedereationModuleType::ConsumeShare) = info.federation
+        {
+            true
+        } else {
+            false
+        }
     }
 
     pub fn is_placeholder(&self) -> bool {

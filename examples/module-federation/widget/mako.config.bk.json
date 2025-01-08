@@ -13,7 +13,17 @@
     "runtimePlugins": [],
     "implementation": "/Users/xusd/codes/github/mako/packages/mako/node_modules/@module-federation/webpack-bundler-runtime"
   },
-  "experimental": {
-    "centralEnsure": false
+  "codeSplitting": {
+    "strategy": "advanced",
+    "options": {
+      "groups": [
+        {
+          "name": "vendor",
+          "allowChunks": "all",
+          "minSize": 1,
+          "test": "node_modules"
+        }
+      ]
+    }
   }
 }

@@ -20,12 +20,21 @@ pub struct ModuleFederationConfig {
 
 pub type ExposesConfig = HashMap<String, String>;
 
+pub type SharedConfig = HashMap<String, SharedItemConfig>;
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct SharedConfig {
-    singleton: Option<bool>,
-    required_version: Option<SharedVersion>,
-    shared_scope: Option<String>,
+pub struct SharedItemConfig {
+    #[serde(default)]
+    pub eager: bool,
+    #[serde(default)]
+    pub singleton: bool,
+    #[serde(default)]
+    pub required_version: Option<String>,
+    #[serde(default)]
+    pub strict_version: bool,
+    #[serde(default = "default_share_scope")]
+    pub shared_scope: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

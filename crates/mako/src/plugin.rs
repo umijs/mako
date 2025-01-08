@@ -9,6 +9,7 @@ use swc_core::common::Mark;
 use swc_core::ecma::ast::Module;
 
 use crate::ast::file::{Content, File};
+use crate::build::analyze_deps::ResolvedDep;
 use crate::compiler::{Args, Compiler, Context};
 use crate::config::Config;
 use crate::generate::chunk_graph::ChunkGraph;
@@ -24,8 +25,9 @@ pub struct PluginLoadParam<'a> {
 }
 
 #[derive(Debug)]
-pub struct PluginResolveIdParams {
+pub struct PluginResolveIdParams<'a> {
     pub is_entry: bool,
+    pub dep: &'a Dependency,
 }
 
 pub struct PluginParseParam<'a> {
@@ -113,6 +115,10 @@ pub trait Plugin: Any + Send + Sync {
     }
 
     fn before_resolve(&self, _deps: &mut Vec<Dependency>, _context: &Arc<Context>) -> Result<()> {
+        Ok(())
+    }
+
+    fn after_resolve(&self, _resolved_dep: &ResolvedDep, _context: &Arc<Context>) -> Result<()> {
         Ok(())
     }
 
@@ -285,6 +291,13 @@ impl PluginDriver {
     ) -> Result<()> {
         for plugin in &self.plugins {
             plugin.before_resolve(param, context)?;
+        }
+        Ok(())
+    }
+
+    pub fn after_resolve(&self, resolved_dep: &ResolvedDep, context: &Arc<Context>) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.after_resolve(resolved_dep, context)?;
         }
         Ok(())
     }
