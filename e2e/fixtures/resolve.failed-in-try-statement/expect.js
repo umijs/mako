@@ -21,3 +21,9 @@ assert.match(
   /Cannot find module '\.\/hoo'/,
   "should support failed var x = require('...') in try statement"
 );
+
+assert.match(
+  content,
+  /Cannot find module '\.\/hoo'/,
+  "should support failed var x = 0 || require('...') in try statement"
+);
