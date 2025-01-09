@@ -3,6 +3,7 @@ use std::sync::Arc;
 use anyhow;
 
 use crate::compiler::Context;
+use crate::generate::chunk::Chunk;
 use crate::plugin::Plugin;
 
 pub struct HMRRuntimePlugin {}
@@ -12,7 +13,11 @@ impl Plugin for HMRRuntimePlugin {
         "hmr_runtime"
     }
 
-    fn runtime_plugins(&self, context: &Arc<Context>) -> anyhow::Result<Vec<String>> {
+    fn runtime_plugins(
+        &self,
+        _entry_chunk: &Chunk,
+        context: &Arc<Context>,
+    ) -> anyhow::Result<Vec<String>> {
         if context.args.watch {
             Ok(vec![include_str!("hmr_runtime/hmr_runtime.js").to_string()])
         } else {

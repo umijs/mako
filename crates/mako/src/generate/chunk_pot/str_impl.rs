@@ -76,7 +76,8 @@ pub(super) fn render_entry_js_chunk(
     lines.push(init_install_css_chunk);
     lines.push(format!("var e = \"{}\";", chunk_root_module_id));
 
-    let runtime_content = runtime_code(context)?.replace("_%full_hash%_", &hmr_hash.to_string());
+    let runtime_content =
+        runtime_code(chunk, context)?.replace("_%full_hash%_", &hmr_hash.to_string());
 
     let entry_prefix_code = "!(function(){\n";
 

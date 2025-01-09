@@ -7,6 +7,7 @@ use parking_lot::Mutex;
 
 use crate::ast::file::Content;
 use crate::compiler::Context;
+use crate::generate::chunk::Chunk;
 use crate::plugin::{Plugin, PluginLoadParam};
 
 /*
@@ -278,7 +279,11 @@ impl Plugin for ProgressPlugin {
         Ok(())
     }
 
-    fn runtime_plugins(&self, _context: &Arc<Context>) -> anyhow::Result<Vec<String>> {
+    fn runtime_plugins(
+        &self,
+        _entry_chunk: &Chunk,
+        _context: &Arc<Context>,
+    ) -> anyhow::Result<Vec<String>> {
         self.handler(
             0.9,
             "runtime plugins".to_string(),

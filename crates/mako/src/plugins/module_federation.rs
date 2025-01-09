@@ -1,19 +1,24 @@
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 
 use anyhow::Result;
 use constants::{FEDERATION_REMOTE_MODULE_PREFIX, FEDERATION_REMOTE_REFERENCE_PREFIX};
-use provide_shared::SharedDependencies;
+use provide_shared::ProvideSharedItem;
 
 use crate::ast::file::Content;
 use crate::build::analyze_deps::ResolvedDep;
 use crate::compiler::{Args, Context};
 use crate::config::module_federation::ModuleFederationConfig;
 use crate::config::Config;
+use crate::generate::chunk::Chunk;
+use crate::generate::chunk_graph::ChunkGraph;
+use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginGenerateEndParams, PluginResolveIdParams};
 use crate::resolve::ResolverResource;
 
 mod constants;
+mod consume_shared;
 mod container;
 mod container_reference;
 mod manifest;
@@ -22,14 +27,14 @@ mod util;
 
 pub struct ModuleFederationPlugin {
     pub config: ModuleFederationConfig,
-    shared_dependencies: RwLock<SharedDependencies>,
+    provide_shared_map: RwLock<HashMap<String, Vec<ProvideSharedItem>>>,
 }
 
 impl ModuleFederationPlugin {
     pub fn new(config: ModuleFederationConfig) -> Self {
         Self {
             config,
-            shared_dependencies: RwLock::new(SharedDependencies::new()),
+            provide_shared_map: RwLock::new(HashMap::new()),
         }
     }
 }
@@ -77,12 +82,12 @@ impl Plugin for ModuleFederationPlugin {
         }
     }
 
-    fn runtime_plugins(&self, context: &Arc<Context>) -> Result<Vec<String>> {
+    fn runtime_plugins(&self, entry_chunk: &Chunk, context: &Arc<Context>) -> Result<Vec<String>> {
         Ok(vec![
             self.get_federation_runtime_code(),
             self.get_container_references_code(context),
             self.get_provide_sharing_code(context),
-            self.get_consume_sharing_code(context),
+            self.get_consume_sharing_code(entry_chunk, context),
             self.get_federation_exposes_library_code(),
         ])
     }
@@ -98,7 +103,7 @@ impl Plugin for ModuleFederationPlugin {
         if let Ok(Some(_)) = remote_module.as_ref() {
             remote_module
         } else {
-            self.resolve_provide_share(source, importer, params, context)
+            self.resolve_to_consume_share(source, importer, params, context)
         }
     }
 
@@ -108,7 +113,17 @@ impl Plugin for ModuleFederationPlugin {
     }
 
     fn after_resolve(&self, resolved_dep: &ResolvedDep, _context: &Arc<Context>) -> Result<()> {
-        self.collect_provide_shared_map(resolved_dep);
+        self.collect_provide_shared(resolved_dep);
+        Ok(())
+    }
+
+    fn optimize_chunk(
+        &self,
+        chunk_graph: &mut ChunkGraph,
+        module_graph: &mut ModuleGraph,
+        _context: &Arc<Context>,
+    ) -> Result<()> {
+        self.connect_provide_shared_to_container(chunk_graph, module_graph);
         Ok(())
     }
 }

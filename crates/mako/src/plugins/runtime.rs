@@ -3,6 +3,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 
 use crate::compiler::Context;
+use crate::generate::chunk::Chunk;
 use crate::generate::swc_helpers::SwcHelpers;
 use crate::module::ModuleId;
 use crate::plugin::Plugin;
@@ -14,7 +15,7 @@ impl Plugin for MakoRuntime {
         "mako/runtime"
     }
 
-    fn runtime_plugins(&self, context: &Arc<Context>) -> Result<Vec<String>> {
+    fn runtime_plugins(&self, _entry_chunk: &Chunk, context: &Arc<Context>) -> Result<Vec<String>> {
         let plugins = vec![
             self.public_path(context),
             self.helper_runtime(context).unwrap(),
