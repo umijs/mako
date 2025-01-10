@@ -1,3 +1,20 @@
+## 0.11.2
+
+`2025-01-10`
+
+* feat: support unplugin context (again) by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1741
+* fix: https://github.com/umijs/mako/issues/1007 by [@notcold](https://github.com/notcold) in https://github.com/umijs/mako/pull/1738
+* fix: win path problem with context module and require context by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1742
+* fix: normalize Windows paths in ModuleId constructors by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1744
+* fix: normalize Windows paths in Compiler output path handling by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1745
+* chore(mako): add debug notice for local builds by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1743
+
+## 0.11.1
+
+`2025-01-02`
+
+* Revert "feat: support unplugin context (#1728)" by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1737
+
 ## 0.11.0
 
 `2024-12-27`
