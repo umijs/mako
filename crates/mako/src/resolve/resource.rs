@@ -6,7 +6,7 @@ use crate::resolve::Resolution;
 #[derive(Debug, Clone)]
 pub struct RemoteInfo {
     pub module_id: String,
-    pub external_refenrence_id: String,
+    pub external_reference_id: String,
     pub external_type: String,
     pub sub_path: String,
     pub name: String,
@@ -14,7 +14,7 @@ pub struct RemoteInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct ConsumeShareInfo {
+pub struct ConsumeSharedInfo {
     pub module_id: String,
     pub name: String,
     pub share_scope: String,
@@ -25,21 +25,6 @@ pub struct ConsumeShareInfo {
     pub strict_version: bool,
     pub singletion: bool,
     pub deps: AnalyzeDepsResult,
-}
-
-#[derive(Debug, Clone)]
-pub struct ProvideShareInfo {
-    pub module_id: String,
-    pub name: String,
-    pub import: String,
-    pub import_resolved: String,
-    pub share_key: String,
-    pub share_scope: String,
-    pub required_version: Option<String>,
-    pub package_name: String,
-    pub eager: bool,
-    pub strict_version: bool,
-    pub singletion: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -59,8 +44,7 @@ pub enum ResolverResource {
     Ignored(PathBuf),
     Virtual(PathBuf),
     Remote(RemoteInfo),
-    ProviderShare(ProvideShareInfo),
-    ConsumeShare(ConsumeShareInfo),
+    Shared(ConsumeSharedInfo),
 }
 
 impl ResolverResource {
@@ -73,8 +57,7 @@ impl ResolverResource {
             ResolverResource::Ignored(path) => path.to_string_lossy().to_string(),
             ResolverResource::Virtual(path) => path.to_string_lossy().to_string(),
             ResolverResource::Remote(info) => info.module_id.to_string(),
-            ResolverResource::ProviderShare(info) => info.import_resolved.clone(),
-            ResolverResource::ConsumeShare(info) => info.full_path.clone(),
+            ResolverResource::Shared(info) => info.full_path.clone(),
         }
     }
     pub fn get_external(&self) -> Option<String> {
@@ -112,7 +95,7 @@ impl ResolverResource {
                         .and_then(|v| v.as_str().map(|v| v.to_string()))
                 }),
             }),
-            ResolverResource::ConsumeShare(info) => {
+            ResolverResource::Shared(info) => {
                 info.deps.resolved_deps[0].resolver_resource.get_pkg_info()
             }
             _ => None,

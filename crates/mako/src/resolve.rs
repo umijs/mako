@@ -14,8 +14,7 @@ mod resolution;
 mod resource;
 pub use resolution::Resolution;
 pub use resource::{
-    ConsumeShareInfo, ExternalResource, ProvideShareInfo, RemoteInfo, ResolvedResource,
-    ResolverResource,
+    ConsumeSharedInfo, ExternalResource, RemoteInfo, ResolvedResource, ResolverResource,
 };
 
 use crate::ast::file::parse_path;

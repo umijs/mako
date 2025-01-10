@@ -48,7 +48,7 @@ impl ModuleFederationPlugin {
                                 .or_default();
                             remote_info.push(&remote_module.share_scope);
                             remote_info.push(&remote_module.sub_path);
-                            remote_info.push(&remote_module.external_refenrence_id);
+                            remote_info.push(&remote_module.external_reference_id);
 
                             let external_info =
                                 id_to_remote_map.entry(m.id.id.as_str()).or_default();
@@ -56,7 +56,7 @@ impl ModuleFederationPlugin {
                             external_info.push(RemoteExternal {
                                 name: remote_module.name.clone(),
                                 external_type: remote_module.external_type.clone(),
-                                external_module_id: remote_module.external_refenrence_id.clone(),
+                                external_module_id: remote_module.external_reference_id.clone(),
                             });
                         }
                     }
@@ -100,7 +100,7 @@ impl ModuleFederationPlugin {
                 remotes.get(&source_parts.0).map(|_remote| {
                     ResolverResource::Remote(RemoteInfo {
                         module_id: format!("{}{}", FEDERATION_REMOTE_MODULE_PREFIX, source),
-                        external_refenrence_id: format!(
+                        external_reference_id: format!(
                             "{}{}",
                             FEDERATION_REMOTE_REFERENCE_PREFIX, source_parts.0
                         ),

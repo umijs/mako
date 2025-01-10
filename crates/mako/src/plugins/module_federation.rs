@@ -22,12 +22,13 @@ mod consume_shared;
 mod container;
 mod container_reference;
 mod manifest;
+mod provide_for_consume;
 mod provide_shared;
 mod util;
 
 pub struct ModuleFederationPlugin {
     pub config: ModuleFederationConfig,
-    provide_shared_map: RwLock<HashMap<String, Vec<ProvideSharedItem>>>,
+    provide_shared_map: RwLock<HashMap<String, ProvideSharedItem>>,
 }
 
 impl ModuleFederationPlugin {

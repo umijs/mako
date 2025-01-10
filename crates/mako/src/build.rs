@@ -18,7 +18,7 @@ use crate::compiler::{Compiler, Context};
 use crate::generate::chunk_pot::util::hash_hashmap;
 use crate::module::{FedereationModuleType, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::plugin::NextBuildParam;
-use crate::resolve::{ConsumeShareInfo, ProvideShareInfo, RemoteInfo, ResolverResource};
+use crate::resolve::{ConsumeSharedInfo, RemoteInfo, ResolverResource};
 use crate::utils::thread_pool;
 
 #[derive(Debug, Error)]
@@ -47,11 +47,11 @@ impl Compiler {
             });
         };
 
-        let build_consume_share_with_pool = |consume_share_info: ConsumeShareInfo| {
+        let build_consume_share_with_pool = |consume_share_info: ConsumeSharedInfo| {
             let rs = rs.clone();
             let context = self.context.clone();
             thread_pool::spawn(move || {
-                let result = Self::build_consume_share_module(consume_share_info, context.clone());
+                let result = Self::build_shared_module(consume_share_info, context.clone());
                 rs.send(result).unwrap();
             });
         };
@@ -139,10 +139,7 @@ impl Compiler {
                         ResolverResource::Remote(remote_into) => {
                             Self::create_remote_module(remote_into)
                         }
-                        ResolverResource::ProviderShare(provide_share_info) => {
-                            Self::create_provide_share_module(provide_share_info)
-                        }
-                        ResolverResource::ConsumeShare(consume_share_info) => {
+                        ResolverResource::Shared(consume_share_info) => {
                             count += 1;
                             build_consume_share_with_pool(consume_share_info.clone());
                             Self::create_empty_module(&dep_module_id)
@@ -288,9 +285,9 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             result
         }
     }
-    pub fn build_consume_share_module(
-        consume_share_info: ConsumeShareInfo,
-        context: Arc<Context>,
+    pub fn build_shared_module(
+        consume_share_info: ConsumeSharedInfo,
+        _context: Arc<Context>,
     ) -> Result<Module> {
         Ok(Self::create_consume_share_module(consume_share_info))
     }
@@ -371,22 +368,18 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         }
     }
 
-    pub(crate) fn create_consume_share_module(consume_share_info: ConsumeShareInfo) -> Module {
+    pub(crate) fn create_consume_share_module(consume_share_info: ConsumeSharedInfo) -> Module {
         Module {
             is_entry: false,
             id: consume_share_info.module_id.as_str().into(),
             info: Some(ModuleInfo {
                 deps: consume_share_info.deps.clone(),
-                resolved_resource: Some(ResolverResource::ConsumeShare(consume_share_info.clone())),
+                resolved_resource: Some(ResolverResource::Shared(consume_share_info.clone())),
                 federation: Some(FedereationModuleType::ConsumeShare),
                 module_system: crate::module::ModuleSystem::Custom,
                 ..Default::default()
             }),
             side_effects: true,
         }
-    }
-
-    pub(crate) fn create_provide_share_module(provide_share_info: ProvideShareInfo) -> Module {
-        todo!()
     }
 }

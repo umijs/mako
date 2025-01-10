@@ -10,7 +10,7 @@ use crate::compiler::Context;
 use crate::generate::chunk::{Chunk, ChunkType};
 use crate::module::{Dependency, ResolveType};
 use crate::plugin::PluginResolveIdParams;
-use crate::resolve::{do_resolve, ConsumeShareInfo, ResolverResource, ResolverType};
+use crate::resolve::{do_resolve, ConsumeSharedInfo, ResolverResource, ResolverType};
 
 impl ModuleFederationPlugin {
     pub(super) fn get_consume_sharing_code(
@@ -62,7 +62,7 @@ impl ModuleFederationPlugin {
             .map(|s| {
                 let resolved_resource  = s.info.as_ref().unwrap().resolved_resource.as_ref().unwrap();
                 let module_full_path = match resolved_resource {
-                 ResolverResource::ConsumeShare(info) => info.deps.resolved_deps[0].resolver_resource.get_resolved_path(),
+                 ResolverResource::Shared(info) => info.deps.resolved_deps[0].resolver_resource.get_resolved_path(),
                     _ => panic!("{} is not a shared module", resolved_resource.get_resolved_path())
                 };
                 let module_relative_path =
@@ -92,7 +92,7 @@ impl ModuleFederationPlugin {
                     ChunkType::Runtime  =>  panic!("mf shared dependency should not bundled to runtime chunk")
                 };
 
-                let share_dependency = share_dependencies.get(&s.id.id).unwrap().first().unwrap();
+                let share_dependency = share_dependencies.get(&s.id.id).unwrap();
                 format!(
                     r#""{shared_consume_id}": {{
     getter: {getter},
@@ -151,7 +151,7 @@ impl ModuleFederationPlugin {
             .unwrap();
             let resolver_resource =
                 do_resolve(importer, source, resolver, Some(&context.config.externals))?;
-            return Ok(Some(ResolverResource::ConsumeShare(ConsumeShareInfo {
+            return Ok(Some(ResolverResource::Shared(ConsumeSharedInfo {
                 eager: shared_info.eager,
                 module_id: format!(
                     "{}{}/{}/{}",
