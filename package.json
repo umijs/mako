@@ -6,6 +6,7 @@
     "build": "pnpm --filter @umijs/mako build && pnpm --filter @umijs/mako src:build && pnpm biome:format",
     "build:debug": "pnpm --filter @umijs/mako build:debug && pnpm --filter @umijs/mako src:build && pnpm biome:format",
     "build:profile": "pnpm --filter @umijs/mako build:profile && pnpm --filter @umijs/mako src:build && pnpm biome:format",
+    "build:create-mako": "pnpm --filter create-mako build",
     "build:client": "pnpm --filter client build",
     "biome:check": "biome check .",
     "biome:format": "biome check --write .",
@@ -17,7 +18,7 @@
     "release:mako": "pnpm --filter @umijs/mako release",
     "release:bundler-mako": "esno scripts/release-bundler-mako.ts",
     "release:rsc": "esno scripts/release-rsc.ts",
-    "release:create-mako": "esno scripts/release-create-mako.ts"
+    "release:create-mako": "pnpm --filter create-mako release"
   },
   "license": "MIT",
   "devDependencies": {
