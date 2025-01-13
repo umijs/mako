@@ -15,5 +15,8 @@
   },
   "experimental": {
     "centralEnsure": false
+  },
+  "define": {
+    "process.env.SOCKET_SERVER": "\"http://localhost:3000\""
   }
 }

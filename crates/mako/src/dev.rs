@@ -213,7 +213,14 @@ impl DevServer {
                     .body(hyper::Body::empty())
                     .unwrap();
                 let res = staticfile.serve(req).await;
-                res.map_err(anyhow::Error::from)
+                res.map_or_else(
+                    |e| Err(anyhow::Error::from(e)),
+                    |mut res| {
+                        res.headers_mut()
+                            .insert(ACCESS_CONTROL_ALLOW_ORIGIN, "*".parse().unwrap());
+                        Ok(res)
+                    },
+                )
             }
         }
     }
