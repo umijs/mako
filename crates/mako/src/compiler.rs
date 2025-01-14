@@ -84,6 +84,7 @@ impl MemoryChunkFileCache {
     fn write_to_disk<T: AsRef<str>>(&self, path: T, content: &[u8]) -> Result<()> {
         if let Some(root) = &self.root {
             let path = root.join(path.as_ref());
+            fs::create_dir_all(path.parent().unwrap())?;
             fs::write(path, content)?;
         }
         Ok(())
