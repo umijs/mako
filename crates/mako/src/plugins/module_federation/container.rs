@@ -5,23 +5,18 @@ use std::path::Path;
 use serde::Serialize;
 use tracing::warn;
 
-use super::constants::{
-    FEDERATION_EXPOSE_CHUNK_PREFIX, FEDERATION_GLOBAL, FEDERATION_REMOTE_REFERENCE_PREFIX,
-};
+use super::constants::{FEDERATION_EXPOSE_CHUNK_PREFIX, FEDERATION_GLOBAL};
 use super::util::parse_remote;
 use super::ModuleFederationPlugin;
-use crate::config::{
-    Config, ExternalAdvanced, ExternalAdvancedSubpath, ExternalAdvancedSubpathRule,
-    ExternalAdvancedSubpathTarget, ExternalConfig,
-};
+use crate::config::Config;
 use crate::module::md5_hash;
 use crate::visitors::mako_require::MAKO_REQUIRE;
 
 impl ModuleFederationPlugin {
-    pub(super) fn prepare_entry_runtime_dep(&self, root: &Path) -> String {
-        let entry_runtime_code = self.get_entry_runtime_code();
+    pub(super) fn prepare_container_entry_dep(&self, root: &Path) -> String {
+        let container_content = self.get_container_content();
 
-        let content_hash = md5_hash(&entry_runtime_code, 32);
+        let content_hash = md5_hash(&container_content, 32);
 
         let dep_path = root.join(format!(
             "node_modules/.federation/.entry.{}.js",
@@ -32,14 +27,14 @@ impl ModuleFederationPlugin {
             fs::create_dir_all(dep_parent_path).unwrap();
         }
         if !fs::exists(&dep_path).unwrap() {
-            fs::write(&dep_path, entry_runtime_code).unwrap();
+            fs::write(&dep_path, container_content).unwrap();
         }
 
         dep_path.to_string_lossy().to_string()
     }
 
-    pub(super) fn get_entry_runtime_code(&self) -> String {
-        let (plugins_imports, plugins_instantiations) = self.get_mf_runtime_plugins_code();
+    pub(super) fn get_container_content(&self) -> String {
+        let (plugins_imports, plugins_instantiations) = self.get_mf_runtime_plugins_content();
 
         format!(
             r#"import federation from "{federation_impl}";
@@ -163,7 +158,6 @@ export {{ get, init }};
             remotes
                 .iter()
                 .map(|(alias, remote)| {
-                    // FIXME: should not unwrap
                     let (name, entry) = parse_remote(remote).unwrap();
                     RuntimeRemoteItem {
                         name,
@@ -207,8 +201,7 @@ export {{ get, init }};
         if let Some(exposes) = self.config.exposes.as_ref() {
             if !exposes.is_empty() {
                 format!(
-                    r#"global["{}"] = requireModule(entryModuleId);
-"#,
+                    r#"global["{}"] = requireModule(entryModuleId);"#,
                     self.config.name
                 )
             } else {
@@ -219,31 +212,7 @@ export {{ get, init }};
         }
     }
 
-    #[allow(dead_code)]
-    pub(super) fn append_remotes_externals(&self, config: &mut Config) {
-        if let Some(remotes) = &self.config.remotes {
-            remotes.iter().for_each(|remote| {
-                config.externals.insert(
-                    format!("{}{}", FEDERATION_REMOTE_REFERENCE_PREFIX, remote.0),
-                    ExternalConfig::Advanced(ExternalAdvanced {
-                        root: remote.0.clone(),
-                        script: parse_remote(remote.1).ok().map(|(_, url)| url.clone()),
-                        module_type: None,
-                        subpath: Some(ExternalAdvancedSubpath {
-                            exclude: None,
-                            rules: vec![ExternalAdvancedSubpathRule {
-                                regex: "/.*".to_string(),
-                                target: ExternalAdvancedSubpathTarget::Empty,
-                                target_converter: None,
-                            }],
-                        }),
-                    }),
-                );
-            });
-        }
-    }
-
-    pub(super) fn get_mf_runtime_plugins_code(&self) -> (String, String) {
+    pub(super) fn get_mf_runtime_plugins_content(&self) -> (String, String) {
         let (imported_plugin_names, import_plugin_instantiations) =
             self.config.runtime_plugins.iter().enumerate().fold(
                 (Vec::new(), Vec::new()),
@@ -272,6 +241,7 @@ export {{ get, init }};
 "#,
             )
         };
+
         (plugins_imports, plugins_instantiations)
     }
 }

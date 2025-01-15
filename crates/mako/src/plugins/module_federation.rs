@@ -47,9 +47,6 @@ impl Plugin for ModuleFederationPlugin {
 
     fn modify_config(&self, config: &mut Config, root: &Path, _args: &Args) -> Result<()> {
         self.add_container_entry(config, root);
-
-        // self.append_remotes_externals(config);
-
         Ok(())
     }
 
@@ -66,15 +63,10 @@ impl Plugin for ModuleFederationPlugin {
         } else {
             match content {
                 Content::Js(js_content) => {
-                    let entry_runtime_dep_path = self.prepare_entry_runtime_dep(&context.root);
+                    let entry_runtime_dep_path = self.prepare_container_entry_dep(&context.root);
                     js_content.content.insert_str(
                         0,
-                        format!(
-                            r#"import "{}";
-"#,
-                            entry_runtime_dep_path
-                        )
-                        .as_str(),
+                        format!(r#"import "{}";"#, entry_runtime_dep_path).as_str(),
                     );
                     Ok(Some(content.clone()))
                 }

@@ -38,12 +38,6 @@ pub struct SharedItemConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum SharedVersion {
-    Version(String),
-    False,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ShareStrategy {
     #[serde(rename = "version_first")]
     VersionFirst,
