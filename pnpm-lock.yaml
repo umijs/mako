@@ -51,8 +51,8 @@ importers:
         specifier: workspace:*
         version: link:packages/mako
       '@umijs/tools':
-        specifier: ^0.1.9
-        version: 0.1.9
+        specifier: ^0.1.21
+        version: 0.1.21
       antd:
         specifier: ^5.12.2
         version: 5.18.0(react-dom@18.2.0)(react@18.2.0)
@@ -4669,6 +4669,11 @@ packages:
     deprecated: the package is rather renamed to @formatjs/ecma-abstract with some changes in functionality (primarily selectUnit is removed and we don't plan to make any further changes to this package
     dev: true
 
+  /@google/generative-ai@0.21.0:
+    resolution: {integrity: sha512-7XhUbtnlkSEZK15kN3t+tzIMxsbKm/dSkKBFalj+20NvPKe1kBY7mR2P7vuijEn+f06z5+A8bVGKO0v39cr6Wg==}
+    engines: {node: '>=18.0.0'}
+    dev: true
+
   /@humanwhocodes/config-array@0.11.8:
     resolution: {integrity: sha512-UybHIJzJnR5Qc/MsD9Kr+RpO2h+/P1GhOwdiLPXK5TWk5sgTdu88bTD9UP+CKbPPh5Rni1u0GjAdYQLemG8g+g==}
     engines: {node: '>=10.10.0'}
@@ -6986,10 +6991,11 @@ packages:
       - supports-color
     dev: true
 
-  /@umijs/tools@0.1.9:
-    resolution: {integrity: sha512-h9aiEdItCEpQs9AAQMjBa7nkrfBjpkQ5MeOslJxWWZhbnxclJOYe9mwWWP09HiWJnyQlmuiKQSoSPLUOWB8OqA==}
+  /@umijs/tools@0.1.21:
+    resolution: {integrity: sha512-Knv97GuPSD0Z9mAuyfnavv6DkzCFqm/77z627Qqyvk3h/BkFR0QF2R8j2R2195YFSy0TV5TXonNW32CLiwqlng==}
     hasBin: true
     dependencies:
+      '@google/generative-ai': 0.21.0
       '@types/yargs-parser': 21.0.3
       '@umijs/mako': 0.11.3
       git-repo-info: 2.1.1

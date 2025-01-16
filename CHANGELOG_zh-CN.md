@@ -1,3 +1,10 @@
+## 0.11.3
+
+`2025-01-16`
+
+- 修复：在 MemoryChunkFileCache 写入磁盘时确保父目录被创建 by [@sorrycc](https://github.com/sorrycc) in [#1755](https://github.com/umijs/mako/pull/1755)
+- 重构 create-mako by [@sorrycc](https://github.com/sorrycc) in [#1751](https://github.com/umijs/mako/pull/1751)
+
 ## 0.11.2
 
 `2025-01-10`

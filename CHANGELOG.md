@@ -1,3 +1,10 @@
+## 0.11.3
+
+`2025-01-16`
+
+- fix: ensure parent directories are created when writing to disk in MemoryChunkFileCache by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1755
+- feat(create-mako): refactor create-mako by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1751
+
 ## 0.11.2
 
 `2025-01-10`
