@@ -13,7 +13,7 @@ function App() {
 
   // ref 用于保存Treemap实例
   const treeMapRef = useRef(null);
-  const [chartData, setChartData] = useState('');
+  const [chartData, setChartData] = useState(window?.chartData || '');
 
   // toolTip展示使用
   const [tooltipContent, setToolTipContent] = useState('');
