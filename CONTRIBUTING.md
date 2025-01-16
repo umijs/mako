@@ -198,3 +198,9 @@ $ npm run release
 # if you want to input the version manually
 $ npm run release -- --bump question
 ```
+
+After release, you should run the following command to check the ecosystem usages.
+
+```bash
+$ npm run check-ecosystem-usages
+```
