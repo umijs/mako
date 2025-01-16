@@ -175,6 +175,13 @@ impl Compiler {
                     }
                 }
 
+                // check exclude regex
+                if let Some(exclude) = &optimize_info.group_options.exclude {
+                    if create_cached_regex(exclude).is_match(&module_id.id) {
+                        continue;
+                    }
+                }
+
                 // check min shared count of chunks
                 if optimize_info.group_options.min_chunks > 1
                     && chunks

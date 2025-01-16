@@ -91,6 +91,9 @@ pub struct ChunkGroup {
     #[serde(default)]
     // A string raw of regex
     pub test: Option<String>,
+    // A string raw of regex
+    #[serde(default)]
+    pub exclude: Option<String>,
 }
 
 impl Default for ChunkGroup {
@@ -104,6 +107,7 @@ impl Default for ChunkGroup {
             name_suffix: None,
             min_package_size: None,
             test: None,
+            exclude: None,
             priority: i8::default(),
         }
     }

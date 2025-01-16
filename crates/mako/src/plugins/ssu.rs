@@ -185,6 +185,7 @@ impl Plugin for SUPlus {
                             min_package_size: None,
                             priority: 10,
                             test: Some(r"[/\\]node_modules[/\\]".to_string()),
+                            ..Default::default()
                         },
                         ChunkGroup {
                             name: "common".to_string(),
