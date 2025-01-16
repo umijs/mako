@@ -178,7 +178,7 @@ Before release, please make sure everything is ok.
 $ just ready
 ```
 
-Open https://github.com/umijs/mako/actions?query=branch%3Amaster+event%3Apush to checkout the latest master push action with name "node-bind-build", and download the artifacts to packages/mako directory. If the artifacts has no commit hash in the name, you should add the commit hash manually.
+Open https://github.com/umijs/mako/actions/workflows/node-bind-build.yml?query=event%3Apush+branch%3Amaster to checkout the latest master push action with name "node-bind-build", and download the artifacts to packages/mako directory. If the artifacts has no commit hash in the name, you should add the commit hash manually.
 
 ```bash
 $ git rev-parse HEAD
@@ -186,9 +186,11 @@ $ git rev-parse HEAD
 
 Then you can release the new version.
 
-```
-# Release @umijs/mako and @umijs/bundler-mako
+```bash
 $ npm run release
+
+# if you want to input the version manually
+$ npm run release -- --bump question
 ```
 
 After release, you must do 2 things:

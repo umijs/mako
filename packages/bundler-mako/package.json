@@ -18,5 +18,6 @@
   "publishConfig": {
     "access": "public"
   },
-  "repository": "git@github.com:umijs/mako.git"
+  "repository": "git@github.com:umijs/mako.git",
+  "__utool_sync_deps_exact": true
 }
