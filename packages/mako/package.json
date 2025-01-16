@@ -69,7 +69,7 @@
     "napi:build:debug": "napi build --cargo-cwd ../../crates/binding --platform --js src/binding.js --dts src/binding.d.ts",
     "postbuild": "npm run format",
     "prepublishOnly": "napi prepublish -t npm",
-    "release": "utools release --sync-deps ../bundler-mako/package.json,../create-mako/templates/minimal/package.json --sync-versions ../bundler-mako/package.json --sync-publishes ../bundler-mako --git-tag",
+    "release": "utools release --sync-deps ../bundler-mako/package.json,../create-mako/templates/minimal/package.json --sync-versions ../bundler-mako/package.json --sync-publishes ../bundler-mako --git-tag --changelog",
     "src:build": "father build",
     "src:dev": "father dev",
     "universal": "napi universal",

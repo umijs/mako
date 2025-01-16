@@ -15,7 +15,7 @@
     "test:umi": "node scripts/test-e2e.mjs --fixtures e2e/fixtures.umi --umi",
     "test:hmr": "node scripts/test-hmr.mjs",
     "release": "pnpm --filter @umijs/mako release",
-    "release:rsc": "esno scripts/release-rsc.ts",
+    "release:rsc": "pnpm --filter @umijs/rsc release",
     "release:create-mako": "pnpm --filter create-mako release"
   },
   "license": "MIT",
@@ -34,7 +34,7 @@
     "@types/semver": "^7.5.0",
     "@umijs/bundler-mako": "workspace:*",
     "@umijs/mako": "workspace:*",
-    "@umijs/tools": "^0.1.9",
+    "@umijs/tools": "^0.1.21",
     "antd": "^5.12.2",
     "babel-plugin-import": "^1.13.8",
     "es-check": "^7.1.1",

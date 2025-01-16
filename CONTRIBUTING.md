@@ -184,6 +184,12 @@ Open https://github.com/umijs/mako/actions/workflows/node-bind-build.yml?query=e
 $ git rev-parse HEAD
 ```
 
+If you want to translate the changelog automatically, please setup the GEMINI_API_KEY environment variable. GEMINI_API_KEY could be applied from [here](https://aistudio.google.com/apikey) and then add it to environment variables.
+
+```bash
+$ export GEMINI_API_KEY=your-gemini-api-key
+```
+
 Then you can release the new version.
 
 ```bash
@@ -192,8 +198,3 @@ $ npm run release
 # if you want to input the version manually
 $ npm run release -- --bump question
 ```
-
-After release, you must do 2 things:
-
-- Release the new version on github
-- Update the changelog in CHANGELOG.md and CHANGELOG_zh-CN.md

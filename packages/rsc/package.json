@@ -13,9 +13,10 @@
     "dist"
   ],
   "scripts": {
-    "format": "biome check --write .",
-    "dev": "father dev",
     "build": "father build",
+    "dev": "father dev",
+    "format": "biome check --write .",
+    "release": "utools release",
     "test": "esno ./src/index.test.ts"
   },
   "repository": "git@github.com:umijs/mako.git"
