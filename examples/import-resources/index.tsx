@@ -10,11 +10,7 @@ import MailchimpUnsplash from './mailchimp-unsplash.jpg';
 import * as wasm from './minus-wasm-pack';
 
 // https://github.com/rustwasm/wasm-bindgen/tree/main/examples/import_js
-import('./import-js-wasm')
-  .then((_) => {
-    _.default();
-  })
-  .catch(console.error);
+import('./import-js-wasm').catch(console.error);
 
 const num1 = 10;
 const num2 = 20;
