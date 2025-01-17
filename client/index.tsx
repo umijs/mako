@@ -159,9 +159,7 @@ function App() {
     }
   };
   useEffect(() => {
-    window.addEventListener('load', () => {
-      setChartData(window?.chartData);
-    });
+    setChartData(window?.chartData);
     window.addEventListener('resize', resize);
     return () => {
       window.removeEventListener('resize', resize);
