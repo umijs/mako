@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
 
 use fixedbitset::FixedBitSet;
@@ -15,7 +15,7 @@ use crate::module::{Dependencies, Dependency, Module, ModuleId};
 pub struct ModuleGraph {
     pub id_index_map: HashMap<ModuleId, NodeIndex<DefaultIx>>,
     pub graph: StableDiGraph<Module, Dependencies>,
-    entries: HashSet<ModuleId>,
+    entries: BTreeSet<ModuleId>,
 }
 
 impl ModuleGraph {
@@ -23,7 +23,7 @@ impl ModuleGraph {
         Self {
             id_index_map: HashMap::new(),
             graph: StableDiGraph::new(),
-            entries: HashSet::new(),
+            entries: BTreeSet::new(),
         }
     }
 
