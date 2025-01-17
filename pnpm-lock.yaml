@@ -51,8 +51,8 @@ importers:
         specifier: workspace:*
         version: link:packages/mako
       '@umijs/tools':
-        specifier: ^0.1.21
-        version: 0.1.21
+        specifier: ^0.1.23
+        version: 0.1.23
       antd:
         specifier: ^5.12.2
         version: 5.18.0(react-dom@18.2.0)(react@18.2.0)
@@ -6429,6 +6429,15 @@ packages:
       wrap-ansi: 8.1.0
     dev: true
 
+  /@umijs/clack-prompts@0.0.4:
+    resolution: {integrity: sha512-cD/PfsuBS+ioDcr+Es+ppZe9TpgQZ+RJled8QwdIxB/7hCrpRV1aIhCytgm9uBeVV++1SdKoGKhkVfKpMv2i7w==}
+    dependencies:
+      is-unicode-supported: 1.3.0
+      picocolors: 1.1.1
+      sisteransi: 1.0.5
+      wrap-ansi: 8.1.0
+    dev: true
+
   /@umijs/core@4.2.10:
     resolution: {integrity: sha512-UGYLBZT4yAN56RB7MH6K1r+4c+YRxWMAiqaVcKlTIX0b6BHFC5HfyH3wK622hTDOiN+LQHw2ieJXDlJJVWpuOQ==}
     dependencies:
@@ -6991,14 +7000,16 @@ packages:
       - supports-color
     dev: true
 
-  /@umijs/tools@0.1.21:
-    resolution: {integrity: sha512-Knv97GuPSD0Z9mAuyfnavv6DkzCFqm/77z627Qqyvk3h/BkFR0QF2R8j2R2195YFSy0TV5TXonNW32CLiwqlng==}
+  /@umijs/tools@0.1.23:
+    resolution: {integrity: sha512-J+XfbLKVmPbWwO5yziYYGooSoW23+2Iw5TS6xuCM4lI2kBacbjgzn9FEVxhSHBlFeMB8cwjfLq1NdOx/F0Xl0g==}
     hasBin: true
     dependencies:
       '@google/generative-ai': 0.21.0
       '@types/yargs-parser': 21.0.3
+      '@umijs/clack-prompts': 0.0.4
       '@umijs/mako': 0.11.3
       git-repo-info: 2.1.1
+      picocolors: 1.1.1
       tsx: 4.19.2
       yargs-parser: 21.1.1
       zx: 8.3.0
