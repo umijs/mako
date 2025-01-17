@@ -12,6 +12,8 @@ use crate::plugin::{Plugin, PluginLoadParam};
 
 pub struct WasmRuntimePlugin {}
 
+const WASM_EXTENSIONS: [&str; 1] = ["wasm"];
+
 impl Plugin for WasmRuntimePlugin {
     fn name(&self) -> &str {
         "wasm_runtime"
@@ -39,7 +41,8 @@ impl Plugin for WasmRuntimePlugin {
         _context: &Arc<Context>,
     ) -> anyhow::Result<Option<Content>> {
         let file = param.file;
-        if file.path.to_string_lossy().ends_with(".wasm") {
+
+        if WASM_EXTENSIONS.contains(&file.extname.as_str()) {
             let final_file_name = format!(
                 "{}.{}.{}",
                 file.get_file_stem(),
