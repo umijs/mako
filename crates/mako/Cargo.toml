@@ -114,6 +114,7 @@ tracing               = "0.1.37"
 tracing-subscriber    = { version = "0.3.17", features = ["env-filter"] }
 tungstenite           = "0.19.0"
 twox-hash             = "1.6.3"
+wasmparser            = "0.207.0"
 
 [dev-dependencies]
 insta  = { version = "1.30.0", features = ["yaml"] }
