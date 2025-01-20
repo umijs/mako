@@ -10,7 +10,8 @@
       "./App2": "./src/App2.tsx"
     },
     "shared": { "react": {}, "react-dom": {} },
-    "runtimePlugins": []
+    "runtimePlugins": [],
+    "implementation": "../../../../../packages/mako/node_modules/@module-federation/webpack-bundler-runtime"
   },
   "experimental": {
     "centralEnsure": false

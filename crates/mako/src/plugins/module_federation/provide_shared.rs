@@ -1,8 +1,9 @@
 use core::panic;
 
 use pathdiff::diff_paths;
-use serde::{Serialize, Serializer};
+use serde::Serialize;
 
+use super::util::serialize_none_to_false;
 use super::ModuleFederationPlugin;
 use crate::build::analyze_deps::ResolvedDep;
 use crate::compiler::Context;
@@ -59,11 +60,8 @@ impl ModuleFederationPlugin {
                                         }
                                     };
                                     format!(
-                                        r#"{{ version: {version}, get: {getter}, scope: {scope}, shareConfig: {share_config} }}"#,
-                                        version = share_item
-                                            .version
-                                            .as_ref()
-                                            .map_or("false".to_string(), |v| format!(r#""{}""#, v)),
+                                        r#"{{ version: "{version}", get: {getter}, scope: {scope}, shareConfig: {share_config} }}"#,
+                                        version = share_item.version,
                                         scope = serde_json::to_string(&share_item.scope).unwrap(),
                                         share_config = serde_json::to_string(&share_item.shared_config).unwrap()
                                     )
@@ -115,7 +113,7 @@ impl ModuleFederationPlugin {
                 .entry(resolved_dep.resolver_resource.get_resolved_path())
                 .or_insert(ProvideSharedItem {
                     share_key: pkg_name.clone(),
-                    version: pkg_info.version.clone(),
+                    version: pkg_info.version.clone().unwrap(),
                     scope: vec![shared_info.shared_scope.clone()],
                     file_path: pkg_info.file_path.clone(),
                     shared_config: SharedConfig {
@@ -134,7 +132,7 @@ impl ModuleFederationPlugin {
 #[derive(Debug)]
 pub(super) struct ProvideSharedItem {
     pub(super) share_key: String,
-    pub(super) version: Option<String>,
+    pub(super) version: String,
     pub(super) scope: Vec<String>,
     pub(super) shared_config: SharedConfig,
     pub(super) file_path: String,
@@ -150,14 +148,4 @@ pub(super) struct SharedConfig {
     pub(super) singleton: bool,
     #[serde(serialize_with = "serialize_none_to_false")]
     pub(super) required_version: Option<String>,
-}
-
-fn serialize_none_to_false<T: Serialize, S: Serializer>(
-    t: &Option<T>,
-    s: S,
-) -> Result<S::Ok, S::Error> {
-    match t {
-        Some(t) => t.serialize(s),
-        None => s.serialize_bool(false),
-    }
 }

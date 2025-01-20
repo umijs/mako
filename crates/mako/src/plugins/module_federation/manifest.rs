@@ -4,9 +4,10 @@ use std::sync::Arc;
 use serde::Serialize;
 
 use super::constants::FEDERATION_EXPOSE_CHUNK_PREFIX;
-use super::util::parse_remote;
+use super::util::{parse_remote, serialize_none_to_false};
 use super::{constants, ModuleFederationPlugin};
 use crate::compiler::Context;
+use crate::generate::chunk_graph::ChunkGraph;
 use crate::module::ModuleId;
 use crate::plugin::PluginGenerateEndParams;
 use crate::stats::StatsJsonMap;
@@ -18,7 +19,6 @@ impl ModuleFederationPlugin {
         context: &Arc<Context>,
         params: &PluginGenerateEndParams,
     ) -> Result<(), anyhow::Error> {
-        let chunk_graph = context.chunk_graph.read().unwrap();
         let app_info = get_app_info(&context.root);
         let manifest = Manifest {
             id: self.config.name.clone(),
@@ -37,7 +37,8 @@ impl ModuleFederationPlugin {
                             .to_string()
                             .into();
                         // FIXME: this may be slow
-                        let exposes_sync_chunks = chunk_graph
+                        let chunk_graph = context.chunk_graph.read().unwrap();
+                        let sync_chunks = chunk_graph
                             .graph
                             .node_weights()
                             .filter_map(|c| {
@@ -51,51 +52,41 @@ impl ModuleFederationPlugin {
                             })
                             .collect::<Vec<ModuleId>>();
 
-                        let exposes_sync_chunk_dependencies =
-                            exposes_sync_chunks.iter().fold(Vec::new(), |mut acc, cur| {
-                                let sync_deps = chunk_graph.sync_dependencies_chunk(cur);
-                                acc.splice(..0, sync_deps);
-                                acc
-                            });
-                        let all_exposes_sync_chunks =
-                            [exposes_sync_chunk_dependencies, exposes_sync_chunks].concat();
-                        let all_exposes_async_chunks: Vec<ModuleId> =
-                            all_exposes_sync_chunks.iter().fold(vec![], |mut acc, cur| {
-                                acc.extend(chunk_graph.installable_descendants_chunk(cur));
-                                acc
-                            });
-                        let (sync_js_files, sync_css_files) =
-                            extract_assets(all_exposes_sync_chunks, &params.stats);
-
-                        let (async_js_files, async_css_files) =
-                            extract_assets(all_exposes_async_chunks, &params.stats);
-                        let async_js_files = async_js_files
-                            .into_iter()
-                            .filter(|f| !sync_js_files.contains(f))
-                            .collect();
-                        let async_css_files = async_css_files
-                            .into_iter()
-                            .filter(|f| !sync_js_files.contains(f))
-                            .collect();
+                        let assets = extrac_chunk_assets(sync_chunks, &chunk_graph, params);
                         ManifestExpose {
                             id: format!("{}:{}", self.config.name, name),
                             name,
                             path: path.clone(),
-                            assets: ManifestAssets {
-                                js: ManifestAssetsItem {
-                                    sync: sync_js_files,
-                                    r#async: async_js_files,
-                                },
-                                css: ManifestAssetsItem {
-                                    sync: sync_css_files,
-                                    r#async: async_css_files,
-                                },
-                            },
+                            assets,
                         }
                     })
                     .collect()
             }),
-            shared: Vec::new(),
+            shared: {
+                let chunk_graph = context.chunk_graph.read().unwrap();
+                let provide_shared_map = self.provide_shared_map.read().unwrap();
+                provide_shared_map
+                    .iter()
+                    .map(|(_, config)| {
+                        let module_id: ModuleId = config.file_path.clone().into();
+                        let chunk_id = chunk_graph
+                            .get_chunk_for_module(&module_id)
+                            .as_ref()
+                            .unwrap()
+                            .id
+                            .clone();
+                        let assets = extrac_chunk_assets(vec![chunk_id], &chunk_graph, params);
+                        ManifestShared {
+                            id: format!("{}:{}", self.config.name, config.share_key),
+                            name: config.share_key.clone(),
+                            require_version: config.shared_config.required_version.clone(),
+                            version: config.version.clone(),
+                            singleton: config.shared_config.singleton,
+                            assets,
+                        }
+                    })
+                    .collect()
+            },
             remotes: params
                 .stats
                 .chunk_modules
@@ -153,6 +144,44 @@ impl ModuleFederationPlugin {
     }
 }
 
+fn extrac_chunk_assets(
+    sync_chunks: Vec<ModuleId>,
+    chunk_graph: &ChunkGraph,
+    params: &PluginGenerateEndParams,
+) -> ManifestAssets {
+    let sync_chunk_dependencies = sync_chunks.iter().fold(Vec::new(), |mut acc, cur| {
+        let sync_deps = chunk_graph.sync_dependencies_chunk(cur);
+        acc.splice(..0, sync_deps);
+        acc
+    });
+    let all_sync_chunks = [sync_chunk_dependencies, sync_chunks].concat();
+    let all_async_chunks: Vec<ModuleId> = all_sync_chunks.iter().fold(vec![], |mut acc, cur| {
+        acc.extend(chunk_graph.installable_descendants_chunk(cur));
+        acc
+    });
+    let (sync_js_files, sync_css_files) = extract_assets(all_sync_chunks, &params.stats);
+
+    let (async_js_files, async_css_files) = extract_assets(all_async_chunks, &params.stats);
+    let async_js_files = async_js_files
+        .into_iter()
+        .filter(|f| !sync_js_files.contains(f))
+        .collect();
+    let async_css_files = async_css_files
+        .into_iter()
+        .filter(|f| !sync_js_files.contains(f))
+        .collect();
+    ManifestAssets {
+        js: ManifestAssetsItem {
+            sync: sync_js_files,
+            r#async: async_js_files,
+        },
+        css: ManifestAssetsItem {
+            sync: sync_css_files,
+            r#async: async_css_files,
+        },
+    }
+}
+
 fn extract_assets(
     all_exposes_sync_chunks: Vec<ModuleId>,
     stats: &StatsJsonMap,
@@ -203,7 +232,8 @@ pub struct ManifestShared {
     name: String,
     assets: ManifestAssets,
     version: String,
-    require_version: String,
+    #[serde(serialize_with = "serialize_none_to_false")]
+    require_version: Option<String>,
     singleton: bool,
 }
 
