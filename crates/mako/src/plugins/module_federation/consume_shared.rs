@@ -8,7 +8,7 @@ use super::ModuleFederationPlugin;
 use crate::build::analyze_deps::{AnalyzeDepsResult, ResolvedDep};
 use crate::compiler::Context;
 use crate::generate::chunk::{Chunk, ChunkType};
-use crate::module::{Dependency, ResolveType};
+use crate::module::{md5_hash, Dependency, ResolveType};
 use crate::plugin::PluginResolveIdParams;
 use crate::resolve::{do_resolve, ConsumeSharedInfo, ResolverResource, ResolverType};
 
@@ -151,19 +151,33 @@ impl ModuleFederationPlugin {
             .unwrap();
             let resolver_resource =
                 do_resolve(importer, source, resolver, Some(&context.config.externals))?;
+            let config_joined_str = format!(
+                "{}|{}|{}|{}|{}|{}|{}",
+                shared_info.shared_scope,
+                source,
+                shared_info
+                    .required_version
+                    .as_ref()
+                    .map_or("", |v| v.as_str()),
+                shared_info.strict_version,
+                resolver_resource.get_resolved_path(),
+                shared_info.singleton,
+                shared_info.eager
+            );
+            let hash = md5_hash(&config_joined_str, 4);
             return Ok(Some(ResolverResource::Shared(ConsumeSharedInfo {
                 eager: shared_info.eager,
                 module_id: format!(
-                    "{}{}/{}/{}",
-                    FEDERATION_SHARED_REFERENCE_PREFIX, shared_info.shared_scope, source, source
+                    "{}{}/{}/{}?{}",
+                    FEDERATION_SHARED_REFERENCE_PREFIX,
+                    shared_info.shared_scope,
+                    source,
+                    source,
+                    hash
                 ),
                 name: source.to_string(),
                 share_scope: shared_info.shared_scope.clone(),
                 version: resolver_resource.get_pkg_info().unwrap().version.unwrap(),
-                full_path: format!(
-                    "{}{}/{}/{}",
-                    FEDERATION_SHARED_REFERENCE_PREFIX, shared_info.shared_scope, source, source
-                ),
                 deps: AnalyzeDepsResult {
                     resolved_deps: vec![ResolvedDep {
                         resolver_resource,

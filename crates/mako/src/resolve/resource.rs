@@ -19,7 +19,6 @@ pub struct ConsumeSharedInfo {
     pub name: String,
     pub share_scope: String,
     pub version: String,
-    pub full_path: String,
     pub eager: bool,
     pub required_version: Option<String>,
     pub strict_version: bool,
@@ -57,7 +56,7 @@ impl ResolverResource {
             ResolverResource::Ignored(path) => path.to_string_lossy().to_string(),
             ResolverResource::Virtual(path) => path.to_string_lossy().to_string(),
             ResolverResource::Remote(info) => info.module_id.to_string(),
-            ResolverResource::Shared(info) => info.full_path.clone(),
+            ResolverResource::Shared(info) => info.module_id.clone(),
         }
     }
     pub fn get_external(&self) -> Option<String> {
