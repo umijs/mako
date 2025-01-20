@@ -26,7 +26,11 @@ impl Compiler {
     pub fn optimize_chunk(&self) {
         crate::mako_profile_function!();
         debug!("optimize chunk");
-        if let Some(optimize_options) = self.get_optimize_chunk_options() {
+        if let Some(mut optimize_options) = self.get_optimize_chunk_options() {
+            self.context
+                .plugin_driver
+                .after_optimize_chunk_options(&mut optimize_options)
+                .unwrap();
             debug!("optimize options: {:?}", optimize_options);
             // stage: prepare
             let mut optimize_chunks_infos = optimize_options
@@ -171,13 +175,6 @@ impl Compiler {
                 // check test regex
                 if let Some(test) = &optimize_info.group_options.test {
                     if !create_cached_regex(test).is_match(&module_id.id) {
-                        continue;
-                    }
-                }
-
-                // check exclude regex
-                if let Some(exclude) = &optimize_info.group_options.exclude {
-                    if create_cached_regex(exclude).is_match(&module_id.id) {
                         continue;
                     }
                 }

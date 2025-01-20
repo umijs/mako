@@ -7,13 +7,25 @@
     "remotes": {
       "widget": "mfWidget@http://localhost:3000/mfWidget.js"
     },
-    "shared": { "react": {}, "react-dom": {} },
-    "implementation": "/Users/xusd/codes/github/mako/packages/mako/node_modules/@module-federation/webpack-bundler-runtime"
+    "shared": { "react": {}, "react-dom": {} }
   },
   "experimental": {
     "centralEnsure": false
   },
   "define": {
     "process.env.SOCKET_SERVER": "\"http://localhost:3001\""
+  },
+  "codeSplitting": {
+    "strategy": "advanced",
+    "options": {
+      "groups": [
+        {
+          "name": "vendor",
+          "allowChunks": "all",
+          "minSize": 1,
+          "test": "node_modules"
+        }
+      ]
+    }
   }
 }

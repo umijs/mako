@@ -10,13 +10,25 @@
       "./App2": "./src/App2.tsx"
     },
     "shared": { "react": {}, "react-dom": {} },
-    "runtimePlugins": [],
-    "implementation": "/Users/xusd/codes/github/mako/packages/mako/node_modules/@module-federation/webpack-bundler-runtime"
+    "runtimePlugins": []
   },
   "experimental": {
     "centralEnsure": false
   },
   "define": {
     "process.env.SOCKET_SERVER": "\"http://localhost:3000\""
+  },
+  "codeSplitting": {
+    "strategy": "advanced",
+    "options": {
+      "groups": [
+        {
+          "name": "vendor",
+          "allowChunks": "all",
+          "minSize": 1,
+          "test": "node_modules"
+        }
+      ]
+    }
   }
 }

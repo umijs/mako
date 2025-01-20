@@ -8,7 +8,7 @@ use tracing::warn;
 use super::constants::{FEDERATION_EXPOSE_CHUNK_PREFIX, FEDERATION_GLOBAL};
 use super::util::parse_remote;
 use super::ModuleFederationPlugin;
-use crate::config::Config;
+use crate::config::{AllowChunks, Config};
 use crate::module::md5_hash;
 use crate::visitors::mako_require::MAKO_REQUIRE;
 
@@ -243,6 +243,15 @@ export {{ get, init }};
         };
 
         (plugins_imports, plugins_instantiations)
+    }
+
+    pub(crate) fn patch_code_splitting(
+        &self,
+        optimize_chunk_options: &mut crate::config::CodeSplittingAdvancedOptions,
+    ) {
+        optimize_chunk_options.groups.iter_mut().for_each(|group| {
+            group.allow_chunks = AllowChunks::Async;
+        });
     }
 }
 

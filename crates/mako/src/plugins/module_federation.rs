@@ -119,4 +119,12 @@ impl Plugin for ModuleFederationPlugin {
         self.connect_provide_shared_to_container(chunk_graph, module_graph);
         Ok(())
     }
+
+    fn after_optimize_chunk_options(
+        &self,
+        optimize_chunk_options: &mut crate::config::CodeSplittingAdvancedOptions,
+    ) -> Result<()> {
+        self.patch_code_splitting(optimize_chunk_options);
+        Ok(())
+    }
 }

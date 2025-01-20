@@ -54,7 +54,7 @@ impl ModuleFederationPlugin {
                         let exposes_sync_chunk_dependencies =
                             exposes_sync_chunks.iter().fold(Vec::new(), |mut acc, cur| {
                                 let sync_deps = chunk_graph.sync_dependencies_chunk(cur);
-                                acc.splice(0..sync_deps.len(), sync_deps);
+                                acc.splice(..0, sync_deps);
                                 acc
                             });
                         let all_exposes_sync_chunks =

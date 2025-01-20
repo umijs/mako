@@ -11,7 +11,7 @@ use swc_core::ecma::ast::Module;
 use crate::ast::file::{Content, File};
 use crate::build::analyze_deps::ResolvedDep;
 use crate::compiler::{Args, Compiler, Context};
-use crate::config::Config;
+use crate::config::{CodeSplittingAdvancedOptions, Config};
 use crate::generate::chunk::Chunk;
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::generate::generate_chunks::ChunkFile;
@@ -184,6 +184,13 @@ pub trait Plugin: Any + Send + Sync {
     }
 
     fn before_optimize_chunk(&self, _context: &Arc<Context>) -> Result<()> {
+        Ok(())
+    }
+
+    fn after_optimize_chunk_options(
+        &self,
+        _optimize_chunk_options: &mut CodeSplittingAdvancedOptions,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -423,6 +430,17 @@ impl PluginDriver {
     pub fn before_optimize_chunk(&self, context: &Arc<Context>) -> Result<()> {
         for p in &self.plugins {
             p.before_optimize_chunk(context)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn after_optimize_chunk_options(
+        &self,
+        optimize_chunk_options: &mut CodeSplittingAdvancedOptions,
+    ) -> Result<()> {
+        for p in &self.plugins {
+            p.after_optimize_chunk_options(optimize_chunk_options)?;
         }
 
         Ok(())
