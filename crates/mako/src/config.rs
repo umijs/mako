@@ -28,7 +28,7 @@ mod tree_shaking;
 mod umd;
 mod watch;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::path::{Path, PathBuf};
 
@@ -128,7 +128,7 @@ pub enum Platform {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    pub entry: HashMap<String, PathBuf>,
+    pub entry: BTreeMap<String, PathBuf>,
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
     #[serde(deserialize_with = "deserialize_manifest", default)]
