@@ -52,7 +52,7 @@ impl ModuleFederationPlugin {
                             })
                             .collect::<Vec<ModuleId>>();
 
-                        let assets = extrac_chunk_assets(sync_chunks, &chunk_graph, params);
+                        let assets = extract_chunk_assets(sync_chunks, &chunk_graph, params);
                         ManifestExpose {
                             id: format!("{}:{}", self.config.name, name),
                             name,
@@ -75,7 +75,7 @@ impl ModuleFederationPlugin {
                             .unwrap()
                             .id
                             .clone();
-                        let assets = extrac_chunk_assets(vec![chunk_id], &chunk_graph, params);
+                        let assets = extract_chunk_assets(vec![chunk_id], &chunk_graph, params);
                         ManifestShared {
                             id: format!("{}:{}", self.config.name, config.share_key),
                             name: config.share_key.clone(),
@@ -144,7 +144,7 @@ impl ModuleFederationPlugin {
     }
 }
 
-fn extrac_chunk_assets(
+fn extract_chunk_assets(
     sync_chunks: Vec<ModuleId>,
     chunk_graph: &ChunkGraph,
     params: &PluginGenerateEndParams,
