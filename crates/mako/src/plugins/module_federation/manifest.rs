@@ -154,22 +154,27 @@ fn extrac_chunk_assets(
         acc.splice(..0, sync_deps);
         acc
     });
+
     let all_sync_chunks = [sync_chunk_dependencies, sync_chunks].concat();
     let all_async_chunks: Vec<ModuleId> = all_sync_chunks.iter().fold(vec![], |mut acc, cur| {
         acc.extend(chunk_graph.installable_descendants_chunk(cur));
         acc
     });
+
     let (sync_js_files, sync_css_files) = extract_assets(all_sync_chunks, &params.stats);
 
     let (async_js_files, async_css_files) = extract_assets(all_async_chunks, &params.stats);
+
     let async_js_files = async_js_files
         .into_iter()
         .filter(|f| !sync_js_files.contains(f))
         .collect();
+
     let async_css_files = async_css_files
         .into_iter()
         .filter(|f| !sync_js_files.contains(f))
         .collect();
+
     ManifestAssets {
         js: ManifestAssetsItem {
             sync: sync_js_files,

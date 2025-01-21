@@ -10,7 +10,7 @@ use crate::ast::file::Content;
 use crate::build::analyze_deps::ResolvedDep;
 use crate::compiler::{Args, Context};
 use crate::config::module_federation::ModuleFederationConfig;
-use crate::config::Config;
+use crate::config::{CodeSplittingAdvancedOptions, Config};
 use crate::generate::chunk::Chunk;
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::module_graph::ModuleGraph;
@@ -54,11 +54,11 @@ impl Plugin for ModuleFederationPlugin {
         &self,
         content: &mut Content,
         _path: &str,
-        _is_entry: bool,
+        is_entry: bool,
         context: &Arc<Context>,
     ) -> Result<Option<Content>> {
         // add container entry runtime dependency
-        if !_is_entry {
+        if !is_entry {
             Ok(None)
         } else {
             match content {
@@ -79,9 +79,9 @@ impl Plugin for ModuleFederationPlugin {
         Ok(vec![
             self.get_federation_runtime_code(),
             self.get_container_references_code(context),
-            self.get_provide_sharing_code(context),
-            self.get_consume_sharing_code(entry_chunk, context),
             self.get_federation_exposes_library_code(),
+            self.get_consume_sharing_code(entry_chunk, context),
+            self.get_provide_sharing_code(context),
         ])
     }
 
@@ -122,7 +122,7 @@ impl Plugin for ModuleFederationPlugin {
 
     fn after_optimize_chunk_options(
         &self,
-        optimize_chunk_options: &mut crate::config::CodeSplittingAdvancedOptions,
+        optimize_chunk_options: &mut CodeSplittingAdvancedOptions,
     ) -> Result<()> {
         self.patch_code_splitting(optimize_chunk_options);
         Ok(())

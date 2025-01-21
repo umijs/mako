@@ -166,7 +166,13 @@ impl ModuleFederationPlugin {
             );
             let hash = md5_hash(&config_joined_str, 4);
             return Ok(Some(ResolverResource::Shared(ConsumeSharedInfo {
+                name: source.to_string(),
+                version: resolver_resource.get_pkg_info().unwrap().version.unwrap(),
+                share_scope: shared_info.shared_scope.clone(),
                 eager: shared_info.eager,
+                singletion: shared_info.singleton,
+                required_version: shared_info.required_version.clone(),
+                strict_version: shared_info.strict_version,
                 module_id: format!(
                     "{}{}/{}/{}?{}",
                     FEDERATION_SHARED_REFERENCE_PREFIX,
@@ -175,9 +181,6 @@ impl ModuleFederationPlugin {
                     source,
                     hash
                 ),
-                name: source.to_string(),
-                share_scope: shared_info.shared_scope.clone(),
-                version: resolver_resource.get_pkg_info().unwrap().version.unwrap(),
                 deps: AnalyzeDepsResult {
                     resolved_deps: vec![ResolvedDep {
                         resolver_resource,
@@ -191,9 +194,6 @@ impl ModuleFederationPlugin {
                     }],
                     missing_deps: HashMap::new(),
                 },
-                singletion: shared_info.singleton,
-                required_version: shared_info.required_version.clone(),
-                strict_version: shared_info.strict_version,
             })));
         }
         Ok(None)

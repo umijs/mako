@@ -46,6 +46,7 @@ impl ModuleFederationPlugin {
                             let remote_info = id_to_external_and_name_mapping
                                 .entry(m.id.id.as_str())
                                 .or_default();
+
                             remote_info.push(&remote_module.share_scope);
                             remote_info.push(&remote_module.sub_path);
                             remote_info.push(&remote_module.external_reference_id);
