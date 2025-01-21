@@ -26,6 +26,7 @@ pub type SharedConfig = HashMap<String, SharedItemConfig>;
 #[serde(rename_all = "camelCase")]
 pub struct SharedItemConfig {
     #[serde(default)]
+    /// not supported now
     pub eager: bool,
     #[serde(default)]
     pub singleton: bool,
@@ -39,9 +40,9 @@ pub struct SharedItemConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ShareStrategy {
-    #[serde(rename = "version_first")]
+    #[serde(rename = "version-first")]
     VersionFirst,
-    #[serde(rename = "loaded_first")]
+    #[serde(rename = "loaded-first")]
     LoadedFirst,
 }
 

@@ -59,7 +59,7 @@ export async function build(params: BuildParams) {
       await rustPluginResolver(rustPlugins);
   }
 
-  let makoConfig: any = {};
+  let makoConfig: binding.BuildParams['config'] = {};
   let makoConfigPath = path.join(params.root, 'mako.config.json');
   if (fs.existsSync(makoConfigPath)) {
     try {
@@ -129,9 +129,9 @@ export async function build(params: BuildParams) {
     },
   });
 
-  if (makoConfig?.sass || params.config?.sass) {
+  if ((makoConfig as any)?.sass || params.config?.sass) {
     const sassOpts = {
-      ...(makoConfig?.sass || {}),
+      ...((makoConfig as any)?.sass || {}),
       ...(params.config?.sass || {}),
     };
     let sass = sassLoader(null, sassOpts);
@@ -199,7 +199,7 @@ export async function build(params: BuildParams) {
       return plugin;
     }
   });
-  makoConfig.plugins?.forEach((plugin: any) => {
+  (makoConfig as any).plugins?.forEach((plugin: any) => {
     if (typeof plugin === 'string') {
       let fn = require(
         resolve.sync(plugin, {
