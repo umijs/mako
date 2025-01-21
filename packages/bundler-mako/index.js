@@ -662,6 +662,7 @@ async function getMakoConfig(opts) {
     experimental: {
       webpackSyntaxValidate: [],
       requireContext: true,
+      rustPlugins: [],
       detectCircularDependence: {
         ignores: ['node_modules', '\\.umi'],
         graphviz: false,

@@ -1,5 +1,7 @@
 #![deny(clippy::all)]
 
+extern crate swc_malloc;
+
 use std::sync::{Arc, Once};
 
 use js_hook::{JsHooks, TsFnHooks};
@@ -17,18 +19,6 @@ use napi_derive::napi;
 mod js_hook;
 mod js_plugin;
 mod threadsafe_function;
-
-#[cfg(not(target_os = "linux"))]
-#[global_allocator]
-static GLOBAL: mimalloc_rust::GlobalMiMalloc = mimalloc_rust::GlobalMiMalloc;
-
-#[cfg(all(
-    target_os = "linux",
-    target_env = "gnu",
-    any(target_arch = "x86_64", target_arch = "aarch64")
-))]
-#[global_allocator]
-static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 static LOG_INIT: Once = Once::new();
 
@@ -126,7 +116,7 @@ pub struct BuildParams {
     autoCSSModules?: boolean;
     ignoreCSSParserErrors?: boolean;
     dynamicImportToRequire?: boolean;
-    umd?: false | string;
+    umd?: false | string | { name: string, export?: string[] };
     cjs?: boolean;
     writeToDisk?: boolean;
     transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
@@ -168,11 +158,13 @@ pub struct BuildParams {
     };
     experimental?: {
         webpackSyntaxValidate?: string[];
+        rustPlugins?: Array<[string, any]>;
     };
     watch?: {
         ignoredPaths?: string[];
         _nodeModulesRegexes?: string[];
     };
+    caseSensitiveCheck?: boolean;
 }"#)]
     pub config: serde_json::Value,
     pub plugins: Vec<JsHooks>,

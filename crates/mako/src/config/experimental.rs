@@ -1,6 +1,13 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::create_deserialize_fn;
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct RustPlugin {
+    pub path: String,
+    pub options: Value,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -12,6 +19,7 @@ pub struct ExperimentalConfig {
     pub magic_comment: bool,
     #[serde(deserialize_with = "deserialize_detect_loop")]
     pub detect_circular_dependence: Option<DetectCircularDependence>,
+    pub rust_plugins: Vec<RustPlugin>,
     pub central_ensure: bool,
     pub imports_checker: bool,
 }

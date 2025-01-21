@@ -123,11 +123,10 @@ impl Parse {
                             r#"
 import {{ moduleToDom }} from 'virtual:inline_css:runtime';
 {}
-moduleToDom(`
-{}
-`);
+moduleToDom({});
                         "#,
-                            deps, code
+                            deps,
+                            serde_json::to_string(&code)?
                         ),
                         ..Default::default()
                     }));

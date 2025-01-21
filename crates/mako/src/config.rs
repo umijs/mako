@@ -50,6 +50,7 @@ pub use external::{
 };
 pub use generic_usize::GenericUsizeDefault;
 pub use hmr::{deserialize_hmr, HmrConfig};
+use indexmap::IndexMap;
 pub use inline_css::{deserialize_inline_css, InlineCssConfig};
 pub use manifest::{deserialize_manifest, ManifestConfig};
 use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSpan};
@@ -68,7 +69,7 @@ pub use resolve::ResolveConfig;
 pub use rsc_client::{deserialize_rsc_client, LogServerComponent, RscClientConfig};
 pub use rsc_server::{deserialize_rsc_server, RscServerConfig};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 pub use stats::{deserialize_stats, StatsConfig};
 use thiserror::Error;
 pub use transform_import::{TransformImportConfig, TransformImportStyle};
@@ -77,6 +78,7 @@ pub use umd::{deserialize_umd, Umd};
 pub use watch::WatchConfig;
 
 use crate::build::load::JS_EXTENSIONS;
+use crate::config::experimental::RustPlugin;
 use crate::features::node::Node;
 
 #[derive(Debug, Diagnostic)]
@@ -129,7 +131,7 @@ pub enum Platform {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    pub entry: HashMap<String, PathBuf>,
+    pub entry: IndexMap<String, PathBuf>,
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
     #[serde(deserialize_with = "deserialize_manifest", default)]
@@ -223,6 +225,9 @@ pub struct Config {
     )]
     pub check_duplicate_package: Option<DuplicatePackageCheckerConfig>,
     pub module_federation: Option<ModuleFederationConfig>,
+    // 是否开启 case sensitive 检查,只有mac平台才需要开启
+    #[serde(rename = "caseSensitiveCheck")]
+    pub case_sensitive_check: bool,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -236,14 +241,25 @@ impl Config {
     ) -> Result<Self> {
         let abs_config_file = root.join(CONFIG_FILE);
         let abs_config_file = abs_config_file.to_str().unwrap();
+        let mut overrides_json: Option<Value> = None;
         let c = config::Config::builder();
         // default config
         let c = c.add_source(config::File::from_str(
             DEFAULT_CONFIG,
             config::FileFormat::Json5,
         ));
+
         // default config from args
         let c = if let Some(default_config) = default_config {
+            let result: Result<Value, serde_json::Error> = serde_json::from_str(default_config);
+            if let Ok(config) = result {
+                if let Some(rust_plugins) = config
+                    .get("experimental")
+                    .and_then(|experimental| experimental.get("rustPlugins"))
+                {
+                    overrides_json = Some(json!({ "rust_plugins": rust_plugins }));
+                }
+            };
             c.add_source(config::File::from_str(
                 default_config,
                 config::FileFormat::Json5,
@@ -269,6 +285,14 @@ impl Config {
         let mut ret = c.try_deserialize::<Config>();
         // normalize & check
         if let Ok(config) = &mut ret {
+            // overrides  config
+
+            if let Some(overrides) = overrides_json {
+                let rust_plugins: Vec<RustPlugin> =
+                    serde_json::from_value(overrides.get("rust_plugins").unwrap().clone())?;
+                config.experimental.rust_plugins = rust_plugins;
+            }
+
             // normalize output
             if config.output.path.is_relative() {
                 config.output.path = root.join(config.output.path.to_string_lossy().to_string());

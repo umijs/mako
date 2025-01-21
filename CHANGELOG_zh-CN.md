@@ -1,3 +1,49 @@
+## 0.11.3
+
+`2025-01-16`
+
+- 修复：在 MemoryChunkFileCache 写入磁盘时确保父目录被创建 by [@sorrycc](https://github.com/sorrycc) in [#1755](https://github.com/umijs/mako/pull/1755)
+- 重构 create-mako by [@sorrycc](https://github.com/sorrycc) in [#1751](https://github.com/umijs/mako/pull/1751)
+
+## 0.11.2
+
+`2025-01-10`
+
+* 功能：重新支持 unplugin 上下文 - [@sorrycc](https://github.com/sorrycc) 在 https://github.com/umijs/mako/pull/1741
+* 修复：https://github.com/umijs/mako/issues/1007 - [@notcold](https://github.com/notcold) 在 https://github.com/umijs/mako/pull/1738
+* 修复：context module 和 require context 的 Windows 路径问题 - [@sorrycc](https://github.com/sorrycc) 在 https://github.com/umijs/mako/pull/1742
+* 修复：在 ModuleId 构造函数中规范化 Windows 路径 - [@sorrycc](https://github.com/sorrycc) 在 https://github.com/umijs/mako/pull/1744
+* 修复：在 Compiler 输出路径处理中规范化 Windows 路径 - [@sorrycc](https://github.com/sorrycc) 在 https://github.com/umijs/mako/pull/1745
+* 为本地构建添加调试提示 - [@sorrycc](https://github.com/sorrycc) 在 https://github.com/umijs/mako/pull/1743
+
+## 0.11.1
+
+`2025-01-02`
+
+* 回滚 "功能：支持 unplugin 上下文 (#1728)" - [@xusd320](https://github.com/xusd320) 在 https://github.com/umijs/mako/pull/1737
+
+## 0.11.0
+
+`2024-12-27`
+
+- define env 支持 optional chain by [@yezaoshu](https://github.com/yezaoshu) in [#1730](https://github.com/umijs/mako/pull/1730)
+- css url 地址未空时不进行依赖解析 by [@stormslowly](https://github.com/stormslowly) in [#1732](https://github.com/umijs/mako/pull/1732)
+- 支持 unplugin context by [@sorrycc](https://github.com/sorrycc) in [#1728](https://github.com/umijs/mako/pull/1728)
+- 修复源码中包含八进制字面量时解析 ast 会失败 [@xusd320](https://github.com/xusd320) in [#1736](https://github.com/umijs/mako/pull/1736)
+
+
+## 0.10.0
+
+`2024-12-19`
+
+- 支持 UMD 配置 export 参数 by [@xusd320](https://github.com/xusd320) in [#1723](https://github.com/umijs/mako/pull/1723)
+- 支持导入文件名大小写检查 by [@notcold](https://github.com/notcold) in [#1714](https://github.com/umijs/mako/pull/1714)
+- 支持 output 配置的 filename 参数 by [@stormslowly](https://github.com/stormslowly) in [#1725](https://github.com/umijs/mako/pull/1725)
+- 支持原生 SWC 插件 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1691](https://github.com/umijs/mako/pull/1691)
+- 修复 "typeof **webpack\_require**" 报错 by [@notcold](https://github.com/notcold) in [#1688](https://github.com/umijs/mako/pull/1688)
+- 修复 umd 配置反序列化的错误 by [@xusd320](https://github.com/xusd320) in [#1726](https://github.com/umijs/mako/pull/1726)
+
+
 
 ## 0.9.9
 
@@ -231,7 +277,7 @@
 `2024-08-08`
 
 - Break Change: 不再写入 stats.json 文件 by [@xusd320](https://github.com/xusd320) in [#1485](https://github.com/umijs/mako/pull/1485)
-- 新增: less 支持 “globalVars” 功能 by [@gin-lsl](https://github.com/gin-lsl) in [#1465](https://github.com/umijs/mako/pull/1465)
+- 新增: less 支持 "globalVars" 功能 by [@gin-lsl](https://github.com/gin-lsl) in [#1465](https://github.com/umijs/mako/pull/1465)
 - 新增(bundler-mako): 通过 babel 和 webpack 配置生成 dynamicImportToRequire by [@PeachScript](https://github.com/PeachScript) in [#1479](https://github.com/umijs/mako/pull/1479)
 - 优化: 避免 chunk 文件名称使用下划线前缀 by [@PeachScript](https://github.com/PeachScript) in [#1471](https://github.com/umijs/mako/pull/1471)
 
@@ -422,7 +468,7 @@
 - 优化 watch、dev_server 和 hmr 配置（含 Break Change） by [@sorrycc](https://github.com/sorrycc) in [#1206](https://github.com/umijs/mako/pull/1206)
 - 优化改进 parseServerStats by [@sorrycc](https://github.com/sorrycc) in [#1203](https://github.com/umijs/mako/pull/1203)
 - 修复 hooks 丢失传输问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1170](https://github.com/umijs/mako/pull/1170)
-- 修复 with-antd 示例在 watch 时 “too many files open” 错误 by [@zhangpanweb](https://github.com/zhangpanweb) in [#1022](https://github.com/umijs/mako/pull/1022)
+- 修复 with-antd 示例在 watch 时 "too many files open" 错误 by [@zhangpanweb](https://github.com/zhangpanweb) in [#1022](https://github.com/umijs/mako/pull/1022)
 - 修复 decorator visitor 应该在 preset env 之前运行 by [@stormslowly](https://github.com/stormslowly) in [#1176](https://github.com/umijs/mako/pull/1176)
 - 修复 node 场景，添加需要 ignore 的报名 by [@sorrycc](https://github.com/sorrycc) in [#1182](https://github.com/umijs/mako/pull/1182)
 - 修复 less ，在 Linux 上的 node 版本 < 20.12.0 时禁用并行 less loader by [@xusd320](https://github.com/xusd320) in [#1184](https://github.com/umijs/mako/pull/1184)

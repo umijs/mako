@@ -5,16 +5,14 @@
     "create-mako": "./bin/create-mako.js"
   },
   "license": "MIT",
-  "dependencies": {
-    "glob": "^10.3.15",
-    "inquirer": "^9.3.1",
-    "yargs-parser": "^21.1.1"
-  },
   "devDependencies": {
-    "@types/inquirer": "^9.0.7",
-    "@types/node": "^20.12.5",
     "@types/yargs-parser": "^21.0.3",
-    "typescript": "^5.4.3"
+    "@umijs/clack-prompt": "^0.0.3",
+    "gradient-string": "^3.0.0",
+    "picocolors": "^1.1.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "yargs-parser": "^21.1.1"
   },
   "engines": {
     "node": ">= 16"
@@ -26,8 +24,11 @@
   ],
   "scripts": {
     "format": "biome check --write .",
-    "dev": "father dev",
-    "build": "father build"
+    "build": "utools bundle --patch-dirname",
+    "release": "utools release"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

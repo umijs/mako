@@ -29,7 +29,7 @@ import { check } from './checker';
         plugins: [],
         watch,
       });
-      break;
+      process.exit(0);
     case undefined:
       if (argv.version || argv.v) {
         console.log(require('../package.json').version);

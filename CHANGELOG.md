@@ -1,3 +1,47 @@
+## 0.11.3
+
+`2025-01-16`
+
+- fix: ensure parent directories are created when writing to disk in MemoryChunkFileCache by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1755
+- feat(create-mako): refactor create-mako by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1751
+
+## 0.11.2
+
+`2025-01-10`
+
+* feat: support unplugin context (again) by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1741
+* fix: https://github.com/umijs/mako/issues/1007 by [@notcold](https://github.com/notcold) in https://github.com/umijs/mako/pull/1738
+* fix: win path problem with context module and require context by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1742
+* fix: normalize Windows paths in ModuleId constructors by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1744
+* fix: normalize Windows paths in Compiler output path handling by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1745
+* chore(mako): add debug notice for local builds by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1743
+
+## 0.11.1
+
+`2025-01-02`
+
+* Revert "feat: support unplugin context (#1728)" by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1737
+
+## 0.11.0
+
+`2024-12-27`
+
+- fix: support optional chaining in environment variable by [@yezaoshu](https://github.com/yezaoshu) in [#1730](https://github.com/umijs/mako/pull/1730)
+- refactor: 🎨 no need to resolve empty url in css by [@stormslowly](https://github.com/stormslowly) in [#1732](https://github.com/umijs/mako/pull/1732)
+- feat: support unplugin context by [@sorrycc](https://github.com/sorrycc) in [#1728](https://github.com/umijs/mako/pull/1728)
+- fix: legacy octal escape is not permitted in strict mode by [@xusd320](https://github.com/xusd320) in [#1736](https://github.com/umijs/mako/pull/1736)
+
+## 0.10.0
+
+`2024-12-19`
+
+- feat: supports umd export by [@xusd320](https://github.com/xusd320) in [#1723](https://github.com/umijs/mako/pull/1723)
+- feat: support case sensitive by [@notcold](https://github.com/notcold) in [#1714](https://github.com/umijs/mako/pull/1714)
+- feat: output filename config by [@stormslowly](https://github.com/stormslowly) in [#1725](https://github.com/umijs/mako/pull/1725)
+- feat: native plugin init by [@Jinbao1001](https://github.com/Jinbao1001) in [#1691](https://github.com/umijs/mako/pull/1691)
+- fix: replace the "typeof **webpack\_require**" content by [@notcold](https://github.com/notcold) in [#1688](https://github.com/umijs/mako/pull/1688)
+- fix: umd config deserialization by [@xusd320](https://github.com/xusd320) in [#1726](https://github.com/umijs/mako/pull/1726)
+
 ## 0.9.9
 
 `2024-12-12`

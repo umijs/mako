@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako",
-  "version": "0.9.9",
+  "version": "0.11.3",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -56,34 +56,38 @@
     "binding.*"
   ],
   "scripts": {
-    "artifacts": "napi artifacts",
     "artifacts:local": "rm -rf tmp && mkdir tmp && cp *.node tmp/ && napi artifacts --dir ./tmp --dist npm",
-    "build": "napi build --release --cargo-cwd ../../crates/binding --platform --js ./binding.js --dts ./binding.d.ts",
-    "clean": "rm -rf *.node artifacts-*.* node_modules/.cache",
-    "postbuild": "npm run format",
-    "build:mac:x86": "npm run build -- --target x86_64-apple-darwin",
-    "build:mac:aarch": "npm run build -- --target aarch64-apple-darwin",
-    "build:linux:gnu": "npm run --ignore-scripts build -- --target x86_64-unknown-linux-gnu",
-    "build:linux:musl": "npm run --ignore-scripts build -- --target x86_64-unknown-linux-musl",
-    "build:debug": "napi build --cargo-cwd ../../crates/binding --platform --js src/binding.js --dts src/binding.d.ts",
+    "artifacts": "napi artifacts",
+    "build:linux:gnu": "npm run --ignore-scripts napi:build -- --target x86_64-unknown-linux-gnu",
+    "build:linux:musl": "npm run --ignore-scripts napi:build -- --target x86_64-unknown-linux-musl",
+    "build:mac:aarch": "npm run napi:build -- --target aarch64-apple-darwin",
+    "build:mac:x86": "npm run napi:build -- --target x86_64-apple-darwin",
     "build:profile": "napi build --profile release-debug --cargo-cwd ../../crates/binding --platform --js src/binding.js --dts src/binding.d.ts",
-    "prepublishOnly": "napi prepublish -t npm",
+    "build": "esno scripts/build.ts",
+    "clean": "rm -rf *.node artifacts-*.* node_modules/.cache",
     "format": "biome check --write .",
-    "universal": "napi universal",
-    "version": "napi version",
-    "release": "esno scripts/release.ts",
+    "napi:build": "napi build --release --cargo-cwd ../../crates/binding --platform --js ./binding.js --dts ./binding.d.ts",
+    "napi:build:debug": "napi build --cargo-cwd ../../crates/binding --platform --js src/binding.js --dts src/binding.d.ts",
+    "postbuild": "npm run format",
+    "prepublishOnly": "napi prepublish -t npm",
+    "release": "utools release --sync-deps ../bundler-mako/package.json,../create-mako/templates/minimal/package.json --sync-versions ../bundler-mako/package.json --sync-publishes ../bundler-mako --git-tag --changelog",
+    "src:build": "father build",
     "src:dev": "father dev",
-    "src:build": "father build"
+    "universal": "napi universal",
+    "version": "napi version"
   },
   "optionalDependencies": {
-    "@umijs/mako-darwin-arm64": "0.9.9",
-    "@umijs/mako-linux-arm64-gnu": "0.9.9",
-    "@umijs/mako-linux-arm64-musl": "0.9.9",
-    "@umijs/mako-win32-ia32-msvc": "0.9.9",
-    "@umijs/mako-darwin-x64": "0.9.9",
-    "@umijs/mako-win32-x64-msvc": "0.9.9",
-    "@umijs/mako-linux-x64-gnu": "0.9.9",
-    "@umijs/mako-linux-x64-musl": "0.9.9"
+    "@umijs/mako-darwin-arm64": "0.11.3",
+    "@umijs/mako-linux-arm64-gnu": "0.11.3",
+    "@umijs/mako-linux-arm64-musl": "0.11.3",
+    "@umijs/mako-win32-ia32-msvc": "0.11.3",
+    "@umijs/mako-darwin-x64": "0.11.3",
+    "@umijs/mako-win32-x64-msvc": "0.11.3",
+    "@umijs/mako-linux-x64-gnu": "0.11.3",
+    "@umijs/mako-linux-x64-musl": "0.11.3"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

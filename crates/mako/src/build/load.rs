@@ -36,7 +36,6 @@ const CSS_EXTENSIONS: [&str; 1] = ["css"];
 const JSON_EXTENSIONS: [&str; 2] = ["json", "json5"];
 const YAML_EXTENSIONS: [&str; 2] = ["yaml", "yml"];
 const XML_EXTENSIONS: [&str; 1] = ["xml"];
-const WASM_EXTENSIONS: [&str; 1] = ["wasm"];
 const TOML_EXTENSIONS: [&str; 1] = ["toml"];
 const SVG_EXTENSIONS: [&str; 1] = ["svg"];
 const MD_EXTENSIONS: [&str; 2] = ["md", "mdx"];
@@ -176,27 +175,6 @@ export function moduleToDom(css) {
             let content = serde_json::to_string(&content)?;
             return Ok(Content::Js(JsContent {
                 content: format!("module.exports = {}", content),
-                ..Default::default()
-            }));
-        }
-
-        // wasm
-        if WASM_EXTENSIONS.contains(&file.extname.as_str()) {
-            let final_file_name = format!(
-                "{}.{}.{}",
-                file.get_file_stem(),
-                file.get_content_hash()?,
-                file.extname
-            );
-            context.emit_assets(
-                file.pathname.to_string_lossy().to_string(),
-                final_file_name.clone(),
-            );
-            return Ok(Content::Js(JsContent {
-                content: format!(
-                    "module.exports = require._interopreRequireWasm(exports, \"{}\")",
-                    final_file_name
-                ),
                 ..Default::default()
             }));
         }

@@ -104,6 +104,8 @@ pub(super) fn render_entry_js_chunk(
         file_name: pot.js_name.clone(),
         chunk_id: pot.chunk_id.clone(),
         file_type: ChunkFileType::JS,
+        file_name_template: None,
+        chunk_name: pot.chunk_name.clone(),
     })
 }
 
@@ -153,6 +155,8 @@ pub(super) fn render_normal_js_chunk(
         file_name: chunk_pot.js_name.clone(),
         chunk_id: chunk_pot.chunk_id.clone(),
         file_type: ChunkFileType::JS,
+        file_name_template: None,
+        chunk_name: chunk_pot.chunk_name.clone(),
     })
 }
 

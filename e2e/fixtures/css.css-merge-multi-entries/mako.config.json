@@ -1,0 +1,21 @@
+{
+  "entry": {
+    "a": "./src/a.ts",
+    "b": "./src/b.ts",
+    "c": "./src/c.ts"
+  },
+  "codeSplitting": {
+    "strategy": "advanced",
+    "options": {
+      "minSize": 1,
+      "groups": [
+        {
+          "name": "common",
+          "allowChunks": "entry",
+          "minChunks": 2,
+          "minSize": 1
+        }
+      ]
+    }
+  }
+}

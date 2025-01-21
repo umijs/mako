@@ -285,7 +285,9 @@ impl PartialOrd for ModuleId {
 impl ModuleId {
     // we use absolute path as module id now
     pub fn new(id: String) -> Self {
-        Self { id }
+        Self {
+            id: win_path(id.as_str()),
+        }
     }
 
     pub fn generate(&self, context: &Arc<Context>) -> String {
@@ -307,20 +309,22 @@ impl ModuleId {
 
 impl From<String> for ModuleId {
     fn from(id: String) -> Self {
-        Self { id }
+        Self {
+            id: win_path(id.as_str()),
+        }
     }
 }
 
 impl From<&str> for ModuleId {
     fn from(id: &str) -> Self {
-        Self { id: id.to_string() }
+        Self { id: win_path(id) }
     }
 }
 
 impl From<PathBuf> for ModuleId {
     fn from(path: PathBuf) -> Self {
         Self {
-            id: path.to_string_lossy().to_string(),
+            id: win_path(path.to_string_lossy().to_string().as_str()),
         }
     }
 }

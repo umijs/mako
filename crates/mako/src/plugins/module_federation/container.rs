@@ -1,4 +1,3 @@
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::fs;
 use std::path::Path;
 
@@ -72,13 +71,13 @@ if(!{FEDERATION_GLOBAL}.instance) {{
             let container_entry_name = &self.config.name;
             if !exposes.is_empty() {
                 match config.entry.entry(container_entry_name.clone()) {
-                    Occupied(_) => {
+                    indexmap::map::Entry::Occupied(_) => {
                         warn!(
                             "mf exposed name {} is conflicting with entry config.",
                             container_entry_name
                         );
                     }
-                    Vacant(vacant_entry) => {
+                    indexmap::map::Entry::Vacant(vacant_entry) => {
                         // TODO: refactor with virtual entry
                         let container_entry_code = self.get_container_entry_code(root);
                         let container_entry_path = root.join(format!(

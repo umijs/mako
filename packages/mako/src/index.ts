@@ -1,11 +1,14 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
+import chalk from 'chalk';
 import { omit } from 'lodash';
 import resolve from 'resolve';
 import { type Options } from 'sass';
 import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
+import { rustPluginResolver } from './rustPlugins';
 import { sassLoader } from './sassLoader';
 
 type Config = binding.BuildParams['config'] & {
@@ -40,8 +43,21 @@ function blockStdout() {
 export async function build(params: BuildParams) {
   blockStdout();
 
+  // if mako is running in local build, print a notice
+  if (!__dirname.includes('node_modules')) {
+    console.log(
+      chalk.red('NOTICE: Mako is running in DEBUG mode with local build...'),
+    );
+  }
+
   params.config.plugins = params.config.plugins || [];
   params.config.resolve = params.config.resolve || {};
+
+  const rustPlugins = params.config.experimental?.rustPlugins;
+  if (rustPlugins) {
+    params.config.experimental!.rustPlugins =
+      await rustPluginResolver(rustPlugins);
+  }
 
   let makoConfig: any = {};
   let makoConfigPath = path.join(params.root, 'mako.config.json');
@@ -146,6 +162,7 @@ export async function build(params: BuildParams) {
       );
     }
   }
+
   // support dump mako config
   if (process.env.DUMP_MAKO_CONFIG) {
     const configFile = path.join(params.root, 'mako.config.json');
@@ -196,6 +213,125 @@ export async function build(params: BuildParams) {
       );
     }
   });
+
+  // add context to each plugin's hook
+  plugins.forEach((plugin: any) => {
+    // plugin may be patched already
+    // ref: https://github.com/umijs/mako/pull/1737
+    if (plugin.__isPatched) {
+      return;
+    }
+    plugin.__isPatched = true;
+    Object.keys(plugin).forEach((key) => {
+      const oldValue = plugin[key];
+      if (typeof oldValue === 'function') {
+        plugin[key] = (context: any, ...args: any[]) => {
+          let result = oldValue.apply(
+            {
+              // https://rollupjs.org/plugin-development/#this-parse
+              parse(_code: string) {
+                throw new Error('parse is not supported');
+              },
+              // https://rollupjs.org/plugin-development/#this-addwatchfile
+              addWatchFile(_file: string) {
+                throw new Error('addWatchFile is not supported');
+              },
+              // https://rollupjs.org/plugin-development/#this-emitfile
+              // only support asset type
+              emitFile(file: {
+                type: 'asset' | 'chunk' | 'prebuilt-chunk';
+                name?: string;
+                fileName?: string;
+                source?: string | Uint8Array;
+              }) {
+                if (file.type !== 'asset') {
+                  throw new Error('emitFile only support asset type');
+                }
+                if (file.name && !file.fileName) {
+                  throw new Error(
+                    'name in emitFile is not supported yet, please supply fileName instead',
+                  );
+                }
+                // Since assets_info in mako is a <origin_path, output_path> map,
+                // we need to generate a tmp file to store the content, and then emit it
+                // TODO: we should use a better way to handle this
+                const tmpFile = path.join(
+                  os.tmpdir(),
+                  Math.random().toString(36).substring(2, 15),
+                );
+                fs.writeFileSync(tmpFile, file.source!);
+                context.emitFile(tmpFile, file.fileName!);
+              },
+              warn(
+                message:
+                  | string
+                  | { message: string; pluginCode?: string; meta?: string },
+              ) {
+                if (typeof message === 'object') {
+                  const msg = [
+                    message.message,
+                    message.pluginCode
+                      ? `pluginCode: ${message.pluginCode}`
+                      : '',
+                    message.meta ? `meta: ${message.meta}` : '',
+                  ]
+                    .filter(Boolean)
+                    .join('\n');
+                  context.warn(msg);
+                } else {
+                  context.warn(message);
+                }
+              },
+              error(
+                message:
+                  | string
+                  | { message: string; pluginCode?: string; meta?: string },
+              ) {
+                if (typeof message === 'object') {
+                  const msg = [
+                    message.message,
+                    message.pluginCode
+                      ? `pluginCode: ${message.pluginCode}`
+                      : '',
+                    message.meta ? `meta: ${message.meta}` : '',
+                  ]
+                    .filter(Boolean)
+                    .join('\n');
+                  context.error(msg);
+                } else {
+                  context.error(message);
+                }
+              },
+            },
+            [...args],
+          );
+          // adapter mako hooks for unplugin
+          if (key === 'load' || key === 'transform') {
+            // if result is null, return the original code
+            if (result === null) {
+              result = args[0];
+            }
+            const isPromise = typeof result === 'object' && result.then;
+            if (isPromise) {
+              result = result.then((result: any) => adapterResult(result));
+            } else {
+              result = adapterResult(result);
+            }
+          }
+          if (key === 'resolveId') {
+            if (typeof result === 'string') {
+              result = {
+                id: result,
+                external: false,
+              };
+            }
+          }
+          return result;
+        };
+      }
+    });
+  });
+
   params.config = omit(params.config, [
     'less',
     'sass',
@@ -214,4 +350,19 @@ export async function build(params: BuildParams) {
     });
     forkTypeChecker.runTypeCheckInChildProcess();
   }
+}
+
+function adapterResult(result: any) {
+  if (typeof result === 'string') {
+    return {
+      content: result,
+      type: 'tsx',
+    };
+  } else if (typeof result === 'object' && result.code) {
+    return {
+      content: result.code,
+      type: 'tsx',
+    };
+  }
+  return result;
 }
