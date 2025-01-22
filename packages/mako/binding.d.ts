@@ -134,7 +134,7 @@ export interface BuildParams {
           };
         }
     >;
-    copy?: string[];
+    copy?: (string | { from: string; to: string })[];
     codeSplitting?:
       | false
       | {
