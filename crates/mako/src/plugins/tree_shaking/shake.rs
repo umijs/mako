@@ -38,7 +38,7 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
             let module_type = module.get_module_type();
 
             // skip non script modules and external modules
-            if (module_type != ModuleType::Script && !module.is_provide_share())
+            if (module_type != ModuleType::Script && !module.is_consume_share())
                 || module.is_external()
             {
                 if module_type != ModuleType::Script && !module.is_external() {

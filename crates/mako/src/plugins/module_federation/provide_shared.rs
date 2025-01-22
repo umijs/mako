@@ -1,5 +1,3 @@
-use core::panic;
-
 use pathdiff::diff_paths;
 use serde::Serialize;
 

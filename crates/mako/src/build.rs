@@ -51,7 +51,7 @@ impl Compiler {
             let rs = rs.clone();
             let context = self.context.clone();
             thread_pool::spawn(move || {
-                let result = Self::build_shared_module(consume_share_info, context.clone());
+                let result = Self::build_consume_shared_module(consume_share_info, context.clone());
                 rs.send(result).unwrap();
             });
         };
@@ -285,7 +285,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             result
         }
     }
-    pub fn build_shared_module(
+    pub fn build_consume_shared_module(
         consume_share_info: ConsumeSharedInfo,
         _context: Arc<Context>,
     ) -> Result<Module> {

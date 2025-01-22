@@ -397,7 +397,6 @@ pub enum ModuleType {
 pub enum FedereationModuleType {
     Remote,
     ConsumeShare,
-    ProvideShare,
 }
 
 #[derive(Clone)]
@@ -437,7 +436,7 @@ impl Module {
             .map_or(false, |info| info.external.is_some())
     }
 
-    pub fn is_provide_share(&self) -> bool {
+    pub fn is_consume_share(&self) -> bool {
         if let Some(info) = self.info.as_ref()
             && let Some(FedereationModuleType::ConsumeShare) = info.federation
         {
