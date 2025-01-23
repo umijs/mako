@@ -436,6 +436,16 @@ impl Module {
             .map_or(false, |info| info.external.is_some())
     }
 
+    pub fn is_remote(&self) -> bool {
+        if let Some(info) = self.info.as_ref()
+            && let Some(FedereationModuleType::Remote) = info.federation
+        {
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn is_consume_share(&self) -> bool {
         if let Some(info) = self.info.as_ref()
             && let Some(FedereationModuleType::ConsumeShare) = info.federation

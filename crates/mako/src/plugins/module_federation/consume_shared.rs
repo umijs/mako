@@ -32,7 +32,9 @@ impl ModuleFederationPlugin {
                     .modules
                     .iter()
                     .filter_map(|m| {
-                        if m.id.starts_with(FEDERATION_SHARED_REFERENCE_PREFIX) {
+                        if let Some(module) = module_graph.get_module(m)
+                            && module.is_consume_share()
+                        {
                             Some(m.id.clone())
                         } else {
                             None
@@ -192,7 +194,7 @@ impl ModuleFederationPlugin {
                             span: params.dep.span,
                         },
                     }],
-                    missing_deps: HashMap::new(),
+                    ..Default::default()
                 },
             })));
         }

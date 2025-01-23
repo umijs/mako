@@ -12,59 +12,6 @@ use crate::module::md5_hash;
 use crate::visitors::mako_require::MAKO_REQUIRE;
 
 impl ModuleFederationPlugin {
-    pub(super) fn prepare_container_entry_dep(&self, root: &Path) -> String {
-        let container_content = self.get_container_content();
-
-        let content_hash = md5_hash(&container_content, 32);
-
-        let dep_path = root.join(format!(
-            "node_modules/.federation/.entry.{}.js",
-            content_hash
-        ));
-        let dep_parent_path = dep_path.parent().unwrap();
-        if !fs::exists(dep_parent_path).unwrap() {
-            fs::create_dir_all(dep_parent_path).unwrap();
-        }
-        if !fs::exists(&dep_path).unwrap() {
-            fs::write(&dep_path, container_content).unwrap();
-        }
-
-        dep_path.to_string_lossy().to_string()
-    }
-
-    pub(super) fn get_container_content(&self) -> String {
-        let (plugins_imports, plugins_instantiations) = self.get_mf_runtime_plugins_content();
-
-        format!(
-            r#"import federation from "{federation_impl}";
-{plugins_imports}
-
-if(!{FEDERATION_GLOBAL}.runtime) {{
-  var preFederation = {FEDERATION_GLOBAL};
-  {FEDERATION_GLOBAL} = {{}};
-  for(var key in federation) {{
-    {FEDERATION_GLOBAL}[key] = federation[key];
-  }}
-  for(var key in preFederation) {{
-    {FEDERATION_GLOBAL}[key] = preFederation[key];
-  }}
-}}
-
-if(!{FEDERATION_GLOBAL}.instance) {{
-  {plugins_instantiations}
-  {FEDERATION_GLOBAL}.instance = {FEDERATION_GLOBAL}.runtime.init({FEDERATION_GLOBAL}.initOptions);
-  if({FEDERATION_GLOBAL}.attachShareScopeMap) {{
-    {FEDERATION_GLOBAL}.attachShareScopeMap({MAKO_REQUIRE});
-  }}
-  if({FEDERATION_GLOBAL}.installInitialConsumes) {{
-    {FEDERATION_GLOBAL}.installInitialConsumes();
-  }}
-}}
-"#,
-            federation_impl = self.config.implementation,
-        )
-    }
-
     pub(super) fn add_container_entry(&self, config: &mut Config, root: &Path) {
         // add container entry
         if let Some(exposes) = self.config.exposes.as_ref() {
@@ -152,6 +99,59 @@ export {{ get, init }};
         )
     }
 
+    pub(super) fn prepare_container_entry_dep(&self, root: &Path) -> String {
+        let container_content = self.get_federation_init_code();
+
+        let content_hash = md5_hash(&container_content, 32);
+
+        let dep_path = root.join(format!(
+            "node_modules/.federation/.entry.{}.js",
+            content_hash
+        ));
+        let dep_parent_path = dep_path.parent().unwrap();
+        if !fs::exists(dep_parent_path).unwrap() {
+            fs::create_dir_all(dep_parent_path).unwrap();
+        }
+        if !fs::exists(&dep_path).unwrap() {
+            fs::write(&dep_path, container_content).unwrap();
+        }
+
+        dep_path.to_string_lossy().to_string()
+    }
+
+    pub(super) fn get_federation_init_code(&self) -> String {
+        let (plugins_imports, plugins_instantiations) = self.get_mf_runtime_plugins_content();
+
+        format!(
+            r#"import federation from "{federation_impl}";
+{plugins_imports}
+
+if(!{FEDERATION_GLOBAL}.runtime) {{
+  var preFederation = {FEDERATION_GLOBAL};
+  {FEDERATION_GLOBAL} = {{}};
+  for(var key in federation) {{
+    {FEDERATION_GLOBAL}[key] = federation[key];
+  }}
+  for(var key in preFederation) {{
+    {FEDERATION_GLOBAL}[key] = preFederation[key];
+  }}
+}}
+
+if(!{FEDERATION_GLOBAL}.instance) {{
+  {plugins_instantiations}
+  {FEDERATION_GLOBAL}.instance = {FEDERATION_GLOBAL}.runtime.init({FEDERATION_GLOBAL}.initOptions);
+  if({FEDERATION_GLOBAL}.attachShareScopeMap) {{
+    {FEDERATION_GLOBAL}.attachShareScopeMap({MAKO_REQUIRE});
+  }}
+  if({FEDERATION_GLOBAL}.installInitialConsumes) {{
+    {FEDERATION_GLOBAL}.installInitialConsumes();
+  }}
+}}
+"#,
+            federation_impl = self.config.implementation,
+        )
+    }
+
     pub(super) fn get_federation_runtime_code(&self) -> String {
         let runtime_remotes = self.config.remotes.as_ref().map_or(Vec::new(), |remotes| {
             remotes
@@ -196,21 +196,6 @@ export {{ get, init }};
         federation_runtime_code
     }
 
-    pub(super) fn get_federation_exposes_library_code(&self) -> String {
-        if let Some(exposes) = self.config.exposes.as_ref() {
-            if !exposes.is_empty() {
-                format!(
-                    r#"global["{}"] = requireModule(entryModuleId);"#,
-                    self.config.name
-                )
-            } else {
-                "".to_string()
-            }
-        } else {
-            "".to_string()
-        }
-    }
-
     pub(super) fn get_mf_runtime_plugins_content(&self) -> (String, String) {
         let (imported_plugin_names, import_plugin_instantiations) =
             self.config.runtime_plugins.iter().enumerate().fold(
@@ -244,6 +229,20 @@ export {{ get, init }};
         (plugins_imports, plugins_instantiations)
     }
 
+    pub(super) fn get_federation_exposes_library_code(&self) -> String {
+        if let Some(exposes) = self.config.exposes.as_ref() {
+            if !exposes.is_empty() {
+                format!(
+                    r#"global["{}"] = requireModule(entryModuleId);"#,
+                    self.config.name
+                )
+            } else {
+                "".to_string()
+            }
+        } else {
+            "".to_string()
+        }
+    }
     pub(crate) fn patch_code_splitting(
         &self,
         optimize_chunk_options: &mut crate::config::CodeSplittingAdvancedOptions,

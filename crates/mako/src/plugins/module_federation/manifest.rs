@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use super::constants::FEDERATION_EXPOSE_CHUNK_PREFIX;
 use super::util::{parse_remote, serialize_none_to_false};
-use super::{constants, ModuleFederationPlugin};
+use super::ModuleFederationPlugin;
 use crate::compiler::Context;
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::module::ModuleId;
@@ -87,31 +87,33 @@ impl ModuleFederationPlugin {
                     })
                     .collect()
             },
-            remotes: params
-                .stats
-                .chunk_modules
-                .iter()
-                .filter_map(|cm| {
-                    if cm
-                        .id
-                        .starts_with(constants::FEDERATION_REMOTE_MODULE_PREFIX)
-                    {
-                        let data = cm.id.split('/').collect::<Vec<&str>>();
-                        Some(ManifestRemote {
-                            entry: parse_remote(
-                                self.config.remotes.as_ref().unwrap().get(data[3]).unwrap(),
-                            )
-                            .unwrap()
-                            .1,
-                            module_name: data[4].to_string(),
-                            alias: data[3].to_string(),
-                            federation_container_name: data[3].to_string(),
-                        })
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
+            remotes: {
+                let module_graph = context.module_graph.read().unwrap();
+                params
+                    .stats
+                    .chunk_modules
+                    .iter()
+                    .filter_map(|cm| {
+                        if let Some(module) = module_graph.get_module(&cm.id.clone().into())
+                            && module.is_remote()
+                        {
+                            let data = cm.id.split('/').collect::<Vec<&str>>();
+                            Some(ManifestRemote {
+                                entry: parse_remote(
+                                    self.config.remotes.as_ref().unwrap().get(data[3]).unwrap(),
+                                )
+                                .unwrap()
+                                .1,
+                                module_name: data[4].to_string(),
+                                alias: data[3].to_string(),
+                                federation_container_name: data[3].to_string(),
+                            })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            },
             meta_data: ManifestMetaData {
                 name: self.config.name.clone(),
                 build_info: ManifestMetaBuildInfo {
