@@ -152,7 +152,7 @@ if(!{FEDERATION_GLOBAL}.instance) {{
         )
     }
 
-    pub(super) fn get_federation_runtime_code(&self) -> String {
+    pub(super) fn init_federation_runtime_options(&self) -> String {
         let runtime_remotes = self.config.remotes.as_ref().map_or(Vec::new(), |remotes| {
             remotes
                 .iter()
@@ -229,7 +229,7 @@ if(!{FEDERATION_GLOBAL}.instance) {{
         (plugins_imports, plugins_instantiations)
     }
 
-    pub(super) fn get_federation_exposes_library_code(&self) -> String {
+    pub(super) fn export_federation_container(&self) -> String {
         if let Some(exposes) = self.config.exposes.as_ref() {
             if !exposes.is_empty() {
                 format!(

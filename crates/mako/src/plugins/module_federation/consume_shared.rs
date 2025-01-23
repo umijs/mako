@@ -13,7 +13,7 @@ use crate::plugin::PluginResolveIdParams;
 use crate::resolve::{do_resolve, ConsumeSharedInfo, ResolverResource, ResolverType};
 
 impl ModuleFederationPlugin {
-    pub(super) fn get_consume_sharing_code(
+    pub(super) fn init_federation_runtime_consume(
         &self,
         entry_chunk: &Chunk,
         context: &Context,

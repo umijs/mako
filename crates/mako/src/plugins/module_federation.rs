@@ -57,10 +57,10 @@ impl Plugin for ModuleFederationPlugin {
         is_entry: bool,
         context: &Arc<Context>,
     ) -> Result<Option<Content>> {
-        // add container entry runtime dependency
         if !is_entry {
             Ok(None)
         } else {
+            // add container entry runtime dependency
             match content {
                 Content::Js(js_content) => {
                     let entry_runtime_dep_path = self.prepare_container_entry_dep(&context.root);
@@ -77,11 +77,11 @@ impl Plugin for ModuleFederationPlugin {
 
     fn runtime_plugins(&self, entry_chunk: &Chunk, context: &Arc<Context>) -> Result<Vec<String>> {
         Ok(vec![
-            self.get_federation_runtime_code(),
-            self.get_container_references_code(context),
-            self.get_federation_exposes_library_code(),
-            self.get_consume_sharing_code(entry_chunk, context),
-            self.get_provide_sharing_code(context),
+            self.init_federation_runtime_options(),
+            self.init_federation_runtime_remotes(context),
+            self.init_federation_runtime_consume(entry_chunk, context),
+            self.init_federation_runtime_sharing(context),
+            self.export_federation_container(),
         ])
     }
 

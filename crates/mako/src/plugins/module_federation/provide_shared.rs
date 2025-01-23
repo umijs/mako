@@ -9,7 +9,7 @@ use crate::generate::chunk::ChunkType;
 use crate::module::ModuleId;
 
 impl ModuleFederationPlugin {
-    pub(super) fn get_provide_sharing_code(&self, context: &Context) -> String {
+    pub(super) fn init_federation_runtime_sharing(&self, context: &Context) -> String {
         let provide_shared_map = self.provide_shared_map.read().unwrap();
         let chunk_graph = context.chunk_graph.read().unwrap();
 
