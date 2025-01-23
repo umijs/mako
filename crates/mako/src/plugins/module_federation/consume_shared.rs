@@ -120,6 +120,17 @@ impl ModuleFederationPlugin {
             .join(",");
 
         let initial_consumes_code = serde_json::to_string(&initial_consumes).unwrap();
+        let install_initial_comsumes_code = if initial_consumes.is_empty() {
+            ""
+        } else {
+            r#"
+    requireModule.federation.installInitialConsumes = () => (requireModule.federation.bundlerRuntime.installInitialConsumes({
+      initialConsumes: initialConsumes,
+      installedModules: installedModules,
+      moduleToHandlerMapping: moduleToHandlerMapping,
+      webpackRequire: requireModule
+    }))"#
+        };
         let chunk_mapping_code = serde_json::to_string(&consume_modules_chunk_map).unwrap();
         format!(
             r#"
@@ -128,6 +139,7 @@ impl ModuleFederationPlugin {
     var installedModules = {{}};
     var moduleToHandlerMapping = {{{module_to_handler_mapping_code}}};
     var initialConsumes = {initial_consumes_code};
+    {install_initial_comsumes_code}
     var chunkMapping = {chunk_mapping_code};
     requireModule.chunkEnsures.consumes = (chunkId, promises) => {{
         requireModule.federation.bundlerRuntime.consumes({{
