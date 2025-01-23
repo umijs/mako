@@ -16,6 +16,8 @@ pub struct ModuleFederationConfig {
     pub share_strategy: ShareStrategy,
     #[serde(default = "default_share_scope")]
     pub share_scope: String,
+    #[serde(default)]
+    pub manifest: bool,
 }
 
 pub type ExposesConfig = HashMap<String, String>;

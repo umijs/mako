@@ -101,7 +101,9 @@ impl Plugin for ModuleFederationPlugin {
     }
 
     fn generate_end(&self, params: &PluginGenerateEndParams, context: &Arc<Context>) -> Result<()> {
-        self.generate_federation_manifest(context, params)?;
+        if self.config.manifest {
+            self.generate_federation_manifest(context, params)?;
+        }
         Ok(())
     }
 
