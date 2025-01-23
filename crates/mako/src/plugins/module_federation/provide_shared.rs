@@ -36,14 +36,13 @@ impl ModuleFederationPlugin {
                                                 .to_string();
 
                                         match &module_in_chunk.chunk_type {
-                                            ChunkType::Entry(_, _, false) | ChunkType::Worker(_) => {
+                                            ChunkType::Entry(_, _, _) | ChunkType::Worker(_) => {
                                                 format!(
                                                     r#"() => (() => requireModule("{module_relative_path}"))"#
                                                 )
                                             },
                                             ChunkType::Async
                                             | ChunkType::Sync
-                                            | ChunkType::Entry(_, _, true)
                                                 => {
                                                 let dependency_chunks = chunk_graph.sync_dependencies_chunk(&module_in_chunk.id);
                                                 format!(

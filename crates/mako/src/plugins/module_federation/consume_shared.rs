@@ -7,34 +7,34 @@ use super::constants::FEDERATION_SHARED_REFERENCE_PREFIX;
 use super::ModuleFederationPlugin;
 use crate::build::analyze_deps::{AnalyzeDepsResult, ResolvedDep};
 use crate::compiler::Context;
-use crate::generate::chunk::{Chunk, ChunkType};
+use crate::generate::chunk::ChunkType;
 use crate::module::{md5_hash, Dependency, ResolveType};
 use crate::plugin::PluginResolveIdParams;
 use crate::resolve::{do_resolve, ConsumeSharedInfo, ResolverResource, ResolverType};
 
 impl ModuleFederationPlugin {
-    pub(super) fn init_federation_runtime_consume(
-        &self,
-        entry_chunk: &Chunk,
-        context: &Context,
-    ) -> String {
+    pub(super) fn init_federation_runtime_consume(&self, context: &Context) -> String {
         let module_graph = context.module_graph.read().unwrap();
         let chunk_graph = context.chunk_graph.read().unwrap();
         let share_dependencies = self.shared_dependency_map.read().unwrap();
 
+        let mut initial_consumes = Vec::<String>::new();
+
         let consume_modules_chunk_map: HashMap<String, Vec<String>> = chunk_graph
-            .installable_descendants_chunk(&entry_chunk.id)
+            .get_all_chunks()
             .into_iter()
             .filter_map(|c| {
-                let modules = chunk_graph
-                    .chunk(&c)
-                    .unwrap()
+                let modules = c
                     .modules
                     .iter()
                     .filter_map(|m| {
                         if let Some(module) = module_graph.get_module(m)
                             && module.is_consume_share()
                         {
+                            if let ChunkType::Entry(_, _, _) = c.chunk_type {
+                                initial_consumes.push(m.id.clone());
+                            }
+
                             Some(m.id.clone())
                         } else {
                             None
@@ -44,10 +44,11 @@ impl ModuleFederationPlugin {
                 if modules.is_empty() {
                     None
                 } else {
-                    Some((c.id, modules))
+                    Some((c.id.id.clone(), modules))
                 }
             })
             .collect();
+
         let consume_shared_module_ids =
             consume_modules_chunk_map
                 .iter()
@@ -55,17 +56,21 @@ impl ModuleFederationPlugin {
                     acc.extend(cur.1.iter());
                     acc
                 });
+
         let consume_shared_modules = consume_shared_module_ids
             .iter()
             .map(|id| module_graph.get_module(&id.as_str().into()).unwrap())
             .collect::<Vec<_>>();
+
         let module_to_handler_mapping_code = consume_shared_modules
             .iter()
             .map(|s| {
                 let resolved_resource  = s.info.as_ref().unwrap().resolved_resource.as_ref().unwrap();
                 let module_full_path = match resolved_resource {
-                 ResolverResource::Shared(info) => info.deps.resolved_deps[0].resolver_resource.get_resolved_path(),
-                    _ => panic!("{} is not a shared module", resolved_resource.get_resolved_path())
+                    ResolverResource::Shared(info) =>
+                        info.deps.resolved_deps[0].resolver_resource.get_resolved_path(),
+                    _ =>
+                        panic!("{} is not a shared module", resolved_resource.get_resolved_path())
                 };
                 let module_relative_path =
                     diff_paths(&module_full_path, &context.root)
@@ -76,22 +81,26 @@ impl ModuleFederationPlugin {
                 let module_in_chunk = chunk_graph.get_chunk_for_module(&module_full_path.as_str().into()).unwrap();
 
                 let getter = match &module_in_chunk.chunk_type {
-                    ChunkType::Entry(_, _, false) | ChunkType::Worker(_) => {
-                            format!(
-                            r#"() => (() => requireModule("{module_relative_path}"))"#
+                    ChunkType::Entry(_, _, _) | ChunkType::Worker(_) => {
+                            format!(r#"() => (() => requireModule("{module_relative_path}"))"#
                         )
                     },
                     ChunkType::Async
                     | ChunkType::Sync
-                    | ChunkType::Entry(_, _, true)
                         => {
                         let dependency_chunks = chunk_graph.sync_dependencies_chunk(&module_in_chunk.id);
                         format!(
                             r#"() => (Promise.all([{}]).then(() => requireModule("{module_relative_path}")))"#,
-                            [dependency_chunks, vec![module_in_chunk.id.clone()]].concat().iter().map(|e| format!(r#"requireModule.ensure("{}")"#, e.id)).collect::<Vec<String>>().join(",")
+                            [
+                                dependency_chunks,
+                                vec![module_in_chunk.id.clone()]
+                            ]
+                            .concat().iter()
+                            .map(|e| format!(r#"requireModule.ensure("{}")"#, e.id))
+                            .collect::<Vec<String>>().join(",")
                         )
                     },
-                    ChunkType::Runtime  =>  panic!("mf shared dependency should not bundled to runtime chunk")
+                    ChunkType::Runtime  =>  panic!("mf shared dependency should not be bundled to runtime chunk")
                 };
 
                 let share_dependency = share_dependencies.get(&s.id.id).unwrap();
@@ -110,6 +119,7 @@ impl ModuleFederationPlugin {
             .collect::<Vec<String>>()
             .join(",");
 
+        let initial_consumes_code = serde_json::to_string(&initial_consumes).unwrap();
         let chunk_mapping_code = serde_json::to_string(&consume_modules_chunk_map).unwrap();
         format!(
             r#"
@@ -117,7 +127,7 @@ impl ModuleFederationPlugin {
 !(() => {{
     var installedModules = {{}};
     var moduleToHandlerMapping = {{{module_to_handler_mapping_code}}};
-
+    var initialConsumes = {initial_consumes_code};
     var chunkMapping = {chunk_mapping_code};
     requireModule.chunkEnsures.consumes = (chunkId, promises) => {{
         requireModule.federation.bundlerRuntime.consumes({{
@@ -189,7 +199,11 @@ impl ModuleFederationPlugin {
                         dependency: Dependency {
                             source: params.dep.source.clone(),
                             resolve_as: None,
-                            resolve_type: ResolveType::DynamicImport(Default::default()),
+                            resolve_type: if shared_info.eager {
+                                ResolveType::Require
+                            } else {
+                                ResolveType::DynamicImport(Default::default())
+                            },
                             order: params.dep.order,
                             span: params.dep.span,
                         },

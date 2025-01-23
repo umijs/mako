@@ -22,7 +22,6 @@ use twox_hash::XxHash64;
 use crate::ast::sourcemap::build_source_map_to_buf;
 use crate::compiler::Context;
 use crate::config::Mode;
-use crate::generate::chunk::Chunk;
 use crate::generate::chunk_pot::ChunkPot;
 use crate::generate::runtime::AppRuntimeTemplate;
 use crate::module::{relative_to_root, Module, ModuleAst};
@@ -95,7 +94,7 @@ pub(crate) fn empty_module_fn_expr() -> FnExpr {
     }
 }
 
-pub(crate) fn runtime_code(entry_chunk: &Chunk, context: &Arc<Context>) -> Result<String> {
+pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
     let umd = context.config.umd.as_ref().map(|umd| umd.name.clone());
     let umd_export = context.config.umd.as_ref().map_or(vec![], |umd| {
         umd.export
@@ -132,9 +131,7 @@ pub(crate) fn runtime_code(entry_chunk: &Chunk, context: &Arc<Context>) -> Resul
     let app_runtime = app_runtime.render_once()?;
     let app_runtime = app_runtime.replace(
         "// __inject_runtime_code__",
-        &context
-            .plugin_driver
-            .runtime_plugins_code(entry_chunk, context)?,
+        &context.plugin_driver.runtime_plugins_code(context)?,
     );
     Ok(app_runtime)
 }

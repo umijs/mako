@@ -12,7 +12,6 @@ use crate::ast::file::{Content, File};
 use crate::build::analyze_deps::ResolvedDep;
 use crate::compiler::{Args, Compiler, Context};
 use crate::config::{CodeSplittingAdvancedOptions, Config};
-use crate::generate::chunk::Chunk;
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::generate::generate_chunks::ChunkFile;
 use crate::module::{Dependency, ModuleAst, ModuleId};
@@ -163,11 +162,7 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
-    fn runtime_plugins(
-        &self,
-        _entry_chunk: &Chunk,
-        _context: &Arc<Context>,
-    ) -> Result<Vec<String>> {
+    fn runtime_plugins(&self, _context: &Arc<Context>) -> Result<Vec<String>> {
         Ok(Vec::new())
     }
 
@@ -400,14 +395,10 @@ impl PluginDriver {
         Ok(())
     }
 
-    pub fn runtime_plugins_code(
-        &self,
-        entry_chunk: &Chunk,
-        context: &Arc<Context>,
-    ) -> Result<String> {
+    pub fn runtime_plugins_code(&self, context: &Arc<Context>) -> Result<String> {
         let mut plugins = Vec::new();
         for plugin in &self.plugins {
-            plugins.extend(plugin.runtime_plugins(entry_chunk, context)?);
+            plugins.extend(plugin.runtime_plugins(context)?);
         }
         Ok(plugins.join("\n"))
     }

@@ -294,7 +294,7 @@ fn render_entry_chunk_js_without_full_hash(
     let mut ast = {
         crate::mako_profile_scope!("parse_runtime_entry");
 
-        let runtime_content = runtime_code(chunk, context)?;
+        let runtime_content = runtime_code(context)?;
 
         JsAst::build(
             "_mako_internal/runtime_entry.js",

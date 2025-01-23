@@ -11,7 +11,6 @@ use crate::build::analyze_deps::ResolvedDep;
 use crate::compiler::{Args, Context};
 use crate::config::module_federation::ModuleFederationConfig;
 use crate::config::{CodeSplittingAdvancedOptions, Config};
-use crate::generate::chunk::Chunk;
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginGenerateEndParams, PluginResolveIdParams};
@@ -75,11 +74,11 @@ impl Plugin for ModuleFederationPlugin {
         }
     }
 
-    fn runtime_plugins(&self, entry_chunk: &Chunk, context: &Arc<Context>) -> Result<Vec<String>> {
+    fn runtime_plugins(&self, context: &Arc<Context>) -> Result<Vec<String>> {
         Ok(vec![
             self.init_federation_runtime_options(),
             self.init_federation_runtime_remotes(context),
-            self.init_federation_runtime_consume(entry_chunk, context),
+            self.init_federation_runtime_consume(context),
             self.init_federation_runtime_sharing(context),
             self.export_federation_container(),
         ])

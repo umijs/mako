@@ -8,7 +8,6 @@ use wasmparser::{Import, Parser, Payload};
 
 use crate::ast::file::{Content, JsContent};
 use crate::compiler::Context;
-use crate::generate::chunk::Chunk;
 use crate::plugin::{Plugin, PluginLoadParam};
 
 pub struct WasmRuntimePlugin {}
@@ -20,11 +19,7 @@ impl Plugin for WasmRuntimePlugin {
         "wasm_runtime"
     }
 
-    fn runtime_plugins(
-        &self,
-        _entry_chunk: &Chunk,
-        context: &Arc<Context>,
-    ) -> anyhow::Result<Vec<String>> {
+    fn runtime_plugins(&self, context: &Arc<Context>) -> anyhow::Result<Vec<String>> {
         if context
             .assets_info
             .lock()

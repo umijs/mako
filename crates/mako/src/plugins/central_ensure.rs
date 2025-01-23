@@ -5,7 +5,6 @@ use std::sync::Arc;
 use anyhow::anyhow;
 
 use crate::compiler::Context;
-use crate::generate::chunk::Chunk;
 use crate::module::generate_module_id;
 use crate::plugin::Plugin;
 
@@ -52,11 +51,7 @@ impl Plugin for CentralChunkEnsure {
     fn name(&self) -> &str {
         "dev_ensure2"
     }
-    fn runtime_plugins(
-        &self,
-        _entry_chunk: &Chunk,
-        context: &Arc<Context>,
-    ) -> anyhow::Result<Vec<String>> {
+    fn runtime_plugins(&self, context: &Arc<Context>) -> anyhow::Result<Vec<String>> {
         let chunk_async_map = module_ensure_map(context)?;
 
         // TODO: compress the map to reduce duplicated chunk ids
