@@ -64,7 +64,7 @@ impl ModuleFederationPlugin {
             }),
             shared: {
                 let chunk_graph = context.chunk_graph.read().unwrap();
-                let provide_shared_map = self.provide_shared_map.read().unwrap();
+                let provide_shared_map = self.shared_dependency_map.read().unwrap();
                 provide_shared_map
                     .iter()
                     .map(|(_, config)| {

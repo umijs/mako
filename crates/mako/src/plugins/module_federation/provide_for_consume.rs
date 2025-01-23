@@ -21,7 +21,7 @@ impl ModuleFederationPlugin {
             })
             .collect::<Vec<_>>();
 
-        let provide_shared_map = self.provide_shared_map.read().unwrap();
+        let provide_shared_map = self.shared_dependency_map.read().unwrap();
 
         let provide_shared_in_chunks = provide_shared_map
             .iter()

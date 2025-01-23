@@ -10,7 +10,7 @@ use crate::module::ModuleId;
 
 impl ModuleFederationPlugin {
     pub(super) fn init_federation_runtime_sharing(&self, context: &Context) -> String {
-        let provide_shared_map = self.provide_shared_map.read().unwrap();
+        let provide_shared_map = self.shared_dependency_map.read().unwrap();
         let chunk_graph = context.chunk_graph.read().unwrap();
 
         if provide_shared_map.is_empty() {
@@ -106,10 +106,10 @@ impl ModuleFederationPlugin {
             && let Some(shared_info) = shared.get(&pkg_name)
             && pkg_name == resolved_dep.dependency.source
         {
-            let mut provide_shared_map = self.provide_shared_map.write().unwrap();
+            let mut provide_shared_map = self.shared_dependency_map.write().unwrap();
             provide_shared_map
                 .entry(resolved_dep.resolver_resource.get_resolved_path())
-                .or_insert(ProvideSharedItem {
+                .or_insert(SharedDependency {
                     share_key: pkg_name.clone(),
                     version: pkg_info.version.clone().unwrap(),
                     scope: vec![shared_info.shared_scope.clone()],
@@ -128,7 +128,7 @@ impl ModuleFederationPlugin {
 }
 
 #[derive(Debug)]
-pub(super) struct ProvideSharedItem {
+pub(super) struct SharedDependency {
     pub(super) share_key: String,
     pub(super) version: String,
     pub(super) scope: Vec<String>,

@@ -20,7 +20,7 @@ impl ModuleFederationPlugin {
     ) -> String {
         let module_graph = context.module_graph.read().unwrap();
         let chunk_graph = context.chunk_graph.read().unwrap();
-        let share_dependencies = self.provide_shared_map.read().unwrap();
+        let share_dependencies = self.shared_dependency_map.read().unwrap();
 
         let consume_modules_chunk_map: HashMap<String, Vec<String>> = chunk_graph
             .installable_descendants_chunk(&entry_chunk.id)

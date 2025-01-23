@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use anyhow::Result;
 use constants::{FEDERATION_REMOTE_MODULE_PREFIX, FEDERATION_REMOTE_REFERENCE_PREFIX};
-use provide_shared::ProvideSharedItem;
+use provide_shared::SharedDependency;
 
 use crate::ast::file::Content;
 use crate::build::analyze_deps::ResolvedDep;
@@ -28,14 +28,14 @@ mod util;
 
 pub struct ModuleFederationPlugin {
     pub config: ModuleFederationConfig,
-    provide_shared_map: RwLock<HashMap<String, ProvideSharedItem>>,
+    shared_dependency_map: RwLock<HashMap<String, SharedDependency>>,
 }
 
 impl ModuleFederationPlugin {
     pub fn new(config: ModuleFederationConfig) -> Self {
         Self {
             config,
-            provide_shared_map: RwLock::new(HashMap::new()),
+            shared_dependency_map: RwLock::new(HashMap::new()),
         }
     }
 }
