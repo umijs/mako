@@ -29,7 +29,7 @@ mod tree_shaking;
 mod umd;
 mod watch;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::path::{Path, PathBuf};
 
@@ -50,7 +50,6 @@ pub use external::{
 };
 pub use generic_usize::GenericUsizeDefault;
 pub use hmr::{deserialize_hmr, HmrConfig};
-use indexmap::IndexMap;
 pub use inline_css::{deserialize_inline_css, InlineCssConfig};
 pub use manifest::{deserialize_manifest, ManifestConfig};
 use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSpan};
@@ -131,7 +130,7 @@ pub enum Platform {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    pub entry: IndexMap<String, PathBuf>,
+    pub entry: BTreeMap<String, PathBuf>,
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
     #[serde(deserialize_with = "deserialize_manifest", default)]

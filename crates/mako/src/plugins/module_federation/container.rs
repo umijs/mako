@@ -1,3 +1,4 @@
+use std::collections::btree_map;
 use std::fs;
 use std::path::Path;
 
@@ -18,13 +19,13 @@ impl ModuleFederationPlugin {
             let container_entry_name = &self.config.name;
             if !exposes.is_empty() {
                 match config.entry.entry(container_entry_name.clone()) {
-                    indexmap::map::Entry::Occupied(_) => {
+                    btree_map::Entry::Occupied(_) => {
                         warn!(
                             "mf exposed name {} is conflicting with entry config.",
                             container_entry_name
                         );
                     }
-                    indexmap::map::Entry::Vacant(vacant_entry) => {
+                    btree_map::Entry::Vacant(vacant_entry) => {
                         // TODO: refactor with virtual entry
                         let container_entry_code = self.get_container_entry_code(root);
                         let container_entry_path = root.join(format!(
