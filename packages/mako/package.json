@@ -36,7 +36,8 @@
     "react-refresh": "^0.14.0",
     "resolve": "^1.22.8",
     "semver": "^7.6.2",
-    "yargs-parser": "^21.1.1"
+    "yargs-parser": "^21.1.1",
+    "@module-federation/webpack-bundler-runtime": "^0.8.0"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0",

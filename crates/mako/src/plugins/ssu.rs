@@ -258,8 +258,8 @@ let patch = require._su_patch();
 console.log(patch);
 try{{
 {}
-}}catch(e){{ 
-//ignore the error 
+}}catch(e){{
+//ignore the error
 }}
 module.export = Promise.all(
     patch.map((d)=>__mako_require__.ensure(d))
