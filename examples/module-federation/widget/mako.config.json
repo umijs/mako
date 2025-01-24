@@ -2,6 +2,7 @@
   "entry": {
     "app2": "./src/index.ts"
   },
+  "minify": false,
   "publicPath": "auto",
   "moduleFederation": {
     "name": "mfWidget",
@@ -25,8 +26,7 @@
       "groups": [
         {
           "name": "vendor",
-          "allowChunks": "all",
-          "minSize": 1,
+          "allowChunks": "async",
           "test": "node_modules"
         }
       ]

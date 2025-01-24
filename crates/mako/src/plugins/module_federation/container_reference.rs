@@ -8,7 +8,6 @@ use super::{
     ModuleFederationPlugin, FEDERATION_REMOTE_MODULE_PREFIX, FEDERATION_REMOTE_REFERENCE_PREFIX,
 };
 use crate::compiler::Context;
-use crate::module::FedereationModuleType;
 use crate::resolve::{RemoteInfo, ResolverResource};
 
 impl ModuleFederationPlugin {
@@ -23,9 +22,7 @@ impl ModuleFederationPlugin {
         all_chunks.iter().for_each(|c| {
             c.modules.iter().for_each(|m| {
                 if let Some(m) = module_graph.get_module(m) {
-                    if let Some(info) = m.info.as_ref()
-                        && let Some(FedereationModuleType::Remote) = info.federation.as_ref()
-                    {
+                    if m.is_remote() {
                         {
                             chunk_mapping
                                 .entry(c.id.id.as_str())

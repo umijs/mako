@@ -135,6 +135,9 @@ function createRuntime(makoModules, entryModuleId, global) {
       var data = installedChunks[chunkId];
       if (data === 0) return;
 
+      // skip federation remote chunk
+      if (chunkId.startsWith("mako/container/remote/")) return;
+
       if (data) {
         //     0       1        2
         // [resolve, reject, promise]

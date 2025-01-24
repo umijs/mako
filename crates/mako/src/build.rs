@@ -16,7 +16,7 @@ use crate::ast::file::{Content, File, JsContent};
 use crate::ast::utils::get_module_system;
 use crate::compiler::{Compiler, Context};
 use crate::generate::chunk_pot::util::hash_hashmap;
-use crate::module::{FedereationModuleType, Module, ModuleAst, ModuleId, ModuleInfo};
+use crate::module::{FedereationModuleType, Module, ModuleAst, ModuleId, ModuleInfo, ModuleSystem};
 use crate::plugin::NextBuildParam;
 use crate::resolve::{ConsumeSharedInfo, RemoteInfo, ResolverResource};
 use crate::utils::thread_pool;
@@ -376,7 +376,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
                 deps: consume_share_info.deps.clone(),
                 resolved_resource: Some(ResolverResource::Shared(consume_share_info.clone())),
                 federation: Some(FedereationModuleType::ConsumeShare),
-                module_system: crate::module::ModuleSystem::Custom,
+                module_system: ModuleSystem::Custom,
                 ..Default::default()
             }),
             side_effects: true,

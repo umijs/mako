@@ -127,7 +127,7 @@ impl Compiler {
         let async_chunk_root_modules = chunks
             .iter()
             .filter_map(|chunk| match chunk.chunk_type {
-                ChunkType::Async => chunk.modules.iter().last(),
+                ChunkType::Async => chunk.root_module(),
                 _ => None,
             })
             .collect::<Vec<_>>();
