@@ -151,9 +151,12 @@ export async function build(params: BuildParams) {
     });
   }
 
-  if (makoConfig?.moduleFederation) {
+  if (makoConfig?.moduleFederation || params.config?.moduleFederation) {
     // @ts-ignore
-    params.config.moduleFederation = makoConfig.moduleFederation;
+    params.config.moduleFederation = {
+      ...(makoConfig.moduleFederation || {}),
+      ...(params.config.moduleFederation || {}),
+    };
     // @ts-ignore
     if (!params.config.moduleFederation.implementation) {
       // @ts-ignore
