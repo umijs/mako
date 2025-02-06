@@ -1,7 +1,8 @@
+use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use fs_extra;
 use glob::glob;
 use notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
@@ -11,6 +12,7 @@ use tracing::debug;
 
 use crate::ast::file::win_path;
 use crate::compiler::Context;
+use crate::config::CopyConfig;
 use crate::plugin::Plugin;
 use crate::stats::StatsJsonMap;
 use crate::utils::tokio_runtime;
@@ -29,8 +31,12 @@ impl CopyPlugin {
                 notify::Config::default(),
             )
             .unwrap();
-            for src in context.config.copy.iter() {
-                let src = context.root.join(src);
+            for config in context.config.copy.iter() {
+                let src = match config {
+                    CopyConfig::Basic(src) => context.root.join(src),
+                    CopyConfig::Advanced { from, .. } => context.root.join(from),
+                };
+
                 if src.exists() {
                     debug!("watch {:?}", src);
                     let mode = if src.is_dir() {
@@ -62,10 +68,36 @@ impl CopyPlugin {
     fn copy(context: &Arc<Context>) -> Result<()> {
         debug!("copy");
         let dest = context.config.output.path.as_path();
-        for src in context.config.copy.iter() {
-            let src = context.root.join(src);
-            debug!("copy {:?} to {:?}", src, dest);
-            copy(src.as_path(), dest)?;
+        for config in context.config.copy.iter() {
+            match config {
+                CopyConfig::Basic(src) => {
+                    let src = context.root.join(src);
+                    debug!("copy {:?} to {:?}", src, dest);
+                    copy(&src, dest)?;
+                }
+
+                CopyConfig::Advanced { from, to } => {
+                    let src = context.root.join(from);
+                    let target = dest.join(to.trim_start_matches("/"));
+
+                    let was_created = if !target.exists() {
+                        fs::create_dir_all(&target).is_ok()
+                    } else {
+                        false
+                    };
+                    let canonical_target = target.canonicalize()?;
+                    let canonical_dest_path = dest.canonicalize()?;
+                    if !canonical_target.starts_with(&canonical_dest_path) {
+                        if was_created {
+                            fs::remove_dir_all(&target)?;
+                        }
+                        return Err(anyhow!("Invalid target path: {:?}", target));
+                    }
+
+                    debug!("copy {:?} to {:?}", src, target);
+                    copy(&src, &target)?;
+                }
+            }
         }
         Ok(())
     }
