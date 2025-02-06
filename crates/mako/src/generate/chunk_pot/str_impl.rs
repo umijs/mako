@@ -95,6 +95,11 @@ pub(super) fn render_entry_js_chunk(
     let mut source_map_buf: Vec<u8> = vec![];
     sourcemap::SourceMap::from(chunk_raw_sourcemap).to_writer(&mut source_map_buf)?;
 
+    let entry_info = match &chunk.chunk_type {
+        ChunkType::Entry(_, name, _) => context.config.entry.get(name).unwrap(),
+        _ => panic!("normal chunk {} rendered as entry chunk", chunk.id.id),
+    };
+
     Ok(ChunkFile {
         raw_hash: hmr_hash,
         content,
@@ -103,7 +108,11 @@ pub(super) fn render_entry_js_chunk(
         file_name: pot.js_name.clone(),
         chunk_id: pot.chunk_id.clone(),
         file_type: ChunkFileType::JS,
-        file_name_template: None,
+        file_name_template: entry_info
+            .filename
+            .as_ref()
+            .xor(context.config.output.filename.as_ref())
+            .cloned(),
         chunk_name: pot.chunk_name.clone(),
     })
 }

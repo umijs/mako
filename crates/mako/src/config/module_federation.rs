@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct ModuleFederationConfig {
     pub name: String,
+    pub filename: Option<String>,
     pub exposes: Option<ExposesConfig>,
     pub shared: Option<SharedConfig>,
     pub remotes: Option<RemotesConfig>,

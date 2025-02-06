@@ -118,7 +118,12 @@ impl Chunk {
     }
 
     pub fn filename(&self) -> String {
-        format!("{}.js", self.name())
+        let name = self.name();
+        if name.ends_with(".js") {
+            name
+        } else {
+            format!("{}.js", self.name())
+        }
     }
 
     pub fn add_module(&mut self, module_id: ModuleId) {

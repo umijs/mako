@@ -427,7 +427,7 @@ impl Compiler {
                 .entry
                 .values()
                 .map(|entry| {
-                    let mut entry = entry.to_string_lossy().to_string();
+                    let mut entry = entry.import.to_string_lossy().to_string();
                     let is_browser = matches!(
                         self.context.config.platform,
                         crate::config::Platform::Browser

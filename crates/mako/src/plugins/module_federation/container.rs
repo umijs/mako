@@ -8,6 +8,7 @@ use tracing::warn;
 use super::constants::{FEDERATION_EXPOSE_CHUNK_PREFIX, FEDERATION_GLOBAL};
 use super::util::parse_remote;
 use super::ModuleFederationPlugin;
+use crate::config::entry::EntryItem;
 use crate::config::{AllowChunks, Config};
 use crate::module::md5_hash;
 use crate::visitors::mako_require::MAKO_REQUIRE;
@@ -38,7 +39,10 @@ impl ModuleFederationPlugin {
                         }
                         fs::write(&container_entry_path, container_entry_code).unwrap();
 
-                        vacant_entry.insert(container_entry_path);
+                        vacant_entry.insert(EntryItem {
+                            filename: self.config.filename.clone(),
+                            import: container_entry_path,
+                        });
                     }
                 }
             }

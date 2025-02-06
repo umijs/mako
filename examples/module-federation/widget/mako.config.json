@@ -6,6 +6,7 @@
   "publicPath": "auto",
   "moduleFederation": {
     "name": "mfWidget",
+    "filename": "remoteEntry.js",
     "exposes": {
       "./App1": "./src/App1.tsx",
       "./App2": "./src/App2.tsx"

@@ -3,6 +3,7 @@ mod code_splitting;
 mod dev_server;
 mod devtool;
 mod duplicate_package_checker;
+pub mod entry;
 mod experimental;
 mod external;
 mod generic_usize;
@@ -29,9 +30,9 @@ mod tree_shaking;
 mod umd;
 mod watch;
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub use analyze::AnalyzeConfig;
 use anyhow::{anyhow, Result};
@@ -43,6 +44,7 @@ pub use devtool::{deserialize_devtool, DevtoolConfig};
 pub use duplicate_package_checker::{
     deserialize_check_duplicate_package, DuplicatePackageCheckerConfig,
 };
+use entry::{Entry, EntryItem};
 use experimental::ExperimentalConfig;
 pub use external::{
     ExternalAdvanced, ExternalAdvancedSubpath, ExternalAdvancedSubpathConverter,
@@ -130,7 +132,7 @@ pub enum Platform {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    pub entry: BTreeMap<String, PathBuf>,
+    pub entry: Entry,
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
     #[serde(deserialize_with = "deserialize_manifest", default)]
@@ -365,7 +367,13 @@ impl Config {
                     for ext in JS_EXTENSIONS {
                         let file_path = root.join(file_path).with_extension(ext);
                         if file_path.exists() {
-                            config.entry.insert("index".to_string(), file_path);
+                            config.entry.insert(
+                                "index".to_string(),
+                                EntryItem {
+                                    filename: None,
+                                    import: file_path,
+                                },
+                            );
                             break 'outer;
                         }
                     }
@@ -378,28 +386,29 @@ impl Config {
             // normalize entry
             config.entry.iter_mut().try_for_each(|(k, v)| {
                 #[allow(clippy::needless_borrows_for_generic_args)]
-                if let Ok(entry_path) = root.join(&v).canonicalize()
+                if let Ok(entry_path) = root.join(&v.import).canonicalize()
                     && entry_path.is_file()
                 {
-                    *v = entry_path;
+                    v.import = entry_path;
                 } else {
                     for ext in JS_EXTENSIONS {
                         #[allow(clippy::needless_borrows_for_generic_args)]
-                        if let Ok(entry_path) = root.join(&v).with_extension(ext).canonicalize()
+                        if let Ok(entry_path) =
+                            root.join(&v.import).with_extension(ext).canonicalize()
                             && entry_path.is_file()
                         {
-                            *v = entry_path;
+                            v.import = entry_path;
                             return Ok(());
                         }
 
                         if let Ok(entry_path) = root
-                            .join(&v)
+                            .join(&v.import)
                             .join("index")
                             .with_extension(ext)
                             .canonicalize()
                             && entry_path.is_file()
                         {
-                            *v = entry_path;
+                            v.import = entry_path;
                             return Ok(());
                         }
                     }

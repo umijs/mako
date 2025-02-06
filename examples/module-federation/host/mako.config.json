@@ -6,7 +6,7 @@
   "moduleFederation": {
     "name": "mfHost",
     "remotes": {
-      "widget": "mfWidget@http://localhost:3000/mfWidget.js"
+      "widget": "mfWidget@http://localhost:3000/remoteEntry.js"
     },
     "shared": { "react": { "eager": true }, "react-dom": { "eager": true } },
     "implementation": "../../../../../packages/mako/node_modules/@module-federation/webpack-bundler-runtime"

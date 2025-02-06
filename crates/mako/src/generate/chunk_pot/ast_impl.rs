@@ -218,6 +218,11 @@ pub(crate) fn render_entry_js_chunk(
             .into_bytes()
     };
 
+    let entry_info = match &chunk.chunk_type {
+        ChunkType::Entry(_, name, _) => context.config.entry.get(name).unwrap(),
+        _ => panic!("normal chunk {} rendered as entry chunk", chunk.id.id),
+    };
+
     Ok(ChunkFile {
         raw_hash: hmr_hash,
         content,
@@ -227,7 +232,11 @@ pub(crate) fn render_entry_js_chunk(
         chunk_id: pot.chunk_id.clone(),
         file_type: ChunkFileType::JS,
         chunk_name: pot.chunk_name.clone(),
-        file_name_template: context.config.output.filename.clone(),
+        file_name_template: entry_info
+            .filename
+            .as_ref()
+            .xor(context.config.output.filename.as_ref())
+            .cloned(),
     })
 }
 
