@@ -116,12 +116,12 @@ impl ModuleFederationPlugin {
             },
             meta_data: {
                 let chunk_graph = context.chunk_graph.read().unwrap();
-                let mf_containter_entry_root_module: Option<ModuleId> = context
+                let mf_container_entry_root_module: Option<ModuleId> = context
                     .config
                     .entry
                     .get(&self.config.name)
                     .map(|e| e.import.to_string_lossy().to_string().into());
-                let mf_containter_entry_chunk = mf_containter_entry_root_module
+                let mf_containter_entry_chunk = mf_container_entry_root_module
                     .map(|m| chunk_graph.get_chunk_for_module(&m).unwrap());
 
                 ManifestMetaData {
