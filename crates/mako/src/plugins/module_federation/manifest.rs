@@ -114,27 +114,34 @@ impl ModuleFederationPlugin {
                     })
                     .collect()
             },
-            meta_data: ManifestMetaData {
-                name: self.config.name.clone(),
-                build_info: ManifestMetaBuildInfo {
-                    build_name: app_info.0.unwrap_or("default".to_string()),
-                    build_version: app_info.1.unwrap_or("".to_string()),
-                },
-                global_name: self.config.name.clone(),
-                public_path: "auto".to_string(),
-                r#type: "global".to_string(),
-                remote_entry: self.config.exposes.as_ref().and_then(|exposes| {
-                    if exposes.is_empty() {
-                        None
-                    } else {
-                        Some(ManifestMetaRemoteEntry {
-                            name: format!("{}.js", self.config.name),
-                            path: "".to_string(),
-                            r#type: "global".to_string(),
-                        })
-                    }
-                }),
-                ..Default::default()
+            meta_data: {
+                let chunk_graph = context.chunk_graph.read().unwrap();
+                let mf_containter_entry_root_module: Option<ModuleId> = context
+                    .config
+                    .entry
+                    .get(&self.config.name)
+                    .map(|e| e.import.to_string_lossy().to_string().into());
+                let mf_containter_entry_chunk = mf_containter_entry_root_module
+                    .map(|m| chunk_graph.get_chunk_for_module(&m).unwrap());
+
+                ManifestMetaData {
+                    name: self.config.name.clone(),
+                    build_info: ManifestMetaBuildInfo {
+                        build_name: app_info.0.unwrap_or("default".to_string()),
+                        build_version: app_info.1.unwrap_or("".to_string()),
+                    },
+                    global_name: self.config.name.clone(),
+                    // FIXME: hardcode now
+                    public_path: "auto".to_string(),
+                    // FIXME: hardcode now
+                    r#type: "global".to_string(),
+                    remote_entry: mf_containter_entry_chunk.map(|c| ManifestMetaRemoteEntry {
+                        name: extract_assets(&[c.id.clone()], &params.stats).0[0].clone(),
+                        path: "".to_string(),
+                        r#type: "global".to_string(),
+                    }),
+                    ..Default::default()
+                }
             },
         };
         fs::write(
@@ -163,9 +170,9 @@ fn extract_chunk_assets(
         acc
     });
 
-    let (sync_js_files, sync_css_files) = extract_assets(all_sync_chunks, &params.stats);
+    let (sync_js_files, sync_css_files) = extract_assets(&all_sync_chunks, &params.stats);
 
-    let (async_js_files, async_css_files) = extract_assets(all_async_chunks, &params.stats);
+    let (async_js_files, async_css_files) = extract_assets(&all_async_chunks, &params.stats);
 
     let async_js_files = async_js_files
         .into_iter()
@@ -190,7 +197,7 @@ fn extract_chunk_assets(
 }
 
 fn extract_assets(
-    all_exposes_sync_chunks: Vec<ModuleId>,
+    all_exposes_sync_chunks: &[ModuleId],
     stats: &StatsJsonMap,
 ) -> (Vec<String>, Vec<String>) {
     all_exposes_sync_chunks.iter().fold(
