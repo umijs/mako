@@ -175,54 +175,56 @@ impl ModuleFederationPlugin {
             .unwrap();
             let resolver_resource =
                 do_resolve(importer, source, resolver, Some(&context.config.externals))?;
-            let config_joined_str = format!(
-                "{}|{}|{}|{}|{}|{}|{}",
-                shared_info.shared_scope,
-                source,
-                shared_info
-                    .required_version
-                    .as_ref()
-                    .map_or("", |v| v.as_str()),
-                shared_info.strict_version,
-                resolver_resource.get_resolved_path(),
-                shared_info.singleton,
-                shared_info.eager
-            );
-            let hash = md5_hash(&config_joined_str, 4);
-            return Ok(Some(ResolverResource::Shared(ConsumeSharedInfo {
-                name: source.to_string(),
-                version: resolver_resource.get_pkg_info().unwrap().version.unwrap(),
-                share_scope: shared_info.shared_scope.clone(),
-                eager: shared_info.eager,
-                singletion: shared_info.singleton,
-                required_version: shared_info.required_version.clone(),
-                strict_version: shared_info.strict_version,
-                module_id: format!(
-                    "{}{}/{}/{}?{}",
-                    FEDERATION_SHARED_REFERENCE_PREFIX,
+            if let ResolverResource::Resolved(_) = resolver_resource {
+                let config_joined_str = format!(
+                    "{}|{}|{}|{}|{}|{}|{}",
                     shared_info.shared_scope,
                     source,
-                    source,
-                    hash
-                ),
-                deps: AnalyzeDepsResult {
-                    resolved_deps: vec![ResolvedDep {
-                        resolver_resource,
-                        dependency: Dependency {
-                            source: params.dep.source.clone(),
-                            resolve_as: None,
-                            resolve_type: if shared_info.eager {
-                                ResolveType::Require
-                            } else {
-                                ResolveType::DynamicImport(Default::default())
+                    shared_info
+                        .required_version
+                        .as_ref()
+                        .map_or("", |v| v.as_str()),
+                    shared_info.strict_version,
+                    resolver_resource.get_resolved_path(),
+                    shared_info.singleton,
+                    shared_info.eager
+                );
+                let hash = md5_hash(&config_joined_str, 4);
+                return Ok(Some(ResolverResource::Shared(ConsumeSharedInfo {
+                    name: source.to_string(),
+                    version: resolver_resource.get_pkg_info().unwrap().version.unwrap(),
+                    share_scope: shared_info.shared_scope.clone(),
+                    eager: shared_info.eager,
+                    singletion: shared_info.singleton,
+                    required_version: shared_info.required_version.clone(),
+                    strict_version: shared_info.strict_version,
+                    module_id: format!(
+                        "{}{}/{}/{}?{}",
+                        FEDERATION_SHARED_REFERENCE_PREFIX,
+                        shared_info.shared_scope,
+                        source,
+                        source,
+                        hash
+                    ),
+                    deps: AnalyzeDepsResult {
+                        resolved_deps: vec![ResolvedDep {
+                            resolver_resource,
+                            dependency: Dependency {
+                                source: params.dep.source.clone(),
+                                resolve_as: None,
+                                resolve_type: if shared_info.eager {
+                                    ResolveType::Require
+                                } else {
+                                    ResolveType::DynamicImport(Default::default())
+                                },
+                                order: params.dep.order,
+                                span: params.dep.span,
                             },
-                            order: params.dep.order,
-                            span: params.dep.span,
-                        },
-                    }],
-                    ..Default::default()
-                },
-            })));
+                        }],
+                        ..Default::default()
+                    },
+                })));
+            }
         }
         Ok(None)
     }
