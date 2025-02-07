@@ -265,6 +265,7 @@ pub struct ManifestMetaTypes {
 #[derive(Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ManifestMetaData {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub remote_entry: Option<ManifestMetaRemoteEntry>,
     pub global_name: String,
     pub public_path: String,
