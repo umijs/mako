@@ -120,7 +120,7 @@ impl ModuleFederationPlugin {
                     .entry
                     .get(&self.config.name)
                     .map(|e| e.import.to_string_lossy().to_string().into());
-                let mf_containter_entry_chunk = mf_container_entry_root_module
+                let mf_container_entry_chunk = mf_container_entry_root_module
                     .map(|m| chunk_graph.get_chunk_for_module(&m).unwrap());
 
                 ManifestMetaData {
@@ -133,7 +133,7 @@ impl ModuleFederationPlugin {
                     public_path: context.config.public_path.clone(),
                     // FIXME: hardcode now
                     r#type: "global".to_string(),
-                    remote_entry: mf_containter_entry_chunk.map(|c| ManifestMetaRemoteEntry {
+                    remote_entry: mf_container_entry_chunk.map(|c| ManifestMetaRemoteEntry {
                         name: extract_assets(&[c.id.clone()], &params.stats).0[0].clone(),
                         path: "".to_string(),
                         r#type: "global".to_string(),
