@@ -131,8 +131,7 @@ impl ModuleFederationPlugin {
                         build_version: app_info.1.unwrap_or("".to_string()),
                     },
                     global_name: self.config.name.clone(),
-                    // FIXME: hardcode now
-                    public_path: "auto".to_string(),
+                    public_path: context.config.public_path.clone(),
                     // FIXME: hardcode now
                     r#type: "global".to_string(),
                     remote_entry: mf_containter_entry_chunk.map(|c| ManifestMetaRemoteEntry {
