@@ -67,23 +67,22 @@ impl ModuleFederationPlugin {
                 let provide_shared_map = self.shared_dependency_map.read().unwrap();
                 provide_shared_map
                     .iter()
-                    .map(|(_, config)| {
+                    .filter_map(|(_, config)| {
                         let module_id: ModuleId = config.file_path.clone().into();
                         let chunk_id = chunk_graph
                             .get_chunk_for_module(&module_id)
-                            .as_ref()
-                            .unwrap()
+                            .as_ref()?
                             .id
                             .clone();
                         let assets = extract_chunk_assets(vec![chunk_id], &chunk_graph, params);
-                        ManifestShared {
+                        Some(ManifestShared {
                             id: format!("{}:{}", self.config.name, config.share_key),
                             name: config.share_key.clone(),
                             require_version: config.shared_config.required_version.clone(),
                             version: config.version.clone(),
                             singleton: config.shared_config.singleton,
                             assets,
-                        }
+                        })
                     })
                     .collect()
             },
