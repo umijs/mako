@@ -153,17 +153,27 @@ export async function build(params: BuildParams) {
 
   if (makoConfig?.moduleFederation || params.config?.moduleFederation) {
     // @ts-ignore
-    params.config.moduleFederation = {
+    const moduleFederation = {
       ...(makoConfig.moduleFederation || {}),
       ...(params.config.moduleFederation || {}),
     };
-    // @ts-ignore
-    if (!params.config.moduleFederation.implementation) {
+    if (!moduleFederation.implementation) {
       // @ts-ignore
-      params.config.moduleFederation.implementation = require.resolve(
+      moduleFederation.implementation = require.resolve(
         '@module-federation/webpack-bundler-runtime',
       );
     }
+
+    if (moduleFederation?.shared) {
+      if (Array.isArray(moduleFederation.shared)) {
+        moduleFederation.shared = moduleFederation.shared.reduce(
+          (acc, cur) => ({ ...acc, [cur]: {} }),
+          {},
+        );
+      }
+    }
+    // @ts-ignore
+    params.config.moduleFederation = moduleFederation;
   }
 
   // support dump mako config

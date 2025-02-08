@@ -169,6 +169,7 @@ pub struct BuildParams {
         runtimePlugins?: string[];
         shareScope?: string;
         shareStrategy?: "version-first" | "loaded-first";
+        implementation: string;
     };
     experimental?: {
         webpackSyntaxValidate?: string[];
