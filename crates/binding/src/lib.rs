@@ -158,11 +158,15 @@ pub struct BuildParams {
     };
     moduleFederation?: {
         name: string;
-        // filename?: string;
+        filename?: string;
         exposes?: Record<string, string>;
         shared: Record<string,
-            { singleton?: bool; strictVersion?: bool; requiredVersion?: string;
-                /* eager?: bool; */ /* shareScope?: string; */
+            {
+                singleton?: bool;
+                strictVersion?: bool;
+                requiredVersion?: string;
+                eager?: bool;
+                shareScope?: string; */
             }
         >;
         remotes?: Record<string, string>;
