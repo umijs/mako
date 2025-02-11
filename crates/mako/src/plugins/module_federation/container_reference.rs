@@ -12,6 +12,10 @@ use crate::resolve::{RemoteInfo, ResolverResource};
 
 impl ModuleFederationPlugin {
     pub(super) fn init_federation_runtime_remotes(&self, context: &Arc<Context>) -> String {
+        if self.config.remotes.as_ref().is_none_or(|r| r.is_empty()) {
+            return "".to_string();
+        }
+
         let module_graph = context.module_graph.read().unwrap();
         let chunk_graph = context.chunk_graph.read().unwrap();
         let all_chunks = chunk_graph.get_all_chunks();

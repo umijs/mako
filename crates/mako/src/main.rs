@@ -1,5 +1,6 @@
 #![feature(box_patterns)]
 #![feature(let_chains)]
+#![feature(is_none_or)]
 
 extern crate swc_malloc;
 
