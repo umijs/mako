@@ -166,7 +166,7 @@ pub struct BuildParams {
                 strictVersion?: bool;
                 requiredVersion?: string;
                 eager?: bool;
-                shareScope?: string; */
+                shareScope?: string;
             }
         >;
         remotes?: Record<string, string>;
