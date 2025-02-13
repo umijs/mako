@@ -297,7 +297,7 @@ impl TreeShakeModule {
             crate::module::ModuleAst::None => StatementGraph::empty(),
         };
 
-        let used_exports = if module.is_entry {
+        let used_exports = if module.is_entry || module.is_consume_share() {
             UsedExports::All
         } else {
             UsedExports::Partial(Default::default())

@@ -53,18 +53,23 @@ pub fn process_req_url(public_path: &str, req_url: &str) -> Result<String> {
     Ok(req_url.to_string())
 }
 
-pub(crate) fn get_pkg_name(root: &Path) -> Option<String> {
+pub(crate) fn get_app_info(root: &Path) -> (Option<String>, Option<String>) {
     let pkg_json_path = root.join("package.json");
 
     if pkg_json_path.exists() {
         let pkg_json = std::fs::read_to_string(pkg_json_path).unwrap();
         let pkg_json: serde_json::Value = serde_json::from_str(&pkg_json).unwrap();
 
-        pkg_json
-            .get("name")
-            .map(|name| name.as_str().unwrap().to_string())
+        (
+            pkg_json
+                .get("name")
+                .map(|name| name.as_str().unwrap().to_string()),
+            pkg_json
+                .get("version")
+                .map(|name| name.as_str().unwrap().to_string()),
+        )
     } else {
-        None
+        (None, None)
     }
 }
 

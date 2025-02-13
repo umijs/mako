@@ -59,10 +59,14 @@ impl AnalyzeDeps {
             );
             match result {
                 Ok(resolver_resource) => {
-                    resolved_deps.push(ResolvedDep {
+                    let resolved_dep = ResolvedDep {
                         resolver_resource,
                         dependency: dep,
-                    });
+                    };
+                    context
+                        .plugin_driver
+                        .after_resolve(&resolved_dep, &context)?;
+                    resolved_deps.push(resolved_dep);
                 }
                 Err(_err) => {
                     missing_deps.insert(dep.source.clone(), dep);

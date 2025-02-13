@@ -135,8 +135,18 @@ impl<'a> VisitMut for DynamicImport<'a> {
                                 vec![self.interop.clone().as_arg(), lazy_require_call.as_arg()],
                             );
 
+                        let dr_call_arg = if resolved_info._is_federation_expose {
+                            dr_call
+                                .as_call(call_expr.span, Vec::new())
+                                .into_lazy_fn(Vec::new())
+                                .into_lazy_fn(Vec::new())
+                                .as_arg()
+                        } else {
+                            dr_call.as_arg()
+                        };
+
                         member_expr!(@EXT, DUMMY_SP, load_promise.into(), then)
-                            .as_call(call_expr.span, vec![dr_call.as_arg()])
+                            .as_call(call_expr.span, vec![dr_call_arg])
                     };
                 }
             }
@@ -250,12 +260,14 @@ Promise.all([
                 "@swc/helpers/_/_interop_require_wildcard".to_string() => ResolvedReplaceInfo {
                     chunk_id: None,
                     to_replace_source: "hashed_helper".to_string(),
-                    resolved_module_id:"dummy".into()
+                    resolved_module_id:"dummy".into(),
+                    _is_federation_expose: false,
                 },
                 "foo".to_string() => ResolvedReplaceInfo {
                     chunk_id: Some("foo".into()),
                     to_replace_source: "foo".into(),
-                    resolved_module_id: "foo".into()
+                    resolved_module_id: "foo".into(),
+                    _is_federation_expose: false,
                 }
             },
             missing: HashMap::new(),

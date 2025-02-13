@@ -12,13 +12,12 @@ where
     D: serde::Deserializer<'de>,
 {
     let value: serde_json::Value = serde_json::Value::deserialize(deserializer)?;
-    match value {
-        serde_json::Value::Object(obj) => Ok(Some(
-            serde_json::from_value::<Umd>(serde_json::Value::Object(obj))
-                .map_err(serde::de::Error::custom)?,
+    match &value {
+        serde_json::Value::Object(_) => Ok(Some(
+            serde_json::from_value::<Umd>(value).map_err(serde::de::Error::custom)?,
         )),
         serde_json::Value::String(name) => Ok(Some(Umd {
-            name,
+            name: name.clone(),
             ..Default::default()
         })),
         serde_json::Value::Bool(false) => Ok(None),
