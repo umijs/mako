@@ -1,3 +1,14 @@
+## 0.11.4
+
+`2025-02-12`
+
+- chore: 添加针对 and-design 构建检查 by @sorrycc in https://github.com/umijs/mako/pull/1759
+- fix: analyze 报告在 safari 上不工作 by @sorrycc in https://github.com/umijs/mako/pull/1761
+- fix(mako): mako cli 延迟退出 by @sorrycc in https://github.com/umijs/mako/pull/1762
+- fix: 正确解析 wasm 的导入依赖 by @YufJi in https://github.com/umijs/mako/pull/1705
+- fix: 构建多 entry 时 css 排序不稳定 by @xusd320 in https://github.com/umijs/mako/pull/1763
+- feat(copy): copy plugin 支持高级配置 by @BQXBQX in https://github.com/umijs/mako/pull/1711
+
 ## 0.11.3
 
 `2025-01-16`

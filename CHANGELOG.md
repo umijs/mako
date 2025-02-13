@@ -1,3 +1,14 @@
+## 0.11.4
+
+`2025-02-12`
+
+- chore: add check-ecosystem-usages script by @sorrycc in https://github.com/umijs/mako/pull/1759
+- fix: analyze don't work in safari by @sorrycc in https://github.com/umijs/mako/pull/1761
+- fix(mako): cli delay exit by @sorrycc in https://github.com/umijs/mako/pull/1762
+- fix: load wasm by @YufJi in https://github.com/umijs/mako/pull/1705
+- fix: chunk groups' order when building mpa by @xusd320 in https://github.com/umijs/mako/pull/1763
+- feat(copy): support advanced copy configuration with custom target paths by @BQXBQX in https://github.com/umijs/mako/pull/1711
+
 ## 0.11.3
 
 `2025-01-16`
