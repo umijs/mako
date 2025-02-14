@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 use anyhow::{anyhow, Result};
 use mako::ast::file::{Content, JsContent};
@@ -30,7 +30,7 @@ fn content_from_result(result: TransformResult) -> Result<Content> {
 
 #[napi]
 pub struct PluginContext {
-    context: Arc<Context>,
+    context: Weak<Context>,
 }
 
 #[napi]
@@ -45,9 +45,17 @@ impl PluginContext {
     }
     #[napi]
     pub fn emit_file(&self, origin_path: String, output_path: String) {
-        let mut assets_info = self.context.assets_info.lock().unwrap();
+        let mut assets_info = {
+            unsafe {
+                self.context
+                    .as_ptr()
+                    .as_ref_unchecked()
+                    .assets_info
+                    .lock()
+                    .unwrap()
+            }
+        };
         assets_info.insert(origin_path, output_path);
-        drop(assets_info);
     }
 }
 
@@ -69,7 +77,7 @@ impl Plugin for JsPlugin {
     fn build_start(&self, context: &Arc<Context>) -> Result<()> {
         if let Some(hook) = &self.hooks.build_start {
             hook.call(PluginContext {
-                context: context.clone(),
+                context: Arc::downgrade(context),
             })?
         }
         Ok(())
@@ -80,7 +88,7 @@ impl Plugin for JsPlugin {
             if self.hooks.load_include.is_some()
                 && self.hooks.load_include.as_ref().unwrap().call((
                     PluginContext {
-                        context: context.clone(),
+                        context: Arc::downgrade(context),
                     },
                     param.file.path.to_string_lossy().to_string(),
                 ))? == Some(false)
@@ -89,7 +97,7 @@ impl Plugin for JsPlugin {
             }
             let x: Option<LoadResult> = hook.call((
                 PluginContext {
-                    context: context.clone(),
+                    context: Arc::downgrade(context),
                 },
                 param.file.path.to_string_lossy().to_string(),
             ))?;
@@ -114,7 +122,7 @@ impl Plugin for JsPlugin {
         if let Some(hook) = &self.hooks.resolve_id {
             let x: Option<ResolveIdResult> = hook.call((
                 PluginContext {
-                    context: context.clone(),
+                    context: Arc::downgrade(context),
                 },
                 source.to_string(),
                 importer.to_string(),
@@ -149,14 +157,14 @@ impl Plugin for JsPlugin {
         if let Some(hook) = &self.hooks.generate_end {
             hook.call((
                 PluginContext {
-                    context: context.clone(),
+                    context: Arc::downgrade(context),
                 },
                 serde_json::to_value(param)?,
             ))?
         }
         if let Some(hook) = &self.hooks.build_end {
             hook.call(PluginContext {
-                context: context.clone(),
+                context: Arc::downgrade(context),
             })?
         }
         Ok(())
@@ -166,7 +174,7 @@ impl Plugin for JsPlugin {
         if let Some(hook) = &self.hooks.watch_changes {
             hook.call((
                 PluginContext {
-                    context: context.clone(),
+                    context: Arc::downgrade(context),
                 },
                 id.to_string(),
                 WatchChangesParams {
@@ -180,7 +188,7 @@ impl Plugin for JsPlugin {
     fn write_bundle(&self, context: &Arc<Context>) -> Result<()> {
         if let Some(hook) = &self.hooks.write_bundle {
             hook.call(PluginContext {
-                context: context.clone(),
+                context: Arc::downgrade(context),
             })?
         }
         Ok(())
@@ -195,7 +203,7 @@ impl Plugin for JsPlugin {
         if let Some(hook) = &self.hooks._on_generate_file {
             hook.call((
                 PluginContext {
-                    context: context.clone(),
+                    context: Arc::downgrade(context),
                 },
                 WriteFile {
                     path: path.to_string_lossy().to_string(),
@@ -215,7 +223,7 @@ impl Plugin for JsPlugin {
         if let Some(hook) = &self.hooks.transform_include {
             if hook.call((
                 PluginContext {
-                    context: context.clone(),
+                    context: Arc::downgrade(context),
                 },
                 path.to_string(),
             ))? == Some(false)
@@ -233,7 +241,7 @@ impl Plugin for JsPlugin {
 
             let result: Option<TransformResult> = hook.call((
                 PluginContext {
-                    context: context.clone(),
+                    context: Arc::downgrade(context),
                 },
                 content_str,
                 path.to_string(),
