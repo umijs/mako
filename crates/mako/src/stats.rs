@@ -124,11 +124,9 @@ impl Compiler {
                     ChunkType::Sync => chunk_graph
                         .dependents_chunk(&chunk.id)
                         .iter()
-                        .filter_map(|chunk_id| {
-                            chunk_graph.chunk(chunk_id).unwrap().modules.iter().last()
-                        })
+                        .filter_map(|chunk_id| chunk_graph.chunk(chunk_id).unwrap().root_module())
                         .collect::<Vec<_>>(),
-                    _ => vec![chunk.modules.iter().last().unwrap()],
+                    _ => vec![chunk.root_module().unwrap()],
                 };
                 let mut origins_set = IndexMap::new();
                 for origin_chunk_module in origin_chunk_modules {
@@ -506,9 +504,9 @@ pub struct StatsJsonMap {
     root_path: String,
     output_path: String,
     assets: Vec<StatsJsonAssetsItem>,
-    chunk_modules: Vec<StatsJsonChunkModuleItem>,
+    pub chunk_modules: Vec<StatsJsonChunkModuleItem>,
     modules: HashMap<String, ModuleInfo>,
-    chunks: Vec<StatsJsonChunkItem>,
+    pub chunks: Vec<StatsJsonChunkItem>,
     entrypoints: HashMap<String, StatsJsonEntryItem>,
     rsc_client_components: Vec<RscClientInfo>,
     #[serde(rename = "rscCSSModules")]

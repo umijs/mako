@@ -26,7 +26,11 @@ impl Compiler {
     pub fn optimize_chunk(&self) {
         crate::mako_profile_function!();
         debug!("optimize chunk");
-        if let Some(optimize_options) = self.get_optimize_chunk_options() {
+        if let Some(mut optimize_options) = self.get_optimize_chunk_options() {
+            self.context
+                .plugin_driver
+                .after_optimize_chunk_options(&mut optimize_options)
+                .unwrap();
             debug!("optimize options: {:?}", optimize_options);
             // stage: prepare
             let mut optimize_chunks_infos = optimize_options
@@ -123,7 +127,7 @@ impl Compiler {
         let async_chunk_root_modules = chunks
             .iter()
             .filter_map(|chunk| match chunk.chunk_type {
-                ChunkType::Async => chunk.modules.iter().last(),
+                ChunkType::Async => chunk.root_module(),
                 _ => None,
             })
             .collect::<Vec<_>>();

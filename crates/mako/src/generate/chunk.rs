@@ -137,6 +137,10 @@ impl Chunk {
         self.modules.contains(module_id)
     }
 
+    pub fn root_module(&self) -> Option<&ModuleId> {
+        self.modules.iter().last()
+    }
+
     pub fn hash(&self, mg: &ModuleGraph) -> u64 {
         let mut sorted_module_ids = self.modules.iter().cloned().collect::<Vec<ModuleId>>();
         sorted_module_ids.sort_by_key(|m| m.id.clone());

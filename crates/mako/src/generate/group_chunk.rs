@@ -31,7 +31,7 @@ impl Compiler {
 
             for (key, value) in &self.context.config.entry {
                 // hmr entry id has query '?hmr'
-                if parse_path(&value.to_string_lossy()).unwrap().0
+                if parse_path(&value.import.to_string_lossy()).unwrap().0
                     == parse_path(&entry.id).unwrap().0
                 {
                     entry_chunk_name = key;

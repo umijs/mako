@@ -218,6 +218,12 @@ pub(crate) fn render_entry_js_chunk(
             .into_bytes()
     };
 
+    let entry_info = if let ChunkType::Entry(_, name, _) = &chunk.chunk_type {
+        context.config.entry.get(name)
+    } else {
+        None
+    };
+
     Ok(ChunkFile {
         raw_hash: hmr_hash,
         content,
@@ -227,7 +233,12 @@ pub(crate) fn render_entry_js_chunk(
         chunk_id: pot.chunk_id.clone(),
         file_type: ChunkFileType::JS,
         chunk_name: pot.chunk_name.clone(),
-        file_name_template: context.config.output.filename.clone(),
+        file_name_template: entry_info.and_then(|e| {
+            e.filename
+                .as_ref()
+                .xor(context.config.output.filename.as_ref())
+                .cloned()
+        }),
     })
 }
 
