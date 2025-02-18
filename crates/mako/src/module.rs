@@ -403,7 +403,6 @@ pub enum FedereationModuleType {
 pub struct Module {
     pub id: ModuleId,
     pub is_entry: bool,
-    // only module federation remote module
     pub info: Option<ModuleInfo>,
     pub side_effects: bool,
 }
