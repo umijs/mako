@@ -1,0 +1,15 @@
+{
+  "name": "tapable-js",
+  "version": "0.0.1",
+  "description": "A new implementation of webpack/tapable",
+  "main": "es/index.js",
+  "scripts": {
+    "tsc": "tsc --project .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "author": "",
+  "license": "ISC"
+}

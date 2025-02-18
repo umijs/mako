@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "es",
+    "target": "ES2021"
+  }
+}
