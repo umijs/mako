@@ -10,7 +10,9 @@ pub struct VirtualCSSModules {
 }
 
 fn is_css_modules_path(path: &str) -> bool {
-    path.ends_with(".module.css") || path.ends_with(".module.less")
+    path.ends_with(".module.css")
+        || path.ends_with(".module.less")
+        || path.ends_with(".module.scss")
 }
 
 pub fn is_css_path(path: &str) -> bool {
