@@ -1,4 +1,5 @@
 #![deny(clippy::all)]
+#![feature(ptr_as_ref_unchecked)]
 
 extern crate swc_malloc;
 
