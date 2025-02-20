@@ -105,6 +105,15 @@ pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
     let chunk_graph = context.chunk_graph.read().unwrap();
     let has_dynamic_chunks = chunk_graph.get_all_chunks().len() > 1;
     let has_hmr = context.args.watch;
+    let chunk_matcher = context.config.module_federation.as_ref().and_then(|mf| {
+        mf.remotes.as_ref().and_then(|remotes| {
+            if remotes.is_empty() {
+                None
+            } else {
+                Some(r#"/^mako\/container\/remote\//"#.to_string())
+            }
+        })
+    });
     let app_runtime = AppRuntimeTemplate {
         has_dynamic_chunks,
         has_hmr,
@@ -127,6 +136,7 @@ pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
             .as_ref()
             .map_or(false, |o| o.concatenate_modules.unwrap_or(false)),
         global_module_registry: context.config.output.global_module_registry,
+        chunk_matcher,
     };
     let app_runtime = app_runtime.render_once()?;
     let app_runtime = app_runtime.replace(

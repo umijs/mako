@@ -71,7 +71,7 @@ function createRuntime(makoModules, entryModuleId, global) {
   // required modules
   requireModule.m  = makoModules;
 
-  // required modules
+  // modules registry
   requireModule.c  = modulesRegistry;
 
 <% if concatenate_enabled { %>
@@ -135,8 +135,10 @@ function createRuntime(makoModules, entryModuleId, global) {
       var data = installedChunks[chunkId];
       if (data === 0) return;
 
+      <% if chunk_matcher.is_some() { %>
       // skip federation remote chunk
-      if (chunkId.startsWith("mako/container/remote/")) return;
+      if (<%= chunk_matcher.unwrap() %>.test(chunkId)) return
+      <% } %>
 
       if (data) {
         //     0       1        2

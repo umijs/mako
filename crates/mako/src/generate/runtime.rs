@@ -14,4 +14,5 @@ pub struct AppRuntimeTemplate {
     pub concatenate_enabled: bool,
     pub cross_origin_loading: Option<String>,
     pub global_module_registry: bool,
+    pub chunk_matcher: Option<String>,
 }
