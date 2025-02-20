@@ -260,7 +260,7 @@ export interface BuildParams {
         };
     moduleFederation?: {
       name: string;
-      // filename?: string;
+      filename?: string;
       exposes?: Record<string, string>;
       shared: Record<
         string,
@@ -268,7 +268,8 @@ export interface BuildParams {
           singleton?: bool;
           strictVersion?: bool;
           requiredVersion?: string;
-          /* eager?: bool; */ /* shareScope?: string; */
+          eager?: bool;
+          shareScope?: string;
         }
       >;
       remotes?: Record<string, string>;
