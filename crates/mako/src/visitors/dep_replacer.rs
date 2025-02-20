@@ -28,6 +28,7 @@ pub struct ResolvedReplaceInfo {
     pub chunk_id: Option<String>,
     pub to_replace_source: String,
     pub resolved_module_id: ModuleId,
+    pub _is_federation_expose: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -351,6 +352,7 @@ try {
                 chunk_id: None,
                 to_replace_source: module_id.into(),
                 resolved_module_id: "".into(),
+                _is_federation_expose: false,
             }
         }
     }

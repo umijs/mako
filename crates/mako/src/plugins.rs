@@ -15,6 +15,7 @@ pub mod imports_checker;
 pub mod invalid_webpack_syntax;
 pub mod manifest;
 pub mod minifish;
+pub mod module_federation;
 pub mod progress;
 pub mod require_context;
 pub mod runtime;

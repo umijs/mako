@@ -16,9 +16,9 @@ use crate::ast::file::{Content, File, JsContent};
 use crate::ast::utils::get_module_system;
 use crate::compiler::{Compiler, Context};
 use crate::generate::chunk_pot::util::hash_hashmap;
-use crate::module::{Module, ModuleAst, ModuleId, ModuleInfo};
+use crate::module::{FedereationModuleType, Module, ModuleAst, ModuleId, ModuleInfo, ModuleSystem};
 use crate::plugin::NextBuildParam;
-use crate::resolve::ResolverResource;
+use crate::resolve::{ConsumeSharedInfo, RemoteInfo, ResolverResource};
 use crate::utils::thread_pool;
 
 #[derive(Debug, Error)]
@@ -43,6 +43,15 @@ impl Compiler {
             thread_pool::spawn(move || {
                 let result = Self::build_module(&file, parent_resource, context.clone());
                 let result = Self::handle_build_result(result, &file, context);
+                rs.send(result).unwrap();
+            });
+        };
+
+        let build_consume_share_with_pool = |consume_share_info: ConsumeSharedInfo| {
+            let rs = rs.clone();
+            let context = self.context.clone();
+            thread_pool::spawn(move || {
+                let result = Self::build_consume_shared_module(consume_share_info, context.clone());
                 rs.send(result).unwrap();
             });
         };
@@ -127,6 +136,14 @@ impl Compiler {
                         ResolverResource::Ignored(_) => {
                             Self::create_ignored_module(&path, self.context.clone())
                         }
+                        ResolverResource::Remote(remote_into) => {
+                            Self::create_remote_module(remote_into)
+                        }
+                        ResolverResource::Shared(consume_share_info) => {
+                            count += 1;
+                            build_consume_share_with_pool(consume_share_info.clone());
+                            Self::create_empty_module(&dep_module_id)
+                        }
                     };
 
                     // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
@@ -134,6 +151,7 @@ impl Compiler {
                     module_ids.insert(module.id.clone());
                     module_graph.add_module(module);
                 }
+
                 module_graph.add_dependency(&module_id, &dep_module_id, dep.dependency);
             }
             if count == 0 {
@@ -267,6 +285,12 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             result
         }
     }
+    pub fn build_consume_shared_module(
+        consume_share_info: ConsumeSharedInfo,
+        _context: Arc<Context>,
+    ) -> Result<Module> {
+        Ok(Self::create_consume_share_module(consume_share_info))
+    }
 
     pub fn build_module(
         file: &File,
@@ -279,6 +303,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let content = context.plugin_driver.load_transform(
             &mut content,
             &file.path.to_string_lossy(),
+            file.is_entry,
             &context,
         )?;
         file.set_content(content);
@@ -328,5 +353,33 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         };
         let module = Module::new(module_id, is_entry, Some(info));
         Ok(module)
+    }
+
+    pub(crate) fn create_remote_module(remote_info: RemoteInfo) -> Module {
+        Module {
+            is_entry: false,
+            id: remote_info.module_id.as_str().into(),
+            info: Some(ModuleInfo {
+                resolved_resource: Some(ResolverResource::Remote(remote_info.clone())),
+                federation: Some(FedereationModuleType::Remote),
+                ..Default::default()
+            }),
+            side_effects: true,
+        }
+    }
+
+    pub(crate) fn create_consume_share_module(consume_share_info: ConsumeSharedInfo) -> Module {
+        Module {
+            is_entry: false,
+            id: consume_share_info.module_id.as_str().into(),
+            info: Some(ModuleInfo {
+                deps: consume_share_info.deps.clone(),
+                resolved_resource: Some(ResolverResource::Shared(consume_share_info.clone())),
+                federation: Some(FedereationModuleType::ConsumeShare),
+                module_system: ModuleSystem::Custom,
+                ..Default::default()
+            }),
+            side_effects: true,
+        }
     }
 }

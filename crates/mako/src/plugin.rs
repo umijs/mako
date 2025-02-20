@@ -9,8 +9,9 @@ use swc_core::common::Mark;
 use swc_core::ecma::ast::Module;
 
 use crate::ast::file::{Content, File};
+use crate::build::analyze_deps::ResolvedDep;
 use crate::compiler::{Args, Compiler, Context};
-use crate::config::Config;
+use crate::config::{CodeSplittingAdvancedOptions, Config};
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::generate::generate_chunks::ChunkFile;
 use crate::module::{Dependency, ModuleAst, ModuleId};
@@ -24,8 +25,9 @@ pub struct PluginLoadParam<'a> {
 }
 
 #[derive(Debug)]
-pub struct PluginResolveIdParams {
+pub struct PluginResolveIdParams<'a> {
     pub is_entry: bool,
+    pub dep: &'a Dependency,
 }
 
 pub struct PluginParseParam<'a> {
@@ -66,6 +68,7 @@ pub trait Plugin: Any + Send + Sync {
         &self,
         _content: &mut Content,
         _path: &str,
+        _is_entry: bool,
         _context: &Arc<Context>,
     ) -> Result<Option<Content>> {
         Ok(None)
@@ -112,6 +115,10 @@ pub trait Plugin: Any + Send + Sync {
     }
 
     fn before_resolve(&self, _deps: &mut Vec<Dependency>, _context: &Arc<Context>) -> Result<()> {
+        Ok(())
+    }
+
+    fn after_resolve(&self, _resolved_dep: &ResolvedDep, _context: &Arc<Context>) -> Result<()> {
         Ok(())
     }
 
@@ -172,6 +179,13 @@ pub trait Plugin: Any + Send + Sync {
     }
 
     fn before_optimize_chunk(&self, _context: &Arc<Context>) -> Result<()> {
+        Ok(())
+    }
+
+    fn after_optimize_chunk_options(
+        &self,
+        _optimize_chunk_options: &mut CodeSplittingAdvancedOptions,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -293,6 +307,13 @@ impl PluginDriver {
         Ok(())
     }
 
+    pub fn after_resolve(&self, resolved_dep: &ResolvedDep, context: &Arc<Context>) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.after_resolve(resolved_dep, context)?;
+        }
+        Ok(())
+    }
+
     pub fn resolve_id(
         &self,
         source: &str,
@@ -410,6 +431,17 @@ impl PluginDriver {
         Ok(())
     }
 
+    pub fn after_optimize_chunk_options(
+        &self,
+        optimize_chunk_options: &mut CodeSplittingAdvancedOptions,
+    ) -> Result<()> {
+        for p in &self.plugins {
+            p.after_optimize_chunk_options(optimize_chunk_options)?;
+        }
+
+        Ok(())
+    }
+
     pub fn optimize_chunk(
         &self,
         chunk_graph: &mut ChunkGraph,
@@ -440,10 +472,11 @@ impl PluginDriver {
         &self,
         content: &mut Content,
         path: &str,
+        _is_entry: bool,
         context: &Arc<Context>,
     ) -> Result<Content> {
         for plugin in &self.plugins {
-            if let Some(transformed) = plugin.load_transform(content, path, context)? {
+            if let Some(transformed) = plugin.load_transform(content, path, _is_entry, context)? {
                 *content = transformed;
             }
         }

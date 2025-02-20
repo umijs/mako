@@ -283,7 +283,7 @@ impl Compiler {
                 debug!("build by modify: {:?} start", entry);
                 // first build
                 let is_entry = {
-                    let mut entries = self.context.config.entry.values();
+                    let mut entries = self.context.config.entry.values().map(|e| &e.import);
                     entries.any(|e| e.eq(entry))
                 };
 

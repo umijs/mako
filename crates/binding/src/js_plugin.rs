@@ -218,6 +218,7 @@ impl Plugin for JsPlugin {
         &self,
         content: &mut Content,
         path: &str,
+        _is_entry: bool,
         context: &Arc<Context>,
     ) -> Result<Option<Content>> {
         if let Some(hook) = &self.hooks.transform_include {

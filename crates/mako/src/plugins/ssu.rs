@@ -166,7 +166,7 @@ impl Plugin for SUPlus {
 
     fn modify_config(&self, config: &mut Config, _root: &Path, _args: &Args) -> Result<()> {
         for p in config.entry.values_mut() {
-            *p = PathBuf::from(format!("{SSU_ENTRY_PREFIX}{}", p.to_string_lossy()));
+            p.import = PathBuf::from(format!("{SSU_ENTRY_PREFIX}{}", p.import.to_string_lossy()));
         }
 
         config.code_splitting = Some(CodeSplitting {
@@ -258,8 +258,8 @@ let patch = require._su_patch();
 console.log(patch);
 try{{
 {}
-}}catch(e){{ 
-//ignore the error 
+}}catch(e){{
+//ignore the error
 }}
 module.export = Promise.all(
     patch.map((d)=>__mako_require__.ensure(d))

@@ -30,7 +30,26 @@
       }
       return require(request);
     };
-    Object.assign(fn, require);
+
+    var createPropertyDescriptor = function (name) {
+      return {
+        configurable: true,
+        enumerable: true,
+        get: function () {
+          return require[name];
+        },
+        set: function (value) {
+          require[name] = value;
+        },
+      };
+    };
+
+    for (var name in require) {
+      if (Object.prototype.hasOwnProperty.call(require, name)) {
+        Object.defineProperty(fn, name, createPropertyDescriptor(name));
+      }
+    }
+
     return fn;
   };
   const applyHotUpdate = (_chunkId, update) => {

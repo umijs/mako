@@ -7,7 +7,7 @@ use swc_core::ecma::ast::EsVersion;
 
 use super::Umd;
 use crate::create_deserialize_fn;
-use crate::utils::get_pkg_name;
+use crate::utils::get_app_info;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -53,7 +53,7 @@ impl fmt::Display for CrossOriginLoading {
 
 pub fn get_default_chunk_loading_global(umd: Option<Umd>, root: &Path) -> String {
     let unique_name = umd.map_or_else(
-        || get_pkg_name(root).unwrap_or("global".to_string()),
+        || get_app_info(root).0.unwrap_or("global".to_string()),
         |umd| umd.name.clone(),
     );
 

@@ -1,5 +1,5 @@
 <div align="center">
-  
+
 <img src="https://img.alicdn.com/imgextra/i2/O1CN01kdmA7X1FVqCPcRi3L_!!6000000000493-2-tps-584-584.png" alt="Mako logo" width="160" height="160" />
 
 # Mako 🦈
@@ -10,7 +10,7 @@
 [![](https://badgen.net/npm/license/umi)](https://www.npmjs.com/package/@umijs/mako)
 [![codecov](https://codecov.io/gh/umijs/mako/graph/badge.svg?token=ptCnNedFGf)](https://codecov.io/gh/umijs/mako)
 
-Mako `['mɑːkoʊ]` is an **extremely fast**, **production-grade** web bundler based on **Rust**. 
+Mako `['mɑːkoʊ]` is an **extremely fast**, **production-grade** web bundler based on **Rust**.
 
 ✨ See more at [makojs.dev](https://makojs.dev).
 </div>
@@ -56,6 +56,7 @@ This project is inspired by:
 - [oxc-resolver](https://github.com/oxc-project/oxc-resolver) by [@Boshen](https://github.com/Boshen) which powered the resolver of Mako.
 - [Oxc](https://github.com/oxc-project/oxc/) by [@Boshen](https://github.com/Boshen) from which we learned a lot about how to develop efficiently in Rust.
 - [biome](https://github.com/biomejs/biome) by [@ematipico](https://github.com/ematipico) from which we learned a lot about how to develop efficiently in Rust.
+- [module-federation](https://github.com/module-federation/core) by [@ScriptedAlchemy](https://github.com/ScriptedAlchemy)，which inspired a lot and powered the module federation feature of Mako.
 
 ## LICENSE
 

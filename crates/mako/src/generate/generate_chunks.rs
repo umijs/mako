@@ -83,9 +83,19 @@ type ChunksHashReplacer = HashMap<String, String>;
 
 impl Compiler {
     pub fn generate_chunk_files(&self, hmr_hash: u64) -> Result<Vec<ChunkFile>> {
-        crate::mako_profile_function!();
+        let module_graph = self.context.module_graph.read().unwrap();
         let chunk_graph = self.context.chunk_graph.read().unwrap();
-        let chunks = chunk_graph.get_chunks();
+
+        let chunks: Vec<&Chunk> = chunk_graph
+            .get_chunks()
+            .into_iter()
+            .filter(|c| {
+                !module_graph
+                    .get_module(c.root_module().unwrap())
+                    .unwrap()
+                    .is_remote()
+            })
+            .collect();
 
         let (entry_chunks, normal_chunks): (Vec<&Chunk>, Vec<&Chunk>) = chunks
             .into_iter()
@@ -173,6 +183,15 @@ impl Compiler {
                             let descendant_chunk = chunk_graph.chunk(descendant_chunk_id).unwrap();
                             // TODO: maybe we can split chunks to chunk pots before generate, because normal chunks will be
                             // split here and fn generate_normal_chunk_files twice
+                            //
+                            if module_graph
+                                .get_module(descendant_chunk.root_module().unwrap())
+                                .unwrap()
+                                .is_remote()
+                            {
+                                return (acc_js, acc_css);
+                            }
+
                             let chunk_pot =
                                 ChunkPot::from(descendant_chunk, &module_graph, &context);
 

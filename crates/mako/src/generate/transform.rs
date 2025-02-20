@@ -100,6 +100,7 @@ pub fn transform_modules_in_thread(
                             chunk_id: None,
                             to_replace_source: chunk_name,
                             resolved_module_id: id.clone(),
+                            _is_federation_expose: false,
                         }
                     }
                     ResolveType::DynamicImport(import_options) => {
@@ -112,12 +113,14 @@ pub fn transform_modules_in_thread(
                             chunk_id,
                             to_replace_source: id.generate(&context),
                             resolved_module_id: id.clone(),
+                            _is_federation_expose: import_options._is_federation_expose,
                         }
                     }
                     _ => ResolvedReplaceInfo {
                         chunk_id: None,
                         to_replace_source: id.generate(&context),
                         resolved_module_id: id.clone(),
+                        _is_federation_expose: false,
                     },
                 };
 
@@ -189,6 +192,7 @@ fn insert_swc_helper_replace(
                 chunk_id: None,
                 to_replace_source: m_id.generate(context),
                 resolved_module_id: m_id,
+                _is_federation_expose: false,
             },
         );
     });

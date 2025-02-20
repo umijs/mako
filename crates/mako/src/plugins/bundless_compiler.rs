@@ -86,6 +86,7 @@ impl BundlessCompiler {
                                 chunk_id: None,
                                 to_replace_source: replacement,
                                 resolved_module_id: id.clone(),
+                                _is_federation_expose: false,
                             },
                         ))
                     })

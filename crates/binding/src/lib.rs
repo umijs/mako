@@ -157,9 +157,34 @@ pub struct BuildParams {
     rscClient?: false | {
         "logServerComponent": "error" | "ignore";
     };
+    moduleFederation?: {
+        name: string;
+        filename?: string;
+        exposes?: Record<string, string>;
+        shared: Record<string,
+            {
+                singleton?: bool;
+                strictVersion?: bool;
+                requiredVersion?: string;
+                eager?: bool;
+                shareScope?: string;
+            }
+        >;
+        remotes?: Record<string, string>;
+        runtimePlugins?: string[];
+        shareScope?: string;
+        shareStrategy?: "version-first" | "loaded-first";
+        implementation: string;
+    };
     experimental?: {
         webpackSyntaxValidate?: string[];
+        requireContext?: bool;
+        ignoreNonLiteralRequire?: bool;
+        magicComment?: bool;
+        detectCircularDependence?: { ignore?: string[] };
         rustPlugins?: Array<[string, any]>;
+        centralEnsure?: bool,
+        importsChecker?: bool,
     };
     watch?: {
         ignoredPaths?: string[];

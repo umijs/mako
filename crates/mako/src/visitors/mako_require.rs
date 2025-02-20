@@ -9,7 +9,7 @@ use crate::ast::utils::is_ident_undefined;
 use crate::compiler::Context;
 use crate::config::Platform;
 
-const MAKO_REQUIRE: &str = "__mako_require__";
+pub const MAKO_REQUIRE: &str = "__mako_require__";
 
 pub struct MakoRequire {
     pub unresolved_mark: Mark,

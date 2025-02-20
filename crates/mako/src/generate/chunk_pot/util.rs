@@ -25,7 +25,7 @@ use crate::config::Mode;
 use crate::generate::chunk_pot::ChunkPot;
 use crate::generate::runtime::AppRuntimeTemplate;
 use crate::module::{relative_to_root, Module, ModuleAst};
-use crate::utils::get_pkg_name;
+use crate::utils::get_app_info;
 
 pub(crate) fn render_module_js(
     ast: &SwcModule,
@@ -105,6 +105,15 @@ pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
     let chunk_graph = context.chunk_graph.read().unwrap();
     let has_dynamic_chunks = chunk_graph.get_all_chunks().len() > 1;
     let has_hmr = context.args.watch;
+    let chunk_matcher = context.config.module_federation.as_ref().and_then(|mf| {
+        mf.remotes.as_ref().and_then(|remotes| {
+            if remotes.is_empty() {
+                None
+            } else {
+                Some(r#"/^mako\/container\/remote\//"#.to_string())
+            }
+        })
+    });
     let app_runtime = AppRuntimeTemplate {
         has_dynamic_chunks,
         has_hmr,
@@ -120,13 +129,14 @@ pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
             .cross_origin_loading
             .clone()
             .map(|s| s.to_string()),
-        pkg_name: get_pkg_name(&context.root),
+        pkg_name: get_app_info(&context.root).0,
         concatenate_enabled: context
             .config
             .optimization
             .as_ref()
             .map_or(false, |o| o.concatenate_modules.unwrap_or(false)),
         global_module_registry: context.config.output.global_module_registry,
+        chunk_matcher,
     };
     let app_runtime = app_runtime.render_once()?;
     let app_runtime = app_runtime.replace(
