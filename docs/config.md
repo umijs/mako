@@ -898,7 +898,7 @@ Whether to write the build result to disk when mode is development.
   "moduleFederation": {
     "name": "host",
     "remotes": {
-      "producer": "producer@http://localhost:3000/remoteEntry.js"
+      "remote": "producer@http://localhost:3000/remoteEntry.js"
     },
     "shared": { "react": { "eager": true }, "react-dom": { "eager": true } },
     "manifest": true
