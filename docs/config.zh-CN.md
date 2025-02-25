@@ -869,3 +869,33 @@ babel-plugin-import 的简化版本，仅支持三个配置项：libraryName，l
 
 是否在开发模式下将构建结果写入磁盘。
 
+### moduleFederation
+
+- Type: `{ name: string; filename?: string; exposes?: object; shared?: object; remotes?: object; runtimePlugins?: string[]; shareScope?: string; shareStrategy?: 'version-first' | 'loaded-first';}`
+- Default: `undefined`
+
+[Module federation](https://module-federation.io/configure/index.html) 配置. 示例:
+```json
+{
+  "moduleFederation": {
+    "name": "remote",
+    "filename": "remoteEntry.js",
+    "exposes": {
+      "./App": "./src/App.tsx"
+    },
+    "shared": { "react": {}, "react-dom": {} },
+    "manifest": true
+  }
+}
+```
+```json
+{
+  "moduleFederation": {
+    "name": "host",
+    "remotes": {
+      "remote": "remote@http://localhost:3000/remoteEntry.js"
+    },
+    "shared": { "react": { "eager": true }, "react-dom": { "eager": true } },
+    "manifest": true
+  }
+}

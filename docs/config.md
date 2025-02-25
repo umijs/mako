@@ -874,3 +874,33 @@ e.g. If you want to ignore the `foo` directory under root directory, you can set
 
 Whether to write the build result to disk when mode is development.
 
+### moduleFederation
+
+- Type: `{ name: string; filename?: string; exposes?: object; shared?: object; remotes?: object; runtimePlugins?: string[]; shareScope?: string; shareStrategy?: 'version-first' | 'loaded-first';}`
+- Default: `undefined`
+
+[Module federation](https://module-federation.io/configure/index.html) configuration. For example:
+```json
+{
+  "moduleFederation": {
+    "name": "remote",
+    "filename": "remoteEntry.js",
+    "exposes": {
+      "./App": "./src/App.tsx"
+    },
+    "shared": { "react": {}, "react-dom": {} },
+    "manifest": true
+  }
+}
+```
+```json
+{
+  "moduleFederation": {
+    "name": "host",
+    "remotes": {
+      "producer": "producer@http://localhost:3000/remoteEntry.js"
+    },
+    "shared": { "react": { "eager": true }, "react-dom": { "eager": true } },
+    "manifest": true
+  }
+}
