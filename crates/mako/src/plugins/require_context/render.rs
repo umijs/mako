@@ -25,11 +25,6 @@ impl ContextLoadMode {
         let mut map_str = String::from(r#"var _map_lazy = {"#);
         map.iter().for_each(|(key, value)| match self {
             ContextLoadMode::Sync => {
-                println!(
-                    "... render_module_import1: {} -> {}",
-                    win_path(key),
-                    win_path(value)
-                );
                 map_str.push_str(&format!(
                     r#"
   "{}": ()=> require("{}"),"#,
@@ -39,11 +34,6 @@ impl ContextLoadMode {
             }
 
             ContextLoadMode::Lazy => {
-                println!(
-                    "... render_module_import2: {} -> {}",
-                    win_path(key),
-                    win_path(value)
-                );
                 map_str.push_str(&format!(
                     r#"
   "{}": ()=> import("{}"),"#,
@@ -160,7 +150,6 @@ impl VirtualContextModuleRender {
     pub fn module_id_map(&self, map: &BTreeMap<String, String>, context: &Arc<Context>) -> String {
         let mut map_str = String::from(r#"var _map = {"#);
         for (key, value) in map.iter() {
-            println!("... replace key: {} -> {}", key, win_path(key));
             map_str.push_str(&format!(
                 r#"
   "{}": "{}","#,
