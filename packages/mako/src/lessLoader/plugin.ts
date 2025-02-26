@@ -1,11 +1,8 @@
+import path from 'path';
 import EnhancedResolve, { type ResolveFunctionAsync } from 'enhanced-resolve';
 
-/* eslint-disable class-methods-use-this */
 const trailingSlash = /[/\\]$/;
 
-// This somewhat changed in Less 3.x. Now the file name comes without the
-// automatically added extension whereas the extension is passed in as `options.ext`.
-// So, if the file name matches this regexp, we simply ignore the proposed extension.
 const IS_SPECIAL_MODULE_IMPORT = /^~[^/]+$/;
 
 // `[drive_letter]:\` + `\\[server]\[share_name]\`
@@ -119,18 +116,22 @@ export function createLessPlugin(less: LessStatic): Less.Plugin {
 
         try {
           result = await this.resolveFilename(filename, currentDirectory);
-        } catch (webpackResolveError) {
+        } catch (_error) {
           return Promise.reject(error);
         }
 
+        // FIXME: need to add dependency
         // addDependency(result);
 
         return super.loadFile(result, currentDirectory, options, environment);
       }
 
-      // const absoluteFilename = path.isAbsolute(result.filename)
-      //   ? result.filename
-      //   : path.resolve(".", result.filename);
+      // @ts-ignore
+      const absoluteFilename = path.isAbsolute(result.filename)
+        ? result.filename
+        : path.resolve('.', result.filename);
+
+      // FIXME: need to add dependency
       // addDependency(path.normalize(absoluteFilename));
 
       return result;

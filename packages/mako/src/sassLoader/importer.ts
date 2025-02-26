@@ -15,9 +15,15 @@ export function createImporter(
         ? url.fileURLToPath(context.containingUrl.toString())
         : filename;
 
-      const resolver = getResolver(implementation?.compileStringAsync);
+      const resolver = getResolver(
+        typeof implementation?.compileStringAsync !== 'undefined',
+      );
       try {
         const result = await resolver(prev, originalUrl, fromImport);
+
+        // FIXME: need to add dependency
+        // addDependency(path.normalize(result));
+
         return url.pathToFileURL(result) as URL;
       } catch (err) {
         return null;
@@ -71,9 +77,7 @@ export function createImporter(
   };
 }
 
-function getResolver(compileStringAsync: any) {
-  const isModernSass = typeof compileStringAsync !== 'undefined';
-
+function getResolver(isModernSass: boolean) {
   const importResolve = EnhancedResolve.create({
     conditionNames: ['sass', 'style', '...'],
     mainFields: ['sass', 'style', 'main', '...'],
@@ -109,12 +113,12 @@ function getResolver(compileStringAsync: any) {
 
     let resolutionMap: any[] = [];
 
-    const webpackPossibleRequests = getPossibleRequests(request, fromImport);
+    const possibleRequests = getPossibleRequests(request, fromImport);
 
     resolutionMap = resolutionMap.concat({
       resolve: fromImport ? importResolve : moduleResolve,
       context: path.dirname(context),
-      possibleRequests: webpackPossibleRequests,
+      possibleRequests: possibleRequests,
     });
 
     return startResolving(resolutionMap);
@@ -136,7 +140,6 @@ const IS_MODULE_IMPORT =
 const IS_PKG_SCHEME = /^pkg:/i;
 
 function getPossibleRequests(url: string, fromImport: boolean) {
-  console.log('getPossibleRequests', url);
   let request = url;
 
   if (MODULE_REQUEST_REGEX.test(url)) {
