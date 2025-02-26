@@ -1,6 +1,7 @@
 import fs from 'fs';
 import less from 'less';
 import { LessLoaderOpts } from '.';
+import { createLessPlugin } from './plugin';
 
 module.exports = async function render(param: {
   filename: string;
@@ -18,6 +19,8 @@ module.exports = async function render(param: {
       return require(p);
     }
   });
+
+  pluginInstances?.unshift(createLessPlugin(less));
 
   const result = await less
     .render(input, {
