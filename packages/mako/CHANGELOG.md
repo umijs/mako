@@ -1,3 +1,21 @@
+## 0.11.5
+
+`2025-02-28`
+
+- chore: update CONTRIBUTING.md by [sorrycc](https://github.com/sorrycc)
+- fix: mf config docs by [xusd320](https://github.com/xusd320)
+- docs: update moduleFederation configuration docs by [xusd320](https://github.com/xusd320)
+- chore: remove debug print statements by [sorrycc](https://github.com/sorrycc)
+- fix: mf binding typings by [xusd320](https://github.com/xusd320)
+- feat: add module federation plugin by [xusd320](https://github.com/xusd320) in [#1764](https://github.com/umijs/mako/pull/1764)
+- fix: mako已经支持了scss 但是没有支持module.scss文件 by [Shi Kuan](https://github.com/Shi Kuan) in [#1770](https://github.com/umijs/mako/pull/1770)
+- fix: plugin context gc by [xusd320](https://github.com/xusd320) in [#1769](https://github.com/umijs/mako/pull/1769)
+- chore: update changelog 2025.02.12 by [xusd320](https://github.com/xusd320)
+- docs: 📝 changelog 2025.02.12 by [xusd320](https://github.com/xusd320)
+- chore: bump version by [xusd320](https://github.com/xusd320)
+- release: [umijs/mako@0.11.4 by @xusd320](https://github.com/umijs/mako@0.11.4 by @xusd320)
+
+
 ## 0.11.4
 
 `2025-02-12`
