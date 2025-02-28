@@ -1,3 +1,12 @@
+## 0.11.5
+
+`2025-02-28`
+
+- feat: 支持 module federation by [xusd320](https://github.com/xusd320) in [#1764](https://github.com/umijs/mako/pull/1764)
+- fix: mf binding typings by [xusd320](https://github.com/xusd320)
+- fix: 支持 .module.scss by [Shi Kuan](https://github.com/Shi Kuan) in [#1770](https://github.com/umijs/mako/pull/1770)
+- fix: plugin context gc by [xusd320](https://github.com/xusd320) in [#1769](https://github.com/umijs/mako/pull/1769)
+
 ## 0.11.4
 
 `2025-02-12`
