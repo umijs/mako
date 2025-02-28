@@ -551,6 +551,9 @@ importers:
       chalk:
         specifier: ^4.1.2
         version: 4.1.2
+      enhanced-resolve:
+        specifier: ^5.18.1
+        version: 5.18.1
       less:
         specifier: ^4.2.0
         version: 4.2.0
@@ -6659,22 +6662,12 @@ packages:
       - typescript
     dev: true
 
-  /@umijs/mako-darwin-arm64@0.11.3:
-    resolution: {integrity: sha512-BEBz8sejc4wP7MEs5dtZCyW7AxqgQQlNzceSfm4ulCeGYxqHO8OdtFk4ZwxIaue7ODYyIqUVd5LqIiqP6ZIsmA==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [darwin]
-    requiresBuild: true
-    dev: true
-    optional: true
-
   /@umijs/mako-darwin-arm64@0.11.4:
     resolution: {integrity: sha512-wPFKpgaZuzfiS9SwMtvrNxw+fneZsjS6D3bXCaK9sz/ROxl4THk4FdfstLIaxIBYFC6gEtwrddPgDMl2PVXWjA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
-    dev: false
     optional: true
 
   /@umijs/mako-darwin-arm64@0.7.4:
@@ -6686,22 +6679,12 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-darwin-x64@0.11.3:
-    resolution: {integrity: sha512-G2VX1Ue47NYpQhWIbYyuYe3j3UzGLh7Vw5PYuc/R8e8ruVeJ7vKLk6FKaWrQIcGUWSsffcTy+IsvRzcE5unu6g==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [darwin]
-    requiresBuild: true
-    dev: true
-    optional: true
-
   /@umijs/mako-darwin-x64@0.11.4:
     resolution: {integrity: sha512-mrVeKuj6SVSLoONec/UgGWbJh9TOUMnBoyp0GVk3M3Z3JhOea5wvtr7IGpvC3R5TFlgqE2nUF1C50DGKF47jmg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
-    dev: false
     optional: true
 
   /@umijs/mako-darwin-x64@0.7.4:
@@ -6713,31 +6696,12 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-linux-arm64-gnu@0.11.3:
-    resolution: {integrity: sha512-9tkjnNhEvA61CB0gVUgM1FK31Iamrx5qU1KtZRPslJ5U5wXxkHBoOJEO77rRdZw3Oq1fqNM+lrjejpuPQPsAAw==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [linux]
-    requiresBuild: true
-    dev: true
-    optional: true
-
   /@umijs/mako-linux-arm64-gnu@0.11.4:
     resolution: {integrity: sha512-eXxXi/VsEh6tqJZPuffYzCv6PUmzm1yLhTPWXPPatpVknKcPZsu3qJMUJhmmdd0PkCWFL7mz9JaLx9vIrZYUdg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
-    dev: false
-    optional: true
-
-  /@umijs/mako-linux-arm64-musl@0.11.3:
-    resolution: {integrity: sha512-e+mSdAgLm2VcbmQsElIbfkDs9B/HzsKOynW0hwPFZVyXH85fcIhEFca3rIN0cplXeJw8R1qEcKEDkkBmz2Dx/g==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [linux]
-    requiresBuild: true
-    dev: true
     optional: true
 
   /@umijs/mako-linux-arm64-musl@0.11.4:
@@ -6746,16 +6710,6 @@ packages:
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
-    dev: false
-    optional: true
-
-  /@umijs/mako-linux-x64-gnu@0.11.3:
-    resolution: {integrity: sha512-h4dGVyjFgdwkqsaQZdsc0TvRWz8vY79L6+uU7MVWLZ2iPQXz4hMvxx5qmQ4Y5Or4WKslSDCIFICeG5h81Atspw==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [linux]
-    requiresBuild: true
-    dev: true
     optional: true
 
   /@umijs/mako-linux-x64-gnu@0.11.4:
@@ -6764,20 +6718,10 @@ packages:
     cpu: [x64]
     os: [linux]
     requiresBuild: true
-    dev: false
     optional: true
 
   /@umijs/mako-linux-x64-gnu@0.7.4:
     resolution: {integrity: sha512-Wew66PM1A6PhPDsve46tChGyQ0UzagELEgmzeKjBjVrvtC5+pgtcBrRDAx9cpN16x3eMLY0z9SZAc9zGNjkZow==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [linux]
-    requiresBuild: true
-    dev: true
-    optional: true
-
-  /@umijs/mako-linux-x64-musl@0.11.3:
-    resolution: {integrity: sha512-mdfV1IYOvDFSEMPwf6hvW9fnPpXGs46pkaoE3Fuj9B8704WqQReutsIO4aBojwhk+6lBvRf0F7Uff2qItwcNAQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -6791,7 +6735,6 @@ packages:
     cpu: [x64]
     os: [linux]
     requiresBuild: true
-    dev: false
     optional: true
 
   /@umijs/mako-linux-x64-musl@0.7.4:
@@ -6803,31 +6746,12 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-win32-ia32-msvc@0.11.3:
-    resolution: {integrity: sha512-J6mAiIfMjRT9vGRZN1W3TKK1lB5GAh7EPx5imcNkKQ+i9Z883BUzrGQCHzVGv7ooXNCpuWp5VgWME80LIwvm5w==}
-    engines: {node: '>= 10'}
-    cpu: [ia32]
-    os: [win32]
-    requiresBuild: true
-    dev: true
-    optional: true
-
   /@umijs/mako-win32-ia32-msvc@0.11.4:
     resolution: {integrity: sha512-SkRiup3UF1yNrmIMrAgT5BLzruv0xwDVeM0zoZeNCsN/P3BzP92QTYgXbOex9fZLFvldqS5MCscLnh9STCKDLw==}
     engines: {node: '>= 10'}
     cpu: [ia32]
     os: [win32]
     requiresBuild: true
-    dev: false
-    optional: true
-
-  /@umijs/mako-win32-x64-msvc@0.11.3:
-    resolution: {integrity: sha512-zSPKj4kBjyl492IDnkFOKMbI3pDLYoRGUkZmx+3eZ7ynmQWWsm/XFcDQRluPIqbVEDGZJwT6F3r24cBXM2Om8w==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [win32]
-    requiresBuild: true
-    dev: true
     optional: true
 
   /@umijs/mako-win32-x64-msvc@0.11.4:
@@ -6836,11 +6760,10 @@ packages:
     cpu: [x64]
     os: [win32]
     requiresBuild: true
-    dev: false
     optional: true
 
-  /@umijs/mako@0.11.3:
-    resolution: {integrity: sha512-fXG6nf1EDECwKbIcqmx72CVtsgtE71mp+GfqN5oPtKXLJjAUOEZyvvyIpZTrtt/CJXYN+nT+aplsbQlT0b2zmQ==}
+  /@umijs/mako@0.11.4:
+    resolution: {integrity: sha512-XF+8w267Qm2biYQ4PoPBhsilWBCbeXtsU7Pp0wSvg/mK102admFWKzsbbFiW4dw2yJwdV8Qvq12tEz+g2DboEg==}
     engines: {node: '>= 16'}
     hasBin: true
     dependencies:
@@ -6858,14 +6781,14 @@ packages:
       semver: 7.6.2
       yargs-parser: 21.1.1
     optionalDependencies:
-      '@umijs/mako-darwin-arm64': 0.11.3
-      '@umijs/mako-darwin-x64': 0.11.3
-      '@umijs/mako-linux-arm64-gnu': 0.11.3
-      '@umijs/mako-linux-arm64-musl': 0.11.3
-      '@umijs/mako-linux-x64-gnu': 0.11.3
-      '@umijs/mako-linux-x64-musl': 0.11.3
-      '@umijs/mako-win32-ia32-msvc': 0.11.3
-      '@umijs/mako-win32-x64-msvc': 0.11.3
+      '@umijs/mako-darwin-arm64': 0.11.4
+      '@umijs/mako-darwin-x64': 0.11.4
+      '@umijs/mako-linux-arm64-gnu': 0.11.4
+      '@umijs/mako-linux-arm64-musl': 0.11.4
+      '@umijs/mako-linux-x64-gnu': 0.11.4
+      '@umijs/mako-linux-x64-musl': 0.11.4
+      '@umijs/mako-win32-ia32-msvc': 0.11.4
+      '@umijs/mako-win32-x64-msvc': 0.11.4
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -7155,7 +7078,7 @@ packages:
       '@google/generative-ai': 0.21.0
       '@types/yargs-parser': 21.0.3
       '@umijs/clack-prompts': 0.0.4
-      '@umijs/mako': 0.11.3
+      '@umijs/mako': 0.11.4
       git-repo-info: 2.1.1
       picocolors: 1.1.1
       tsx: 4.19.2
@@ -9596,13 +9519,6 @@ packages:
     dependencies:
       once: 1.4.0
 
-  /enhanced-resolve@5.15.0:
-    resolution: {integrity: sha512-LXYT42KJ7lpIKECr2mAXIaMldcNCh/7E0KBKOu4KSfkHmP+mZmSs+8V5gBAqisWBy0OO4W5Oyys0GO1Y8KtdKg==}
-    engines: {node: '>=10.13.0'}
-    dependencies:
-      graceful-fs: 4.2.11
-      tapable: 2.2.1
-
   /enhanced-resolve@5.17.0:
     resolution: {integrity: sha512-dwDPwZL0dmye8Txp2gzFmA6sxALaSvdRDjPH0viLcKrtlOL3tw62nWWweVD1SdILDTJrbrL6tdWVN58Wo6U3eA==}
     engines: {node: '>=10.13.0'}
@@ -9610,6 +9526,13 @@ packages:
       graceful-fs: 4.2.11
       tapable: 2.2.1
     dev: true
+
+  /enhanced-resolve@5.18.1:
+    resolution: {integrity: sha512-ZSW3ma5GkcQBIpwZTSRAI8N71Uuwgs93IezB7mf7R60tC8ZbJideoDNKjHn2O9KIlx6rkGTTEk1xUCK2E1Y2Yg==}
+    engines: {node: '>=10.13.0'}
+    dependencies:
+      graceful-fs: 4.2.11
+      tapable: 2.2.1
 
   /enhanced-resolve@5.9.3:
     resolution: {integrity: sha512-Bq9VSor+kjvW3f9/MiiR4eE3XYgOl7/rS8lnSxbRbF3kS0B2r+Y9w5krBWxZgDxASVZbdYrn5wT4j/Wb0J9qow==}
@@ -12189,7 +12112,7 @@ packages:
   /less-plugin-resolve@1.0.2:
     resolution: {integrity: sha512-e1AHq0XNTU8S3d9JCc8CFYajoUBr0EK3pcuLT5PogyBBeE0knzZJL105kKKSZWfq2lQLq3/uEDrMK3JPq+fHaA==}
     dependencies:
-      enhanced-resolve: 5.15.0
+      enhanced-resolve: 5.18.1
 
   /less@4.1.3:
     resolution: {integrity: sha512-w16Xk/Ta9Hhyei0Gpz9m7VS8F28nieJaL/VyShID7cYvP6IL5oHeL6p4TXSDJqZE/lNv0oJ2pGVjJsRkfwm5FA==}
@@ -18560,7 +18483,7 @@ packages:
       acorn-import-assertions: 1.9.0(acorn@8.8.2)
       browserslist: 4.21.7
       chrome-trace-event: 1.0.3
-      enhanced-resolve: 5.15.0
+      enhanced-resolve: 5.17.0
       es-module-lexer: 1.2.1
       eslint-scope: 5.1.1
       events: 3.3.0
