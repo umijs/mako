@@ -1,0 +1,15 @@
+[workspace]
+members = [
+    "crates/runtime",
+    "crates/cli"
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+tokio = { version = "1.43.0", features = ["full"] }
+anyhow = "1.0.96"
+utoo_runtime = { version = "0.0.1", path = "./crates/runtime" }
