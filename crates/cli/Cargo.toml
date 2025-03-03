@@ -1,0 +1,9 @@
+[package]
+name = "utoo"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+tokio = { workspace = true }
+anyhow = "1.0.96"
+utoo_runtime = { workspace = true }
