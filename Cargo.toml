@@ -1,5 +1,10 @@
 [workspace]
-members = ["crates/runtime", "crates/cli", "crates/bundler"]
+members = [
+  "crates/bundler",
+  # Waiting https://github.com/denoland/deno_ast/pull/297 to be resolved
+  # "crates/runtime", 
+  # "crates/cli" 
+]
 resolver = "2"
 
 [workspace.package]
