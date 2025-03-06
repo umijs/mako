@@ -2509,7 +2509,7 @@ dependencies = [
  "deno_node",
  "deno_npm",
  "deno_path_util",
- "deno_resolver 0.25.0",
+ "deno_resolver",
  "deno_runtime",
  "deno_semver",
  "deno_terminal",
@@ -2857,40 +2857,6 @@ dependencies = [
 
 [[package]]
 name = "deno_resolver"
-version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ade346ca03dd679c2b5f645aa98aeb0ba89cc2ebc86cff80e58811b73dfadbd"
-dependencies = [
- "anyhow",
- "async-once-cell",
- "async-trait",
- "base32",
- "boxed_error",
- "deno_cache_dir",
- "deno_config",
- "deno_error",
- "deno_media_type",
- "deno_npm",
- "deno_package_json",
- "deno_path_util",
- "deno_semver",
- "deno_terminal",
- "futures",
- "import_map",
- "indexmap 2.7.1",
- "log",
- "node_resolver 0.31.0",
- "once_cell",
- "parking_lot",
- "serde",
- "serde_json",
- "sys_traits",
- "thiserror 2.0.11",
- "url",
-]
-
-[[package]]
-name = "deno_resolver"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "256bd6db0f0da8b0aeb1c7469ab54c71473f9bf17208b81e4b9e4d57384f876a"
@@ -2953,7 +2919,7 @@ dependencies = [
  "deno_path_util",
  "deno_permissions",
  "deno_process",
- "deno_resolver 0.25.0",
+ "deno_resolver",
  "deno_telemetry",
  "deno_terminal",
  "deno_tls",
@@ -11928,7 +11894,7 @@ dependencies = [
  "deno_error",
  "deno_graph",
  "deno_lib",
- "deno_resolver 0.24.0",
+ "deno_resolver",
  "deno_runtime",
  "deno_semver",
  "node_resolver 0.31.0",
