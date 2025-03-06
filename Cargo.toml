@@ -1,8 +1,5 @@
 [workspace]
-members = [
-    "crates/runtime",
-    "crates/cli"
-]
+members = ["crates/runtime", "crates/cli", "crates/bundler"]
 resolver = "2"
 
 [workspace.package]
@@ -13,3 +10,20 @@ license = "MIT"
 tokio = { version = "1.43.0", features = ["full"] }
 anyhow = "1.0.96"
 utoo_runtime = { version = "0.0.1", path = "./crates/runtime" }
+
+# Dependencies from nextjs, should keep the same rev!
+## Dependencies for common cache and task. See https://github.com/vercel/next.js/blob/canary/turbopack/crates/turbopack/architecture.md 
+turbo-tasks = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks", rev = "22812d4" }
+turbo-tasks-build = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-build", rev = "22812d4" }
+
+### Dependencies for bundler specially. 
+turbopack = { git = "https://github.com/vercel/next.js.git", package = "turbopack", rev = "22812d4" }
+turbopack-browser = { git = "https://github.com/vercel/next.js.git", package = "turbopack-browser", rev = "22812d4" }
+turbopack-core = { git = "https://github.com/vercel/next.js.git", package = "turbopack-core", rev = "22812d4" }
+turbopack-ecmascript = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript", rev = "22812d4" }
+turbopack-ecmascript-plugins = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript-plugins", rev = "22812d4" }
+turbopack-ecmascript-runtime = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript-runtime", rev = "22812d4" }
+turbopack-image = { git = "https://github.com/vercel/next.js.git", package = "turbopack-image", rev = "22812d4" }
+turbopack-node = { git = "https://github.com/vercel/next.js.git", package = "turbopack-node", rev = "22812d4" }
+turbopack-nodejs = { git = "https://github.com/vercel/next.js.git", package = "turbopack-nodejs", rev = "22812d4" }
+turbopack-static = { git = "https://github.com/vercel/next.js.git", package = "turbopack-static", rev = "22812d4" }

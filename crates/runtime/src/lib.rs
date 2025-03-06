@@ -1,34 +1,34 @@
-use std::path::Path;
-use std::rc::Rc;
-use std::sync::Arc;
 use deno_core;
 use deno_resolver;
 use deno_resolver::npm::{DenoInNpmPackageChecker, NpmResolver};
-use deno_runtime::{BootstrapOptions, WorkerExecutionMode};
 use deno_runtime::colors::ColorLevel;
-use deno_runtime::deno_core::{resolve_import, FsModuleLoader, ModuleSpecifier};
 use deno_runtime::deno_core::error::AnyError;
+use deno_runtime::deno_core::{resolve_import, FsModuleLoader, ModuleSpecifier};
 use deno_runtime::deno_fs::RealFs;
 use deno_runtime::deno_node::NodeExtInitServices;
 use deno_runtime::deno_permissions::PermissionsContainer;
 use deno_runtime::permissions::RuntimePermissionDescriptorParser;
 use deno_runtime::worker::{MainWorker, WorkerOptions, WorkerServiceOptions};
+use deno_runtime::{BootstrapOptions, WorkerExecutionMode};
+use std::path::Path;
+use std::rc::Rc;
+use std::sync::Arc;
 use sys_traits;
 
 deno_core::extension!(
-  hello_runtime,
-  // ops = [],
-  // esm_entry_point = "ext:hello_runtime/bootstrap.js",
-  // esm = [dir "examples/extension", "bootstrap.js"]
+    hello_runtime,
+    // ops = [],
+    // esm_entry_point = "ext:hello_runtime/bootstrap.js",
+    // esm = [dir "examples/extension", "bootstrap.js"]
 );
 
-pub async fn boostrap(main_js_path: &str) -> Result<(), AnyError> {
+pub async fn bootstrap(main_js_path: &str) -> Result<(), AnyError> {
     let js_path = Path::new(main_js_path);
     let main_module = ModuleSpecifier::from_file_path(js_path).unwrap();
     let fs = Arc::new(RealFs);
-    let permission_desc_parser = Arc::new(
-        RuntimePermissionDescriptorParser::new(sys_traits::impls::RealSys),
-    );
+    let permission_desc_parser = Arc::new(RuntimePermissionDescriptorParser::new(
+        sys_traits::impls::RealSys,
+    ));
 
     let options = BootstrapOptions {
         deno_version: "1.0.0".to_string(),
@@ -102,3 +102,4 @@ mod test {
         println!("hello");
     }
 }
+
