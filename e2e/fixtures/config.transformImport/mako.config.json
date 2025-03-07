@@ -4,6 +4,11 @@
       "libraryName": "foo",
       "libraryDirectory": "es",
       "style": true
+    },
+    {
+      "libraryName": "bar",
+      "libraryDirectory": "es",
+      "camel2DashComponentName": false
     }
   ],
   "optimization": {

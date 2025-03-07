@@ -120,7 +120,7 @@ pub struct BuildParams {
     umd?: false | string | { name: string, export?: string[] };
     cjs?: boolean;
     writeToDisk?: boolean;
-    transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
+    transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string, camel2DashComponentName?: boolean }[];
     clean?: boolean;
     nodePolyfill?: boolean;
     ignores?: string[];

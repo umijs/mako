@@ -197,6 +197,7 @@ export interface BuildParams {
       libraryName: string;
       libraryDirectory?: string;
       style?: boolean | string;
+      camel2DashComponentName?: boolean;
     }[];
     clean?: boolean;
     nodePolyfill?: boolean;
