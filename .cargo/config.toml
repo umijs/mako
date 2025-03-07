@@ -6,7 +6,6 @@ rustflags = [
   "-Zthreads=8",
   "-Csymbol-mangling-version=v0",
 ]
-rustdocflags = []
 
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld"
