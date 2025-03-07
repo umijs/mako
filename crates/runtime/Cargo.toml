@@ -4,18 +4,21 @@ version = "0.0.1"
 edition.workspace = true
 
 [lib]
-name="utoo_runtime"
-path="src/lib.rs"
+name = "utoo_runtime"
+path = "src/lib.rs"
 
 [dependencies]
-tokio = { workspace = true}
-deno_runtime = { version = "0.201.0", features = ["transpile"] }
-deno_ast = "0.46.0"
+tokio = { workspace = true }
+deno_runtime = { version = "0.202.0", features = ["transpile"] }
+deno_ast = { version = "0.46.0" }
 deno_error = "0.5.5"
 deno_graph = "0.89.0"
-deno_lib = "0.9.0"
+deno_lib = "0.10.0"
 deno_semver = "0.7.1"
 node_resolver = "0.31.0"
 deno_core = "0.338.0"
-deno_resolver = "0.24.0"
+deno_resolver = { version = "0.25.0", features = ["sync"] }
 sys_traits = "0.1.8"
+
+[patch.crates-io]
+deno_ast = { git = "https://github.com/cnpm/deno_ast.git", rev = "a6d80e4" }
