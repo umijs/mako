@@ -11,3 +11,9 @@ assert.match(
   "js should have foo/es/button"
 );
 assert.match(cssContent, /\.foo-btn/, "css should have `.foo-btn`");
+
+assert.match(
+  content,
+  /"node_modules\/bar\/es\/barBar\/index.js"/,
+  "js should have bar/es/barBar"
+);
