@@ -10,7 +10,7 @@ path = "src/lib.rs"
 [dependencies]
 tokio = { workspace = true }
 deno_runtime = { version = "0.202.0", features = ["transpile"] }
-deno_ast = { version = "0.46.0", git = "https://github.com/cnpm/deno_ast.git", rev = "a6d80e4" }
+deno_ast = { version = "0.46.0" }
 deno_error = "0.5.5"
 deno_graph = "0.89.0"
 deno_lib = "0.10.0"
