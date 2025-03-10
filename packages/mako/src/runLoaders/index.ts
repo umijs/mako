@@ -19,10 +19,14 @@ function createLoaderContext(options: {
     },
   });
 
-  const resolver = EnhancedResolve.ResolverFactory.createResolver({
+  const defaultResolverOptions = {
     fileSystem: new EnhancedResolve.CachedInputFileSystem(fs, 60000),
     alias: options.alias,
-  });
+  };
+
+  const defaultResolver = EnhancedResolve.ResolverFactory.createResolver(
+    defaultResolverOptions,
+  );
 
   const ctx = {
     version: 2,
@@ -42,9 +46,22 @@ function createLoaderContext(options: {
       return query;
     },
     resolve(context: string, request: string, callback: any) {
-      resolver.resolve({}, context, request, getResolveContext(this), callback);
+      defaultResolver.resolve(
+        {},
+        context,
+        request,
+        getResolveContext(this),
+        callback,
+      );
     },
-    getResolve() {
+    getResolve(options: EnhancedResolve.ResolveOptions) {
+      const resolver = options
+        ? EnhancedResolve.ResolverFactory.createResolver({
+            ...defaultResolverOptions,
+            ...options,
+          })
+        : defaultResolver;
+
       return (context: string, request: string, callback: any) => {
         if (callback) {
           resolver.resolve(
