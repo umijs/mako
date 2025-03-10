@@ -1,7 +1,7 @@
 import path from 'path';
 import { Piscina } from 'piscina';
 import { LessLoaderOpts } from '.';
-import { RunLoadersOptions } from '../runLoaders';
+import { RunLoadersOptions } from '../../runLoaders';
 
 export const createParallelLoader = () =>
   new Piscina<

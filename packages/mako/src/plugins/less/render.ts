@@ -1,5 +1,5 @@
 import { LessLoaderOpts } from '.';
-import { RunLoadersOptions, runLoaders } from '../runLoaders';
+import { RunLoadersOptions, runLoaders } from '../../runLoaders';
 
 module.exports = async function render(param: {
   filename: string;

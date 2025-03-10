@@ -1,5 +1,5 @@
 import { type Options } from 'sass';
-import { RunLoadersOptions, runLoaders } from '../runLoaders';
+import { RunLoadersOptions, runLoaders } from '../../runLoaders';
 
 async function render(param: {
   filename: string;
