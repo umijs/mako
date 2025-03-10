@@ -1,4 +1,5 @@
 import url from 'url';
+import { RunLoadersOptions } from '../runLoaders';
 import { createParallelLoader } from './parallelLessLoader';
 
 export interface LessLoaderOpts {
@@ -23,7 +24,11 @@ export interface LessLoaderOpts {
   plugins?: (string | [string, Record<string, any>])[];
 }
 
-function lessLoader(fn: Function | null, opts: LessLoaderOpts, root: string) {
+function lessLoader(
+  fn: Function | null,
+  opts: LessLoaderOpts,
+  extOpts: RunLoadersOptions,
+) {
   let parallelLessLoader: ReturnType<typeof createParallelLoader> | undefined;
   return {
     render: async (filePath: string) => {
@@ -35,7 +40,7 @@ function lessLoader(fn: Function | null, opts: LessLoaderOpts, root: string) {
       }
       if (filename?.endsWith('.less')) {
         parallelLessLoader ||= createParallelLoader();
-        return await parallelLessLoader.run({ filename, opts, root });
+        return await parallelLessLoader.run({ filename, opts, extOpts });
       } else {
         // TODO: remove this
         fn && fn(filePath);

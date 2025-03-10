@@ -1,12 +1,13 @@
 import { LessLoaderOpts } from '.';
-import { runLoaders } from '../loaderContext';
+import { RunLoadersOptions, runLoaders } from '../runLoaders';
 
 module.exports = async function render(param: {
   filename: string;
   opts: LessLoaderOpts;
-  root: string;
+  extOpts: RunLoadersOptions;
 }): Promise<{ content: string; type: 'css' }> {
   const { modifyVars, globalVars, math, sourceMap, plugins } = param.opts;
+  const extOpts = param.extOpts;
 
   const pluginInstances: Less.Plugin[] | undefined = plugins?.map((p) => {
     if (Array.isArray(p)) {
@@ -19,7 +20,8 @@ module.exports = async function render(param: {
   });
 
   const content = await runLoaders({
-    root: param.root,
+    alias: extOpts.alias,
+    root: extOpts.root,
     resource: param.filename,
     loaders: [
       {

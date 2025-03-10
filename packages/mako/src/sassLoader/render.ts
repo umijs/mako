@@ -1,15 +1,17 @@
 import { type Options } from 'sass';
-import { runLoaders } from '../loaderContext';
+import { RunLoadersOptions, runLoaders } from '../runLoaders';
 
 async function render(param: {
   filename: string;
   opts: Options<'async'> & { resources: string[] };
-  root: string;
+  extOpts: RunLoadersOptions;
 }): Promise<{ content: string; type: 'css' }> {
   const options = { style: 'compressed', ...param.opts };
+  const extOpts = param.extOpts;
 
   const content = await runLoaders({
-    root: param.root,
+    alias: extOpts.alias,
+    root: extOpts.root,
     resource: param.filename,
     loaders: [
       {

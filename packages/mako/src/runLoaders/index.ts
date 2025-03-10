@@ -3,8 +3,9 @@ import * as EnhancedResolve from 'enhanced-resolve';
 import * as loaderRunner from 'loader-runner';
 import * as loaderUtils from 'loader-utils';
 
-export function createLoaderContext(options: {
+function createLoaderContext(options: {
   root: string;
+  alias?: Record<string, string>;
 }) {
   const getResolveContext = (loaderContext: any) => ({
     fileDependencies: {
@@ -20,6 +21,7 @@ export function createLoaderContext(options: {
 
   const resolver = EnhancedResolve.ResolverFactory.createResolver({
     fileSystem: new EnhancedResolve.CachedInputFileSystem(fs, 60000),
+    alias: options.alias,
   });
 
   const ctx = {
@@ -77,11 +79,17 @@ export function createLoaderContext(options: {
   return ctx;
 }
 
-export function runLoaders(options: {
-  resource: string;
+export interface RunLoadersOptions {
   root: string;
-  loaders: any[];
-}): Promise<loaderRunner.RunLoaderResult> {
+  alias?: Record<string, string>;
+}
+
+export function runLoaders(
+  options: {
+    resource: string;
+    loaders: any[];
+  } & RunLoadersOptions,
+): Promise<loaderRunner.RunLoaderResult> {
   return new Promise((resolve, reject) => {
     loaderRunner.runLoaders(
       {
@@ -89,6 +97,7 @@ export function runLoaders(options: {
         readResource: fs.readFile.bind(fs),
         context: createLoaderContext({
           root: options.root,
+          alias: options.alias,
         }),
         loaders: options.loaders,
       },

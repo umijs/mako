@@ -94,7 +94,7 @@ export async function build(params: BuildParams) {
     ],
   ];
 
-  const lessPluginAlias =
+  const resolveAlias =
     params.config.resolve?.alias?.reduce(
       (accumulator: Record<string, string>, currentValue) => {
         accumulator[currentValue[0]] = currentValue[1];
@@ -111,12 +111,12 @@ export async function build(params: BuildParams) {
       globalVars: params.config.less?.globalVars,
       math: params.config.less?.math,
       sourceMap: params.config.less?.sourceMap || false,
-      plugins: [
-        ['less-plugin-resolve', { aliases: lessPluginAlias }],
-        ...(params.config.less?.plugins || []),
-      ],
+      plugins: [...(params.config.less?.plugins || [])],
     },
-    params.root,
+    {
+      root: params.root,
+      alias: resolveAlias,
+    },
   );
   params.config.plugins.push({
     name: 'less',
@@ -138,7 +138,10 @@ export async function build(params: BuildParams) {
       ...((makoConfig as any)?.sass || {}),
       ...(params.config?.sass || {}),
     };
-    let sass = sassLoader(null, sassOpts, params.root);
+    let sass = sassLoader(null, sassOpts, {
+      root: params.root,
+      alias: resolveAlias,
+    });
     params.config.plugins.push({
       name: 'sass',
       async load(filePath: string) {
