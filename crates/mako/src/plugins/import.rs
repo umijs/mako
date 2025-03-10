@@ -84,7 +84,8 @@ impl<'a> VisitMut for ImportVisitor<'a> {
                                 .to_string()
                                 .chars()
                                 .fold(String::new(), |mut acc, c| {
-                                    if c.is_uppercase() {
+                                    if c.is_uppercase() && import_config.camel2_dash_component_name
+                                    {
                                         if acc.len() > 1 {
                                             acc.push('-');
                                         }
@@ -207,6 +208,7 @@ import { Button, DatePicker } from "antd";
                 library_name: "antd".to_string(),
                 library_directory: None,
                 style: None,
+                camel2_dash_component_name: true,
             }],
         );
         assert_eq!(
@@ -231,6 +233,7 @@ import { Button, DatePicker } from "antd";
                 library_name: "antd".to_string(),
                 library_directory: None,
                 style: Some(TransformImportStyle::Source(true)),
+                camel2_dash_component_name: true,
             }],
         );
         assert_eq!(
@@ -257,6 +260,7 @@ import { Button, DatePicker } from "antd";
                 library_name: "antd".to_string(),
                 library_directory: None,
                 style: Some(TransformImportStyle::Built("css".to_string())),
+                camel2_dash_component_name: true,
             }],
         );
         assert_eq!(
@@ -283,6 +287,7 @@ import { Button, DatePicker } from "antd";
                 library_name: "antd".to_string(),
                 library_directory: Some("es".to_string()),
                 style: None,
+                camel2_dash_component_name: true,
             }],
         );
         assert_eq!(
@@ -307,6 +312,7 @@ import { Button as MyButton } from "antd";
                 library_name: "antd".to_string(),
                 library_directory: None,
                 style: None,
+                camel2_dash_component_name: true,
             }],
         );
         assert_eq!(
@@ -333,6 +339,7 @@ import { Button, DatePicker } from "antd";
                 library_name: "antd".to_string(),
                 library_directory: None,
                 style: None,
+                camel2_dash_component_name: true,
             }],
         );
         assert_eq!(
@@ -358,5 +365,29 @@ import DatePicker from "antd/lib/date-picker";
         let mut ast = JsAst::build(path, code, context.clone()).unwrap();
         ast.ast.visit_mut_with(&mut ImportVisitor { config });
         ast.generate(context.clone()).unwrap().code
+    }
+
+    #[test]
+    fn test_disable_camel2_dash_component_name() {
+        let code = generate(
+            r#"
+import { MyButton } from "antd";
+        "#,
+            &vec![TransformImportConfig {
+                library_name: "antd".to_string(),
+                library_directory: None,
+                style: None,
+                camel2_dash_component_name: false,
+            }],
+        );
+        assert_eq!(
+            code,
+            r#"
+import MyButton from "antd/lib/MyButton";
+
+//# sourceMappingURL=/test/path.map
+        "#
+            .trim(),
+        );
     }
 }

@@ -178,7 +178,7 @@ Before release, please make sure everything is ok.
 $ just ready
 ```
 
-Open https://github.com/umijs/mako/actions/workflows/node-bind-build.yml?query=event%3Apush+branch%3Amaster to checkout the latest master push action with name "node-bind-build", and download the artifacts to packages/mako directory. If the artifacts has no commit hash in the name, you should add the commit hash manually.
+Open https://github.com/umijs/mako/actions/workflows/node-bind-build.yml?query=event%3Apush+branch%3Amaster to checkout the latest master push action with name "node-bind-build", and download the artifacts to packages/mako directory. If the artifacts is expired, you should re-run the action. If the artifacts has no commit hash in the name, you should add the commit hash manually.
 
 ```bash
 $ git rev-parse HEAD
