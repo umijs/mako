@@ -44,7 +44,7 @@ module.exports = async function render(param: {
         if (Buffer.isBuffer(buf)) {
           source = buf.toString('utf-8');
         } else {
-          source = buf || '';
+          source = buf ?? '';
         }
       }
       return source;
