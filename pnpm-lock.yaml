@@ -560,9 +560,6 @@ importers:
       less-loader:
         specifier: ^12.2.0
         version: 12.2.0(less@4.2.0)(webpack@5.91.0)
-      less-plugin-resolve:
-        specifier: ^1.0.2
-        version: 1.0.2
       loader-runner:
         specifier: ^4.3.0
         version: 4.3.0
@@ -12141,6 +12138,7 @@ packages:
     resolution: {integrity: sha512-e1AHq0XNTU8S3d9JCc8CFYajoUBr0EK3pcuLT5PogyBBeE0knzZJL105kKKSZWfq2lQLq3/uEDrMK3JPq+fHaA==}
     dependencies:
       enhanced-resolve: 5.18.1
+    dev: true
 
   /less@4.1.3:
     resolution: {integrity: sha512-w16Xk/Ta9Hhyei0Gpz9m7VS8F28nieJaL/VyShID7cYvP6IL5oHeL6p4TXSDJqZE/lNv0oJ2pGVjJsRkfwm5FA==}
