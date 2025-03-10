@@ -16,7 +16,9 @@ async function render(param: {
     loaders: [
       {
         loader: require.resolve('sass-loader'),
-        options,
+        options: {
+          sassOptions: options,
+        },
       },
     ],
   })
