@@ -121,6 +121,7 @@ export function runLoaders(
       (error, data) => {
         if (error) {
           reject(error);
+          return;
         }
         resolve(data);
       },
