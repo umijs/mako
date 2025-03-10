@@ -1,5 +1,3 @@
-import fs from 'fs';
-import * as EnhancedResolve from 'enhanced-resolve';
 import { LessLoaderOpts } from '.';
 import { runLoaders } from '../loaderContext';
 
@@ -20,19 +18,9 @@ module.exports = async function render(param: {
     }
   });
 
-  const resolver = EnhancedResolve.ResolverFactory.createResolver({
-    fileSystem: new EnhancedResolve.CachedInputFileSystem(fs, 60000),
-    conditionNames: ['less', 'style', '...'],
-    mainFields: ['less', 'style', 'main', '...'],
-    mainFiles: ['index', '...'],
-    extensions: ['.less', '.css'],
-    preferRelative: true,
-  });
-
   const content = await runLoaders({
     root: param.root,
     resource: param.filename,
-    resolver,
     loaders: [
       {
         loader: require.resolve('less-loader'),

@@ -5,7 +5,6 @@ import * as loaderUtils from 'loader-utils';
 
 export function createLoaderContext(options: {
   root: string;
-  resolver: EnhancedResolve.Resolver;
 }) {
   const getResolveContext = (loaderContext: any) => ({
     fileDependencies: {
@@ -17,6 +16,10 @@ export function createLoaderContext(options: {
     missingDependencies: {
       add: (d: string) => loaderContext.addMissingDependency(d),
     },
+  });
+
+  const resolver = EnhancedResolve.ResolverFactory.createResolver({
+    fileSystem: new EnhancedResolve.CachedInputFileSystem(fs, 60000),
   });
 
   const ctx = {
@@ -37,18 +40,12 @@ export function createLoaderContext(options: {
       return query;
     },
     resolve(context: string, request: string, callback: any) {
-      options.resolver.resolve(
-        {},
-        context,
-        request,
-        getResolveContext(this),
-        callback,
-      );
+      resolver.resolve({}, context, request, getResolveContext(this), callback);
     },
     getResolve() {
       return (context: string, request: string, callback: any) => {
         if (callback) {
-          options.resolver.resolve(
+          resolver.resolve(
             {},
             context,
             request,
@@ -57,7 +54,7 @@ export function createLoaderContext(options: {
           );
         } else {
           return new Promise((resolve, reject) => {
-            options.resolver.resolve(
+            resolver.resolve(
               {},
               context,
               request,
@@ -83,7 +80,6 @@ export function createLoaderContext(options: {
 export function runLoaders(options: {
   resource: string;
   root: string;
-  resolver: EnhancedResolve.Resolver;
   loaders: any[];
 }): Promise<loaderRunner.RunLoaderResult> {
   return new Promise((resolve, reject) => {
@@ -93,7 +89,6 @@ export function runLoaders(options: {
         readResource: fs.readFile.bind(fs),
         context: createLoaderContext({
           root: options.root,
-          resolver: options.resolver,
         }),
         loaders: options.loaders,
       },

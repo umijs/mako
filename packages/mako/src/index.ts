@@ -138,7 +138,7 @@ export async function build(params: BuildParams) {
       ...((makoConfig as any)?.sass || {}),
       ...(params.config?.sass || {}),
     };
-    let sass = sassLoader(null, sassOpts);
+    let sass = sassLoader(null, sassOpts, params.root);
     params.config.plugins.push({
       name: 'sass',
       async load(filePath: string) {
