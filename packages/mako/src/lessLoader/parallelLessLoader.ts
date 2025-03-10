@@ -4,7 +4,7 @@ import { LessLoaderOpts } from '.';
 
 export const createParallelLoader = () =>
   new Piscina<
-    { filename: string; opts: LessLoaderOpts },
+    { root: string; filename: string; opts: LessLoaderOpts },
     { content: string; type: 'css' }
   >({
     filename: path.resolve(__dirname + '/render.js'),

@@ -23,7 +23,7 @@ export interface LessLoaderOpts {
   plugins?: (string | [string, Record<string, any>])[];
 }
 
-function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
+function lessLoader(fn: Function | null, opts: LessLoaderOpts, root: string) {
   let parallelLessLoader: ReturnType<typeof createParallelLoader> | undefined;
   return {
     render: async (filePath: string) => {
@@ -35,7 +35,7 @@ function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
       }
       if (filename?.endsWith('.less')) {
         parallelLessLoader ||= createParallelLoader();
-        return await parallelLessLoader.run({ filename, opts });
+        return await parallelLessLoader.run({ filename, opts, root });
       } else {
         // TODO: remove this
         fn && fn(filePath);

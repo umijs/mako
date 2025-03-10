@@ -104,16 +104,20 @@ export async function build(params: BuildParams) {
     ) || {};
 
   // built-in less-loader
-  let less = lessLoader(null, {
-    modifyVars: params.config.less?.modifyVars || {},
-    globalVars: params.config.less?.globalVars,
-    math: params.config.less?.math,
-    sourceMap: params.config.less?.sourceMap || false,
-    plugins: [
-      ['less-plugin-resolve', { aliases: lessPluginAlias }],
-      ...(params.config.less?.plugins || []),
-    ],
-  });
+  let less = lessLoader(
+    null,
+    {
+      modifyVars: params.config.less?.modifyVars || {},
+      globalVars: params.config.less?.globalVars,
+      math: params.config.less?.math,
+      sourceMap: params.config.less?.sourceMap || false,
+      plugins: [
+        ['less-plugin-resolve', { aliases: lessPluginAlias }],
+        ...(params.config.less?.plugins || []),
+      ],
+    },
+    params.root,
+  );
   params.config.plugins.push({
     name: 'less',
     async load(filePath: string) {

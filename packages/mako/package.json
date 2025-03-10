@@ -24,12 +24,16 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@module-federation/webpack-bundler-runtime": "^0.8.0",
     "@swc/helpers": "0.5.1",
     "@types/resolve": "^1.20.6",
     "chalk": "^4.1.2",
     "enhanced-resolve": "^5.18.1",
     "less": "^4.2.0",
+    "less-loader": "^12.2.0",
     "less-plugin-resolve": "^1.0.2",
+    "loader-runner": "^4.3.0",
+    "loader-utils": "^3.3.1",
     "lodash": "^4.17.21",
     "node-libs-browser-okam": "^2.2.5",
     "piscina": "^4.5.1",
@@ -37,12 +41,13 @@
     "react-refresh": "^0.14.0",
     "resolve": "^1.22.8",
     "semver": "^7.6.2",
-    "yargs-parser": "^21.1.1",
-    "@module-federation/webpack-bundler-runtime": "^0.8.0"
+    "yargs-parser": "^21.1.1"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0",
     "@types/less": "^3.0.6",
+    "@types/loader-runner": "^2.2.8",
+    "@types/loader-utils": "^2.0.6",
     "@types/lodash": "^4.17.1",
     "@types/node": "^20.12.5",
     "@types/yargs-parser": "^21.0.3",
@@ -79,13 +84,13 @@
   },
   "optionalDependencies": {
     "@umijs/mako-darwin-arm64": "0.11.4",
+    "@umijs/mako-darwin-x64": "0.11.4",
     "@umijs/mako-linux-arm64-gnu": "0.11.4",
     "@umijs/mako-linux-arm64-musl": "0.11.4",
-    "@umijs/mako-win32-ia32-msvc": "0.11.4",
-    "@umijs/mako-darwin-x64": "0.11.4",
-    "@umijs/mako-win32-x64-msvc": "0.11.4",
     "@umijs/mako-linux-x64-gnu": "0.11.4",
-    "@umijs/mako-linux-x64-musl": "0.11.4"
+    "@umijs/mako-linux-x64-musl": "0.11.4",
+    "@umijs/mako-win32-ia32-msvc": "0.11.4",
+    "@umijs/mako-win32-x64-msvc": "0.11.4"
   },
   "publishConfig": {
     "access": "public"
