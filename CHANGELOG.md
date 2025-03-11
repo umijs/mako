@@ -2,7 +2,7 @@
 
 `2025-03-11`
 
-- fix: 修复sass/less-loader的路径解析 by [御风](https://github.com/御风) in [#1771](https://github.com/umijs/mako/pull/1771)
+- fix: 修复sass/less-loader的路径解析 by [YufJi](https://github.com/YufJi) in [#1771](https://github.com/umijs/mako/pull/1771)
 - feat: support to disable camel2DashComponentName of transformImport by [xusd320](https://github.com/xusd320) in [#1773](https://github.com/umijs/mako/pull/1773)
 
 ## 0.11.5
