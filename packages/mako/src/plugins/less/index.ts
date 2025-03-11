@@ -1,5 +1,6 @@
 import url from 'url';
 import { BuildParams } from '../../';
+import { JsHooks } from '../../../binding';
 import { RunLoadersOptions } from '../../runLoaders';
 import { createParallelLoader } from './parallelLessLoader';
 
@@ -25,12 +26,14 @@ export interface LessLoaderOpts {
   plugins?: (string | [string, Record<string, any>])[];
 }
 
-export class LessPlugin {
+export class LessPlugin implements JsHooks {
   name: string;
   parallelLessLoader: ReturnType<typeof createParallelLoader> | undefined;
   params: BuildParams & { resolveAlias: Record<string, string> };
   extOpts: RunLoadersOptions;
   lessOptions: LessLoaderOpts;
+  resolvedDeps: Set<string> = new Set();
+  dependenyMap: Map<string, Set<string>> = new Map();
 
   constructor(params: BuildParams & { resolveAlias: Record<string, string> }) {
     this.name = 'less';
@@ -48,7 +51,11 @@ export class LessPlugin {
     };
   }
 
-  load = async (filePath: string) => {
+  load: (
+    filePath: string,
+  ) => Promise<{ content: string; type: 'css' } | undefined> = async (
+    filePath: string,
+  ) => {
     let filename = '';
     try {
       filename = decodeURIComponent(url.parse(filePath).pathname || '');
@@ -60,12 +67,50 @@ export class LessPlugin {
       return;
     }
 
+    // resolved
+    if (this.resolvedDeps.has(filename)) {
+      return { content: '', type: 'css' };
+    }
+
     this.parallelLessLoader ||= createParallelLoader();
-    return await this.parallelLessLoader.run({
+    const result = await this.parallelLessLoader.run({
       filename,
       opts: this.lessOptions,
       extOpts: this.extOpts,
     });
+
+    let content: string = '';
+
+    if (result.result) {
+      const buf = result.result[0];
+      if (Buffer.isBuffer(buf)) {
+        content = buf.toString('utf-8');
+      } else {
+        content = buf ?? '';
+      }
+    }
+
+    if (result.fileDependencies?.length) {
+      result.fileDependencies.forEach((dep) => {
+        this.resolvedDeps.add(dep);
+      });
+      this.dependenyMap.set(
+        filename,
+        new Set(result.fileDependencies.filter((dep) => dep !== filename)),
+      );
+    }
+
+    return {
+      content,
+      type: 'css',
+    };
+  };
+
+  watchChanges = async (
+    id: string,
+    type: { event: 'create' | 'delete' | 'update' },
+  ) => {
+    console.log('watchChanges', id, type);
   };
 
   generateEnd = () => {
