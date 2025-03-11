@@ -7,9 +7,9 @@ import resolve from 'resolve';
 import { type Options } from 'sass';
 import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
-import { LessLoaderOpts, lessLoader } from './lessLoader';
+import { LessLoaderOpts, LessPlugin } from './plugins/less';
+import { SassPlugin } from './plugins/sass';
 import { rustPluginResolver } from './rustPlugins';
-import { sassLoader } from './sassLoader';
 
 type Config = binding.BuildParams['config'] & {
   plugins?: binding.BuildParams['plugins'];
@@ -94,7 +94,7 @@ export async function build(params: BuildParams) {
     ],
   ];
 
-  const lessPluginAlias =
+  const resolveAlias =
     params.config.resolve?.alias?.reduce(
       (accumulator: Record<string, string>, currentValue) => {
         accumulator[currentValue[0]] = currentValue[1];
@@ -104,51 +104,25 @@ export async function build(params: BuildParams) {
     ) || {};
 
   // built-in less-loader
-  let less = lessLoader(null, {
-    modifyVars: params.config.less?.modifyVars || {},
-    globalVars: params.config.less?.globalVars,
-    math: params.config.less?.math,
-    sourceMap: params.config.less?.sourceMap || false,
-    plugins: [
-      ['less-plugin-resolve', { aliases: lessPluginAlias }],
-      ...(params.config.less?.plugins || []),
-    ],
-  });
-  params.config.plugins.push({
-    name: 'less',
-    async load(filePath: string) {
-      let lessResult = await less.render(filePath);
-      if (lessResult) {
-        return lessResult;
-      }
-    },
-    generateEnd() {
-      if (!params.watch) {
-        less.terminate();
-      }
-    },
-  });
+  params.config.plugins.push(
+    new LessPlugin({
+      ...params,
+      resolveAlias,
+    }),
+  );
 
   if ((makoConfig as any)?.sass || params.config?.sass) {
-    const sassOpts = {
+    params.config.sass = {
       ...((makoConfig as any)?.sass || {}),
       ...(params.config?.sass || {}),
     };
-    let sass = sassLoader(null, sassOpts);
-    params.config.plugins.push({
-      name: 'sass',
-      async load(filePath: string) {
-        let sassResult = await sass.render(filePath);
-        if (sassResult) {
-          return sassResult;
-        }
-      },
-      generateEnd() {
-        if (!params.watch) {
-          sass.terminate();
-        }
-      },
-    });
+
+    params.config.plugins.push(
+      new SassPlugin({
+        ...params,
+        resolveAlias,
+      }),
+    );
   }
 
   if (makoConfig?.moduleFederation || params.config?.moduleFederation) {
