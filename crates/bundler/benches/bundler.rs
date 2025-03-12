@@ -26,7 +26,7 @@ impl Turbopack {
 
 impl Bundler for Turbopack {
     fn get_name(&self) -> &str {
-        "Turbopack CSR"
+        "Utoo Bundler CSR"
     }
 
     fn get_path(&self) -> &str {
@@ -52,8 +52,8 @@ impl Bundler for Turbopack {
     }
 
     fn start_server(&self, test_dir: &Path) -> Result<(Child, String)> {
-        let binary = std::env::var("CARGO_BIN_EXE_turobpack-cli")
-            .unwrap_or_else(|_| std::env!("CARGO_BIN_EXE_turbopack-cli").to_string());
+        let binary = std::env::var("CARGO_BIN_EXE_utoo-bundler-cli")
+            .unwrap_or_else(|_| std::env!("CARGO_BIN_EXE_utoo-bundler-cli").to_string());
         let mut proc = Command::new(binary)
             .args([
                 "dev",

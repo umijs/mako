@@ -63,6 +63,12 @@ turbopack-resolve = { workspace = true }
 turbopack-trace-utils = { workspace = true }
 turbopack-dev-server = { workspace = true }
 
+
+[dev-dependencies]
+criterion = { workspace = true, features = ["async_tokio"] }
+regex = { workspace = true }
+turbopack-bench = { workspace = true }
+
 [build-dependencies]
 turbo-tasks-build = { workspace = true }
 

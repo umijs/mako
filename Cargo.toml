@@ -24,6 +24,8 @@ serde = { version = "1.0.219", features = ["derive"] }
 owo-colors = "4.2.0"
 dunce = "1.0.5"
 webbrowser = "1.0.4"
+regex = "1.10.6"
+criterion = "0.5.1"
 
 # Dependencies from nextjs, should keep the same rev!
 ## Dependencies for common cache and task. See https://github.com/vercel/next.js/blob/canary/turbopack/crates/turbopack/architecture.md
@@ -50,6 +52,7 @@ turbopack-node = { git = "https://github.com/vercel/next.js.git", package = "tur
 turbopack-nodejs = { git = "https://github.com/vercel/next.js.git", package = "turbopack-nodejs", rev = "22812d4" }
 turbopack-static = { git = "https://github.com/vercel/next.js.git", package = "turbopack-static", rev = "22812d4" }
 turbopack-dev-server = { git = "https://github.com/vercel/next.js.git", package = "turbopack-dev-server", rev = "22812d4" }
+turbopack-bench = { git = "https://github.com/vercel/next.js.git", package = "turbopack-bench", rev = "22812d4" }
 
 [workspace.lints.clippy]
 too_many_arguments = "allow"
