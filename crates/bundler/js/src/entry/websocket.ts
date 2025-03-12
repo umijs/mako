@@ -1,5 +1,6 @@
 // Adapted from https://github.com/vercel/next.js/blob/canary/packages/next/src/client/dev/error-overlay/websocket.ts
 
+//@ts-ignore
 import type { WebSocketMessage } from "@vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client";
 
 let source: WebSocket;

@@ -5,20 +5,19 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use tracing::subscriber;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Registry};
 use turbo_tasks_malloc::TurboMalloc;
 use turbopack_trace_utils::{
     exit::ExitHandler,
     filter_layer::FilterLayer,
     raw_trace::RawTraceLayer,
-    trace_writer::{self, TraceWriter},
+    trace_writer::TraceWriter,
     tracing_presets::{
         TRACING_OVERVIEW_TARGETS, TRACING_TURBOPACK_TARGETS, TRACING_TURBO_TASKS_TARGETS,
     },
 };
 
-use bundler::{arguments::Arguments, register};
+use utoo_bundler::{arguments::Arguments, register};
 
 #[global_allocator]
 static ALLOC: TurboMalloc = TurboMalloc;
@@ -83,7 +82,7 @@ async fn main_inner(args: Arguments) -> Result<()> {
     register();
 
     match args {
-        Arguments::Build(args) => bundler::build::build(&args).await,
-        Arguments::Dev(args) => bundler::dev::start_server(&args).await,
+        Arguments::Build(args) => utoo_bundler::build::build(&args).await,
+        Arguments::Dev(args) => utoo_bundler::dev::start_server(&args).await,
     }
 }
