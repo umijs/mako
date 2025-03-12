@@ -3,7 +3,7 @@ import * as EnhancedResolve from 'enhanced-resolve';
 import * as loaderRunner from 'loader-runner';
 import * as loaderUtils from 'loader-utils';
 
-const fileSystem = new EnhancedResolve.CachedInputFileSystem(fs, 60000);
+const fileSystem = new EnhancedResolve.CachedInputFileSystem(fs, 60 * 1000);
 
 function createLoaderContext(options: {
   root: string;
@@ -83,9 +83,7 @@ export function runLoaders(
     loaderRunner.runLoaders(
       {
         resource: options.resource,
-        readResource: fileSystem.readFile.bind(
-          fileSystem,
-        ) as typeof fs.readFile,
+        readResource: fs.readFile.bind(fs),
         context: createLoaderContext({
           root: options.root,
           alias: options.alias,

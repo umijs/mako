@@ -26,14 +26,20 @@ export interface LessLoaderOpts {
   plugins?: (string | [string, Record<string, any>])[];
 }
 
+interface CssMoulde {
+  id: string;
+  content: string;
+  deps: string[];
+}
+
 export class LessPlugin implements JsHooks {
   name: string;
   parallelLessLoader: ReturnType<typeof createParallelLoader> | undefined;
   params: BuildParams & { resolveAlias: Record<string, string> };
   extOpts: RunLoadersOptions;
   lessOptions: LessLoaderOpts;
-  resolvedDeps: Set<string> = new Set();
-  dependenyMap: Map<string, Set<string>> = new Map();
+
+  moduleMap: Map<string, CssMoulde> = new Map();
 
   constructor(params: BuildParams & { resolveAlias: Record<string, string> }) {
     this.name = 'less';
@@ -51,27 +57,17 @@ export class LessPlugin implements JsHooks {
     };
   }
 
+  // 加载文件
   load: (
     filePath: string,
   ) => Promise<{ content: string; type: 'css' } | undefined> = async (
     filePath: string,
   ) => {
-    let filename = '';
-    try {
-      filename = decodeURIComponent(url.parse(filePath).pathname || '');
-    } catch (e) {
+    if (!isTargetFile(filePath)) {
       return;
     }
 
-    if (!filename?.endsWith('.less')) {
-      return;
-    }
-
-    // resolved
-    if (this.resolvedDeps.has(filename)) {
-      return { content: '', type: 'css' };
-    }
-
+    const filename = getFilename(filePath);
     this.parallelLessLoader ||= createParallelLoader();
     const result = await this.parallelLessLoader.run({
       filename,
@@ -91,13 +87,11 @@ export class LessPlugin implements JsHooks {
     }
 
     if (result.fileDependencies?.length) {
-      result.fileDependencies.forEach((dep) => {
-        this.resolvedDeps.add(dep);
+      this.moduleMap.set(filename, {
+        id: filename,
+        content,
+        deps: result.fileDependencies,
       });
-      this.dependenyMap.set(
-        filename,
-        new Set(result.fileDependencies.filter((dep) => dep !== filename)),
-      );
     }
 
     return {
@@ -106,10 +100,22 @@ export class LessPlugin implements JsHooks {
     };
   };
 
+  // 解析文件
+
+  // load_transform
+  transform = async (
+    content: { content: string; type: 'css' | 'js' },
+    filePath: string,
+  ) => {};
+
   watchChanges = async (
     id: string,
     type: { event: 'create' | 'delete' | 'update' },
   ) => {
+    if (!isTargetFile(id)) {
+      return;
+    }
+
     console.log('watchChanges', id, type);
   };
 
@@ -119,4 +125,25 @@ export class LessPlugin implements JsHooks {
       this.parallelLessLoader = undefined;
     }
   };
+}
+
+function getFilename(filePath: string) {
+  let filename = '';
+  try {
+    filename = decodeURIComponent(url.parse(filePath).pathname || '');
+  } catch (e) {
+    return '';
+  }
+
+  return filename;
+}
+
+function isTargetFile(filePath: string) {
+  let filename = getFilename(filePath);
+
+  if (filename?.endsWith('.less')) {
+    return true;
+  }
+
+  return false;
 }
