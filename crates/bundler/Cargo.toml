@@ -4,9 +4,49 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 
+[[bin]]
+name = "utoo-bundler-cli"
+path = "src/main.rs"
+
+[lib]
+bench = false
+
+[[bench]]
+name = "mod"
+harness = false
+
+[features]
+default = ["custom_allocator"]
+serializable = []
+tokio_console = [
+  "dep:console-subscriber",
+  "tokio/tracing",
+  "turbo-tasks/tokio_tracing",
+]
+profile = []
+custom_allocator = ["turbo-tasks-malloc/custom_allocator"]
+
 [dependencies]
+crossterm = "0.28.1"
 anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+console-subscriber = { workspace = true, optional = true }
+tokio = { workspace = true }
+rustc-hash = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+serde = { workspace = true }
+owo-colors = { workspace = true }
+dunce = { workspace = true }
+webbrowser = { workspace = true }
+
+turbo-rcstr = { workspace = true }
 turbo-tasks = { workspace = true }
+turbo-tasks-backend = { workspace = true }
+turbo-tasks-fs = { workspace = true }
+turbo-tasks-env = { workspace = true }
+turbo-tasks-memory = { workspace = true }
+turbo-tasks-malloc = { workspace = true }
 turbopack = { workspace = true }
 turbopack-browser = { workspace = true }
 turbopack-core = { workspace = true }
@@ -19,3 +59,12 @@ turbopack-image = { workspace = true }
 turbopack-node = { workspace = true }
 turbopack-nodejs = { workspace = true }
 turbopack-static = { workspace = true }
+turbopack-resolve = { workspace = true }
+turbopack-trace-utils = { workspace = true }
+turbopack-dev-server = { workspace = true }
+
+[build-dependencies]
+turbo-tasks-build = { workspace = true }
+
+[lints]
+workspace = true
