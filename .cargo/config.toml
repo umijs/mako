@@ -67,3 +67,12 @@ rustflags = [
 
 [target.armv7-unknown-linux-gnueabihf]
 linker = "arm-linux-gnueabihf-gcc"
+
+[unstable.git]
+shallow_index = true
+shallow_deps = true
+[unstable.gitoxide]
+fetch = true
+checkout = true
+list_files = true
+internal_use_git2 = false
