@@ -1,0 +1,300 @@
+use once_cell::sync::Lazy;
+use reqwest;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::HashMap;
+use std::io;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
+use super::logger::log_verbose;
+
+pub static PACKAGE_CACHE: Lazy<PackageCache> = Lazy::new(|| PackageCache::new());
+
+// Modified cache structure definition
+type VersionMap = HashMap<String, Value>;
+type SpecMap = HashMap<String, String>; // spec -> version
+type CacheMap = HashMap<String, (SpecMap, VersionMap)>; // name -> (specs, versions)
+
+#[derive(Debug)]
+pub struct PackageCache {
+    cache: Arc<RwLock<CacheMap>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct CacheData {
+    cache: CacheMap,
+}
+
+impl PackageCache {
+    pub fn new() -> Self {
+        Self {
+            cache: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    pub async fn export_data(&self) -> CacheData {
+        let cache = self.cache.read().await;
+        CacheData {
+            cache: cache.clone(),
+        }
+    }
+
+    pub async fn import_data(&self, data: CacheData) {
+        let mut cache = self.cache.write().await;
+        *cache = data.cache;
+    }
+
+    pub async fn get_manifest(&self, name: &str, spec: &str, version: &str) -> Option<Value> {
+        let cache = self.cache.read().await;
+        cache
+            .get(name)
+            .and_then(|(_, versions)| versions.get(version))
+            .cloned()
+    }
+
+    pub async fn set_manifest(&self, name: &str, spec: &str, version: &str, manifest: Value) {
+        let mut cache = self.cache.write().await;
+        let (specs, versions) = cache
+            .entry(name.to_string())
+            .or_insert_with(|| (HashMap::new(), HashMap::new()));
+
+        specs.insert(spec.to_string(), version.to_string());
+        versions.insert(version.to_string(), manifest);
+    }
+
+    pub async fn get_version(&self, name: &str, spec: &str) -> Option<String> {
+        let cache = self.cache.read().await;
+        cache
+            .get(name)
+            .and_then(|(specs, _)| specs.get(spec))
+            .cloned()
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PackageManifest {
+    pub name: String,
+    pub version: String,
+    #[serde(default)]
+    pub dependencies: HashMap<String, String>,
+    #[serde(default)]
+    pub dev_dependencies: HashMap<String, String>,
+}
+
+pub struct Registry {
+    client: reqwest::Client,
+    base_url: String,
+}
+
+// Global Registry instance
+static REGISTRY: Lazy<Registry> = Lazy::new(|| Registry::new());
+
+#[derive(Debug, Clone)]
+pub struct ResolvedPackage {
+    pub name: String,
+    pub version: String,
+    pub manifest: Value,
+}
+
+impl Registry {
+    pub fn new() -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            base_url: "https://registry.npmmirror.com".to_string(),
+        }
+    }
+
+    fn build_url(&self, name: &str, spec: &str) -> String {
+        if spec.starts_with("npm:") {
+            let npm_spec = spec.strip_prefix("npm:").unwrap();
+            // Handle npm spec format: npm:@babel/traverse@^7.25.3 => @babel/traverse/^7.25.3
+            if let Some(last_at_index) = npm_spec.rfind('@') {
+                let (pkg_name, version) = npm_spec.split_at(last_at_index);
+                return format!("{}/{}/{}", self.base_url, pkg_name, &version[1..]);
+            }
+        }
+
+        format!("{}/{}/{}", self.base_url, name, spec)
+    }
+
+    pub async fn get_package_manifest(
+        &self,
+        name: &str,
+        spec: &str,
+    ) -> io::Result<(String, Value)> {
+        // First check cache for version
+        if let Some(version) = PACKAGE_CACHE.get_version(name, spec).await {
+            if let Some(manifest) = PACKAGE_CACHE.get_manifest(name, spec, &version).await {
+                log_verbose(&format!("Cache hit for {}@{} => {}", name, spec, version));
+                return Ok((version, manifest));
+            }
+        }
+
+        // Build request URL
+        let url = self.build_url(name, spec);
+
+        // Send request
+        let response = self
+            .client
+            .get(&url)
+            .header("Accept", "application/vnd.npm.install-v1+json") // Request simplified manifest
+            .send()
+            .await
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+        // Check response status
+        if !response.status().is_success() {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("Fetch Error: {}, status: {}", url, response.status()),
+            ));
+        }
+
+        // Parse response
+        let manifest: Value = response
+            .json()
+            .await
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+        // Extract version
+        let version = match manifest.get("version").and_then(|v| v.as_str()) {
+            Some(v) => v.to_string(),
+            None => {
+                log_verbose(&format!("Invalid manifest: {:?}", manifest));
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Invalid manifest: missing version",
+                ));
+            }
+        };
+
+        // Update cache
+        PACKAGE_CACHE
+            .set_manifest(name, spec, &version, manifest.clone())
+            .await;
+
+        Ok((version, manifest))
+    }
+
+    async fn resolve_package(&self, name: &str, spec: &str) -> io::Result<ResolvedPackage> {
+        let (version, manifest) = self.get_package_manifest(name, spec).await?;
+        log_verbose(&format!("Resolved {}@{} => {}", name, spec, version));
+
+        Ok(ResolvedPackage {
+            name: name.to_string(),
+            version,
+            manifest,
+        })
+    }
+}
+
+// Global resolve function
+pub async fn resolve(name: &str, spec: &str) -> io::Result<ResolvedPackage> {
+    REGISTRY.resolve_package(name, spec).await
+}
+
+// Public cache operations
+pub async fn store_cache(path: &str) -> io::Result<()> {
+    let cache_data = PACKAGE_CACHE.export_data().await;
+    let cache_str = serde_json::to_string_pretty(&cache_data)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+    if let Some(parent) = std::path::Path::new(path).parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
+    tokio::fs::write(path, cache_str).await?;
+    log_verbose(&format!("Cache stored to {}", path));
+    Ok(())
+}
+
+pub async fn load_cache(path: &str) -> io::Result<()> {
+    // Check file existence
+    if !tokio::fs::try_exists(path).await? {
+        log_verbose(&format!("Cache file not found: {}", path));
+        return Ok(());
+    }
+
+    let cache_str = tokio::fs::read_to_string(path).await?;
+    let cache_data: CacheData =
+        serde_json::from_str(&cache_str).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+    PACKAGE_CACHE.import_data(cache_data).await;
+    log_verbose(&format!("Cache loaded from {}", path));
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_resolve_package() -> io::Result<()> {
+        let result = resolve("lodash", "^4").await?;
+
+        assert!(result.version.starts_with("4"));
+        assert_eq!(result.name, "lodash");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_package_manifest() -> io::Result<()> {
+        let registry = Registry::new();
+
+        // Test fetching lodash manifest
+        let (version, manifest) = registry.get_package_manifest("lodash", "^4").await?;
+
+        assert!(version.starts_with("4"));
+        assert_eq!(manifest["name"], "lodash");
+
+        // Verify cache update
+        let cached_manifest = PACKAGE_CACHE
+            .get_manifest("lodash", "4.17.21", "4.17.21")
+            .await;
+        assert!(cached_manifest.is_some());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_package_manifest_from_cache() -> io::Result<()> {
+        let registry = Registry::new();
+
+        // First request
+        let (version1, manifest1) = registry.get_package_manifest("lodash", "4.17.21").await?;
+
+        // Second request (should hit cache)
+        let (version2, manifest2) = registry.get_package_manifest("lodash", "4.17.21").await?;
+
+        assert_eq!(version1, version2);
+        assert_eq!(manifest1, manifest2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_package_manifest_not_found() {
+        let registry = Registry::new();
+
+        // Test non-existent package
+        let result = registry
+            .get_package_manifest("not-exist-package-12345", "1.0.0")
+            .await;
+
+        assert!(result.is_err());
+        if let Err(e) = result {
+            assert_eq!(e.kind(), io::ErrorKind::NotFound);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_package_manifest_invalid_version() {
+        let registry = Registry::new();
+
+        // Test invalid version spec
+        let result = registry.get_package_manifest("lodash", "999.999.999").await;
+
+        assert!(result.is_err());
+    }
+}
