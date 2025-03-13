@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: nightly    # Changed from stable to nightly
+        override: true
+        components: rustfmt, clippy
+
+    - name: Check formatting
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all -- --check
+
+    - name: Build
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test

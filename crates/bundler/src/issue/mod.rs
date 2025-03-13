@@ -598,4 +598,3 @@ fn style_issue_source(plain_issue: &PlainIssue, context_path: &str) -> String {
         formatted_title
     }
 }
-
