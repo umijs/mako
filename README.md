@@ -1,8 +1,20 @@
 # utoo
 
-## utoo bundler
+## Quickly Start
+
+## Build from source
+```bash
+cargo build --release
+export PATH=$PATH:$(pwd)/target/release
+```
+
+### Install Deps
 
 ```bash
-pnpm i
-cargo run --release --bin utoo-bundler-cli dev --dir examples/with-antd --root . --target browser
+utoo
+```
+
+### Run Dev Server
+```bash
+utoo-bundler-cli dev --dir examples/with-antd --root . --target browser
 ```
