@@ -92,7 +92,7 @@ impl TurbopackBuildBuilder {
         }
     }
 
-    pub fn entry_requests(mut self, entry_asset_path: EntryRequest) -> Self {
+    pub fn entry_request(mut self, entry_asset_path: EntryRequest) -> Self {
         self.entry_requests.push(entry_asset_path);
         self
     }
@@ -189,7 +189,7 @@ async fn build_internal(
     target: Target,
 ) -> Result<Vc<()>> {
     let output_fs = output_fs(project_dir.clone());
-    let project_fs = project_fs(project_dir.clone());
+    let project_fs = project_fs(root_dir.clone());
     let project_relative = project_dir.strip_prefix(&*root_dir).unwrap();
     let project_relative: RcStr = project_relative
         .strip_prefix(MAIN_SEPARATOR)
@@ -406,7 +406,8 @@ async fn build_internal(
                                                     .unwrap()
                                                     .into(),
                                             )
-                                            .with_extension("entry.js".into()),
+                                            // TODO: support to config with output.filename
+                                            .with_extension("index.js".into()),
                                     ),
                                     EvaluatableAssets::one(*ResolvedVc::upcast(ecmascript)),
                                     module_graph,
@@ -429,7 +430,8 @@ async fn build_internal(
                                                 .unwrap()
                                                 .into(),
                                         )
-                                        .with_extension("entry.js".into()),
+                                        // TODO: support to config with output.filename
+                                        .with_extension("index.js".into()),
                                     EvaluatableAssets::one(*ResolvedVc::upcast(ecmascript)),
                                     module_graph,
                                     OutputAssets::empty(),
@@ -497,7 +499,7 @@ pub async fn build(args: &BuildArguments) -> Result<()> {
         .show_all(args.common.show_all);
 
     for entry in normalize_entries(&args.common.entries) {
-        builder = builder.entry_requests(EntryRequest::Relative(entry));
+        builder = builder.entry_request(EntryRequest::Relative(entry));
     }
 
     builder.build().await?;

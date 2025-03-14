@@ -310,7 +310,7 @@ async fn source(
         .collect();
 
     let web_source: ResolvedVc<Box<dyn ContentSource>> = create_web_entry_source(
-        *root_path,
+        *project_path,
         execution_context,
         entry_requests,
         server_root,

@@ -94,7 +94,10 @@ pub async fn get_client_runtime_entries(
 
 #[turbo_tasks::function]
 pub async fn create_web_entry_source(
-    root_path: Vc<FileSystemPath>,
+    // TODO: Here is different with turbopack_cli, we need to know why.
+    // Maybe turbopack_cli is a different design or a mistake.
+    // See https://github.com/vercel/next.js/blob/f4552826e1ed15fbeb951be552d67c5a08ad0672/turbopack/crates/turbopack-cli/src/dev/mod.rs#L311
+    project_path: Vc<FileSystemPath>,
     execution_context: Vc<ExecutionContext>,
     entry_requests: Vec<Vc<Request>>,
     server_root: Vc<FileSystemPath>,
@@ -108,7 +111,7 @@ pub async fn create_web_entry_source(
     let compile_time_info = get_client_compile_time_info(browserslist_query, node_env);
 
     let asset_context = get_client_asset_context(
-        root_path,
+        project_path,
         execution_context,
         compile_time_info,
         node_env,
@@ -116,7 +119,7 @@ pub async fn create_web_entry_source(
     );
 
     let chunking_context = get_client_chunking_context(
-        root_path,
+        project_path,
         server_root,
         *server_root_to_root_path,
         compile_time_info.environment(),
@@ -124,11 +127,11 @@ pub async fn create_web_entry_source(
     .to_resolved()
     .await?;
 
-    let entries = get_client_runtime_entries(root_path, node_env);
+    let entries = get_client_runtime_entries(project_path, node_env);
 
     let runtime_entries = entries.resolve_entries(asset_context);
 
-    let origin = PlainResolveOrigin::new(asset_context, root_path.join("_".into()));
+    let origin = PlainResolveOrigin::new(asset_context, project_path.join("_".into()));
 
     let entries = entry_requests
         .into_iter()
@@ -198,9 +201,11 @@ pub async fn create_web_entry_source(
         .try_join()
         .await?;
 
-    let entry_asset = Vc::upcast(DevHtmlAsset::new(
+    let entry_asset = Vc::upcast(DevHtmlAsset::new_with_body(
         server_root.join("index.html".into()).to_resolved().await?,
         entries,
+        // FIXME: Root node in body is not recommended in next.js
+        r#"<div id="root"></div>"#.into(),
     ));
 
     let graph = Vc::upcast(if eager_compile {

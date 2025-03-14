@@ -1,8 +1,6 @@
 name: CI
 
-on:
-  pull_request:
-    branches: [ master ]
+on: [pull_request]
 
 jobs:
   build:
@@ -15,7 +13,7 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: nightly    # Changed from stable to nightly
+        toolchain: nightly-2025-02-12
         override: true
         components: rustfmt, clippy
 
@@ -23,14 +21,17 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: fmt
+        toolchain: nightly-2025-02-12
         args: --all -- --check
 
     - name: Build
       uses: actions-rs/cargo@v1
       with:
+        toolchain: nightly-2025-02-12
         command: build
 
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
+        toolchain: nightly-2025-02-12
         command: test

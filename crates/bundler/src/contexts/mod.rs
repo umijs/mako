@@ -107,7 +107,7 @@ async fn get_client_module_options_context(
     execution_context: ResolvedVc<ExecutionContext>,
     env: ResolvedVc<Environment>,
     node_env: Vc<NodeEnv>,
-    source_map_type: SourceMapsType,
+    source_maps_type: SourceMapsType,
 ) -> Result<Vc<ModuleOptionsContext>> {
     let is_dev = matches!(*node_env.await?, NodeEnv::Development);
     let module_options_context = ModuleOptionsContext {
@@ -149,13 +149,13 @@ async fn get_client_module_options_context(
         }],
     );
 
-    let module_option_context = ModuleOptionsContext {
+    let module_options_context = ModuleOptionsContext {
         ecmascript: EcmascriptOptionsContext {
             enable_jsx,
             enable_typescript_transform: Some(
                 TypescriptTransformOptions::default().resolved_cell(),
             ),
-            source_maps: source_map_type,
+            source_maps: source_maps_type,
             ..module_options_context.ecmascript.clone()
         },
         enable_postcss_transform: Some(PostCssTransformOptions::default().resolved_cell()),
@@ -168,7 +168,7 @@ async fn get_client_module_options_context(
     }
     .cell();
 
-    Ok(module_option_context)
+    Ok(module_options_context)
 }
 
 #[turbo_tasks::function]

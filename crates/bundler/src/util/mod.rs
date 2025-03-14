@@ -54,7 +54,7 @@ pub fn normalize_entries(entries: &Option<Vec<String>>) -> Vec<RcStr> {
     entries
         .as_ref()
         .map(|v| v.iter().map(|v| RcStr::from(&**v)).collect())
-        .unwrap_or_else(|| vec!["src/entry".into()])
+        .unwrap_or_else(|| vec!["src/index".into()])
 }
 
 #[turbo_tasks::function]
