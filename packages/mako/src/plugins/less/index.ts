@@ -39,7 +39,7 @@ export class LessPlugin implements JsHooks {
   params: BuildParams & { resolveAlias: Record<string, string> };
   extOpts: RunLoadersOptions;
   lessOptions: LessLoaderOpts;
-  moduleGraph: Map<string, LessMoulde> = new Map();
+  moduleGraph: Map<string, LessMoulde> = new Map(); // 暂未使用
 
   constructor(params: BuildParams & { resolveAlias: Record<string, string> }) {
     this.name = 'less-plugin';
