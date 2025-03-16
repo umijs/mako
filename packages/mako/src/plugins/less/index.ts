@@ -26,11 +26,12 @@ export interface LessLoaderOpts {
   plugins?: (string | [string, Record<string, any>])[];
 }
 
-interface CssMoulde {
+type LessMoulde = {
   id: string;
-  content: string;
-  deps: string[];
-}
+  deps: Set<LessMoulde>;
+  missingDeps: Set<LessMoulde>;
+  parents: Set<LessMoulde>;
+};
 
 export class LessPlugin implements JsHooks {
   name: string;
@@ -38,11 +39,10 @@ export class LessPlugin implements JsHooks {
   params: BuildParams & { resolveAlias: Record<string, string> };
   extOpts: RunLoadersOptions;
   lessOptions: LessLoaderOpts;
-
-  moduleMap: Map<string, CssMoulde> = new Map();
+  moduleGraph: Map<string, LessMoulde> = new Map();
 
   constructor(params: BuildParams & { resolveAlias: Record<string, string> }) {
-    this.name = 'less';
+    this.name = 'less-plugin';
     this.params = params;
     this.extOpts = {
       alias: params.resolveAlias,
@@ -57,7 +57,6 @@ export class LessPlugin implements JsHooks {
     };
   }
 
-  // 加载文件
   load: (
     filePath: string,
   ) => Promise<{ content: string; type: 'css' } | undefined> = async (
@@ -68,6 +67,19 @@ export class LessPlugin implements JsHooks {
     }
 
     const filename = getFilename(filePath);
+
+    let module = this.moduleGraph.get(filename);
+    if (!module) {
+      module = {
+        id: filename,
+        deps: new Set(),
+        missingDeps: new Set(),
+        parents: new Set(),
+      };
+
+      this.moduleGraph.set(filename, module);
+    }
+
     this.parallelLessLoader ||= createParallelLoader();
     const result = await this.parallelLessLoader.run({
       filename,
@@ -87,36 +99,52 @@ export class LessPlugin implements JsHooks {
     }
 
     if (result.fileDependencies?.length) {
-      this.moduleMap.set(filename, {
-        id: filename,
-        content,
-        deps: result.fileDependencies,
-      });
+      const deps = new Set(
+        result.fileDependencies.filter((dep) => dep !== filename),
+      );
+
+      for (let dep of deps) {
+        let childModule = this.moduleGraph.get(dep);
+        if (!childModule) {
+          childModule = {
+            id: dep,
+            deps: new Set(),
+            missingDeps: new Set(),
+            parents: new Set(),
+          };
+
+          this.moduleGraph.set(dep, childModule);
+        }
+
+        childModule.parents.add(module);
+        module.deps.add(childModule);
+      }
+    }
+
+    if (result.missingDependencies?.length) {
+      const missingDeps = new Set(result.missingDependencies);
+      for (let dep of missingDeps) {
+        let childModule = this.moduleGraph.get(dep);
+        if (!childModule) {
+          childModule = {
+            id: dep,
+            deps: new Set(),
+            missingDeps: new Set(),
+            parents: new Set(),
+          };
+
+          this.moduleGraph.set(dep, childModule);
+        }
+
+        childModule.parents.add(module);
+        module.missingDeps.add(childModule);
+      }
     }
 
     return {
       content,
       type: 'css',
     };
-  };
-
-  // 解析文件
-
-  // load_transform
-  transform = async (
-    content: { content: string; type: 'css' | 'js' },
-    filePath: string,
-  ) => {};
-
-  watchChanges = async (
-    id: string,
-    type: { event: 'create' | 'delete' | 'update' },
-  ) => {
-    if (!isTargetFile(id)) {
-      return;
-    }
-
-    console.log('watchChanges', id, type);
   };
 
   generateEnd = () => {

@@ -7,7 +7,7 @@ import { RunLoadersOptions } from '../../runLoaders';
 export const createParallelLoader = () =>
   new Piscina<
     { filename: string; opts: LessLoaderOpts; extOpts: RunLoadersOptions },
-    RunLoaderResult
+    RunLoaderResult & { missingDependencies: string[] }
   >({
     filename: path.resolve(__dirname + '/render.js'),
     idleTimeout: 30000,
