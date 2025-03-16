@@ -1,6 +1,5 @@
 import url from 'url';
 import { BuildParams } from '../../';
-import { JsHooks } from '../../../binding';
 import { RunLoadersOptions } from '../../runLoaders';
 import { createParallelLoader } from './parallelLessLoader';
 
@@ -26,23 +25,15 @@ export interface LessLoaderOpts {
   plugins?: (string | [string, Record<string, any>])[];
 }
 
-type LessMoulde = {
-  id: string;
-  deps: Set<LessMoulde>;
-  missingDeps: Set<LessMoulde>;
-  parents: Set<LessMoulde>;
-};
-
-export class LessPlugin implements JsHooks {
+export class LessPlugin {
   name: string;
   parallelLessLoader: ReturnType<typeof createParallelLoader> | undefined;
   params: BuildParams & { resolveAlias: Record<string, string> };
   extOpts: RunLoadersOptions;
   lessOptions: LessLoaderOpts;
-  moduleGraph: Map<string, LessMoulde> = new Map(); // 暂未使用
 
   constructor(params: BuildParams & { resolveAlias: Record<string, string> }) {
-    this.name = 'less-plugin';
+    this.name = 'less';
     this.params = params;
     this.extOpts = {
       alias: params.resolveAlias,
@@ -68,18 +59,6 @@ export class LessPlugin implements JsHooks {
 
     const filename = getFilename(filePath);
 
-    let module = this.moduleGraph.get(filename);
-    if (!module) {
-      module = {
-        id: filename,
-        deps: new Set(),
-        missingDeps: new Set(),
-        parents: new Set(),
-      };
-
-      this.moduleGraph.set(filename, module);
-    }
-
     this.parallelLessLoader ||= createParallelLoader();
     const result = await this.parallelLessLoader.run({
       filename,
@@ -95,49 +74,6 @@ export class LessPlugin implements JsHooks {
         content = buf.toString('utf-8');
       } else {
         content = buf ?? '';
-      }
-    }
-
-    if (result.fileDependencies?.length) {
-      const deps = new Set(
-        result.fileDependencies.filter((dep) => dep !== filename),
-      );
-
-      for (let dep of deps) {
-        let childModule = this.moduleGraph.get(dep);
-        if (!childModule) {
-          childModule = {
-            id: dep,
-            deps: new Set(),
-            missingDeps: new Set(),
-            parents: new Set(),
-          };
-
-          this.moduleGraph.set(dep, childModule);
-        }
-
-        childModule.parents.add(module);
-        module.deps.add(childModule);
-      }
-    }
-
-    if (result.missingDependencies?.length) {
-      const missingDeps = new Set(result.missingDependencies);
-      for (let dep of missingDeps) {
-        let childModule = this.moduleGraph.get(dep);
-        if (!childModule) {
-          childModule = {
-            id: dep,
-            deps: new Set(),
-            missingDeps: new Set(),
-            parents: new Set(),
-          };
-
-          this.moduleGraph.set(dep, childModule);
-        }
-
-        childModule.parents.add(module);
-        module.missingDeps.add(childModule);
       }
     }
 
