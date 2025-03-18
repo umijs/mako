@@ -9,5 +9,8 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "workspaces": ["examples/*"]
+  "workspaces": [
+    "examples/*",
+    "crates/bundler/js"
+  ]
 }

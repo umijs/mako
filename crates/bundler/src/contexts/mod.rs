@@ -12,7 +12,6 @@ use turbopack::{
     },
     ModuleAssetContext,
 };
-use turbopack_browser::react_refresh::assert_can_resolve_react_refresh;
 use turbopack_core::{
     chunk::SourceMapsType,
     compile_time_defines,
@@ -27,6 +26,8 @@ use turbopack_node::{
     execution_context::ExecutionContext, transforms::postcss::PostCssTransformOptions,
 };
 use turbopack_resolve::resolve_options_context::ResolveOptionsContext;
+
+use crate::dev::react_refresh::assert_can_resolve_react_refresh;
 
 #[turbo_tasks::value(shared)]
 pub enum NodeEnv {
@@ -120,7 +121,7 @@ async fn get_client_module_options_context(
 
     let resolve_options_context = get_client_resolve_options_context(project_path, node_env);
 
-    // FIXME: Should not use assert_can_resolve_react_refresh from turbopack_browser,
+    // Should not use assert_can_resolve_react_refresh from turbopack_browser,
     // because it's dependency "@next/react-refresh-utils" is not published to npm.
     let enable_react_refresh = is_dev
         && assert_can_resolve_react_refresh(project_path, resolve_options_context)

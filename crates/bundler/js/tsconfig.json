@@ -1,24 +1,13 @@
 {
   "compilerOptions": {
-    // type checking
-    "strict": true,
-    "noFallthroughCasesInSwitch": true,
-    "skipLibCheck": true,
-
-    // environment
-    "jsx": "react-jsx",
-    "lib": ["ESNext", "DOM"],
-    "target": "esnext",
-
-    // modules
-    "baseUrl": ".",
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "types": [],
-
-    // emit
-    "noEmit": true,
-    "stripInternal": true
+    "module": "commonjs",
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "target": "es2015",
+    "lib": ["dom"],
+    "downlevelIteration": true,
+    "preserveWatchOutput": true,
+    "outDir": "dist"
   },
   "include": ["src"]
 }

@@ -52,6 +52,7 @@ use crate::{
 use self::web_entry_source::create_web_entry_source;
 
 pub(crate) mod embed_js;
+pub(crate) mod react_refresh;
 pub(crate) mod web_entry_source;
 
 type Backend = TurboTasksBackend<NoopBackingStorage>;

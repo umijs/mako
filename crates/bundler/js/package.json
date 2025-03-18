@@ -1,14 +1,14 @@
 {
-  "name": "@vercel/turbopack-cli",
+  "name": "@utoo/bundler-dev-runtime",
   "version": "0.0.0",
-  "description": "Turbopack-cli runtime",
+  "description": "Utoo bundler dev runtime",
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@vercel/turbopack-ecmascript-runtime": "*"
+    "react-refresh": "0.12.0"
   },
   "devDependencies": {
     "@types/node": "^18.11.11"

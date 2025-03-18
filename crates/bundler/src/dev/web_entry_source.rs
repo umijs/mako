@@ -3,7 +3,7 @@ use turbo_rcstr::RcStr;
 use turbo_tasks::{ResolvedVc, TryJoinIterExt, Value, Vc};
 use turbo_tasks_env::ProcessEnv;
 use turbo_tasks_fs::FileSystemPath;
-use turbopack_browser::{react_refresh::assert_can_resolve_react_refresh, BrowserChunkingContext};
+use turbopack_browser::BrowserChunkingContext;
 use turbopack_core::{
     chunk::{ChunkGroupType, ChunkableModule, ChunkingContext, EvaluatableAsset, SourceMapsType},
     environment::Environment,
@@ -31,6 +31,8 @@ use crate::{
     dev::embed_js::embed_file_path,
     runtime_entry::{RuntimeEntries, RuntimeEntry},
 };
+
+use super::react_refresh::assert_can_resolve_react_refresh;
 
 #[turbo_tasks::function]
 pub async fn get_client_chunking_context(
