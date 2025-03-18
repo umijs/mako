@@ -1,10 +1,10 @@
 use std::process;
 
 use clap::{App, SubCommand};
-use cmd::clean::clean;
 use cmd::deps::build_deps;
 use cmd::install::install;
 use cmd::rebuild::rebuild;
+use cmd::{clean::clean, deps::build_workspace};
 use helper::auto_update::init_auto_update;
 use util::logger::{log_error, log_info, log_warning, set_verbose, write_verbose_logs_to_file};
 
@@ -75,6 +75,9 @@ async fn main() {
             SubCommand::with_name("deps")
                 .alias("d")
                 .about("Generate package-lock.json file (alias: d), expiremental feature")
+                .arg(clap::Arg::with_name("workspace-only")
+                    .long("workspace-only")
+                    .help("Only build workspace packages"))
         );
 
     // extend app
@@ -135,10 +138,18 @@ async fn main() {
             log_info("💫 All dependencies rebuild completed");
         }
         Some("deps") => {
-            if let Err(e) = build_deps().await {
-                log_error(&e.to_string());
-                let _ = write_verbose_logs_to_file();
-                process::exit(1);
+            if let Some(deps_matches) = matches.subcommand_matches("deps") {
+                let result = if deps_matches.is_present("workspace-only") {
+                    build_workspace().await
+                } else {
+                    build_deps().await
+                };
+
+                if let Err(e) = result {
+                    log_error(&e.to_string());
+                    let _ = write_verbose_logs_to_file();
+                    process::exit(1);
+                }
             }
         }
         _ => {

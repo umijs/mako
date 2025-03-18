@@ -2,6 +2,7 @@ use glob::glob;
 
 use semver::{Version, VersionReq};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -488,6 +489,51 @@ impl Ruborist {
         store_cache("./node_modules/.utoo-manifest.json").await?;
         finish_progress_bar("Building dependency tree complete.");
         self.ideal_tree = Some(root);
+        Ok(())
+    }
+
+    pub async fn build_workspace_tree(&mut self) -> io::Result<()> {
+        let root = self.init_tree().await?;
+
+        start_progress_bar();
+
+        // init_tree has already loaded all workspace
+        let children = root.children.read().unwrap();
+
+        // build a map of workspace nodes
+        let mut workspace_map = HashMap::new();
+        for workspace in children.iter() {
+            if workspace.is_workspace {
+                workspace_map.insert(workspace.name.clone(), workspace.clone());
+            }
+        }
+
+        // find the deps between workspace
+        for workspace in children.iter() {
+            if workspace.is_link {
+                continue;
+            }
+            PROGRESS_BAR.inc_length(1);
+            let edges = workspace.edges_out.read().unwrap();
+            for edge in edges.iter() {
+                if let Some(dep_workspace) = workspace_map.get(&edge.name) {
+                    // find edges_out for workspace
+                    let mut to = edge.to.write().unwrap();
+                    *to = Some(dep_workspace.clone());
+                    let mut valid = edge.valid.write().unwrap();
+                    *valid = true;
+
+                    log_verbose(&format!(
+                        "Workspace dependency: {} -> {}",
+                        workspace.name, dep_workspace.name
+                    ));
+                }
+            }
+            PROGRESS_BAR.inc(1);
+        }
+
+        finish_progress_bar("Building workspace dependency tree complete.");
+        self.ideal_tree = Some(root.clone());
         Ok(())
     }
 }
