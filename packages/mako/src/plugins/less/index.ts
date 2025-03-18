@@ -30,6 +30,7 @@ type LessModule = {
   id: string;
   deps: Set<LessModule>;
   missing_deps: Set<LessModule>;
+  ancestors: Set<LessModule>;
 };
 
 export class LessPlugin implements binding.JsHooks {
@@ -73,6 +74,7 @@ export class LessPlugin implements binding.JsHooks {
         id: filename,
         deps: new Set(),
         missing_deps: new Set(),
+        ancestors: new Set(),
       };
       this.moduleGraph.set(filename, module);
     }
@@ -106,13 +108,14 @@ export class LessPlugin implements binding.JsHooks {
             id: dep,
             deps: new Set(),
             missing_deps: new Set(),
+            ancestors: new Set(),
           };
           this.moduleGraph.set(dep, depModule);
         }
         module.deps.add(depModule);
+        depModule.ancestors.add(module);
       }
     }
-
     if (result.missingDependencies?.length) {
       const missingDeps = new Set(result.missingDependencies);
       for (const dep of missingDeps) {
@@ -122,10 +125,12 @@ export class LessPlugin implements binding.JsHooks {
             id: dep,
             deps: new Set(),
             missing_deps: new Set(),
+            ancestors: new Set(),
           };
           this.moduleGraph.set(dep, depModule);
         }
         module.missing_deps.add(depModule);
+        depModule.ancestors.add(module);
       }
     }
 
@@ -135,50 +140,29 @@ export class LessPlugin implements binding.JsHooks {
     };
   };
 
-  addDeps = async (filePath: string, _deps: string[]) => {
-    if (!isTargetFile(filePath)) {
-      return;
-    }
+  beforeRebuild = async (paths: string[]) => {
+    const result: string[] = [];
 
-    const filename = getFilename(filePath);
-    const module = this.moduleGraph.get(filename);
+    paths.forEach((filePath) => {
+      if (!isTargetFile(filePath)) {
+        result.push(filePath);
+        return;
+      }
 
-    if (!module) {
-      return;
-    }
+      const filename = getFilename(filePath);
+      const module = this.moduleGraph.get(filename);
 
-    const deps: string[] = [];
-    const missingDeps: string[] = [];
+      if (!module || module.ancestors.size === 0) {
+        result.push(filePath);
+        return;
+      }
 
-    for (const dep of module.deps) {
-      deps.push(dep.id);
-    }
+      module.ancestors.forEach((ancestor) => {
+        result.push(ancestor.id);
+      });
+    });
 
-    for (const dep of module.missing_deps) {
-      missingDeps.push(dep.id);
-    }
-
-    return {
-      deps,
-      missingDeps,
-    };
-  };
-
-  nextBuild = async (current: string, next: string) => {
-    if (!isTargetFile(next)) {
-      return true;
-    }
-
-    const currentFilename = getFilename(current);
-    const currentModule = this.moduleGraph.get(currentFilename);
-    const nextFilename = getFilename(next);
-    const nextModule = this.moduleGraph.get(nextFilename);
-
-    if (nextModule && currentModule?.deps.has(nextModule)) {
-      return false;
-    }
-
-    return true;
+    return result;
   };
 
   generateEnd = () => {

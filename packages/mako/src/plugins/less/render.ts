@@ -1,6 +1,5 @@
 import { LessLoaderOpts } from '.';
 import { RunLoadersOptions, runLoaders } from '../../runLoaders';
-import LessImportPlugin from './less-import-plugin';
 
 module.exports = async function render(param: {
   filename: string;
@@ -21,8 +20,6 @@ module.exports = async function render(param: {
       }
     },
   );
-
-  pluginInstances.unshift(new LessImportPlugin());
 
   return runLoaders({
     alias: extOpts.alias,

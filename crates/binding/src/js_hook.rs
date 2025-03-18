@@ -80,12 +80,8 @@ pub struct JsHooks {
     pub transform: Option<JsFunction>,
     #[napi(ts_type = "(filePath: string) => Promise<bool> | bool;")]
     pub transform_include: Option<JsFunction>,
-    #[napi(
-        ts_type = "(filePath: string, deps: string[]) => Promise<{ deps: string[]; missingDeps: string[] } | void> | void;"
-    )]
-    pub add_deps: Option<JsFunction>,
-    #[napi(ts_type = "(current: string, next: string) => Promise<bool> | bool;")]
-    pub next_build: Option<JsFunction>,
+    #[napi(ts_type = "(paths: string[]) => Promise<string[] | void> | void;")]
+    pub before_rebuild: Option<JsFunction>,
 }
 
 type ResolveIdFuncParams = (PluginContext, String, String, ResolveIdParams);
@@ -103,9 +99,7 @@ pub struct TsFnHooks {
     pub transform:
         Option<ThreadsafeFunction<(PluginContext, String, String), Option<TransformResult>>>,
     pub transform_include: Option<ThreadsafeFunction<(PluginContext, String), Option<bool>>>,
-    pub add_deps:
-        Option<ThreadsafeFunction<(PluginContext, String, Vec<String>), Option<AddDepsResult>>>,
-    pub next_build: Option<ThreadsafeFunction<((), String, String), Option<bool>>>,
+    pub before_rebuild: Option<ThreadsafeFunction<((), Vec<String>), Option<Vec<String>>>>,
 }
 
 impl TsFnHooks {
@@ -144,10 +138,7 @@ impl TsFnHooks {
             transform_include: hooks.transform_include.as_ref().map(|hook| unsafe {
                 ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
-            add_deps: hooks.add_deps.as_ref().map(|hook| unsafe {
-                ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
-            }),
-            next_build: hooks.next_build.as_ref().map(|hook| unsafe {
+            before_rebuild: hooks.before_rebuild.as_ref().map(|hook| unsafe {
                 ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
         }
@@ -189,11 +180,4 @@ pub struct TransformResult {
     pub content: String,
     #[napi(js_name = "type")]
     pub content_type: String,
-}
-
-#[derive(Debug)]
-#[napi(object, use_nullable = true)]
-pub struct AddDepsResult {
-    pub deps: Vec<String>,
-    pub missing_deps: Vec<String>,
 }
