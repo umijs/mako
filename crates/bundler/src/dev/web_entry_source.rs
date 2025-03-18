@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use turbo_rcstr::RcStr;
-use turbo_tasks::{ResolvedVc, TryFlatJoinIterExt, TryJoinIterExt, Value, Vc};
+use turbo_tasks::{ResolvedVc, TryJoinIterExt, Value, Vc};
 use turbo_tasks_env::ProcessEnv;
 use turbo_tasks_fs::FileSystemPath;
 use turbopack_browser::{react_refresh::assert_can_resolve_react_refresh, BrowserChunkingContext};
@@ -45,8 +45,8 @@ pub async fn get_client_chunking_context(
             server_root,
             server_root_to_root_path,
             server_root,
-            server_root.join("/_chunks".into()).to_resolved().await?,
-            server_root.join("/_assets".into()).to_resolved().await?,
+            server_root,
+            server_root,
             environment,
             RuntimeType::Development,
         )
@@ -132,22 +132,27 @@ pub async fn create_web_entry_source(
     let runtime_entries = entries.resolve_entries(asset_context);
 
     let origin = PlainResolveOrigin::new(asset_context, project_path.join("_".into()));
-
+    let project_dir = &project_path.await?.path;
     let entries = entry_requests
         .into_iter()
-        .map(|request| async move {
-            let ty = Value::new(ReferenceType::Entry(EntryReferenceSubType::Web));
-            Ok(origin
-                .resolve_asset(request, origin.resolve_options(ty.clone()), ty)
+        .map(|request_vc| async move {
+            let ty = Value::new(ReferenceType::Entry(EntryReferenceSubType::Undefined));
+
+            let request = request_vc.await?;
+            origin
+                .resolve_asset(request_vc, origin.resolve_options(ty.clone()), ty)
                 .await?
-                .resolve()
+                .first_module()
                 .await?
-                .primary_modules()
-                .await?
-                .first()
-                .copied())
+                .with_context(|| {
+                    format!(
+                        "Unable to resolve entry {} from directory {}.",
+                        request.request().unwrap(),
+                        project_dir
+                    )
+                })
         })
-        .try_flat_join()
+        .try_join()
         .await?;
 
     let all_modules = entries

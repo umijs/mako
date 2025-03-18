@@ -169,9 +169,6 @@ name = "anyhow"
 version = "1.0.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcfed56ad506cb2c684a14971b8861fdc3baaaae314b9e5f9bb532cbe3ba7a4f"
-dependencies = [
- "backtrace",
-]
 
 [[package]]
 name = "arbitrary"
@@ -265,20 +262,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-tungstenite"
-version = "0.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1e9efbe14612da0a19fb983059a0b621e9cf6225d7018ecab4f9988215540dc"
-dependencies = [
- "futures-io",
- "futures-util",
- "log",
- "pin-project-lite",
- "tokio",
- "tungstenite 0.20.1",
-]
-
-[[package]]
 name = "atomic-polyfill"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -307,7 +290,7 @@ dependencies = [
 [[package]]
 name = "auto-hash-map"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "hashbrown 0.14.5",
  "rustc-hash 2.1.1",
@@ -751,72 +734,6 @@ name = "chili"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e72f874459a658df39dd1d99f7f62a9c421792efc26eaae8d497ae5d2e816a62"
-
-[[package]]
-name = "chromiumoxide"
-version = "0.5.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2abb1e644b7fcaa711fe4d3fca06c52bf18ebc5398711b2b11e8281c6107fbe"
-dependencies = [
- "async-tungstenite",
- "base64 0.21.7",
- "cfg-if",
- "chromiumoxide_cdp",
- "chromiumoxide_types",
- "dunce",
- "fnv",
- "futures",
- "futures-timer",
- "pin-project-lite",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
- "tokio",
- "tracing",
- "url",
- "which",
- "winreg 0.51.0",
-]
-
-[[package]]
-name = "chromiumoxide_cdp"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72641e4931b5372361160346d88605bbd6252b54c89581b71ac06b3b68b8b7c0"
-dependencies = [
- "chromiumoxide_pdl",
- "chromiumoxide_types",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "chromiumoxide_pdl"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ecbd2d949e41b72575e61f9a38a5e2d6207ffb98544448e1eb7b9310d48bbbe"
-dependencies = [
- "chromiumoxide_types",
- "either",
- "heck 0.4.1",
- "once_cell",
- "proc-macro2",
- "quote",
- "regex",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "chromiumoxide_types"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5fc717f4c899a7a02a50f7698a90acade50a1a65fe7804e57c747739fa23e25"
-dependencies = [
- "serde",
- "serde_json",
-]
 
 [[package]]
 name = "chrono"
@@ -2114,12 +2031,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f90f7dce0722e95104fcb095585910c0977252f286e354b5e3bd38902cd99988"
 
 [[package]]
-name = "futures-timer"
-version = "3.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f288b0a4f20f9a56b5d1da57e2227c661b7b16168e2f72365f57b63326e29b24"
-
-[[package]]
 name = "futures-util"
 version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2362,12 +2273,6 @@ dependencies = [
 
 [[package]]
 name = "heck"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
-
-[[package]]
-name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
@@ -2600,7 +2505,7 @@ dependencies = [
  "pin-project",
  "tokio",
  "tokio-tungstenite",
- "tungstenite 0.18.0",
+ "tungstenite",
 ]
 
 [[package]]
@@ -3483,15 +3388,6 @@ dependencies = [
 
 [[package]]
 name = "memoffset"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5de893c32cde5f383baa4c04c5d6dbdd735cfd4a794b0debdb2bb1b421da5ff4"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
-name = "memoffset"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
@@ -3667,19 +3563,6 @@ name = "new_debug_unreachable"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
-
-[[package]]
-name = "nix"
-version = "0.26.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "598beaf3cc6fdd9a5dfb1630c2800c7acd31df7aaf0f565796fba2b53ca1af1b"
-dependencies = [
- "bitflags 1.3.2",
- "cfg-if",
- "libc",
- "memoffset 0.7.1",
- "pin-utils",
-]
 
 [[package]]
 name = "nom"
@@ -4249,15 +4132,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "350e9b48cbc6b0e028b0473b114454c6316e57336ee184ceab6e53f72c178b3e"
 
 [[package]]
-name = "portpicker"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be97d76faf1bfab666e1375477b23fde79eccf0276e9b63b92a39d676a889ba9"
-dependencies = [
- "rand",
-]
-
-[[package]]
 name = "postcard"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4785,7 +4659,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "winreg 0.50.0",
+ "winreg",
 ]
 
 [[package]]
@@ -7531,7 +7405,7 @@ dependencies = [
  "futures-util",
  "log",
  "tokio",
- "tungstenite 0.18.0",
+ "tungstenite",
 ]
 
 [[package]]
@@ -7787,28 +7661,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "tungstenite"
-version = "0.20.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e3dac10fd62eaf6617d3a904ae222845979aec67c615d1c842b4002c7666fb9"
-dependencies = [
- "byteorder",
- "bytes",
- "data-encoding",
- "http 0.2.12",
- "httparse",
- "log",
- "rand",
- "sha1",
- "thiserror 1.0.69",
- "url",
- "utf-8",
-]
-
-[[package]]
 name = "turbo-persistence"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -7829,12 +7684,12 @@ dependencies = [
 [[package]]
 name = "turbo-prehash"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 
 [[package]]
 name = "turbo-rcstr"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "new_debug_unreachable",
  "serde",
@@ -7846,7 +7701,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -7886,7 +7741,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-backend"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -7923,7 +7778,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-build"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "cargo-lock",
@@ -7937,7 +7792,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-bytes"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "bytes",
@@ -7951,7 +7806,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-env"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "dotenvs",
@@ -7966,7 +7821,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-fs"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "auto-hash-map",
@@ -8004,7 +7859,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-hash"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "turbo-tasks-macros",
  "twox-hash 1.6.3",
@@ -8013,7 +7868,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-macros"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "either",
  "proc-macro-error",
@@ -8028,7 +7883,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-macros-shared"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8038,7 +7893,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-malloc"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "mimalloc",
 ]
@@ -8046,7 +7901,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-memory"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "auto-hash-map",
@@ -8073,7 +7928,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-testing"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "auto-hash-map",
@@ -8087,7 +7942,7 @@ dependencies = [
 [[package]]
 name = "turbopack"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "indexmap 2.8.0",
@@ -8118,36 +7973,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "turbopack-bench"
-version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
-dependencies = [
- "anyhow",
- "chromiumoxide",
- "criterion",
- "futures",
- "nix",
- "once_cell",
- "owo-colors 3.5.0",
- "parking_lot",
- "portpicker",
- "rand",
- "regex",
- "rustc-hash 2.1.1",
- "serde_json",
- "tempfile",
- "tokio",
- "tungstenite 0.20.1",
- "turbo-tasks",
- "turbo-tasks-testing",
- "turbopack-create-test-app",
- "url",
-]
-
-[[package]]
 name = "turbopack-browser"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "either",
@@ -8173,7 +8001,7 @@ dependencies = [
 [[package]]
 name = "turbopack-cli-utils"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "clap 4.5.32",
@@ -8191,7 +8019,7 @@ dependencies = [
 [[package]]
 name = "turbopack-core"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8226,22 +8054,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "turbopack-create-test-app"
-version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
-dependencies = [
- "anyhow",
- "clap 4.5.32",
- "indoc",
- "pathdiff",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
 name = "turbopack-css"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "indexmap 2.8.0",
@@ -8270,7 +8085,7 @@ dependencies = [
 [[package]]
 name = "turbopack-dev-server"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "async-compression",
@@ -8308,7 +8123,7 @@ dependencies = [
 [[package]]
 name = "turbopack-ecmascript"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8347,7 +8162,7 @@ dependencies = [
 [[package]]
 name = "turbopack-ecmascript-hmr-protocol"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "serde",
  "serde_json",
@@ -8358,7 +8173,7 @@ dependencies = [
 [[package]]
 name = "turbopack-ecmascript-plugins"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8385,7 +8200,7 @@ dependencies = [
 [[package]]
 name = "turbopack-ecmascript-runtime"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "indoc",
@@ -8402,7 +8217,7 @@ dependencies = [
 [[package]]
 name = "turbopack-env"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "indexmap 2.8.0",
@@ -8419,7 +8234,7 @@ dependencies = [
 [[package]]
 name = "turbopack-image"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "base64 0.21.7",
@@ -8439,7 +8254,7 @@ dependencies = [
 [[package]]
 name = "turbopack-json"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "serde",
@@ -8455,7 +8270,7 @@ dependencies = [
 [[package]]
 name = "turbopack-mdx"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "markdown",
@@ -8472,7 +8287,7 @@ dependencies = [
 [[package]]
 name = "turbopack-node"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -8510,7 +8325,7 @@ dependencies = [
 [[package]]
 name = "turbopack-nodejs"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "either",
@@ -8534,7 +8349,7 @@ dependencies = [
 [[package]]
 name = "turbopack-resolve"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "indexmap 2.8.0",
@@ -8553,7 +8368,7 @@ dependencies = [
 [[package]]
 name = "turbopack-static"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "serde",
@@ -8570,7 +8385,7 @@ dependencies = [
 [[package]]
 name = "turbopack-swc-utils"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "parking_lot",
@@ -8584,7 +8399,7 @@ dependencies = [
 [[package]]
 name = "turbopack-trace-utils"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
@@ -8604,7 +8419,7 @@ dependencies = [
 [[package]]
 name = "turbopack-wasm"
 version = "0.1.0"
-source = "git+https://github.com/vercel/next.js.git?tag=v15.2.2#f4552826e1ed15fbeb951be552d67c5a08ad0672"
+source = "git+https://github.com/vercel/next.js.git?tag=v15.2.3#535e26d3c69de49df8bd17618a424cbe65ec897b"
 dependencies = [
  "anyhow",
  "indexmap 2.8.0",
@@ -8851,7 +8666,6 @@ dependencies = [
  "turbo-tasks-malloc",
  "turbo-tasks-memory",
  "turbopack",
- "turbopack-bench",
  "turbopack-browser",
  "turbopack-core",
  "turbopack-dev-server",
@@ -9465,7 +9279,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "mach2",
- "memoffset 0.9.1",
+ "memoffset",
  "more-asserts",
  "region",
  "scopeguard",
@@ -9700,18 +9514,6 @@ name = "weezl"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "53a85b86a771b1c87058196170769dd264f66c0782acf1ae6cc51bfd64b39082"
-
-[[package]]
-name = "which"
-version = "4.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87ba24419a2078cd2b0f2ede2691b6c66d8e47836da3b6db8265ebad47afbfc7"
-dependencies = [
- "either",
- "home",
- "once_cell",
- "rustix 0.38.44",
-]
 
 [[package]]
 name = "winapi"
@@ -9996,16 +9798,6 @@ name = "winreg"
 version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "524e57b2c537c0f9b1e69f1965311ec12182b4122e45035b1508cd24d2adadb1"
-dependencies = [
- "cfg-if",
- "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "winreg"
-version = "0.51.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "937f3df7948156640f46aacef17a70db0de5917bda9c92b0f751f3a955b588fc"
 dependencies = [
  "cfg-if",
  "windows-sys 0.48.0",

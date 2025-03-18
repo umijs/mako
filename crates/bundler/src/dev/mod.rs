@@ -254,33 +254,23 @@ async fn source(
     let root_path = fs.root().to_resolved().await?;
     let project_path = root_path.join(project_relative).to_resolved().await?;
 
-    let env = load_env();
-    let build_output_root = output_fs
-        .root()
-        .join(".turbopack/build".into())
-        .to_resolved()
-        .await?;
+    let build_output_root = output_fs.root().join("dist".into()).to_resolved().await?;
 
     let build_output_root_to_root_path = project_path
-        .join(".turbopack/build".into())
+        .join("dist".into())
         .await?
         .get_relative_path_to(&*root_path.await?)
         .context("Project path is in root path")?;
-    let build_output_root_to_root_path = ResolvedVc::cell(build_output_root_to_root_path);
+
+    let env = load_env();
 
     let build_chunking_context = NodeJsChunkingContext::builder(
         root_path,
         build_output_root,
-        build_output_root_to_root_path,
+        ResolvedVc::cell(build_output_root_to_root_path.clone()),
         build_output_root,
-        build_output_root
-            .join("chunks".into())
-            .to_resolved()
-            .await?,
-        build_output_root
-            .join("assets".into())
-            .to_resolved()
-            .await?,
+        build_output_root,
+        build_output_root,
         node_build_environment().to_resolved().await?,
         RuntimeType::Development,
     )
@@ -289,8 +279,6 @@ async fn source(
     let execution_context =
         ExecutionContext::new(*root_path, Vc::upcast(build_chunking_context), env);
 
-    let server_fs = Vc::upcast::<Box<dyn FileSystem>>(ServerFileSystem::new());
-    let server_root = server_fs.root();
     let entry_requests = entry_requests
         .iter()
         .map(|r| match r {
@@ -308,6 +296,9 @@ async fn source(
             ),
         })
         .collect();
+
+    let server_fs = Vc::upcast::<Box<dyn FileSystem>>(ServerFileSystem::new());
+    let server_root = server_fs.root();
 
     let web_source: ResolvedVc<Box<dyn ContentSource>> = create_web_entry_source(
         *project_path,

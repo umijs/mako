@@ -8,12 +8,6 @@ license.workspace = true
 name = "utoo-bundler-cli"
 path = "src/main.rs"
 
-[lib]
-bench = false
-
-[[bench]]
-name = "mod"
-harness = false
 
 [features]
 default = ["custom_allocator"]
@@ -67,7 +61,6 @@ turbopack-dev-server = { workspace = true }
 [dev-dependencies]
 criterion = { workspace = true, features = ["async_tokio"] }
 regex = { workspace = true }
-turbopack-bench = { workspace = true }
 
 [build-dependencies]
 turbo-tasks-build = { workspace = true }

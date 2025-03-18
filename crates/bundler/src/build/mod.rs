@@ -17,7 +17,9 @@ use turbo_tasks_backend::{
 };
 
 use turbo_tasks_fs::FileSystem;
-use turbopack::global_module_ids::get_global_module_id_strategy;
+use turbopack::{
+    evaluate_context::node_build_environment, global_module_ids::get_global_module_id_strategy,
+};
 use turbopack_browser::BrowserChunkingContext;
 use turbopack_core::{
     asset::Asset,
@@ -25,7 +27,7 @@ use turbopack_core::{
         availability_info::AvailabilityInfo, ChunkGroupType, ChunkingConfig, ChunkingContext,
         EvaluatableAsset, EvaluatableAssets, MinifyType, SourceMapsType,
     },
-    environment::{BrowserEnvironment, Environment, ExecutionEnvironment, NodeJsEnvironment},
+    environment::{BrowserEnvironment, Environment, ExecutionEnvironment},
     ident::AssetIdent,
     issue::{handle_issues, IssueReporter, IssueSeverity},
     module::Module,
@@ -135,8 +137,8 @@ impl TurbopackBuildBuilder {
     pub async fn build(self) -> Result<()> {
         let task = self.turbo_tasks.spawn_once_task::<(), _>(async move {
             let build_result_op = build_internal(
-                self.project_dir.clone(),
                 self.root_dir,
+                self.project_dir.clone(),
                 self.entry_requests.clone(),
                 self.browserslist_query,
                 self.source_maps_type,
@@ -180,24 +182,26 @@ impl TurbopackBuildBuilder {
 
 #[turbo_tasks::function(operation)]
 async fn build_internal(
-    project_dir: RcStr,
     root_dir: RcStr,
+    project_dir: RcStr,
     entry_requests: Vec<EntryRequest>,
     browserslist_query: RcStr,
     source_maps_type: SourceMapsType,
     minify_type: MinifyType,
     target: Target,
 ) -> Result<Vc<()>> {
-    let output_fs = output_fs(project_dir.clone());
-    let project_fs = project_fs(root_dir.clone());
     let project_relative = project_dir.strip_prefix(&*root_dir).unwrap();
     let project_relative: RcStr = project_relative
         .strip_prefix(MAIN_SEPARATOR)
         .unwrap_or(project_relative)
         .replace(MAIN_SEPARATOR, "/")
         .into();
-    let root_path = project_fs.root().to_resolved().await?;
+
+    let output_fs = output_fs(project_dir.clone());
+    let fs: Vc<Box<dyn FileSystem>> = project_fs(root_dir);
+    let root_path = fs.root().to_resolved().await?;
     let project_path = root_path.join(project_relative).to_resolved().await?;
+
     let build_output_root = output_fs.root().join("dist".into()).to_resolved().await?;
 
     let build_output_root_to_root_path = project_path
@@ -224,11 +228,7 @@ async fn build_internal(
                 build_output_root,
                 build_output_root,
                 build_output_root,
-                Environment::new(Value::new(ExecutionEnvironment::NodeJsLambda(
-                    NodeJsEnvironment::default().resolved_cell(),
-                )))
-                .to_resolved()
-                .await?,
+                node_build_environment().to_resolved().await?,
                 runtime_type,
             )
             .build(),
@@ -266,7 +266,7 @@ async fn build_internal(
         .await?)
         .to_vec();
 
-    let origin = PlainResolveOrigin::new(asset_context, project_fs.root().join("_".into()));
+    let origin = PlainResolveOrigin::new(asset_context, project_path.join("_".into()));
     let project_dir = &project_dir;
     let entries = entry_requests
         .into_iter()
