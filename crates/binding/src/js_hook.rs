@@ -85,6 +85,7 @@ pub struct JsHooks {
 }
 
 type ResolveIdFuncParams = (PluginContext, String, String, ResolveIdParams);
+type BeforeRebuildPaths = Vec<String>;
 
 pub struct TsFnHooks {
     pub build_start: Option<ThreadsafeFunction<PluginContext, ()>>,
@@ -99,7 +100,8 @@ pub struct TsFnHooks {
     pub transform:
         Option<ThreadsafeFunction<(PluginContext, String, String), Option<TransformResult>>>,
     pub transform_include: Option<ThreadsafeFunction<(PluginContext, String), Option<bool>>>,
-    pub before_rebuild: Option<ThreadsafeFunction<((), Vec<String>), Option<Vec<String>>>>,
+    pub before_rebuild:
+        Option<ThreadsafeFunction<((), BeforeRebuildPaths), Option<BeforeRebuildPaths>>>,
 }
 
 impl TsFnHooks {
