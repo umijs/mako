@@ -45,6 +45,8 @@ impl AnalyzeDeps {
             _ => vec![],
         };
         context.plugin_driver.before_resolve(&mut deps, &context)?;
+        context.plugin_driver.add_deps(file, &mut deps, &context)?;
+
         Self::check_deps(&deps, file)?;
 
         let mut resolved_deps = vec![];

@@ -69,6 +69,11 @@ export interface JsHooks {
     path: string,
   ) => Promise<{ content: string; type: 'css' | 'js' } | void> | void;
   transformInclude?: (filePath: string) => Promise<bool> | bool;
+  addDeps?: (
+    filePath: string,
+    deps: string[],
+  ) => Promise<{ deps: string[]; missingDeps: string[] } | void> | void;
+  nextBuild?: (current: string, next: string) => Promise<bool> | bool;
 }
 export interface WriteFile {
   path: string;
@@ -91,6 +96,10 @@ export interface ResolveIdParams {
 export interface TransformResult {
   content: string;
   type: string;
+}
+export interface AddDepsResult {
+  deps: Array<string>;
+  missingDeps: Array<string>;
 }
 export interface BuildParams {
   root: string;

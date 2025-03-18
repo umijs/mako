@@ -2,15 +2,16 @@ use std::path::PathBuf;
 use std::sync::{Arc, Weak};
 
 use anyhow::{anyhow, Result};
-use mako::ast::file::{Content, JsContent};
+use mako::ast::file::{Content, File, JsContent};
 use mako::compiler::Context;
+use mako::module::{Dependency, ResolveType};
 use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam, PluginResolveIdParams};
 use mako::resolve::{ExternalResource, Resolution, ResolvedResource, ResolverResource};
 use napi_derive::napi;
 
 use crate::js_hook::{
-    LoadResult, ResolveIdParams, ResolveIdResult, TransformResult, TsFnHooks, WatchChangesParams,
-    WriteFile,
+    AddDepsResult, LoadResult, ResolveIdParams, ResolveIdResult, TransformResult, TsFnHooks,
+    WatchChangesParams, WriteFile,
 };
 
 fn content_from_result(result: TransformResult) -> Result<Content> {
@@ -253,5 +254,62 @@ impl Plugin for JsPlugin {
             }
         }
         Ok(None)
+    }
+
+    fn add_deps(
+        &self,
+        file: &File,
+        _deps: &mut Vec<Dependency>,
+        context: &Arc<Context>,
+    ) -> Result<()> {
+        if let Some(hook) = &self.hooks.add_deps {
+            let result: Option<AddDepsResult> = hook.call((
+                PluginContext {
+                    context: Arc::downgrade(context),
+                },
+                file.path.to_string_lossy().to_string(),
+                _deps.iter().map(|dep| dep.source.clone()).collect(),
+            ))?;
+
+            if let Some(result) = result {
+                let deps = result.deps;
+                let _missing_deps = result.missing_deps;
+
+                deps.iter().enumerate().for_each(|(idx, dep)| {
+                    _deps.push(Dependency {
+                        source: dep.clone(),
+                        order: idx,
+                        resolve_type: ResolveType::Require,
+                        span: None,
+                        resolve_as: None,
+                    });
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    fn next_build(&self, _next_build_param: &mako::plugin::NextBuildParam) -> bool {
+        if let Some(hook) = &self.hooks.next_build {
+            let result: Option<bool> = match hook.call((
+                (),
+                _next_build_param.current_module.id.clone(),
+                _next_build_param
+                    .next_file
+                    .path
+                    .to_string_lossy()
+                    .to_string(),
+            )) {
+                Ok(res) => res,
+                Err(_) => return false,
+            };
+
+            if let Some(result) = result {
+                return result;
+            }
+        }
+
+        true
     }
 }

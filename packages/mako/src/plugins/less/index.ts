@@ -1,5 +1,6 @@
 import url from 'url';
 import { BuildParams } from '../../';
+import * as binding from '../../../binding';
 import { RunLoadersOptions } from '../../runLoaders';
 import { createParallelLoader } from './parallelLessLoader';
 
@@ -25,12 +26,19 @@ export interface LessLoaderOpts {
   plugins?: (string | [string, Record<string, any>])[];
 }
 
-export class LessPlugin {
+type LessModule = {
+  id: string;
+  deps: Set<LessModule>;
+  missing_deps: Set<LessModule>;
+};
+
+export class LessPlugin implements binding.JsHooks {
   name: string;
   parallelLessLoader: ReturnType<typeof createParallelLoader> | undefined;
   params: BuildParams & { resolveAlias: Record<string, string> };
   extOpts: RunLoadersOptions;
   lessOptions: LessLoaderOpts;
+  moduleGraph: Map<string, LessModule> = new Map();
 
   constructor(params: BuildParams & { resolveAlias: Record<string, string> }) {
     this.name = 'less';
@@ -59,6 +67,16 @@ export class LessPlugin {
 
     const filename = getFilename(filePath);
 
+    let module = this.moduleGraph.get(filename);
+    if (!module) {
+      module = {
+        id: filename,
+        deps: new Set(),
+        missing_deps: new Set(),
+      };
+      this.moduleGraph.set(filename, module);
+    }
+
     this.parallelLessLoader ||= createParallelLoader();
     const result = await this.parallelLessLoader.run({
       filename,
@@ -77,10 +95,90 @@ export class LessPlugin {
       }
     }
 
+    if (result.fileDependencies?.length) {
+      const deps = new Set(
+        result.fileDependencies.filter((dep) => dep !== filename),
+      );
+      for (const dep of deps) {
+        let depModule = this.moduleGraph.get(dep);
+        if (!depModule) {
+          depModule = {
+            id: dep,
+            deps: new Set(),
+            missing_deps: new Set(),
+          };
+          this.moduleGraph.set(dep, depModule);
+        }
+        module.deps.add(depModule);
+      }
+    }
+
+    if (result.missingDependencies?.length) {
+      const missingDeps = new Set(result.missingDependencies);
+      for (const dep of missingDeps) {
+        let depModule = this.moduleGraph.get(dep);
+        if (!depModule) {
+          depModule = {
+            id: dep,
+            deps: new Set(),
+            missing_deps: new Set(),
+          };
+          this.moduleGraph.set(dep, depModule);
+        }
+        module.missing_deps.add(depModule);
+      }
+    }
+
     return {
       content,
       type: 'css',
     };
+  };
+
+  addDeps = async (filePath: string, _deps: string[]) => {
+    if (!isTargetFile(filePath)) {
+      return;
+    }
+
+    const filename = getFilename(filePath);
+    const module = this.moduleGraph.get(filename);
+
+    if (!module) {
+      return;
+    }
+
+    const deps: string[] = [];
+    const missingDeps: string[] = [];
+
+    for (const dep of module.deps) {
+      deps.push(dep.id);
+    }
+
+    for (const dep of module.missing_deps) {
+      missingDeps.push(dep.id);
+    }
+
+    return {
+      deps,
+      missingDeps,
+    };
+  };
+
+  nextBuild = async (current: string, next: string) => {
+    if (!isTargetFile(next)) {
+      return true;
+    }
+
+    const currentFilename = getFilename(current);
+    const currentModule = this.moduleGraph.get(currentFilename);
+    const nextFilename = getFilename(next);
+    const nextModule = this.moduleGraph.get(nextFilename);
+
+    if (nextModule && currentModule?.deps.has(nextModule)) {
+      return false;
+    }
+
+    return true;
   };
 
   generateEnd = () => {

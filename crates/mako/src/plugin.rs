@@ -118,6 +118,15 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
+    fn add_deps(
+        &self,
+        _file: &File,
+        _deps: &mut Vec<Dependency>,
+        _context: &Arc<Context>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
     fn after_resolve(&self, _resolved_dep: &ResolvedDep, _context: &Arc<Context>) -> Result<()> {
         Ok(())
     }
@@ -303,6 +312,18 @@ impl PluginDriver {
     ) -> Result<()> {
         for plugin in &self.plugins {
             plugin.before_resolve(param, context)?;
+        }
+        Ok(())
+    }
+
+    pub fn add_deps(
+        &self,
+        file: &File,
+        deps: &mut Vec<Dependency>,
+        context: &Arc<Context>,
+    ) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.add_deps(file, deps, context)?;
         }
         Ok(())
     }
