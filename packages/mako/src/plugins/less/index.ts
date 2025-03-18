@@ -141,11 +141,11 @@ export class LessPlugin implements binding.JsHooks {
   };
 
   beforeRebuild = async (paths: string[]) => {
-    const result: string[] = [];
+    const result = new Set<string>();
 
     paths.forEach((filePath) => {
       if (!isTargetFile(filePath)) {
-        result.push(filePath);
+        result.add(filePath);
         return;
       }
 
@@ -153,16 +153,16 @@ export class LessPlugin implements binding.JsHooks {
       const module = this.moduleGraph.get(filename);
 
       if (!module || module.ancestors.size === 0) {
-        result.push(filePath);
+        result.add(filePath);
         return;
       }
 
       module.ancestors.forEach((ancestor) => {
-        result.push(ancestor.id);
+        result.add(ancestor.id);
       });
     });
 
-    return result;
+    return Array.from(result);
   };
 
   generateEnd = () => {
