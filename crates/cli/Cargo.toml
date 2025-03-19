@@ -25,3 +25,9 @@ tempfile = "3.15.0"
 semver = "1.0.25"
 futures = "0.3"
 glob = "0.3.1"
+criterion = {workspace=true}
+
+[[bench]]
+name = "install_benchmark"
+harness = false
+path = "benches/deps_benchmark.rs"

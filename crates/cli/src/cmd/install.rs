@@ -9,6 +9,7 @@ use crate::helper::lock::{ensure_package_lock, group_by_depth, PackageLock};
 use crate::service::install::install_packages;
 use crate::util::cache::get_cache_dir;
 use crate::util::logger::finish_progress_bar;
+use crate::util::logger::log_verbose;
 use crate::util::logger::start_progress_bar;
 use crate::util::logger::{log_info, PROGRESS_BAR};
 
@@ -32,7 +33,9 @@ pub async fn install(ignore_scripts: bool) -> Result<(), Box<dyn std::error::Err
     // Get the number of logical CPU cores of the system and set it to twice the number of CPU cores
     let concurrent_limit = thread::available_parallelism()
         .map(|n| n.get() * 2)
-        .unwrap_or(8);
+        .unwrap_or(20)
+        .max(20);
+    log_verbose(&format!("Setting concurrent limit to {}", concurrent_limit));
     let semaphore = Arc::new(Semaphore::new(concurrent_limit));
 
     install_packages(&groups, &cache_dir, &cwd, semaphore).await?;

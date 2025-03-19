@@ -76,7 +76,7 @@ fn execute_update() -> Result<(), String> {
 async fn check_remote_version() -> Result<(), String> {
     let registry_url = "https://registry.npmmirror.com/utoo/latest";
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_millis(800))
+        .timeout(std::time::Duration::from_millis(2000))
         .build()
         .map_err(|e| e.to_string())?;
 

@@ -1,0 +1,25 @@
+name: Cli-Benchmark
+
+on: [pull_request]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: nightly-2025-02-12
+        override: true
+        components: rustfmt, clippy
+
+    - name: Run Benchmark
+      uses: actions-rs/cargo@v1
+      with:
+        toolchain: nightly-2025-02-12
+        command: bench
+        args: -p utoo

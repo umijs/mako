@@ -8621,6 +8621,7 @@ version = "0.0.0-alpha.0"
 dependencies = [
  "async-compression",
  "clap 3.2.25",
+ "criterion",
  "dirs",
  "flate2",
  "futures",
