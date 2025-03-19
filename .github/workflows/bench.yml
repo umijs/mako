@@ -1,4 +1,4 @@
-name: Cli-Benchmark
+name: utoo-cli-benchmark
 
 on: [pull_request]
 
