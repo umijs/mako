@@ -28,11 +28,13 @@ use crate::{
         get_client_asset_context, get_client_compile_time_info, get_client_resolve_options_context,
         NodeEnv,
     },
-    dev::embed_js::embed_file_path,
-    runtime_entry::{RuntimeEntries, RuntimeEntry},
+    dev_runtime::embed_js::embed_file_path,
 };
 
-use super::react_refresh::assert_can_resolve_react_refresh;
+use super::{
+    react_refresh::assert_can_resolve_react_refresh,
+    runtime_entry::{RuntimeEntries, RuntimeEntry},
+};
 
 #[turbo_tasks::function]
 pub async fn get_client_chunking_context(

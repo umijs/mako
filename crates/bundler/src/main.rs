@@ -82,7 +82,7 @@ async fn main_inner(args: Arguments) -> Result<()> {
     register();
 
     match args {
-        Arguments::Build(args) => utoo_bundler::build::build(&args).await,
-        Arguments::Dev(args) => utoo_bundler::dev::start_server(&args).await,
+        Arguments::Build(args) => utoo_bundler::build(&args).await,
+        Arguments::Dev(args) => utoo_bundler::dev(&args).await,
     }
 }

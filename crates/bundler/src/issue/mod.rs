@@ -19,7 +19,9 @@ use turbopack_core::issue::{
     PlainIssueSource, StyledString,
 };
 
-use crate::source_context::format_source_context_lines;
+mod source_context;
+
+use source_context::format_source_context_lines;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct IssueSeverityCliOption(pub IssueSeverity);

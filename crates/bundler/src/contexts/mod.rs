@@ -27,7 +27,7 @@ use turbopack_node::{
 };
 use turbopack_resolve::resolve_options_context::ResolveOptionsContext;
 
-use crate::dev::react_refresh::assert_can_resolve_react_refresh;
+use crate::dev_runtime::react_refresh::assert_can_resolve_react_refresh;
 
 #[turbo_tasks::value(shared)]
 pub enum NodeEnv {
