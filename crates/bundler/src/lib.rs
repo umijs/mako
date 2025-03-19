@@ -4,14 +4,15 @@
 #![feature(arbitrary_self_types_pointers)]
 
 pub mod arguments;
-pub mod build;
+pub mod bundle;
 pub mod contexts;
-pub mod dev;
+pub mod dev_runtime;
 pub mod env;
 pub mod issue;
-pub mod runtime_entry;
-pub mod source_context;
 pub mod util;
+
+pub use bundle::build::build;
+pub use bundle::dev::dev;
 
 pub fn register() {
     turbopack::register();

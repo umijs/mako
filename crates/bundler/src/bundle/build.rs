@@ -2,7 +2,6 @@ use std::{
     env::current_dir,
     mem::forget,
     path::{PathBuf, MAIN_SEPARATOR},
-    sync::Arc,
 };
 
 use anyhow::{bail, Context, Result};
@@ -12,9 +11,7 @@ use turbo_tasks::{
     apply_effects, ReadConsistency, ResolvedVc, TransientInstance, TryJoinIterExt, TurboTasks,
     Value, Vc,
 };
-use turbo_tasks_backend::{
-    noop_backing_storage, BackendOptions, NoopBackingStorage, TurboTasksBackend,
-};
+use turbo_tasks_backend::{noop_backing_storage, BackendOptions, TurboTasksBackend};
 
 use turbo_tasks_fs::FileSystem;
 use turbopack::{
@@ -54,71 +51,9 @@ use crate::{
     },
 };
 
-pub fn register() {
-    turbopack::register();
-    include!(concat!(env!("OUT_DIR"), "/register.rs"))
-}
+use super::UtooBundlerBuilder;
 
-type Backend = TurboTasksBackend<NoopBackingStorage>;
-
-pub struct TurbopackBuildBuilder {
-    turbo_tasks: Arc<TurboTasks<Backend>>,
-    project_dir: RcStr,
-    root_dir: RcStr,
-    entry_requests: Vec<EntryRequest>,
-    browserslist_query: RcStr,
-    log_level: IssueSeverity,
-    show_all: bool,
-    log_detail: bool,
-    minify_type: MinifyType,
-    target: Target,
-    source_maps_type: SourceMapsType,
-}
-
-impl TurbopackBuildBuilder {
-    pub fn new(turbo_tasks: Arc<TurboTasks<Backend>>, project_dir: RcStr, root_dir: RcStr) -> Self {
-        TurbopackBuildBuilder {
-            turbo_tasks,
-            project_dir,
-            root_dir,
-            entry_requests: vec![],
-            browserslist_query: "last 1 Chrome versions, last 1 Firefox versions, last 1 Safari \
-                                 versions, last 1 Edge versions"
-                .into(),
-            log_level: IssueSeverity::Warning,
-            show_all: false,
-            log_detail: false,
-            source_maps_type: SourceMapsType::Full,
-            minify_type: MinifyType::Minify { mangle: true },
-            target: Target::Node,
-        }
-    }
-
-    pub fn entry_request(mut self, entry_asset_path: EntryRequest) -> Self {
-        self.entry_requests.push(entry_asset_path);
-        self
-    }
-
-    pub fn browserslist_query(mut self, browserslist_query: RcStr) -> Self {
-        self.browserslist_query = browserslist_query;
-        self
-    }
-
-    pub fn log_level(mut self, log_level: IssueSeverity) -> Self {
-        self.log_level = log_level;
-        self
-    }
-
-    pub fn show_all(mut self, show_all: bool) -> Self {
-        self.show_all = show_all;
-        self
-    }
-
-    pub fn log_detail(mut self, log_detail: bool) -> Self {
-        self.log_detail = log_detail;
-        self
-    }
-
+impl UtooBundlerBuilder {
     pub fn source_maps_type(mut self, source_maps_type: SourceMapsType) -> Self {
         self.source_maps_type = source_maps_type;
         self
@@ -482,7 +417,7 @@ pub async fn build(args: &BuildArguments) -> Result<()> {
         noop_backing_storage(),
     ));
 
-    let mut builder = TurbopackBuildBuilder::new(tt.clone(), project_dir, root_dir)
+    let mut builder = UtooBundlerBuilder::new(tt.clone(), project_dir, root_dir)
         .log_detail(args.common.log_detail)
         .log_level(
             args.common

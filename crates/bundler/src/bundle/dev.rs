@@ -22,19 +22,16 @@ use turbo_tasks_backend::{
 use turbo_tasks_fs::FileSystem;
 use turbo_tasks_malloc::TurboMalloc;
 use turbopack::evaluate_context::node_build_environment;
-use turbopack_core::{
-    issue::{IssueReporter, IssueSeverity},
-    resolve::parse::Request,
-    server_fs::ServerFileSystem,
-};
+use turbopack_core::{issue::IssueSeverity, resolve::parse::Request, server_fs::ServerFileSystem};
 use turbopack_dev_server::{
     introspect::IntrospectionSource,
     source::{
         combined::CombinedContentSource, router::PrefixedRouterContentSource,
         static_assets::StaticAssetsContentSource, ContentSource,
     },
-    DevServer, DevServerBuilder, NonLocalSourceProvider,
+    DevServerBuilder,
 };
+use turbopack_dev_server::{DevServer, NonLocalSourceProvider};
 use turbopack_ecmascript_runtime::RuntimeType;
 use turbopack_node::execution_context::ExecutionContext;
 use turbopack_nodejs::NodeJsChunkingContext;
@@ -42,6 +39,7 @@ use turbopack_nodejs::NodeJsChunkingContext;
 use crate::{
     arguments::DevArguments,
     contexts::NodeEnv,
+    dev_runtime::web_entry_source::create_web_entry_source,
     env::load_env,
     issue::{ConsoleUi, LogOptions},
     util::{
@@ -49,110 +47,16 @@ use crate::{
     },
 };
 
-use self::web_entry_source::create_web_entry_source;
+use super::{Backend, UtooBundlerBuilder};
 
-pub(crate) mod embed_js;
-pub(crate) mod react_refresh;
-pub(crate) mod web_entry_source;
-
-type Backend = TurboTasksBackend<NoopBackingStorage>;
-
-pub struct TurbopackDevServerBuilder {
-    turbo_tasks: Arc<TurboTasks<Backend>>,
-    project_dir: RcStr,
-    root_dir: RcStr,
-    entry_requests: Vec<EntryRequest>,
-    browserslist_query: RcStr,
-    log_level: IssueSeverity,
-    show_all: bool,
-    log_detail: bool,
-    eager_compile: bool,
-    hostname: Option<IpAddr>,
-    port: Option<u16>,
-    allow_retry: bool,
-    issue_reporter: Option<Box<dyn IssueReporterProvider>>,
-}
-
-impl TurbopackDevServerBuilder {
-    pub fn new(
-        turbo_tasks: Arc<TurboTasks<Backend>>,
-        project_dir: RcStr,
-        root_dir: RcStr,
-    ) -> TurbopackDevServerBuilder {
-        TurbopackDevServerBuilder {
-            turbo_tasks,
-            project_dir,
-            root_dir,
-            entry_requests: vec![],
-            eager_compile: false,
-            hostname: None,
-            issue_reporter: None,
-            port: None,
-            browserslist_query: "last 1 Chrome versions, last 1 Firefox versions, last 1 Safari \
-                                 versions, last 1 Edge versions"
-                .into(),
-            log_level: IssueSeverity::Warning,
-            show_all: false,
-            log_detail: false,
-            allow_retry: false,
-        }
-    }
-
-    pub fn entry_request(mut self, entry_asset_path: EntryRequest) -> TurbopackDevServerBuilder {
-        self.entry_requests.push(entry_asset_path);
-        self
-    }
-
-    pub fn eager_compile(mut self, eager_compile: bool) -> TurbopackDevServerBuilder {
-        self.eager_compile = eager_compile;
-        self
-    }
-
-    pub fn hostname(mut self, hostname: IpAddr) -> TurbopackDevServerBuilder {
-        self.hostname = Some(hostname);
-        self
-    }
-
-    pub fn port(mut self, port: u16) -> TurbopackDevServerBuilder {
-        self.port = Some(port);
-        self
-    }
-
-    pub fn browserslist_query(mut self, browserslist_query: RcStr) -> TurbopackDevServerBuilder {
-        self.browserslist_query = browserslist_query;
-        self
-    }
-
-    pub fn log_level(mut self, log_level: IssueSeverity) -> TurbopackDevServerBuilder {
-        self.log_level = log_level;
-        self
-    }
-
-    pub fn show_all(mut self, show_all: bool) -> TurbopackDevServerBuilder {
-        self.show_all = show_all;
-        self
-    }
-
-    pub fn allow_retry(mut self, allow_retry: bool) -> TurbopackDevServerBuilder {
-        self.allow_retry = allow_retry;
-        self
-    }
-
-    pub fn log_detail(mut self, log_detail: bool) -> TurbopackDevServerBuilder {
-        self.log_detail = log_detail;
-        self
-    }
-
-    pub fn issue_reporter(
-        mut self,
-        issue_reporter: Box<dyn IssueReporterProvider>,
-    ) -> TurbopackDevServerBuilder {
-        self.issue_reporter = Some(issue_reporter);
-        self
-    }
-
+impl UtooBundlerBuilder {
     /// Attempts to find an open port to bind.
-    fn find_port(&self, host: IpAddr, port: u16, max_attempts: u16) -> Result<DevServerBuilder> {
+    pub(crate) fn find_port(
+        &self,
+        host: IpAddr,
+        port: u16,
+        max_attempts: u16,
+    ) -> Result<DevServerBuilder> {
         // max_attempts of 1 means we loop 0 times.
         let max_attempts = max_attempts - 1;
         let mut attempts = 0;
@@ -191,7 +95,7 @@ impl TurbopackDevServerBuilder {
         }
     }
 
-    pub async fn build(self) -> Result<DevServer> {
+    pub async fn serve(self) -> Result<DevServer> {
         let port = self.port.context("port must be set")?;
         let host = self.hostname.context("hostname must be set")?;
 
@@ -334,13 +238,8 @@ async fn source(
     )))
 }
 
-pub fn register() {
-    turbopack::register();
-    include!(concat!(env!("OUT_DIR"), "/register.rs"));
-}
-
 /// Start a devserver with the given args.
-pub async fn start_server(args: &DevArguments) -> Result<()> {
+pub async fn dev(args: &DevArguments) -> Result<()> {
     let start = Instant::now();
 
     #[cfg(feature = "tokio_console")]
@@ -362,7 +261,7 @@ pub async fn start_server(args: &DevArguments) -> Result<()> {
 
     let tt_clone = tt.clone();
 
-    let mut server = TurbopackDevServerBuilder::new(tt, project_dir, root_dir)
+    let mut server = UtooBundlerBuilder::new(tt, project_dir, root_dir)
         .eager_compile(args.eager_compile)
         .hostname(args.hostname)
         .port(args.port)
@@ -383,11 +282,11 @@ pub async fn start_server(args: &DevArguments) -> Result<()> {
         server = server.allow_retry(args.allow_retry);
     }
 
-    let server = server.build().await?;
+    let server = server.serve().await?;
 
     notify_serve(server.addr, args.no_open);
 
-    let stats_future = poll_stats(args, start, tt_clone);
+    let stats_future = poll_stats(args.common.log_detail, start, tt_clone);
 
     join!(stats_future, async { server.future.await.unwrap() }).await;
 
@@ -395,11 +294,11 @@ pub async fn start_server(args: &DevArguments) -> Result<()> {
 }
 
 async fn poll_stats(
-    args: &DevArguments,
+    log_detail: bool,
     start: Instant,
     tt_clone: Arc<TurboTasks<TurboTasksBackend<NoopBackingStorage>>>,
 ) {
-    if args.common.log_detail {
+    if log_detail {
         println!(
             "{event_type} - initial compilation {start} ({memory})",
             event_type = "event".purple(),
@@ -423,7 +322,7 @@ async fn poll_stats(
         }) = update_future.await
         {
             progress_counter = 0;
-            match (args.common.log_detail, !reasons.is_empty()) {
+            match (log_detail, !reasons.is_empty()) {
                 (true, true) => {
                     println!(
                         "\x1b[2K{event_type} - {reasons} {duration} ({tasks} tasks, {memory})",
@@ -462,7 +361,7 @@ async fn poll_stats(
             }
         } else {
             progress_counter += 1;
-            if args.common.log_detail {
+            if log_detail {
                 print!(
                     "\x1b[2K{event_type} - updating for {progress_counter}s... ({memory})\r",
                     event_type = "event".purple(),
@@ -534,15 +433,7 @@ fn profile_timeout<T>(
     future
 }
 
-pub trait IssueReporterProvider: Send + Sync + 'static {
-    fn get_issue_reporter(&self) -> Vc<Box<dyn IssueReporter>>;
-}
-
-impl<T> IssueReporterProvider for T
-where
-    T: Fn() -> Vc<Box<dyn IssueReporter>> + Send + Sync + Clone + 'static,
-{
-    fn get_issue_reporter(&self) -> Vc<Box<dyn IssueReporter>> {
-        self()
-    }
+pub fn register() {
+    turbopack::register();
+    include!(concat!(env!("OUT_DIR"), "/register.rs"));
 }
