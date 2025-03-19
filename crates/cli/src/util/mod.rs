@@ -1,5 +1,6 @@
 pub mod cache;
 pub mod cloner;
+pub mod config;
 pub mod downloader;
 pub mod linker;
 pub mod logger;

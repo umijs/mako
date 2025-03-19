@@ -6,6 +6,7 @@ use cmd::install::install;
 use cmd::rebuild::rebuild;
 use cmd::{clean::clean, deps::build_workspace};
 use helper::auto_update::init_auto_update;
+use util::config::set_registry;
 use util::logger::{log_error, log_info, log_warning, set_verbose, write_verbose_logs_to_file};
 
 mod cmd;
@@ -40,6 +41,12 @@ async fn main() {
             .short('v')
             .long("version")
             .help("Print version info and exit"))
+        .arg(clap::Arg::with_name("registry")
+            .long("registry")
+            .global(true)
+            .takes_value(true)
+            .default_value("https://registry.npmmirror.com")
+            .help("Specify npm registry URL for dependency resolution and installation"))
         .subcommand(
             SubCommand::with_name("install")
                 .alias("i")
@@ -87,6 +94,9 @@ async fn main() {
 
     // global verbose
     set_verbose(matches.is_present("verbose"));
+
+    // global registry
+    set_registry(matches.value_of("registry").unwrap());
 
     // load package.json
     if let Some(result) = cmd::pkg::handle_command(&matches) {

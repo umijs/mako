@@ -7,6 +7,7 @@ use std::io;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+use super::config::get_registry;
 use super::logger::log_verbose;
 
 pub static PACKAGE_CACHE: Lazy<PackageCache> = Lazy::new(|| PackageCache::new());
@@ -101,7 +102,7 @@ impl Registry {
     pub fn new() -> Self {
         Self {
             client: reqwest::Client::new(),
-            base_url: "https://registry.npmmirror.com".to_string(),
+            base_url: get_registry().to_string(),
         }
     }
 
