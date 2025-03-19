@@ -2,6 +2,7 @@ use std::{
     env::current_dir,
     mem::forget,
     path::{PathBuf, MAIN_SEPARATOR},
+    sync::Arc,
 };
 
 use anyhow::{bail, Context, Result};
@@ -87,14 +88,18 @@ impl UtooBundlerBuilder {
 
             apply_effects(build_result_op).await?;
 
-            let issue_reporter: Vc<Box<dyn IssueReporter>> =
-                Vc::upcast(ConsoleUi::new(TransientInstance::new(LogOptions {
-                    project_dir: PathBuf::from(self.project_dir),
-                    current_dir: current_dir().unwrap(),
-                    show_all: self.show_all,
-                    log_detail: self.log_detail,
-                    log_level: self.log_level,
-                })));
+            let log_args = TransientInstance::new(LogOptions {
+                current_dir: current_dir().unwrap(),
+                project_dir: PathBuf::from(self.project_dir.clone()),
+                show_all: self.show_all,
+                log_detail: self.log_detail,
+                log_level: self.log_level,
+            });
+
+            let issue_reporter = self.issue_reporter.unwrap_or_else(|| {
+                // Initialize a ConsoleUi reporter if no custom reporter was provided
+                Box::new(move || Vc::upcast(ConsoleUi::new(log_args.clone())))
+            });
 
             handle_issues(
                 build_result_op,

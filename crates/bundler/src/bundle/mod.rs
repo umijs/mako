@@ -24,6 +24,7 @@ pub struct UtooBundlerBuilder {
     log_level: IssueSeverity,
     show_all: bool,
     log_detail: bool,
+    issue_reporter: Option<Box<dyn IssueReporterProvider>>,
 
     // For build only
     minify_type: Option<MinifyType>,
@@ -40,8 +41,6 @@ pub struct UtooBundlerBuilder {
     eager_compile: Option<bool>,
     // For dev only
     allow_retry: Option<bool>,
-    // For dev only
-    issue_reporter: Option<Box<dyn IssueReporterProvider>>,
 }
 
 impl UtooBundlerBuilder {
@@ -77,21 +76,6 @@ impl UtooBundlerBuilder {
         self
     }
 
-    pub fn eager_compile(mut self, eager_compile: bool) -> UtooBundlerBuilder {
-        self.eager_compile = Some(eager_compile);
-        self
-    }
-
-    pub fn hostname(mut self, hostname: IpAddr) -> UtooBundlerBuilder {
-        self.hostname = Some(hostname);
-        self
-    }
-
-    pub fn port(mut self, port: u16) -> UtooBundlerBuilder {
-        self.port = Some(port);
-        self
-    }
-
     pub fn browserslist_query(mut self, browserslist_query: RcStr) -> UtooBundlerBuilder {
         self.browserslist_query = browserslist_query;
         self
@@ -104,11 +88,6 @@ impl UtooBundlerBuilder {
 
     pub fn show_all(mut self, show_all: bool) -> UtooBundlerBuilder {
         self.show_all = show_all;
-        self
-    }
-
-    pub fn allow_retry(mut self, allow_retry: bool) -> UtooBundlerBuilder {
-        self.allow_retry = Some(allow_retry);
         self
     }
 
