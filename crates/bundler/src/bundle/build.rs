@@ -2,7 +2,6 @@ use std::{
     env::current_dir,
     mem::forget,
     path::{PathBuf, MAIN_SEPARATOR},
-    sync::Arc,
 };
 
 use anyhow::{bail, Context, Result};
@@ -27,7 +26,7 @@ use turbopack_core::{
     },
     environment::{BrowserEnvironment, Environment, ExecutionEnvironment},
     ident::AssetIdent,
-    issue::{handle_issues, IssueReporter, IssueSeverity},
+    issue::{handle_issues, IssueSeverity},
     module::Module,
     module_graph::ModuleGraph,
     output::{OutputAsset, OutputAssets},
