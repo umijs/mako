@@ -62,15 +62,15 @@ pub struct TurbopackDevServerBuilder {
     project_dir: RcStr,
     root_dir: RcStr,
     entry_requests: Vec<EntryRequest>,
-    eager_compile: bool,
-    hostname: Option<IpAddr>,
-    issue_reporter: Option<Box<dyn IssueReporterProvider>>,
-    port: Option<u16>,
     browserslist_query: RcStr,
     log_level: IssueSeverity,
     show_all: bool,
     log_detail: bool,
+    eager_compile: bool,
+    hostname: Option<IpAddr>,
+    port: Option<u16>,
     allow_retry: bool,
+    issue_reporter: Option<Box<dyn IssueReporterProvider>>,
 }
 
 impl TurbopackDevServerBuilder {
@@ -199,11 +199,8 @@ impl TurbopackDevServerBuilder {
 
         let turbo_tasks = self.turbo_tasks;
         let project_dir: RcStr = self.project_dir;
-        let root_dir: RcStr = self.root_dir;
-        let eager_compile = self.eager_compile;
         let show_all = self.show_all;
         let log_detail: bool = self.log_detail;
-        let browserslist_query: RcStr = self.browserslist_query;
         let log_args = TransientInstance::new(LogOptions {
             current_dir: current_dir().unwrap(),
             project_dir: PathBuf::from(project_dir.clone()),
@@ -220,11 +217,11 @@ impl TurbopackDevServerBuilder {
 
         let source = move || {
             source(
-                root_dir.clone(),
+                self.root_dir.clone(),
                 project_dir.clone(),
                 entry_requests.clone(),
-                eager_compile,
-                browserslist_query.clone(),
+                self.eager_compile,
+                self.browserslist_query.clone(),
             )
         };
         // safety: Everything that `source` captures in its closure is a `NonLocalValue`
@@ -388,117 +385,124 @@ pub async fn start_server(args: &DevArguments) -> Result<()> {
 
     let server = server.build().await?;
 
-    {
-        let addr = &server.addr;
-        let hostname = if addr.ip().is_loopback() || addr.ip().is_unspecified() {
-            "localhost".to_string()
-        } else if addr.is_ipv6() {
-            // When using an IPv6 address, we need to surround the IP in brackets to
-            // distinguish it from the port's `:`.
-            format!("[{}]", addr.ip())
-        } else {
-            addr.ip().to_string()
-        };
-        let index_uri = match addr.port() {
-            443 => format!("https://{hostname}"),
-            80 => format!("http://{hostname}"),
-            port => format!("http://{hostname}:{port}"),
-        };
-        println!(
-            "{} - started server on {}, url: {}",
-            "ready".green(),
-            server.addr,
-            index_uri
-        );
-        if !args.no_open {
-            let _ = webbrowser::open(&index_uri);
-        }
-    }
+    notify_serve(server.addr, args.no_open);
 
-    let stats_future = async move {
-        if args.common.log_detail {
-            println!(
-                "{event_type} - initial compilation {start} ({memory})",
-                event_type = "event".purple(),
-                start = FormatDuration(start.elapsed()),
-                memory = FormatBytes(TurboMalloc::memory_usage())
-            );
-        }
-
-        let mut progress_counter = 0;
-        loop {
-            let update_future = profile_timeout(
-                tt_clone.as_ref(),
-                tt_clone.aggregated_update_info(Duration::from_millis(100), Duration::MAX),
-            );
-
-            if let Some(UpdateInfo {
-                duration,
-                tasks,
-                reasons,
-                ..
-            }) = update_future.await
-            {
-                progress_counter = 0;
-                match (args.common.log_detail, !reasons.is_empty()) {
-                    (true, true) => {
-                        println!(
-                            "\x1b[2K{event_type} - {reasons} {duration} ({tasks} tasks, {memory})",
-                            event_type = "event".purple(),
-                            duration = FormatDuration(duration),
-                            tasks = tasks,
-                            memory = FormatBytes(TurboMalloc::memory_usage())
-                        );
-                    }
-                    (true, false) => {
-                        println!(
-                            "\x1b[2K{event_type} - compilation {duration} ({tasks} tasks, \
-                             {memory})",
-                            event_type = "event".purple(),
-                            duration = FormatDuration(duration),
-                            tasks = tasks,
-                            memory = FormatBytes(TurboMalloc::memory_usage())
-                        );
-                    }
-                    (false, true) => {
-                        println!(
-                            "\x1b[2K{event_type} - {reasons} {duration}",
-                            event_type = "event".purple(),
-                            duration = FormatDuration(duration),
-                        );
-                    }
-                    (false, false) => {
-                        if duration > Duration::from_secs(1) {
-                            println!(
-                                "\x1b[2K{event_type} - compilation {duration}",
-                                event_type = "event".purple(),
-                                duration = FormatDuration(duration),
-                            );
-                        }
-                    }
-                }
-            } else {
-                progress_counter += 1;
-                if args.common.log_detail {
-                    print!(
-                        "\x1b[2K{event_type} - updating for {progress_counter}s... ({memory})\r",
-                        event_type = "event".purple(),
-                        memory = FormatBytes(TurboMalloc::memory_usage())
-                    );
-                } else {
-                    print!(
-                        "\x1b[2K{event_type} - updating for {progress_counter}s...\r",
-                        event_type = "event".purple(),
-                    );
-                }
-                let _ = stdout().lock().flush();
-            }
-        }
-    };
+    let stats_future = poll_stats(args, start, tt_clone);
 
     join!(stats_future, async { server.future.await.unwrap() }).await;
 
     Ok(())
+}
+
+async fn poll_stats(
+    args: &DevArguments,
+    start: Instant,
+    tt_clone: Arc<TurboTasks<TurboTasksBackend<NoopBackingStorage>>>,
+) {
+    if args.common.log_detail {
+        println!(
+            "{event_type} - initial compilation {start} ({memory})",
+            event_type = "event".purple(),
+            start = FormatDuration(start.elapsed()),
+            memory = FormatBytes(TurboMalloc::memory_usage())
+        );
+    }
+
+    let mut progress_counter = 0;
+    loop {
+        let update_future = profile_timeout(
+            tt_clone.as_ref(),
+            tt_clone.aggregated_update_info(Duration::from_millis(100), Duration::MAX),
+        );
+
+        if let Some(UpdateInfo {
+            duration,
+            tasks,
+            reasons,
+            ..
+        }) = update_future.await
+        {
+            progress_counter = 0;
+            match (args.common.log_detail, !reasons.is_empty()) {
+                (true, true) => {
+                    println!(
+                        "\x1b[2K{event_type} - {reasons} {duration} ({tasks} tasks, {memory})",
+                        event_type = "event".purple(),
+                        duration = FormatDuration(duration),
+                        tasks = tasks,
+                        memory = FormatBytes(TurboMalloc::memory_usage())
+                    );
+                }
+                (true, false) => {
+                    println!(
+                        "\x1b[2K{event_type} - compilation {duration} ({tasks} tasks, \
+                             {memory})",
+                        event_type = "event".purple(),
+                        duration = FormatDuration(duration),
+                        tasks = tasks,
+                        memory = FormatBytes(TurboMalloc::memory_usage())
+                    );
+                }
+                (false, true) => {
+                    println!(
+                        "\x1b[2K{event_type} - {reasons} {duration}",
+                        event_type = "event".purple(),
+                        duration = FormatDuration(duration),
+                    );
+                }
+                (false, false) => {
+                    if duration > Duration::from_secs(1) {
+                        println!(
+                            "\x1b[2K{event_type} - compilation {duration}",
+                            event_type = "event".purple(),
+                            duration = FormatDuration(duration),
+                        );
+                    }
+                }
+            }
+        } else {
+            progress_counter += 1;
+            if args.common.log_detail {
+                print!(
+                    "\x1b[2K{event_type} - updating for {progress_counter}s... ({memory})\r",
+                    event_type = "event".purple(),
+                    memory = FormatBytes(TurboMalloc::memory_usage())
+                );
+            } else {
+                print!(
+                    "\x1b[2K{event_type} - updating for {progress_counter}s...\r",
+                    event_type = "event".purple(),
+                );
+            }
+            let _ = stdout().lock().flush();
+        }
+    }
+}
+
+fn notify_serve(addr: SocketAddr, no_open: bool) {
+    let hostname = if addr.ip().is_loopback() || addr.ip().is_unspecified() {
+        "localhost".to_string()
+    } else if addr.is_ipv6() {
+        // When using an IPv6 address, we need to surround the IP in brackets to
+        // distinguish it from the port's `:`.
+        format!("[{}]", addr.ip())
+    } else {
+        addr.ip().to_string()
+    };
+    let index_uri = match addr.port() {
+        443 => format!("https://{hostname}"),
+        80 => format!("http://{hostname}"),
+        port => format!("http://{hostname}:{port}"),
+    };
+    println!(
+        "{} - started server on {}, url: {}",
+        "ready".green(),
+        addr,
+        index_uri
+    );
+    if !no_open {
+        let _ = webbrowser::open(&index_uri);
+    }
 }
 
 #[cfg(feature = "profile")]

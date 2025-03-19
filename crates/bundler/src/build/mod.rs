@@ -70,9 +70,9 @@ pub struct TurbopackBuildBuilder {
     log_level: IssueSeverity,
     show_all: bool,
     log_detail: bool,
-    source_maps_type: SourceMapsType,
     minify_type: MinifyType,
     target: Target,
+    source_maps_type: SourceMapsType,
 }
 
 impl TurbopackBuildBuilder {
