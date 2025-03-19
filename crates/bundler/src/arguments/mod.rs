@@ -12,7 +12,7 @@ use crate::issue::IssueSeverityCliOption;
 #[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]
 pub enum Arguments {
-    Build(BuildArguments), // Dev(DevArgs)
+    Build(BuildArguments),
     Dev(DevArguments),
 }
 

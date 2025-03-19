@@ -26,20 +26,20 @@ pub struct UtooBundlerBuilder {
     log_detail: bool,
 
     // For build only
-    minify_type: MinifyType,
+    minify_type: Option<MinifyType>,
     // For build only
-    target: Target,
+    target: Option<Target>,
     // For build only
-    source_maps_type: SourceMapsType,
+    source_maps_type: Option<SourceMapsType>,
 
-    // For dev only
-    eager_compile: bool,
     // For dev only
     hostname: Option<IpAddr>,
     // For dev only
     port: Option<u16>,
     // For dev only
-    allow_retry: bool,
+    eager_compile: Option<bool>,
+    // For dev only
+    allow_retry: Option<bool>,
     // For dev only
     issue_reporter: Option<Box<dyn IssueReporterProvider>>,
 }
@@ -54,21 +54,21 @@ impl UtooBundlerBuilder {
             turbo_tasks,
             project_dir,
             root_dir,
-            entry_requests: vec![],
-            eager_compile: false,
-            hostname: None,
-            issue_reporter: None,
-            port: None,
             browserslist_query: "last 1 Chrome versions, last 1 Firefox versions, last 1 Safari \
                                  versions, last 1 Edge versions"
                 .into(),
             log_level: IssueSeverity::Warning,
+            entry_requests: vec![],
+            eager_compile: None,
+            hostname: None,
+            issue_reporter: None,
+            port: None,
             show_all: false,
             log_detail: false,
-            allow_retry: false,
-            source_maps_type: SourceMapsType::Full,
-            minify_type: MinifyType::Minify { mangle: true },
-            target: Target::Node,
+            allow_retry: None,
+            source_maps_type: None,
+            minify_type: None,
+            target: None,
         }
     }
 
@@ -78,7 +78,7 @@ impl UtooBundlerBuilder {
     }
 
     pub fn eager_compile(mut self, eager_compile: bool) -> UtooBundlerBuilder {
-        self.eager_compile = eager_compile;
+        self.eager_compile = Some(eager_compile);
         self
     }
 
@@ -108,7 +108,7 @@ impl UtooBundlerBuilder {
     }
 
     pub fn allow_retry(mut self, allow_retry: bool) -> UtooBundlerBuilder {
-        self.allow_retry = allow_retry;
+        self.allow_retry = Some(allow_retry);
         self
     }
 

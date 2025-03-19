@@ -55,17 +55,17 @@ use super::UtooBundlerBuilder;
 
 impl UtooBundlerBuilder {
     pub fn source_maps_type(mut self, source_maps_type: SourceMapsType) -> Self {
-        self.source_maps_type = source_maps_type;
+        self.source_maps_type = Some(source_maps_type);
         self
     }
 
     pub fn minify_type(mut self, minify_type: MinifyType) -> Self {
-        self.minify_type = minify_type;
+        self.minify_type = Some(minify_type);
         self
     }
 
     pub fn target(mut self, target: Target) -> Self {
-        self.target = target;
+        self.target = Some(target);
         self
     }
 
@@ -76,9 +76,10 @@ impl UtooBundlerBuilder {
                 self.project_dir.clone(),
                 self.entry_requests.clone(),
                 self.browserslist_query,
-                self.source_maps_type,
-                self.minify_type,
-                self.target,
+                self.source_maps_type.unwrap_or(SourceMapsType::Full),
+                self.minify_type
+                    .unwrap_or(MinifyType::Minify { mangle: false }),
+                self.target.unwrap_or(Target::Browser),
             );
 
             // Await the result to propagate any errors.
@@ -429,7 +430,6 @@ pub async fn build(args: &BuildArguments) -> Result<()> {
         } else {
             SourceMapsType::Full
         })
-        .minify_type(MinifyType::Minify { mangle: false })
         .target(args.common.target.unwrap_or(Target::Node))
         .show_all(args.common.show_all);
 

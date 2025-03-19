@@ -66,7 +66,9 @@ impl UtooBundlerBuilder {
             let listen_result = DevServer::listen(addr);
 
             if let Err(e) = &listen_result {
-                if self.allow_retry && attempts < max_attempts {
+                if self.allow_retry.is_some_and(|allow_entry| allow_entry)
+                    && attempts < max_attempts
+                {
                     // Returned error from `listen` is not `std::io::Error` but `anyhow::Error`,
                     // so we need to access its source to check if it is
                     // `std::io::ErrorKind::AddrInUse`.
@@ -124,7 +126,8 @@ impl UtooBundlerBuilder {
                 self.root_dir.clone(),
                 project_dir.clone(),
                 entry_requests.clone(),
-                self.eager_compile,
+                self.eager_compile
+                    .is_some_and(|eager_compile| eager_compile),
                 self.browserslist_query.clone(),
             )
         };
