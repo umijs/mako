@@ -1,3 +1,4 @@
+use crate::util::config::get_registry;
 use crate::util::logger::{log_error, log_info, log_warning};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -74,7 +75,7 @@ fn execute_update() -> Result<(), String> {
 }
 
 async fn check_remote_version() -> Result<(), String> {
-    let registry_url = "https://registry.npmmirror.com/utoo/latest";
+    let registry_url = format!("{}/utoo/latest", get_registry());
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_millis(2000))
         .build()
