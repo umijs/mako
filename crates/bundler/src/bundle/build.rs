@@ -96,14 +96,14 @@ impl UtooBundlerBuilder {
                 log_level: self.log_level,
             });
 
-            let issue_reporter = self.issue_reporter.unwrap_or_else(|| {
+            let issue_provider = self.issue_reporter.unwrap_or_else(|| {
                 // Initialize a ConsoleUi reporter if no custom reporter was provided
                 Box::new(move || Vc::upcast(ConsoleUi::new(log_args.clone())))
             });
 
             handle_issues(
                 build_result_op,
-                issue_reporter,
+                issue_provider.get_issue_reporter(),
                 IssueSeverity::Error.into(),
                 None,
                 None,

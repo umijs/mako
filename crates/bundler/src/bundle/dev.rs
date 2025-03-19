@@ -269,7 +269,6 @@ pub async fn dev(args: &DevArguments) -> Result<()> {
 
     #[cfg(feature = "tokio_console")]
     console_subscriber::init();
-    register();
 
     let NormalizedDirs {
         project_dir,
@@ -456,9 +455,4 @@ fn profile_timeout<T>(
     future: impl Future<Output = T>,
 ) -> impl Future<Output = T> {
     future
-}
-
-pub fn register() {
-    turbopack::register();
-    include!(concat!(env!("OUT_DIR"), "/register.rs"));
 }
