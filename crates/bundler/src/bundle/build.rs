@@ -153,12 +153,13 @@ async fn build_internal(
         NodeEnv::Production => RuntimeType::Production,
     };
 
-    let compile_time_info = get_client_compile_time_info(browserslist_query.clone(), node_env);
+    let env = load_env();
+
     let execution_context = ExecutionContext::new(
         *root_path,
         Vc::upcast(
             NodeJsChunkingContext::builder(
-                project_path,
+                root_path,
                 build_output_root,
                 ResolvedVc::cell(build_output_root_to_root_path.clone()),
                 build_output_root,
@@ -169,8 +170,10 @@ async fn build_internal(
             )
             .build(),
         ),
-        load_env(),
+        env,
     );
+
+    let compile_time_info = get_client_compile_time_info(browserslist_query.clone(), node_env);
 
     let asset_context = get_client_asset_context(
         *project_path,

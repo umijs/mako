@@ -169,20 +169,23 @@ async fn source(
 
     let env = load_env();
 
-    let build_chunking_context = NodeJsChunkingContext::builder(
-        root_path,
-        build_output_root,
-        ResolvedVc::cell(build_output_root_to_root_path.clone()),
-        build_output_root,
-        build_output_root,
-        build_output_root,
-        node_build_environment().to_resolved().await?,
-        RuntimeType::Development,
-    )
-    .build();
-
-    let execution_context =
-        ExecutionContext::new(*root_path, Vc::upcast(build_chunking_context), env);
+    let execution_context = ExecutionContext::new(
+        *root_path,
+        Vc::upcast(
+            NodeJsChunkingContext::builder(
+                root_path,
+                build_output_root,
+                ResolvedVc::cell(build_output_root_to_root_path.clone()),
+                build_output_root,
+                build_output_root,
+                build_output_root,
+                node_build_environment().to_resolved().await?,
+                RuntimeType::Development,
+            )
+            .build(),
+        ),
+        env,
+    );
 
     let entry_requests = entry_requests
         .iter()
