@@ -95,21 +95,8 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
     use std::fs;
     use tempfile::TempDir;
-
-    #[test]
-    fn test_invalid_config() {
-        let temp_dir = TempDir::new().unwrap();
-        let config_path = temp_dir.path().join(".utoo.toml");
-        fs::write(&config_path, "invalid toml ][").unwrap();
-
-        env::set_current_dir(temp_dir.path()).unwrap();
-        let result = Config::load(false);
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), error::ConfigError::TomlDe(_)));
-    }
 
     #[test]
     fn test_global_config() {

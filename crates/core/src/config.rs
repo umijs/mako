@@ -18,8 +18,9 @@ impl Config {
         }
 
         let mut config = Self::load_from_path(&Self::global_config_path()?)?;
-        if let Ok(local_config) = Self::load_from_path(&Self::local_config_path()?) {
-            // merge config values
+        let local_path = Self::local_config_path()?;
+        if local_path.exists() {
+            let local_config = Self::load_from_path(&local_path)?;
             config.values.extend(local_config.values);
         }
         Ok(config)
