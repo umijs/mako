@@ -1,8 +1,8 @@
-use std::path::{Path, PathBuf};
-use std::fs;
-use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
 use crate::error::Result;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Config {
@@ -63,7 +63,9 @@ impl Config {
 
     fn global_config_path() -> Result<PathBuf> {
         Ok(dirs::home_dir()
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "Home directory not found"))?
+            .ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::NotFound, "Home directory not found")
+            })?
             .join(".utoo/config.toml"))
     }
 
