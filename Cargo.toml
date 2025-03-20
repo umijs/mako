@@ -2,6 +2,7 @@
 members = [
   "crates/bundler",
   "crates/cli",
+  "crates/core",
   # Waiting https://github.com/denoland/deno_ast/pull/297 to be resolved
   # "crates/runtime",
 ]
@@ -26,6 +27,8 @@ dunce = "1.0.5"
 webbrowser = "1.0.4"
 regex = "1.11.1"
 criterion = "0.5.1"
+dirs = "5.0"
+toml = "0.8"
 
 # Dependencies from nextjs, should keep the same rev!
 ## Dependencies for common cache and task. See https://github.com/vercel/next.js/blob/canary/turbopack/crates/turbopack/architecture.md
