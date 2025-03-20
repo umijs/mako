@@ -108,6 +108,7 @@ mod tests {
         env::set_current_dir(temp_dir.path()).unwrap();
         let result = Config::load(false);
         assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), error::ConfigError::TomlDe(_)));
     }
 
     #[test]
