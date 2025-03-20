@@ -6,7 +6,7 @@ pub enum ConfigError {
     Io(#[from] std::io::Error),
 
     #[error("TOML serialization error: {0}")]
-    Toml(#[from] toml::ser::Error),
+    TomlSe(#[from] toml::ser::Error),
 
     #[error("TOML deserialization error: {0}")]
     TomlDe(#[from] toml::de::Error),
