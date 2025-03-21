@@ -211,8 +211,8 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
-    fn before_rebuild(&self, _paths: Vec<PathBuf>) -> Result<Vec<PathBuf>> {
-        Ok(_paths)
+    fn before_rebuild(&self, paths: Vec<PathBuf>) -> Result<Vec<PathBuf>> {
+        Ok(paths)
     }
 }
 

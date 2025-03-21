@@ -255,17 +255,17 @@ impl Plugin for JsPlugin {
         Ok(None)
     }
 
-    fn before_rebuild(&self, _paths: Vec<PathBuf>) -> Result<Vec<PathBuf>> {
+    fn before_rebuild(&self, paths: Vec<PathBuf>) -> Result<Vec<PathBuf>> {
         if let Some(hook) = &self.hooks.before_rebuild {
             let result: Option<Vec<String>> = match hook.call((
                 (),
-                _paths
+                paths
                     .iter()
                     .map(|p| p.to_string_lossy().to_string())
                     .collect(),
             )) {
                 Ok(res) => res,
-                Err(_) => return Ok(_paths),
+                Err(_) => return Ok(paths),
             };
 
             if let Some(result) = result {
@@ -273,6 +273,6 @@ impl Plugin for JsPlugin {
             }
         }
 
-        Ok(_paths)
+        Ok(paths)
     }
 }
