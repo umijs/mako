@@ -22,6 +22,7 @@ custom_allocator = ["turbo-tasks-malloc/custom_allocator"]
 
 [dependencies]
 crossterm = "0.28.1"
+modularize_imports = { version = "0.79.0" }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
@@ -30,9 +31,29 @@ tokio = { workspace = true }
 rustc-hash = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 serde = { workspace = true }
+serde_json = { workspace = true }
 owo-colors = { workspace = true }
 dunce = { workspace = true }
 webbrowser = { workspace = true }
+async-trait = { workspace = true }
+swc_core = { workspace = true, features = [
+  "base",
+  "cached",
+  "common_concurrent",
+  "ecma_ast",
+  "ecma_loader_lru",
+  "ecma_loader_node",
+  "ecma_minifier",
+  "ecma_parser",
+  "ecma_parser_typescript",
+  "ecma_preset_env",
+  "ecma_transforms",
+  "ecma_transforms_optimization",
+  "ecma_transforms_react",
+  "ecma_transforms_typescript",
+  "ecma_utils",
+  "ecma_visit",
+] }
 
 turbo-rcstr = { workspace = true }
 turbo-tasks = { workspace = true }

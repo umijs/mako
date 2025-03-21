@@ -3,16 +3,31 @@
 #![feature(arbitrary_self_types)]
 #![feature(arbitrary_self_types_pointers)]
 
+/* Should be deleted */
 pub mod arguments;
-pub mod bundle;
-pub mod contexts;
-pub mod dev_runtime;
-pub mod env;
-pub mod issue;
-pub mod util;
+mod bundle;
+mod contexts;
+mod dev_runtime;
+mod env;
+mod issue;
+mod util;
+/* Should be deleted */
 
+/* A full design benchmarked to next-api */
+pub mod config;
+pub mod emit;
+pub mod endpoint;
+pub mod paths;
+pub mod project;
+pub mod runtime;
+pub mod transforms;
+pub mod versioned_content_map;
+/* A full design benchmarked to next-api */
+
+/* Should be deleted */
 pub use bundle::build::build;
 pub use bundle::dev::dev;
+/* Should be deleted */
 
 pub fn register() {
     turbopack::register();
