@@ -10,19 +10,17 @@ use util::config::set_registry;
 use util::logger::{log_error, log_info, log_warning, set_verbose, write_verbose_logs_to_file};
 
 mod cmd;
+mod constants;
 mod helper;
 mod model;
 mod service;
 mod util;
-mod constants;
 
-use crate::constants::{APP_NAME, APP_VERSION, APP_ABOUT};
 use crate::constants::cmd::{
-    CLEAN_NAME, CLEAN_ABOUT,
-    DEPS_NAME, DEPS_ABOUT,
-    INSTALL_NAME, INSTALL_ABOUT,
-    REBUILD_NAME, REBUILD_ABOUT,
+    CLEAN_ABOUT, CLEAN_NAME, DEPS_ABOUT, DEPS_NAME, INSTALL_ABOUT, INSTALL_NAME, REBUILD_ABOUT,
+    REBUILD_NAME,
 };
+use crate::constants::{APP_ABOUT, APP_NAME, APP_VERSION};
 
 #[derive(Parser)]
 #[command(name = APP_NAME)]

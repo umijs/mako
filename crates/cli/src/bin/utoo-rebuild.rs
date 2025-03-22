@@ -24,7 +24,6 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-
     log_info("Executing dependency hook scripts and creating node_modules/.bin links");
 
     if let Err(e) = rebuild().await {
