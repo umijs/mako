@@ -28,4 +28,4 @@ async function render(param: {
     });
 }
 
-export { render };
+module.exports = render;

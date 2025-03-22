@@ -1,8 +1,8 @@
+import path from 'path';
 import url from 'url';
 import { BuildParams } from '../../';
 import * as binding from '../../../binding';
-import { RunLoadersOptions } from '../../runLoaders';
-import { createParallelLoader } from './parallelLessLoader';
+import { RunLoadersOptions, createParallelLoader } from '../../runLoaders';
 
 export interface LessLoaderOpts {
   modifyVars?: Record<string, string>;
@@ -35,7 +35,7 @@ type LessModule = {
 
 export class LessPlugin implements binding.JsHooks {
   name: string;
-  parallelLessLoader: ReturnType<typeof createParallelLoader> | undefined;
+  parallelLoader: ReturnType<typeof createParallelLoader> | undefined;
   params: BuildParams & { resolveAlias: Record<string, string> };
   extOpts: RunLoadersOptions;
   lessOptions: LessLoaderOpts;
@@ -79,8 +79,10 @@ export class LessPlugin implements binding.JsHooks {
       this.moduleGraph.set(filename, module);
     }
 
-    this.parallelLessLoader ||= createParallelLoader();
-    const result = await this.parallelLessLoader.run({
+    this.parallelLoader ||= createParallelLoader(
+      path.resolve(__dirname, './render.js'),
+    );
+    const result = await this.parallelLoader.run({
       filename,
       opts: this.lessOptions,
       extOpts: this.extOpts,
@@ -167,8 +169,8 @@ export class LessPlugin implements binding.JsHooks {
 
   generateEnd = () => {
     if (!this.params.watch) {
-      this.parallelLessLoader?.destroy();
-      this.parallelLessLoader = undefined;
+      this.parallelLoader?.destroy();
+      this.parallelLoader = undefined;
     }
   };
 }

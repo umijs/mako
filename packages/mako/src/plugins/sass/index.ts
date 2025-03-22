@@ -1,8 +1,9 @@
+import path from 'path';
 import url from 'url';
 import { type Options } from 'sass';
 import { BuildParams } from '../../';
 import * as binding from '../../../binding';
-import { RunLoaderResult, RunLoadersOptions } from '../../runLoaders';
+import { RunLoadersOptions, createParallelLoader } from '../../runLoaders';
 
 type SassModule = {
   id: string;
@@ -17,6 +18,7 @@ export class SassPlugin implements binding.JsHooks {
   sassOptions: Options<'async'>;
   extOpts: RunLoadersOptions;
   moduleGraph: Map<string, SassModule> = new Map();
+  parallelLoader: ReturnType<typeof createParallelLoader> | undefined;
 
   constructor(params: BuildParams & { resolveAlias: Record<string, string> }) {
     this.name = 'sass';
@@ -50,12 +52,15 @@ export class SassPlugin implements binding.JsHooks {
       this.moduleGraph.set(filename, module);
     }
 
-    const { render } = require('./render');
-    const result = (await render({
+    this.parallelLoader ||= createParallelLoader(
+      path.resolve(__dirname, './render.js'),
+    );
+    const result = await this.parallelLoader.run({
       filename,
       opts: this.sassOptions,
       extOpts: this.extOpts,
-    })) as RunLoaderResult & { missingDependencies: string[] };
+    });
+
     let content: string = '';
 
     if (result.result) {
@@ -133,6 +138,13 @@ export class SassPlugin implements binding.JsHooks {
     });
 
     return Array.from(result);
+  };
+
+  generateEnd = () => {
+    if (!this.params.watch) {
+      this.parallelLoader?.destroy();
+      this.parallelLoader = undefined;
+    }
   };
 }
 
