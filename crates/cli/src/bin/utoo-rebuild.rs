@@ -1,0 +1,36 @@
+use clap::Parser;
+use std::process;
+use utoo_cli::{
+    cmd::rebuild::rebuild,
+    constants::{cmd::REBUILD_ABOUT, APP_VERSION},
+    util::logger::{log_error, log_info, write_verbose_logs_to_file},
+};
+
+#[derive(Parser)]
+#[command(
+    name = "utoo-rebuild",
+    version = APP_VERSION,
+    about = REBUILD_ABOUT
+)]
+struct Cli {
+    /// Skip running scripts during rebuild
+    #[arg(long = "ignore-scripts")]
+    ignore_scripts: bool,
+
+    /// Show verbose output
+    #[arg(short, long)]
+    verbose: bool,
+}
+
+#[tokio::main]
+async fn main() {
+    log_info("Executing dependency hook scripts and creating node_modules/.bin links");
+
+    if let Err(e) = rebuild().await {
+        log_error(&e.to_string());
+        let _ = write_verbose_logs_to_file();
+        process::exit(1);
+    }
+
+    log_info("💫 All dependencies rebuild completed");
+}
