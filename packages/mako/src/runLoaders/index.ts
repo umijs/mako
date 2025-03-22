@@ -100,3 +100,5 @@ export function runLoaders(
     );
   });
 }
+
+export type RunLoaderResult = loaderRunner.RunLoaderResult;

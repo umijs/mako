@@ -69,6 +69,7 @@ export interface JsHooks {
     path: string,
   ) => Promise<{ content: string; type: 'css' | 'js' } | void> | void;
   transformInclude?: (filePath: string) => Promise<bool> | bool;
+  beforeRebuild?: (paths: string[]) => Promise<string[] | void> | void;
 }
 export interface WriteFile {
   path: string;
@@ -134,7 +135,7 @@ export interface BuildParams {
           };
         }
     >;
-    copy?: string[];
+    copy?: (string | { from: string; to: string })[];
     codeSplitting?:
       | false
       | {
@@ -181,18 +182,23 @@ export interface BuildParams {
           selectorDoubleList?: string[];
           mediaQuery?: boolean;
         };
-    stats?: boolean;
+    stats?:
+      | false
+      | {
+          modules?: boolean;
+        };
     hash?: boolean;
     autoCSSModules?: boolean;
     ignoreCSSParserErrors?: boolean;
     dynamicImportToRequire?: boolean;
-    umd?: false | string;
+    umd?: false | string | { name: string; export?: string[] };
     cjs?: boolean;
     writeToDisk?: boolean;
     transformImport?: {
       libraryName: string;
       libraryDirectory?: string;
       style?: boolean | string;
+      camel2DashComponentName?: boolean;
     }[];
     clean?: boolean;
     nodePolyfill?: boolean;
@@ -232,6 +238,7 @@ export interface BuildParams {
       | false
       | {
           skipModules?: boolean;
+          concatenateModules?: boolean;
         };
     react?: {
       runtime?: 'automatic' | 'classic';
@@ -253,16 +260,48 @@ export interface BuildParams {
       | {
           logServerComponent: 'error' | 'ignore';
         };
+    moduleFederation?: {
+      name: string;
+      filename?: string;
+      exposes?: Record<string, string>;
+      shared: Record<
+        string,
+        {
+          singleton?: bool;
+          strictVersion?: bool;
+          requiredVersion?: string;
+          eager?: bool;
+          shareScope?: string;
+        }
+      >;
+      remotes?: Record<string, string>;
+      runtimePlugins?: string[];
+      shareScope?: string;
+      shareStrategy?: 'version-first' | 'loaded-first';
+      implementation: string;
+    };
     experimental?: {
       webpackSyntaxValidate?: string[];
+      requireContext?: bool;
+      ignoreNonLiteralRequire?: bool;
+      magicComment?: bool;
+      detectCircularDependence?: { ignore?: string[] };
       rustPlugins?: Array<[string, any]>;
+      centralEnsure?: bool;
+      importsChecker?: bool;
     };
     watch?: {
       ignoredPaths?: string[];
       _nodeModulesRegexes?: string[];
     };
+    caseSensitiveCheck?: boolean;
   };
   plugins: Array<JsHooks>;
   watch: boolean;
 }
 export declare function build(buildParams: BuildParams): Promise<void>;
+export class PluginContext {
+  warn(msg: string): void;
+  error(msg: string): void;
+  emitFile(originPath: string, outputPath: string): void;
+}

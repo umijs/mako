@@ -256,6 +256,22 @@ impl Plugin for JsPlugin {
     }
 
     fn before_rebuild(&self, paths: Vec<PathBuf>) -> Result<Vec<PathBuf>> {
+        // TODO: 临时方案，出于热更性能考虑只在less/sass文件变动时调用js-hook，后续优化。
+        let mut has_less_or_sass = false;
+        for path in &paths {
+            if path
+                .extension()
+                .map(|ext| ext == "less" || ext == "scss")
+                .unwrap_or(false)
+            {
+                has_less_or_sass = true;
+                break;
+            }
+        }
+        if !has_less_or_sass {
+            return Ok(paths);
+        }
+
         if let Some(hook) = &self.hooks.before_rebuild {
             let result: Option<Vec<String>> = match hook.call((
                 (),
