@@ -325,6 +325,10 @@ impl DevServer {
         debug!("watch paths detected: {:?}", paths);
         debug!("checking update status...");
         println!("Checking...");
+
+        let paths = compiler.context.plugin_driver.before_rebuild(paths)?;
+        debug!("update paths: {:?}", paths);
+
         let update_result = compiler.update(paths);
         let has_missing_deps = {
             compiler

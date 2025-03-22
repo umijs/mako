@@ -80,9 +80,12 @@ pub struct JsHooks {
     pub transform: Option<JsFunction>,
     #[napi(ts_type = "(filePath: string) => Promise<bool> | bool;")]
     pub transform_include: Option<JsFunction>,
+    #[napi(ts_type = "(paths: string[]) => Promise<string[] | void> | void;")]
+    pub before_rebuild: Option<JsFunction>,
 }
 
 type ResolveIdFuncParams = (PluginContext, String, String, ResolveIdParams);
+type BeforeRebuildPaths = Vec<String>;
 
 pub struct TsFnHooks {
     pub build_start: Option<ThreadsafeFunction<PluginContext, ()>>,
@@ -97,6 +100,8 @@ pub struct TsFnHooks {
     pub transform:
         Option<ThreadsafeFunction<(PluginContext, String, String), Option<TransformResult>>>,
     pub transform_include: Option<ThreadsafeFunction<(PluginContext, String), Option<bool>>>,
+    pub before_rebuild:
+        Option<ThreadsafeFunction<((), BeforeRebuildPaths), Option<BeforeRebuildPaths>>>,
 }
 
 impl TsFnHooks {
@@ -133,6 +138,9 @@ impl TsFnHooks {
                 ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
             transform_include: hooks.transform_include.as_ref().map(|hook| unsafe {
+                ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
+            }),
+            before_rebuild: hooks.before_rebuild.as_ref().map(|hook| unsafe {
                 ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
         }

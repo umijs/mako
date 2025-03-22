@@ -29,6 +29,9 @@ import { check } from './checker';
         plugins: [],
         watch,
       });
+      if (watch) {
+        break;
+      }
       process.exit(0);
     case undefined:
       if (argv.version || argv.v) {
