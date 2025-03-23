@@ -51,6 +51,20 @@ jobs:
           command: build
           args: --release --bin utoo --bin utoo-install --bin utoo-rebuild --bin utoo-deps --bin utoo-clean
 
+      - name: Package Binaries
+        run: |
+          cd target/release
+          tar -czf ../../utoo-${{ matrix.platform_os }}-${{ matrix.platform_cpu }}.tar.gz \
+            utoo utoo-install utoo-rebuild utoo-deps utoo-clean
+
+      - name: Upload Release Assets
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: utoo-${{ matrix.platform_os }}-${{ matrix.platform_cpu }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
