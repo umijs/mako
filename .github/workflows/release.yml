@@ -53,7 +53,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --bin utoo
+          args: --release --bin utoo,utoo-install,utoo-rebuild,utoo-deps,utoo-clean
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -69,12 +69,9 @@ jobs:
           cd vendor/scripts
           BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean")
           for BIN in "${BINS[@]}"; do
-            PACKAGE_NAME=$(echo "$BIN" | sed 's/utoo-/@utoo\//')
-            if [ "$BIN" = "utoo" ]; then
-              PACKAGE_NAME="utoo"
-            fi
+            PACKAGE_NAME=$(echo "$BIN")
             ./npm-binary.sh "$PACKAGE_NAME" "$VERSION" \
-              "../../target/${{ matrix.target }}/release/$BIN" \
+              "../../target/release/$BIN" \
               "${{ matrix.platform_os }}" "${{ matrix.platform_cpu }}"
           done
 
@@ -103,9 +100,6 @@ jobs:
           cd vendor/scripts
           BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean")
           for BIN in "${BINS[@]}"; do
-            PACKAGE_NAME=$(echo "$BIN" | sed 's/utoo-/@utoo\//')
-            if [ "$BIN" = "utoo" ]; then
-              PACKAGE_NAME="utoo"
-            fi
+            PACKAGE_NAME=$(echo "$BIN")
             ./npm-main.sh "$PACKAGE_NAME" "$VERSION"
           done
