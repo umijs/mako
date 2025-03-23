@@ -21,12 +21,20 @@ PLATFORM_DIR="$WORK_DIR/binary"
 mkdir -p "$PLATFORM_DIR/bin"
 
 # 复制并处理 binary package.json 模板
-cp ../templates/binary.package.json.template "$PLATFORM_DIR/package.json"
-sed -i '' "s|{{name}}|$NAME|g" "$PLATFORM_DIR/package.json"
-sed -i '' "s|{{version}}|$VERSION|g" "$PLATFORM_DIR/package.json"
-sed -i '' "s|{{platform}}|$OS-$CPU|g" "$PLATFORM_DIR/package.json"
-sed -i '' "s|{{os}}|$OS|g" "$PLATFORM_DIR/package.json"
-sed -i '' "s|{{cpu}}|$CPU|g" "$PLATFORM_DIR/package.json"
+cat ../templates/binary.package.json.template | \
+    awk -v name="$NAME" \
+        -v version="$VERSION" \
+        -v platform="$OS-$CPU" \
+        -v os="$OS" \
+        -v cpu="$CPU" \
+    '{
+        gsub(/{{name}}/, name);
+        gsub(/{{version}}/, version);
+        gsub(/{{platform}}/, platform);
+        gsub(/{{os}}/, os);
+        gsub(/{{cpu}}/, cpu);
+        print;
+    }' > "$PLATFORM_DIR/package.json"
 
 # 复制二进制文件
 cp "$BINARY" "$PLATFORM_DIR/bin/$NAME"
