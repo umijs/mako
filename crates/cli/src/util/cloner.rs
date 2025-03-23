@@ -19,9 +19,7 @@ mod linux_clone {
     const FICLONE: libc::c_ulong = 0x40049409;
 
     pub fn clone_file(src: &File, dst: &File) -> std::io::Result<()> {
-        let ret = unsafe {
-            libc::ioctl(dst.as_raw_fd(), FICLONE, src.as_raw_fd())
-        };
+        let ret = unsafe { libc::ioctl(dst.as_raw_fd(), FICLONE, src.as_raw_fd()) };
         if ret == 0 {
             Ok(())
         } else {
