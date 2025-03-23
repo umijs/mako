@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# 获取系统信息
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+
+if [ "$ARCH" = "x86_64" ]; then
+    ARCH="x64"
+elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+    ARCH="arm64"
+fi
+
+# 构建包名
+PACKAGE_NAME="{{name}}-${OS}-${ARCH}"
+
+# 检查对应的包是否存在
+if [ ! -d "node_modules/${PACKAGE_NAME}" ]; then
+    echo "Binary package ${PACKAGE_NAME} not found"
+    exit 1
+fi
+
+# 创建 bin 目录
+mkdir -p bin
+
+# 复制对应的二进制文件
+cp "node_modules/${PACKAGE_NAME}/bin/{{name}}" "bin/{{name}}"
+chmod +x "bin/{{name}}"
