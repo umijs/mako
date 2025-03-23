@@ -19,12 +19,23 @@ mkdir -p "$ENTRY_DIR"
 
 # 复制并处理 entry package.json 模板
 cp ../templates/entry.package.json.template "$ENTRY_DIR/package.json"
-sed -i '' "s|{{name}}|$NAME|g" "$ENTRY_DIR/package.json"
-sed -i '' "s|{{version}}|$VERSION|g" "$ENTRY_DIR/package.json"
+cat "$ENTRY_DIR/package.json" | \
+    awk -v name="$NAME" \
+        -v version="$VERSION" \
+    '{
+        gsub(/{{name}}/, name);
+        gsub(/{{version}}/, version);
+        print;
+    }' > "$ENTRY_DIR/package.json.tmp" && mv "$ENTRY_DIR/package.json.tmp" "$ENTRY_DIR/package.json"
 
 # 复制 postinstall 脚本
 cp ../templates/postinstall.sh.template "$ENTRY_DIR/postinstall.sh"
-sed -i '' "s|{{name}}|$NAME|g" "$ENTRY_DIR/postinstall.sh"
+cat "$ENTRY_DIR/postinstall.sh" | \
+    awk -v name="$NAME" \
+    '{
+        gsub(/{{name}}/, name);
+        print;
+    }' > "$ENTRY_DIR/postinstall.sh.tmp" && mv "$ENTRY_DIR/postinstall.sh.tmp" "$ENTRY_DIR/postinstall.sh"
 
 # 创建 bin 目录和默认二进制文件
 mkdir -p "$ENTRY_DIR/bin"
@@ -40,4 +51,4 @@ cd "$ENTRY_DIR"
 npm publish --dry-run
 
 # 清理
-# rm -rf "$WORK_DIR"
+rm -rf "$WORK_DIR"
