@@ -22,4 +22,4 @@ jobs:
       with:
         toolchain: nightly-2025-02-12
         command: bench
-        args: -p utoo
+        args: -p utoo-cli
