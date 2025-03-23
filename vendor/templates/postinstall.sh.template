@@ -11,7 +11,7 @@ elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
 fi
 
 # 构建包名
-PACKAGE_NAME="{{name}}-${OS}-${ARCH}"
+PACKAGE_NAME="@utoo/{{name}}-${OS}-${ARCH}"
 
 # 检查对应的包是否存在
 if [ ! -d "node_modules/${PACKAGE_NAME}" ]; then

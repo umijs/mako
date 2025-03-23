@@ -1,5 +1,5 @@
 {
-  "name": "{{name}}",
+  "name": "@utoo/{{name}}",
   "version": "{{version}}",
   "description": "Utoo CLI tool - {{name}}",
   "bin": {
@@ -12,9 +12,9 @@
   "os": ["darwin", "linux"],
   "cpu": ["x64", "arm64"],
   "optionalDependencies": {
-    "{{name}}-linux-x64": "{{version}}",
-    "{{name}}-darwin-x64": "{{version}}",
-    "{{name}}-darwin-arm64": "{{version}}"
+    "@utoo/{{name}}-linux-x64": "{{version}}",
+    "@utoo/{{name}}-darwin-x64": "{{version}}",
+    "@utoo/{{name}}-darwin-arm64": "{{version}}"
   },
   "scripts": {
     "postinstall": "bash ./postinstall.sh"

@@ -49,6 +49,7 @@ chmod +x "$ENTRY_DIR/bin/$NAME"
 # 发布主包
 cd "$ENTRY_DIR"
 npm publish --dry-run
+cat package.json
 
 # 清理
 rm -rf "$WORK_DIR"

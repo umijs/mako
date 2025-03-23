@@ -43,6 +43,7 @@ chmod +x "$PLATFORM_DIR/bin/$NAME"
 # 发布平台包
 cd "$PLATFORM_DIR"
 npm publish --dry-run
+cat package.json
 
 # 清理
 rm -rf "$WORK_DIR"
