@@ -49,7 +49,7 @@ chmod +x "$ENTRY_DIR/bin/$NAME"
 
 # do publish, --dry-run for test
 cd "$ENTRY_DIR"
-npm publish --dry-run
+npm publish
 cat package.json
 
 # clean up temp dir
