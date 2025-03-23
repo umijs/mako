@@ -7,7 +7,14 @@ use tokio_retry::Retry;
 
 use super::logger::{log_verbose, log_warning};
 use super::retry::create_retry_strategy;
+#[cfg(target_os = "macos")]
 use libc::clonefile;
+#[cfg(target_os = "linux")]
+use {
+    libc::{ioctl, FICLONE},
+    std::os::unix::io::AsRawFd,
+};
+
 
 pub async fn validate_directory(src: &Path, dst: &Path) -> std::io::Result<bool> {
     if !fs::metadata(src).await?.is_dir() || !fs::metadata(dst).await?.is_dir() {
@@ -149,32 +156,102 @@ pub async fn clone(src: &Path, dst: &Path, find_real: bool) -> Result<(), std::i
     if let Some(parent) = dst.parent() {
         fs::create_dir_all(parent).await?;
     }
-    let src_c = CString::new(real_src.as_os_str().as_bytes())?;
-    let dst_c = CString::new(dst.as_os_str().as_bytes())?;
+    #[cfg(target_os = "macos")]
+    {
+        let src_c = CString::new(real_src.as_os_str().as_bytes())?;
+        let dst_c = CString::new(dst.as_os_str().as_bytes())?;
 
-    Retry::spawn(create_retry_strategy(), || async {
-        match unsafe { clonefile(src_c.as_ptr(), dst_c.as_ptr(), 0) } {
-            0 => {
-                log_verbose(&format!(
-                    "clone {} to {} success",
-                    real_src.display(),
-                    dst.display()
-                ));
-                Ok(())
-            }
-            _ => {
-                let _ = fs::remove_dir_all(dst).await.map_err(|e| {
+        Retry::spawn(create_retry_strategy(), || async {
+            match unsafe { clonefile(src_c.as_ptr(), dst_c.as_ptr(), 0) } {
+                0 => {
                     log_verbose(&format!(
-                        "Failed to clean target directory {}: {}",
-                        dst.display(),
-                        e
+                        "clone {} to {} success",
+                        real_src.display(),
+                        dst.display()
                     ));
-                });
-                Err(std::io::Error::last_os_error())
+                    Ok(())
+                }
+                _ => {
+                    let _ = fs::remove_dir_all(dst).await;
+                    Err(std::io::Error::last_os_error())
+                }
             }
+        })
+        .await
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        Retry::spawn(create_retry_strategy(), || async {
+            match clone_with_cow(&real_src, dst).await {
+                Ok(()) => {
+                    log_verbose(&format!(
+                        "clone {} to {} success",
+                        real_src.display(),
+                        dst.display()
+                    ));
+                    Ok(())
+                }
+                Err(e) => {
+                    let _ = fs::remove_dir_all(dst).await;
+                    Err(e)
+                }
+            }
+        })
+        .await
+    }
+}
+
+#[cfg(target_os = "linux")]
+async fn clone_with_cow(src: &Path, dst: &Path) -> std::io::Result<()> {
+    if fs::metadata(src).await?.is_dir() {
+        fs::create_dir_all(dst).await?;
+        let mut read_dir = fs::read_dir(src).await?;
+        while let Some(entry) = read_dir.next_entry().await? {
+            let dst_path = dst.join(entry.file_name());
+            clone_with_cow(&entry.path(), &dst_path).await?;
         }
-    })
-    .await
+        Ok(())
+    } else {
+        // 尝试使用 FICLONE（如果文件系统支持）
+        let src_file = std::fs::File::open(src)?;
+        let dst_file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(dst)?;
+
+        // 先尝试 FICLONE
+        let result = unsafe {
+            ioctl(dst_file.as_raw_fd(), FICLONE as _, src_file.as_raw_fd())
+        };
+
+        if result == 0 {
+            Ok(())
+        } else {
+            // 如果 FICLONE 失败，回退到 copy_file_range
+            let mut offset: i64 = 0;
+            let len = src_file.metadata()?.len();
+
+            while offset < len as i64 {
+                let result = unsafe {
+                    libc::copy_file_range(
+                        src_file.as_raw_fd(),
+                        &mut offset as *mut i64,
+                        dst_file.as_raw_fd(),
+                        &mut offset as *mut i64,
+                        (len - offset as u64) as usize,
+                        0,
+                    )
+                };
+
+                if result < 0 {
+                    return Err(std::io::Error::last_os_error());
+                }
+            }
+            Ok(())
+        }
+    }
 }
 
 #[cfg(test)]
