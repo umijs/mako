@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 参数检查
+# args check
 if [ "$#" -ne 2 ]; then
     echo "Usage: $0 <package-name> <version>"
     exit 1
@@ -9,17 +9,18 @@ fi
 NAME=$1
 VERSION=$2
 
-# 创建临时工作目录
+# create temp dir
 WORK_DIR=$(mktemp -d)
 echo "Working in temporary directory: $WORK_DIR"
 
-# 创建主包目录
+# create vendor dir
 ENTRY_DIR="$WORK_DIR/entry"
 mkdir -p "$ENTRY_DIR"
 
-# 复制并处理 entry package.json 模板
+# render entry package.json template
 cp ../templates/entry.package.json.template "$ENTRY_DIR/package.json"
 cat "$ENTRY_DIR/package.json" | \
+# use awk to replace placeholders since sed is different on macOS and Linux
     awk -v name="$NAME" \
         -v version="$VERSION" \
     '{
@@ -28,7 +29,7 @@ cat "$ENTRY_DIR/package.json" | \
         print;
     }' > "$ENTRY_DIR/package.json.tmp" && mv "$ENTRY_DIR/package.json.tmp" "$ENTRY_DIR/package.json"
 
-# 复制 postinstall 脚本
+# do copy postinstall.sh
 cp ../templates/postinstall.sh.template "$ENTRY_DIR/postinstall.sh"
 cat "$ENTRY_DIR/postinstall.sh" | \
     awk -v name="$NAME" \
@@ -37,7 +38,7 @@ cat "$ENTRY_DIR/postinstall.sh" | \
         print;
     }' > "$ENTRY_DIR/postinstall.sh.tmp" && mv "$ENTRY_DIR/postinstall.sh.tmp" "$ENTRY_DIR/postinstall.sh"
 
-# 创建 bin 目录和默认二进制文件
+# create placeholder binary
 mkdir -p "$ENTRY_DIR/bin"
 cat > "$ENTRY_DIR/bin/$NAME" << EOF
 #!/bin/bash
@@ -46,10 +47,10 @@ exit 1
 EOF
 chmod +x "$ENTRY_DIR/bin/$NAME"
 
-# 发布主包
+# do publish, --dry-run for test
 cd "$ENTRY_DIR"
 npm publish --dry-run
 cat package.json
 
-# 清理
+# clean up temp dir
 rm -rf "$WORK_DIR"

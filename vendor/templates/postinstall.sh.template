@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 获取系统信息
+# get cpu & os info
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
 
@@ -10,18 +10,18 @@ elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
     ARCH="arm64"
 fi
 
-# 构建包名
+# prepare PACKAGE_NAME
 PACKAGE_NAME="@utoo/{{name}}-${OS}-${ARCH}"
 
-# 检查对应的包是否存在
+# check the binary node_modules exist
 if [ ! -d "node_modules/${PACKAGE_NAME}" ]; then
     echo "Binary package ${PACKAGE_NAME} not found"
     exit 1
 fi
 
-# 创建 bin 目录
+# create binary config
 mkdir -p bin
 
-# 复制对应的二进制文件
-cp "node_modules/${PACKAGE_NAME}/bin/{{name}}" "bin/{{name}}"
+# copy file
+cp -f "node_modules/${PACKAGE_NAME}/bin/{{name}}" "bin/{{name}}"
 chmod +x "bin/{{name}}"
