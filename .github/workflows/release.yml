@@ -53,7 +53,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --bin utoo,utoo-install,utoo-rebuild,utoo-deps,utoo-clean
+          args: --release --bin utoo --bin utoo-install --bin utoo-rebuild --bin utoo-deps --bin utoo-clean
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
