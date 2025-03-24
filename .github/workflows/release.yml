@@ -3,8 +3,6 @@ name: utoo-release
 on:
   release:
     types: [published]
-  pull_request:
-    branches: [ next ]
 
 jobs:
   build-and-publish-binary:
@@ -32,14 +30,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Get version from release or use alpha version
+      - name: Get version from release
         id: get_version
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          else
-            echo "VERSION=0.0.0-alpha.1" >> $GITHUB_OUTPUT
-          fi
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -62,7 +56,6 @@ jobs:
             utoo utoo-install utoo-rebuild utoo-deps utoo-clean
 
       - name: Upload Release Assets
-        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
           files: utoo-${{ matrix.platform_os }}-${{ matrix.platform_cpu }}.tar.gz
@@ -100,14 +93,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Get version from release or use alpha version
+      - name: Get version from release
         id: get_version
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          else
-            echo "VERSION=0.0.0-alpha.1" >> $GITHUB_OUTPUT
-          fi
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
