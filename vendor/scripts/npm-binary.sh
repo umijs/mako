@@ -42,7 +42,7 @@ chmod +x "$PLATFORM_DIR/bin/$NAME"
 
 # do publish, --dry-run for test
 cd "$PLATFORM_DIR"
-npm publish --provenance
+npm publish --provenance --access public
 cat package.json
 
 # clean up

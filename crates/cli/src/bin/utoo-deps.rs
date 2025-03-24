@@ -17,18 +17,6 @@ struct Cli {
     #[arg(long = "workspace-only")]
     workspace_only: bool,
 
-    /// Show detailed dependency information
-    #[arg(short, long)]
-    detail: bool,
-
-    /// Show only production dependencies
-    #[arg(long)]
-    prod: bool,
-
-    /// Show only development dependencies
-    #[arg(long)]
-    dev: bool,
-
     /// Show verbose output
     #[arg(short, long)]
     verbose: bool,

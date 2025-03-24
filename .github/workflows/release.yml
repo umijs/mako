@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             target: x86_64-unknown-linux-gnu
             platform_os: linux
             platform_cpu: x64
@@ -23,14 +23,23 @@ jobs:
             platform_cpu: arm64
 
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v3
 
-      - name: Get version from release
+      - name: Get version from release or use alpha version
         id: get_version
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update Cargo.toml version
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" crates/cli/Cargo.toml
+          rm crates/cli/Cargo.toml.bak
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -52,14 +61,6 @@ jobs:
           tar -czf ../../utoo-${{ matrix.platform_os }}-${{ matrix.platform_cpu }}.tar.gz \
             utoo utoo-install utoo-rebuild utoo-deps utoo-clean
 
-      - name: Upload Release Assets
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v1
-        with:
-          files: utoo-${{ matrix.platform_os }}-${{ matrix.platform_cpu }}.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -71,6 +72,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
+          set -e
           cd vendor/scripts
           BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean")
           for BIN in "${BINS[@]}"; do
@@ -82,12 +84,15 @@ jobs:
 
   publish-main:
     needs: build-and-publish-binary
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v3
 
-      - name: Get version from release
+      - name: Get version from release or use alpha version
         id: get_version
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
@@ -103,6 +108,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
+          set -e
           cd vendor/scripts
           BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean")
           for BIN in "${BINS[@]}"; do

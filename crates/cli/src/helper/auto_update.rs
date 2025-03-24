@@ -35,7 +35,7 @@ pub async fn init_auto_update() -> Result<(), String> {
             "New version found: {} (current version: {}), updating automatically...",
             cache.version, current_version
         ));
-        log_info(&format!("npm i utoo -g"));
+        log_info(&format!("npm i @utoo/utoo -g"));
 
         execute_update()?;
 
@@ -75,7 +75,7 @@ fn execute_update() -> Result<(), String> {
 }
 
 async fn check_remote_version() -> Result<(), String> {
-    let registry_url = format!("{}/utoo/latest", get_registry());
+    let registry_url = format!("{}/@utoo/utoo/latest", get_registry());
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_millis(2000))
         .build()

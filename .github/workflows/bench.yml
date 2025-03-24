@@ -1,6 +1,7 @@
 name: utoo-cli-benchmark
 
-on: [pull_request]
+on:
+  workflow_dispatch:
 
 jobs:
   build:
