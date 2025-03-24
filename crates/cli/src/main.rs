@@ -30,7 +30,7 @@ struct Cli {
     #[arg(long)]
     ignore_scripts: bool,
 
-    #[arg(short = 'V', long, global = true)]
+    #[arg(long, global = true)]
     verbose: bool,
 
     #[arg(short, long)]

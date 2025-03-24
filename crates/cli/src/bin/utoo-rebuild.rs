@@ -13,10 +13,6 @@ use utoo_cli::{
     about = REBUILD_ABOUT
 )]
 struct Cli {
-    /// Skip running scripts during rebuild
-    #[arg(long = "ignore-scripts")]
-    ignore_scripts: bool,
-
     /// Show verbose output
     #[arg(short, long)]
     verbose: bool,
