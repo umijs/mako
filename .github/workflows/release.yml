@@ -23,6 +23,9 @@ jobs:
             platform_cpu: arm64
 
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v3
@@ -71,6 +74,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
+          set -e
           cd vendor/scripts
           BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean")
           for BIN in "${BINS[@]}"; do
@@ -83,6 +87,9 @@ jobs:
   publish-main:
     needs: build-and-publish-binary
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v3
@@ -103,6 +110,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
+          set -e
           cd vendor/scripts
           BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean")
           for BIN in "${BINS[@]}"; do
