@@ -3,24 +3,14 @@ import * as EnhancedResolve from 'enhanced-resolve';
 import * as loaderRunner from 'loader-runner';
 import * as loaderUtils from 'loader-utils';
 
+const fileSystem = new EnhancedResolve.CachedInputFileSystem(fs, 60 * 1000);
+
 function createLoaderContext(options: {
   root: string;
   alias?: Record<string, string>;
 }) {
-  const getResolveContext = (loaderContext: any) => ({
-    fileDependencies: {
-      add: (d: string) => loaderContext.addDependency(d),
-    },
-    contextDependencies: {
-      add: (d: string) => loaderContext.addContextDependency(d),
-    },
-    missingDependencies: {
-      add: (d: string) => loaderContext.addMissingDependency(d),
-    },
-  });
-
   const defaultResolverOptions = {
-    fileSystem: new EnhancedResolve.CachedInputFileSystem(fs, 60000),
+    fileSystem,
     alias: options.alias,
   };
 
@@ -31,7 +21,7 @@ function createLoaderContext(options: {
   const ctx = {
     version: 2,
     rootContext: options.root,
-    fs: new EnhancedResolve.CachedInputFileSystem(fs, 60000),
+    fs: fileSystem,
     getOptions(): Record<string, any> {
       const query = (this as unknown as loaderRunner.ExtendedLoaderContext)
         .query;
@@ -46,13 +36,7 @@ function createLoaderContext(options: {
       return query;
     },
     resolve(context: string, request: string, callback: any) {
-      defaultResolver.resolve(
-        {},
-        context,
-        request,
-        getResolveContext(this),
-        callback,
-      );
+      defaultResolver.resolve({}, context, request, {}, callback);
     },
     getResolve(options: EnhancedResolve.ResolveOptions) {
       const resolver = options
@@ -64,25 +48,13 @@ function createLoaderContext(options: {
 
       return (context: string, request: string, callback: any) => {
         if (callback) {
-          resolver.resolve(
-            {},
-            context,
-            request,
-            getResolveContext(this),
-            callback,
-          );
+          resolver.resolve({}, context, request, {}, callback);
         } else {
           return new Promise((resolve, reject) => {
-            resolver.resolve(
-              {},
-              context,
-              request,
-              getResolveContext(this),
-              (err, result) => {
-                if (err) reject(err);
-                else resolve(result);
-              },
-            );
+            resolver.resolve({}, context, request, {}, (err, result) => {
+              if (err) reject(err);
+              else resolve(result);
+            });
           });
         }
       };
@@ -128,3 +100,7 @@ export function runLoaders(
     );
   });
 }
+
+export type RunLoaderResult = loaderRunner.RunLoaderResult;
+
+export * from './parallelLoader';

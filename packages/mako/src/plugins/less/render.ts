@@ -5,21 +5,23 @@ module.exports = async function render(param: {
   filename: string;
   opts: LessLoaderOpts;
   extOpts: RunLoadersOptions;
-}): Promise<{ content: string; type: 'css' }> {
+}) {
   const { modifyVars, globalVars, math, sourceMap, plugins } = param.opts;
   const extOpts = param.extOpts;
 
-  const pluginInstances: Less.Plugin[] | undefined = plugins?.map((p) => {
-    if (Array.isArray(p)) {
-      const pluginModule = require(p[0]);
-      const PluginClass = pluginModule.default || pluginModule;
-      return new PluginClass(p[1]);
-    } else {
-      return require(p);
-    }
-  });
+  const pluginInstances: Less.Plugin[] | undefined = (plugins || []).map(
+    (p) => {
+      if (Array.isArray(p)) {
+        const pluginModule = require(p[0]);
+        const PluginClass = pluginModule.default || pluginModule;
+        return new PluginClass(p[1]);
+      } else {
+        return require(p);
+      }
+    },
+  );
 
-  const content = await runLoaders({
+  return runLoaders({
     alias: extOpts.alias,
     root: extOpts.root,
     resource: param.filename,
@@ -41,21 +43,8 @@ module.exports = async function render(param: {
       },
     ],
   })
-    .then((result) => {
-      let source: string = '';
-      if (result.result) {
-        const buf = result.result[0];
-        if (Buffer.isBuffer(buf)) {
-          source = buf.toString('utf-8');
-        } else {
-          source = buf ?? '';
-        }
-      }
-      return source;
-    })
+    .then((result) => result)
     .catch((err) => {
       throw new Error(err.toString());
     });
-
-  return { content: content, type: 'css' };
 };

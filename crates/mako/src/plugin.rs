@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -209,6 +209,10 @@ pub trait Plugin: Any + Send + Sync {
 
     fn after_update(&self, _compiler: &Compiler) -> Result<()> {
         Ok(())
+    }
+
+    fn before_rebuild(&self, paths: Vec<PathBuf>) -> Result<Vec<PathBuf>> {
+        Ok(paths)
     }
 }
 
@@ -488,5 +492,13 @@ impl PluginDriver {
             plugin.after_update(compiler)?;
         }
         Ok(())
+    }
+
+    pub fn before_rebuild(&self, paths: Vec<PathBuf>) -> Result<Vec<PathBuf>> {
+        let mut paths = paths;
+        for plugin in &self.plugins {
+            paths = plugin.before_rebuild(paths)?;
+        }
+        Ok(paths)
     }
 }

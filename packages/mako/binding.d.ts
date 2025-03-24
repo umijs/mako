@@ -69,6 +69,7 @@ export interface JsHooks {
     path: string,
   ) => Promise<{ content: string; type: 'css' | 'js' } | void> | void;
   transformInclude?: (filePath: string) => Promise<bool> | bool;
+  beforeRebuild?: (paths: string[]) => Promise<string[] | void> | void;
 }
 export interface WriteFile {
   path: string;
