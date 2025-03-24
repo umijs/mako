@@ -257,38 +257,31 @@ impl Plugin for JsPlugin {
 
     fn before_rebuild(&self, paths: Vec<PathBuf>) -> Result<Vec<PathBuf>> {
         // TODO: 临时方案，出于热更性能考虑只在less/sass文件变动时调用js-hook，后续优化。
-        let mut has_less_or_sass = false;
-        for path in &paths {
-            if path
-                .extension()
-                .map(|ext| ext == "less" || ext == "scss")
-                .unwrap_or(false)
-            {
-                has_less_or_sass = true;
-                break;
-            }
-        }
-        if !has_less_or_sass {
-            return Ok(paths);
-        }
-
-        if let Some(hook) = &self.hooks.before_rebuild {
-            let result: Option<Vec<String>> = match hook.call((
-                (),
-                paths
-                    .iter()
-                    .map(|p| p.to_string_lossy().to_string())
-                    .collect(),
-            )) {
-                Ok(res) => res,
-                Err(_) => return Ok(paths),
-            };
-
-            if let Some(result) = result {
-                return Ok(result.iter().map(PathBuf::from).collect());
-            }
-        }
-
-        Ok(paths)
+        let (less_or_sass, others): (Vec<PathBuf>, Vec<PathBuf>) = paths
+            .into_iter()
+            .partition(|p| p.extension().is_some_and(|p| p == "less" || p == "sass"));
+        Ok([
+            match &self.hooks.before_rebuild {
+                Some(hook) => {
+                    match hook.call((
+                        (),
+                        less_or_sass
+                            .iter()
+                            .map(|p| p.to_string_lossy().to_string())
+                            .collect(),
+                    )) {
+                        Ok(paths) => paths.map_or(less_or_sass, |paths| {
+                            paths.iter().map(PathBuf::from).collect()
+                        }),
+                        Err(_) => less_or_sass,
+                    }
+                }
+                None => less_or_sass,
+            },
+            others,
+        ]
+        .into_iter()
+        .flatten()
+        .collect())
     }
 }
