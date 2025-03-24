@@ -3,6 +3,7 @@ packages:
   - "client"
   - "crates/binding"
   - "packages/*"
+  - "e2e/fixtures/less.postcss"
   - "e2e/fixtures/module-federation.*"
   - "e2e/fixtures.umi/react-16"
   - "e2e/fixtures.umi/config.less.plugins"

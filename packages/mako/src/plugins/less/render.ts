@@ -5,6 +5,7 @@ module.exports = async function render(param: {
   filename: string;
   opts: LessLoaderOpts;
   extOpts: RunLoadersOptions;
+  postcss?: boolean;
 }) {
   const { modifyVars, globalVars, math, sourceMap, plugins } = param.opts;
   const extOpts = param.extOpts;
@@ -26,6 +27,9 @@ module.exports = async function render(param: {
     root: extOpts.root,
     resource: param.filename,
     loaders: [
+      param.postcss && {
+        loader: require.resolve('postcss-loader'),
+      },
       {
         loader: require.resolve('less-loader'),
         options: {
@@ -41,7 +45,7 @@ module.exports = async function render(param: {
           },
         },
       },
-    ],
+    ].filter(Boolean),
   })
     .then((result) => result)
     .catch((err) => {

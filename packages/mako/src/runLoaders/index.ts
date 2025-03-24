@@ -63,6 +63,7 @@ function createLoaderContext(options: {
     getLogger() {
       return console;
     },
+    addBuildDependency(_file: string) {},
   };
 
   return ctx;
