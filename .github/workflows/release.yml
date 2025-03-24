@@ -61,6 +61,13 @@ jobs:
           tar -czf ../../utoo-${{ matrix.platform_os }}-${{ matrix.platform_cpu }}.tar.gz \
             utoo utoo-install utoo-rebuild utoo-deps utoo-clean
 
+      - name: Upload Release Asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${GITHUB_REF#refs/tags/}" \
+            utoo-${{ matrix.platform_os }}-${{ matrix.platform_cpu }}.tar.gz --clobber
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
