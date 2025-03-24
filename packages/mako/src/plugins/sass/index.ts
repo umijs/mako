@@ -57,7 +57,10 @@ export class SassPlugin implements binding.JsHooks {
     );
     const result = await this.parallelLoader.run({
       filename,
-      opts: this.sassOptions,
+      opts: {
+        ...this.sassOptions,
+        postcss: this.params.config.postcss,
+      },
       extOpts: this.extOpts,
     });
 

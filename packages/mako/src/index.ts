@@ -15,6 +15,7 @@ type Config = binding.BuildParams['config'] & {
   plugins?: binding.BuildParams['plugins'];
   less?: LessLoaderOpts;
   sass?: Options<'async'> & { resources: string[] };
+  postcss?: boolean;
   forkTSChecker?: boolean;
 };
 
@@ -102,6 +103,11 @@ export async function build(params: BuildParams) {
       },
       {},
     ) || {};
+
+  // merge postcss config
+  if ((makoConfig as any)?.postcss || params.config?.postcss) {
+    params.config.postcss ||= (makoConfig as any)?.postcss;
+  }
 
   // built-in less-loader
   params.config.plugins.push(
@@ -322,6 +328,7 @@ export async function build(params: BuildParams) {
   params.config = omit(params.config, [
     'less',
     'sass',
+    'postcss',
     'forkTSChecker',
     'plugins',
   ]) as BuildParams['config'];

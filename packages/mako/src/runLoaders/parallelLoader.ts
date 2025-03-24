@@ -4,7 +4,11 @@ import { RunLoadersOptions } from '.';
 
 export function createParallelLoader<T>(renderPath: string) {
   return new Piscina<
-    { filename: string; opts: T; extOpts: RunLoadersOptions },
+    {
+      filename: string;
+      opts: T;
+      extOpts: RunLoadersOptions;
+    },
     RunLoaderResult & { missingDependencies: string[] }
   >({
     filename: renderPath,

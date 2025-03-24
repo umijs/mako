@@ -84,7 +84,10 @@ export class LessPlugin implements binding.JsHooks {
     );
     const result = await this.parallelLoader.run({
       filename,
-      opts: this.lessOptions,
+      opts: {
+        ...this.lessOptions,
+        postcss: this.params.config.postcss,
+      },
       extOpts: this.extOpts,
     });
 
