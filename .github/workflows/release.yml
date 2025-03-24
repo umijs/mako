@@ -3,8 +3,6 @@ name: utoo-release
 on:
   release:
     types: [published]
-  pull_request:
-    branches: [ next ]
 
 jobs:
   build-and-publish-binary:
@@ -35,11 +33,13 @@ jobs:
       - name: Get version from release or use alpha version
         id: get_version
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          else
-            echo "VERSION=0.0.0-alpha.2" >> $GITHUB_OUTPUT
-          fi
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update Cargo.toml version
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" crates/cli/Cargo.toml
+          rm crates/cli/Cargo.toml.bak
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -95,11 +95,7 @@ jobs:
       - name: Get version from release or use alpha version
         id: get_version
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          else
-            echo "VERSION=0.0.0-alpha.2" >> $GITHUB_OUTPUT
-          fi
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
