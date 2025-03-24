@@ -7,7 +7,26 @@ use tokio_retry::Retry;
 
 use super::logger::{log_verbose, log_warning};
 use super::retry::create_retry_strategy;
+
+#[cfg(target_os = "macos")]
 use libc::clonefile;
+
+#[cfg(target_os = "linux")]
+mod linux_clone {
+    use std::fs::File;
+    use std::os::unix::io::AsRawFd;
+
+    const FICLONE: libc::c_ulong = 0x40049409;
+
+    pub fn clone_file(src: &File, dst: &File) -> std::io::Result<()> {
+        let ret = unsafe { libc::ioctl(dst.as_raw_fd(), FICLONE, src.as_raw_fd()) };
+        if ret == 0 {
+            Ok(())
+        } else {
+            Err(std::io::Error::last_os_error())
+        }
+    }
+}
 
 pub async fn validate_directory(src: &Path, dst: &Path) -> std::io::Result<bool> {
     if !fs::metadata(src).await?.is_dir() || !fs::metadata(dst).await?.is_dir() {
@@ -68,7 +87,8 @@ pub async fn validate_directory(src: &Path, dst: &Path) -> std::io::Result<bool>
 
     for (src_entry, dst_entry) in src_entries.iter().zip(dst_entries.iter()) {
         if src_entry.is_dir && dst_entry.is_dir {
-            if !Box::pin(validate_directory(&src_entry.path, &dst_entry.path)).await? {
+            let future = validate_directory(&src_entry.path, &dst_entry.path);
+            if !Box::pin(future).await? {
                 return Ok(false);
             }
         } else if !src_entry.is_dir && !dst_entry.is_dir {
@@ -149,32 +169,62 @@ pub async fn clone(src: &Path, dst: &Path, find_real: bool) -> Result<(), std::i
     if let Some(parent) = dst.parent() {
         fs::create_dir_all(parent).await?;
     }
-    let src_c = CString::new(real_src.as_os_str().as_bytes())?;
-    let dst_c = CString::new(dst.as_os_str().as_bytes())?;
 
-    Retry::spawn(create_retry_strategy(), || async {
-        match unsafe { clonefile(src_c.as_ptr(), dst_c.as_ptr(), 0) } {
-            0 => {
-                log_verbose(&format!(
-                    "clone {} to {} success",
-                    real_src.display(),
-                    dst.display()
-                ));
-                Ok(())
-            }
-            _ => {
-                let _ = fs::remove_dir_all(dst).await.map_err(|e| {
+    #[cfg(target_os = "macos")]
+    {
+        let src_c = CString::new(real_src.as_os_str().as_bytes())?;
+        let dst_c = CString::new(dst.as_os_str().as_bytes())?;
+
+        Retry::spawn(create_retry_strategy(), || async {
+            match unsafe { clonefile(src_c.as_ptr(), dst_c.as_ptr(), 0) } {
+                0 => {
                     log_verbose(&format!(
-                        "Failed to clean target directory {}: {}",
-                        dst.display(),
-                        e
+                        "clone {} to {} success",
+                        real_src.display(),
+                        dst.display()
                     ));
-                });
-                Err(std::io::Error::last_os_error())
+                    Ok(())
+                }
+                _ => {
+                    let _ = fs::remove_dir_all(dst).await.map_err(|e| {
+                        log_verbose(&format!(
+                            "Failed to clean target directory {}: {}",
+                            dst.display(),
+                            e
+                        ));
+                    });
+                    Err(std::io::Error::last_os_error())
+                }
             }
-        }
-    })
-    .await
+        })
+        .await
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        use std::fs::File;
+
+        Retry::spawn(create_retry_strategy(), || async {
+            let src_file = File::open(&real_src)?;
+            let dst_file = File::create(dst)?;
+
+            match linux_clone::clone_file(&src_file, &dst_file) {
+                Ok(()) => {
+                    log_verbose(&format!(
+                        "clone {} to {} success",
+                        real_src.display(),
+                        dst.display()
+                    ));
+                    Ok(())
+                }
+                Err(e) => {
+                    let _ = fs::remove_file(dst).await;
+                    Err(e)
+                }
+            }
+        })
+        .await
+    }
 }
 
 #[cfg(test)]
