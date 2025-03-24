@@ -3,11 +3,17 @@ import { RunLoadersOptions, runLoaders } from '../../runLoaders';
 
 module.exports = async function render(param: {
   filename: string;
-  opts: LessLoaderOpts;
+  opts: LessLoaderOpts & { postcss?: boolean };
   extOpts: RunLoadersOptions;
-  postcss?: boolean;
 }) {
-  const { modifyVars, globalVars, math, sourceMap, plugins } = param.opts;
+  const {
+    modifyVars,
+    globalVars,
+    math,
+    sourceMap,
+    plugins,
+    postcss: postcssOptions,
+  } = param.opts;
   const extOpts = param.extOpts;
 
   const pluginInstances: Less.Plugin[] | undefined = (plugins || []).map(
@@ -27,7 +33,7 @@ module.exports = async function render(param: {
     root: extOpts.root,
     resource: param.filename,
     loaders: [
-      param.postcss && {
+      postcssOptions && {
         loader: require.resolve('postcss-loader'),
       },
       {

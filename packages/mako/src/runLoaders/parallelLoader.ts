@@ -8,7 +8,6 @@ export function createParallelLoader<T>(renderPath: string) {
       filename: string;
       opts: T;
       extOpts: RunLoadersOptions;
-      postcss?: boolean;
     },
     RunLoaderResult & { missingDependencies: string[] }
   >({
