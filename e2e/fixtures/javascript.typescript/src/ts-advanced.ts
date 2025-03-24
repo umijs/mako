@@ -116,7 +116,7 @@ type example = NonNullable<string | number | undefined>;
 // Parameters & ReturnType
 type IFoo = (
   uname: string,
-  uage: number
+  usage: number
 ) => {
   name: string;
   age: number;
@@ -124,7 +124,7 @@ type IFoo = (
 
 //参数类型
 type Ibar = Parameters<IFoo>;
-// type Ibar = [uname: string, uage: number]
+// type Ibar = [uname: string, usage: number]
 
 type T_RT = ReturnType<IFoo>;
 // type T_RT = {

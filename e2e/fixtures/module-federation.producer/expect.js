@@ -6,7 +6,7 @@ const manifest = JSON.parse(files["mf-manifest.json"]);
 
 assert(
   manifest.metaData.remoteEntry.name === 'remoteEntry.js',
-  "should generate mf contanier entry"
+  "should generate mf container entry"
 )
 
 assert(
