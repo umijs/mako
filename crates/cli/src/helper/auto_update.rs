@@ -57,7 +57,7 @@ async fn check_and_update_cache() -> Result<VersionCache, String> {
 
 fn execute_update() -> Result<(), String> {
     let status = Command::new("npm")
-        .args(&["i", "utoo", "-g"])
+        .args(&["i", "@utoo/utoo", "-g"])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
