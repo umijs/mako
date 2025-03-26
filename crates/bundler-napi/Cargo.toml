@@ -1,0 +1,71 @@
+[package]
+name = "bundler-napi"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+plugin = [
+  "swc_core/plugin_transform_host_native",
+  "swc_core/plugin_transform_host_native_filesystem_cache",
+  "swc_core/plugin_transform_host_native_shared_runtime",
+  "bundler-core/plugin",
+  "turbopack-ecmascript-plugins",
+  "turbopack-ecmascript-plugins/swc_ecma_transform_plugin",
+]
+
+# Enable support for the tokio console: https://github.com/tokio-rs/console
+tokio-console = ["dep:console-subscriber"]
+
+
+[dependencies]
+napi = { version = "2", default-features = false, features = [
+  "napi3",
+  "serde-json",
+  "tokio_rt",
+  "error_anyhow",
+  # Lightningcss uses this features
+  "napi4",
+  "napi5",
+  "compat-mode",
+] }
+napi-derive = "2"
+bundler-api = { workspace = true }
+bundler-core = { workspace = true }
+swc_core = { workspace = true, features = [
+  "base_concurrent",
+  "base_node",
+  "bundler",
+  "bundler_concurrent",
+  "common_concurrent",
+  "ecma_ast",
+  "ecma_ast_serde",
+  "ecma_codegen",
+  "ecma_loader_lru",
+  "ecma_loader_node",
+  "ecma_minifier",
+  "ecma_parser",
+  "ecma_parser_typescript",
+  "ecma_transforms",
+  "ecma_transforms_optimization",
+  "ecma_transforms_react",
+  "ecma_transforms_typescript",
+  "ecma_utils",
+  "ecma_visit",
+] }
+turbopack-ecmascript-plugins = { workspace = true, optional = true }
+console-subscriber = { workspace = true, optional = true }
+
+[build-dependencies]
+anyhow = { workspace = true }
+napi-build = "2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+turbo-tasks-build = { workspace = true }
+
+
+[lints]
+workspace = true

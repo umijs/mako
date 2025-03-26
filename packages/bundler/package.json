@@ -1,0 +1,34 @@
+{
+  "name": "@utoo/bundler",
+  "version": "0.0.0",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "napi": {
+    "name": "bundler",
+    "triples": {
+      "additional": [
+        "i686-pc-windows-msvc",
+        "aarch64-unknown-linux-gnu",
+        "aarch64-apple-darwin",
+        "x86_64-unknown-linux-musl",
+        "aarch64-unknown-linux-musl",
+        "aarch64-pc-windows-msvc"
+      ]
+    }
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.0"
+  },
+  "engines": {
+    "node": ">= 10"
+  },
+  "scripts": {
+    "artifacts": "napi artifacts --dir ./ --dist npm",
+    "build": "napi build --platform --release -p bundler-napi --cargo-cwd ../../ --cargo-name bundler_napi --features plugin",
+    "build:debug": "napi build --platform -p bundler-napi --cargo-cwd ../../ --cargo-name bundler_napi --features plugin",
+    "prepublishOnly": "napi prepublish -t npm",
+    "version": "napi version"
+  }
+}
+

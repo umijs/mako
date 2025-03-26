@@ -53,7 +53,7 @@ pub enum Transform {
 }
 
 /// Returns a rule which applies the Next.js modularize imports transform.
-pub fn get_next_modularize_imports_rule(
+pub fn get_modularize_imports_rule(
     modularize_imports_config: &FxIndexMap<String, ModularizeImportPackageConfig>,
     enable_mdx_rs: bool,
 ) -> ModuleRule {
