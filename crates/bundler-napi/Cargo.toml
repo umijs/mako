@@ -8,7 +8,6 @@ license.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [features]
-
 plugin = [
   "swc_core/plugin_transform_host_native",
   "swc_core/plugin_transform_host_native_filesystem_cache",
@@ -36,6 +35,29 @@ napi = { version = "2", default-features = false, features = [
 napi-derive = "2"
 bundler-api = { workspace = true }
 bundler-core = { workspace = true }
+swc_core = { workspace = true, features = [
+  "base_concurrent",
+  "base_node",
+  "bundler",
+  "bundler_concurrent",
+  "common_concurrent",
+  "ecma_ast",
+  "ecma_ast_serde",
+  "ecma_codegen",
+  "ecma_loader_lru",
+  "ecma_loader_node",
+  "ecma_minifier",
+  "ecma_parser",
+  "ecma_parser_typescript",
+  "ecma_transforms",
+  "ecma_transforms_optimization",
+  "ecma_transforms_react",
+  "ecma_transforms_typescript",
+  "ecma_utils",
+  "ecma_visit",
+] }
+turbopack-ecmascript-plugins = { workspace = true, optional = true }
+console-subscriber = { workspace = true, optional = true }
 
 [build-dependencies]
 anyhow = { workspace = true }

@@ -1,4 +1,4 @@
-use std::{env, process::Command, str};
+use std::{process::Command, str};
 
 extern crate napi_build;
 

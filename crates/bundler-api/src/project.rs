@@ -578,13 +578,9 @@ impl Project {
     #[turbo_tasks::function]
     pub async fn client_relative_path(self: Vc<Self>) -> Result<Vc<FileSystemPath>> {
         let config = self.config().await?;
-        Ok(self.client_root().join(
-            format!(
-                "{}/_next",
-                config.base_path.clone().unwrap_or_else(|| "".into()),
-            )
-            .into(),
-        ))
+        Ok(self
+            .client_root()
+            .join(format!("{}/", config.base_path.clone().unwrap_or_else(|| "".into()),).into()))
     }
 
     #[turbo_tasks::function]

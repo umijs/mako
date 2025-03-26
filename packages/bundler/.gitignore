@@ -1,2 +1,2 @@
-# Ignore build artifacts
-native/*
+bundler.*.node
+

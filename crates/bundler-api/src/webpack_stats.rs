@@ -21,18 +21,18 @@ where
         FxIndexMap::default();
     let mut modules = vec![];
     for asset in entry_assets {
-        let path = normalize_client_path(&asset.path().await?.path);
+        let path = &asset.path().await?.path;
 
         let Some(asset_len) = *asset.size_bytes().await? else {
             continue;
         };
 
         if let Some(chunk) = ResolvedVc::try_downcast_type::<EcmascriptBrowserChunk>(*asset) {
-            let chunk_ident = normalize_client_path(&chunk.path().await?.path);
+            let chunk_ident = &chunk.path().await?.path;
             chunks.push(WebpackStatsChunk {
                 size: asset_len,
-                files: vec![chunk_ident.clone().into()],
-                id: chunk_ident.clone().into(),
+                files: vec![chunk_ident.clone()],
+                id: chunk_ident.clone(),
                 ..Default::default()
             });
 
@@ -41,14 +41,14 @@ where
                 chunk_items
                     .entry(**item)
                     .or_default()
-                    .insert(chunk_ident.clone().into());
+                    .insert(chunk_ident.clone());
             }
         }
 
         assets.push(WebpackStatsAsset {
             ty: "asset".into(),
-            name: path.clone().into(),
-            chunks: vec![path.into()],
+            name: path.clone(),
+            chunks: vec![path.clone()],
             size: asset_len,
             ..Default::default()
         });
@@ -86,11 +86,6 @@ where
         chunks,
         modules,
     })
-}
-
-fn normalize_client_path(path: &str) -> String {
-    let next_re = regex::Regex::new(r"^_next/").unwrap();
-    next_re.replace(path, ".next/").into()
 }
 
 #[derive(Serialize, Clone, Debug, Default)]
