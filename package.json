@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "workspaces": [
+    "packages/bundler",
     "examples/*",
     "crates/bundler/js"
   ]

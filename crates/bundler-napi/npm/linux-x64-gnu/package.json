@@ -1,0 +1,26 @@
+{
+  "name": "@utoo/bundler-linux-x64-gnu",
+  "version": "0.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cnpm/utoo",
+    "directory": "crates/napi/npm/linux-x64-gnu"
+  },
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "libc": [
+    "glibc"
+  ],
+  "main": "utoo-bundler.linux-x64-gnu.node",
+  "files": [
+    "utoo-bundler.linux-x64-gnu.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  }
+}
