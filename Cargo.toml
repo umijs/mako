@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  # "crates/bundler",
+  "crates/bundler",
   "crates/bundler-api",
   "crates/bundler-core",
   "crates/bundler-napi",
@@ -43,6 +43,9 @@ swc_core = { version = "16.4.0", features = [
   "ecma_loader_lru",
   "ecma_loader_parking_lot",
 ] }
+rand = "0.9.0"
+url = "2.2.2"
+urlencoding = "2.1.2"
 
 # Dependencies from nextjs, should keep the same rev!
 ## Dependencies for common cache and task. See https://github.com/vercel/next.js/blob/canary/turbopack/crates/turbopack/architecture.md
@@ -59,6 +62,7 @@ turbo-rcstr = { git = "https://github.com/vercel/next.js.git", package = "turbo-
 turbo-tasks-memory = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-memory", tag = "v15.2.3" }
 turbo-tasks-malloc = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-malloc", tag = "v15.2.3" }
 turbopack-trace-utils = { git = "https://github.com/vercel/next.js.git", package = "turbopack-trace-utils", tag = "v15.2.3" }
+turbopack-trace-server = { git = "https://github.com/vercel/next.js.git", package = "turbopack-trace-server", tag = "v15.2.3" }
 
 ### Dependencies for bundler specially.
 turbopack = { git = "https://github.com/vercel/next.js.git", package = "turbopack", tag = "v15.2.3" }
@@ -68,6 +72,7 @@ turbopack-resolve = { git = "https://github.com/vercel/next.js.git", package = "
 turbopack-ecmascript = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript", tag = "v15.2.3" }
 turbopack-ecmascript-plugins = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript-plugins", tag = "v15.2.3" }
 turbopack-ecmascript-runtime = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript-runtime", tag = "v15.2.3" }
+turbopack-ecmascript-hmr-protocol = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript-hmr-protocol", tag = "v15.2.3" }
 turbopack-image = { git = "https://github.com/vercel/next.js.git", package = "turbopack-image", tag = "v15.2.3" }
 turbopack-node = { git = "https://github.com/vercel/next.js.git", package = "turbopack-node", tag = "v15.2.3" }
 turbopack-nodejs = { git = "https://github.com/vercel/next.js.git", package = "turbopack-nodejs", tag = "v15.2.3" }

@@ -743,6 +743,13 @@ impl Config {
         )))
     }
 
+    /// Returns the suffix to use for chunk loading.
+    #[turbo_tasks::function]
+    pub async fn chunk_suffix_path(self: Vc<Self>) -> Result<Vc<Option<RcStr>>> {
+        // TODO: Maybe remove this
+        Ok(Vc::cell(None))
+    }
+
     #[turbo_tasks::function]
     pub fn enable_ppr(&self) -> Vc<bool> {
         Vc::cell(

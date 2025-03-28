@@ -3,8 +3,10 @@ use std::{path::MAIN_SEPARATOR, time::Duration};
 use anyhow::{bail, Context, Result};
 use bundler_core::{
     all_assets_from_entries,
+    client::context::get_client_chunking_context,
     config::{Config, JsConfig, ModuleIdStrategy as ModuleIdStrategyConfig},
     emit_assets,
+    library::contexts::get_library_chunking_context,
     mode::Mode,
     util::Runtime,
 };
@@ -48,6 +50,7 @@ use turbopack_nodejs::NodeJsChunkingContext;
 use crate::{
     endpoints::{Endpoint, Endpoints},
     entrypoints::Entrypoints,
+    library::{Library, LibraryProject, OptionLibraryProject},
     versioned_content_map::VersionedContentMap,
 };
 
@@ -78,6 +81,48 @@ pub struct WatchOptions {
 
 #[derive(
     Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    Clone,
+    TaskInput,
+    PartialEq,
+    Eq,
+    Hash,
+    TraceRawVcs,
+    NonLocalValue,
+    OperationValue,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct EntryOptions {
+    pub name: Option<RcStr>,
+    pub import: RcStr,
+    pub filename: Option<RcStr>,
+    pub library: Option<LibraryOptions>,
+}
+
+#[derive(
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    Clone,
+    TaskInput,
+    PartialEq,
+    Eq,
+    Hash,
+    TraceRawVcs,
+    NonLocalValue,
+    OperationValue,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryOptions {
+    pub name: Option<RcStr>,
+    pub export: Option<Vec<RcStr>>,
+}
+
+#[derive(
+    Debug,
     Serialize,
     Deserialize,
     Clone,
@@ -97,6 +142,10 @@ pub struct ProjectOptions {
 
     /// A path inside the root_path which contains the app/pages directories.
     pub project_path: RcStr,
+
+    /// The entrypoints of the project. Resolved relative to the project's
+    /// directory (`--dir`).
+    pub entry: Vec<EntryOptions>,
 
     /// The contents of next.config.js, serialized to JSON.
     pub config: RcStr,
@@ -140,6 +189,8 @@ pub struct PartialProjectOptions {
 
     /// A path inside the root_path which contains the app/pages directories.
     pub project_path: Option<RcStr>,
+
+    pub entry: Option<Vec<EntryOptions>>,
 
     /// The contents of next.config.js, serialized to JSON.
     pub config: Option<RcStr>,
@@ -250,6 +301,7 @@ impl ProjectContainer {
         let PartialProjectOptions {
             root_path,
             project_path,
+            entry,
             config,
             js_config,
             env,
@@ -272,6 +324,9 @@ impl ProjectContainer {
         }
         if let Some(project_path) = project_path {
             new_options.project_path = project_path;
+        }
+        if let Some(entry) = entry {
+            new_options.entry = entry;
         }
         if let Some(config) = config {
             new_options.config = config;
@@ -344,6 +399,7 @@ impl ProjectContainer {
         let js_config;
         let root_path;
         let project_path;
+        let entry;
         let watch;
         let dev;
         let build_id;
@@ -365,6 +421,7 @@ impl ProjectContainer {
             js_config = JsConfig::from_string(Vc::cell(options.js_config.clone()));
             root_path = options.root_path.clone();
             project_path = options.project_path.clone();
+            entry = options.entry.clone();
             watch = options.watch;
             dev = options.dev;
             build_id = options.build_id.clone();
@@ -376,11 +433,12 @@ impl ProjectContainer {
             .await?
             .dist_dir
             .as_ref()
-            .map_or_else(|| ".next".into(), |d| d.clone());
+            .map_or_else(|| "dist".into(), |d| d.clone());
 
         Ok(Project {
             root_path,
             project_path,
+            entry,
             watch,
             config: config.to_resolved().await?,
             js_config: js_config.to_resolved().await?,
@@ -439,6 +497,10 @@ pub struct Project {
 
     /// A path inside the root_path which contains the app/pages directories.
     pub project_path: RcStr,
+
+    /// The entrypoints of the project. Resolved relative to the project's
+    /// directory (`--dir`).
+    pub entry: Vec<EntryOptions>,
 
     /// Filesystem watcher options.
     watch: WatchOptions,
@@ -535,6 +597,32 @@ impl Issue for ConflictIssue {
 #[turbo_tasks::value_impl]
 impl Project {
     #[turbo_tasks::function]
+    pub async fn library_project(self: Vc<Self>) -> Result<Vc<OptionLibraryProject>> {
+        let this = self.await?;
+        let lib_vec: Vec<Library> = this
+            .entry
+            .iter()
+            .filter_map(|e| {
+                e.library.as_ref().map(|l| Library {
+                    name: l.name.clone(),
+                    import: e.import.clone(),
+                    export: l.export.clone(),
+                    filename: e.filename.clone(),
+                })
+            })
+            .collect();
+        if lib_vec.is_empty() {
+            Ok(Vc::cell(None))
+        } else {
+            Ok(Vc::cell(Some(
+                LibraryProject::new(self, Vc::cell(lib_vec))
+                    .to_resolved()
+                    .await?,
+            )))
+        }
+    }
+
+    #[turbo_tasks::function]
     pub fn project_fs(&self) -> Vc<DiskFileSystem> {
         DiskFileSystem::new(
             PROJECT_FILESYSTEM_NAME.into(),
@@ -623,7 +711,7 @@ impl Project {
     }
 
     #[turbo_tasks::function]
-    pub(super) async fn per_page_module_graph(&self) -> Result<Vc<bool>> {
+    pub(super) async fn per_entry_module_graph(&self) -> Result<Vc<bool>> {
         Ok(Vc::cell(*self.mode.await? == Mode::Development))
     }
 
@@ -655,8 +743,8 @@ impl Project {
                 node_root,
                 self.node_root_to_root_path().to_resolved().await?,
                 node_root,
-                node_root.join("build/chunks".into()).to_resolved().await?,
-                node_root.join("build/assets".into()).to_resolved().await?,
+                node_root,
+                node_root,
                 node_build_environment().to_resolved().await?,
                 mode.runtime_type(),
             )
@@ -682,8 +770,12 @@ impl Project {
 
     #[turbo_tasks::function]
     pub async fn get_all_endpoints(self: Vc<Self>) -> Result<Vc<Endpoints>> {
-        // TODO: collect entrypoints
-        Ok(Vc::cell(vec![]))
+        let mut endpoints = vec![];
+        let entrypoints = self.entrypoints().await?;
+        if let Some(libraries) = entrypoints.libraries {
+            endpoints.extend(libraries.await?);
+        }
+        Ok(Vc::cell(endpoints))
     }
 
     #[turbo_tasks::function]
@@ -720,7 +812,7 @@ impl Project {
         entry: ResolvedVc<Box<dyn Module>>,
         chunk_group_type: ChunkGroupType,
     ) -> Result<Vc<ModuleGraph>> {
-        Ok(if *self.per_page_module_graph().await? {
+        Ok(if *self.per_entry_module_graph().await? {
             ModuleGraph::from_module(*entry, chunk_group_type)
         } else {
             *self.whole_app_module_graphs().await?.full
@@ -733,7 +825,7 @@ impl Project {
         evaluatable_assets: Vc<EvaluatableAssets>,
         chunk_group_type: ChunkGroupType,
     ) -> Result<Vc<ModuleGraph>> {
-        Ok(if *self.per_page_module_graph().await? {
+        Ok(if *self.per_entry_module_graph().await? {
             let entries = evaluatable_assets
                 .await?
                 .iter()
@@ -784,7 +876,38 @@ impl Project {
 
     #[turbo_tasks::function]
     pub(super) fn client_chunking_context(self: Vc<Self>) -> Vc<Box<dyn ChunkingContext>> {
-        todo!()
+        get_client_chunking_context(
+            self.project_root_path(),
+            self.client_relative_path(),
+            Vc::cell("/ROOT".into()),
+            self.config().computed_asset_prefix(),
+            self.config().chunk_suffix_path(),
+            self.client_compile_time_info().environment(),
+            self.mode(),
+            self.module_id_strategy(),
+            self.config().turbo_minify(self.mode()),
+            self.config().turbo_source_maps(),
+            self.no_mangling(),
+        )
+    }
+
+    #[turbo_tasks::function]
+    pub(super) async fn library_chunking_context(
+        self: Vc<Self>,
+    ) -> Result<Vc<Box<dyn ChunkingContext>>> {
+        Ok(get_library_chunking_context(
+            self.project_root_path(),
+            self.client_relative_path(),
+            Vc::cell("/ROOT".into()),
+            self.config().computed_asset_prefix(),
+            self.config().chunk_suffix_path(),
+            self.client_compile_time_info().environment(),
+            self.mode(),
+            self.module_id_strategy(),
+            self.config().turbo_minify(self.mode()),
+            self.config().turbo_source_maps(),
+            self.no_mangling(),
+        ))
     }
 
     #[turbo_tasks::function]
@@ -817,9 +940,12 @@ impl Project {
 
     #[turbo_tasks::function]
     pub async fn entrypoints(self: Vc<Self>) -> Result<Vc<Entrypoints>> {
+        let library_project = self.library_project().to_resolved().await?.await?;
         Ok(Entrypoints {
-            // TODO: collect libraries
-            libraries: vec![],
+            libraries: match library_project.as_ref() {
+                Some(l) => Some(l.get_library_endpoints().to_resolved().await?),
+                None => None,
+            },
         }
         .cell())
     }

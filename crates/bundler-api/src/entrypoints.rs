@@ -1,8 +1,8 @@
 use turbo_tasks::ResolvedVc;
 
-use crate::endpoints::Endpoint;
+use crate::endpoints::Endpoints;
 
 #[turbo_tasks::value(shared)]
 pub struct Entrypoints {
-    pub libraries: Vec<ResolvedVc<Box<dyn Endpoint>>>,
+    pub libraries: Option<ResolvedVc<Endpoints>>,
 }

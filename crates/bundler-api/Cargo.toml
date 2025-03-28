@@ -31,7 +31,11 @@ turbopack-node = { workspace = true }
 turbopack-nodejs = { workspace = true }
 
 [build-dependencies]
+anyhow = { workspace = true }
 turbo-tasks-build = { workspace = true }
+vergen = { git = "https://github.com/bgw/vergen.git", branch = "bgw/no-optional-locks", features = [
+  "cargo",
+] }
 
 [lints]
 workspace = true
