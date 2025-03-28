@@ -383,7 +383,7 @@ impl Node {
         }
 
         log_verbose(&format!(
-            "{}@{} type changed [all_optional{}]",
+            "{}@{} type changed [all_optional {}]",
             &self.name, &self.version, all_optional
         ));
 

@@ -179,8 +179,28 @@ impl Registry {
     }
 
     async fn resolve_package(&self, name: &str, spec: &str) -> io::Result<ResolvedPackage> {
-        let (version, manifest) = self.get_package_manifest(name, spec).await?;
+        let (version, mut manifest) = self.get_package_manifest(name, spec).await?;
         log_verbose(&format!("Resolved {}@{} => {}", name, spec, version));
+        if let Some(obj) = manifest.as_object_mut() {
+            // merge dependencies and devDependencies
+            if let Some(optional_deps) = obj.get("optionalDependencies").and_then(|v| v.as_object())
+            {
+                let optional_keys: Vec<String> = optional_deps.keys().cloned().collect();
+                if let Some(deps) = obj.get_mut("dependencies").and_then(|v| v.as_object_mut()) {
+                    for key in &optional_keys {
+                        deps.remove(key);
+                    }
+                }
+                if let Some(dev_deps) = obj
+                    .get_mut("devDependencies")
+                    .and_then(|v| v.as_object_mut())
+                {
+                    for key in &optional_keys {
+                        dev_deps.remove(key);
+                    }
+                }
+            }
+        }
 
         Ok(ResolvedPackage {
             name: name.to_string(),

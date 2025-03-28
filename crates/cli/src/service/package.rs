@@ -282,6 +282,8 @@ impl PackageService {
     }
 
     fn has_cached(package: &PackageInfo) -> bool {
+        // FIXME disable cache for now
+        return false;
         if !package.has_script() {
             return false;
         }
@@ -290,6 +292,8 @@ impl PackageService {
     }
 
     async fn store_build_result(package: &PackageInfo) {
+        // FIXME disable cache for now
+        return;
         if Self::has_cached(package) {
             return;
         }
