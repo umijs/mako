@@ -8,6 +8,7 @@ import { type Options } from 'sass';
 import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, LessPlugin } from './plugins/less';
+import { PostcssPlugin } from './plugins/postcss';
 import { SassPlugin } from './plugins/sass';
 import { rustPluginResolver } from './rustPlugins';
 
@@ -104,11 +105,6 @@ export async function build(params: BuildParams) {
       {},
     ) || {};
 
-  // merge postcss config
-  if ((makoConfig as any)?.postcss || params.config?.postcss) {
-    params.config.postcss ||= (makoConfig as any)?.postcss;
-  }
-
   // built-in less-loader
   params.config.plugins.push(
     new LessPlugin({
@@ -125,6 +121,15 @@ export async function build(params: BuildParams) {
 
     params.config.plugins.push(
       new SassPlugin({
+        ...params,
+        resolveAlias,
+      }),
+    );
+  }
+
+  if ((makoConfig as any)?.postcss || params.config?.postcss) {
+    params.config.plugins.push(
+      new PostcssPlugin({
         ...params,
         resolveAlias,
       }),

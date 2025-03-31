@@ -59,7 +59,6 @@ export class SassPlugin implements binding.JsHooks {
       filename,
       opts: {
         ...this.sassOptions,
-        postcss: this.params.config.postcss,
       },
       extOpts: this.extOpts,
     });

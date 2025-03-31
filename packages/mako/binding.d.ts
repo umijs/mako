@@ -65,7 +65,7 @@ export interface JsHooks {
     { isEntry: bool },
   ) => Promise<{ id: string }>;
   transform?: (
-    content: { content: string; type: 'css' | 'js' },
+    content: string,
     path: string,
   ) => Promise<{ content: string; type: 'css' | 'js' } | void> | void;
   transformInclude?: (filePath: string) => Promise<bool> | bool;

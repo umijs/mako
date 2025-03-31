@@ -86,7 +86,6 @@ export class LessPlugin implements binding.JsHooks {
       filename,
       opts: {
         ...this.lessOptions,
-        postcss: this.params.config.postcss,
       },
       extOpts: this.extOpts,
     });
