@@ -486,6 +486,28 @@ import(/* webpackIgnore: true */ "./foo");
 }
 ```
 
+### postcss
+
+- 类型： `boolean`
+- 默认值：`false`
+
+是否启用 `postcss` 支持。
+
+注意：如果你想要使用 `postcss`，请确保安装了 `postcss`。
+
+使用：项目根目录下创建 `postcss.config.js` 文件。
+
+例如：
+
+```js
+// postcss.config.js
+module.exports = {
+  plugins: [
+    require("autoprefixer"),
+  ],
+};
+```
+
 ### manifest
 
 - 类型：`false | { fileName?: string, basePath?: string }`

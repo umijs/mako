@@ -488,6 +488,28 @@ e.g.
 }
 ```
 
+### postcss
+
+- Type: `boolean`
+- Default: `false`
+
+Whether to enable `postcss` support.
+
+Note: If you want to use `postcss`, make sure to install `postcss`.
+
+Usage: Create a `postcss.config.js` file in the root directory of the project.
+
+e.g.
+
+```js
+// postcss.config.js
+module.exports = {
+  plugins: [
+    require("autoprefixer"),
+  ],
+};
+```
+
 ### manifest
 
 - Type: `false | { fileName?: string, basePath?: string }`

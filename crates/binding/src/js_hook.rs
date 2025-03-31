@@ -75,7 +75,7 @@ pub struct JsHooks {
     )]
     pub resolve_id: Option<JsFunction>,
     #[napi(
-        ts_type = "(content: { content: string, type: 'css' | 'js' }, path: string) => Promise<{ content: string, type: 'css' | 'js' } | void> | void;"
+        ts_type = "(content: string, path: string) => Promise<{ content: string, type: 'css' | 'js' } | void> | void;"
     )]
     pub transform: Option<JsFunction>,
     #[napi(ts_type = "(filePath: string) => Promise<bool> | bool;")]

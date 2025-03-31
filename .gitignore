@@ -9,6 +9,7 @@
 /e2e/fixtures.umi/stable-hash/node_modules
 /e2e/fixtures.umi/*/.umi
 /e2e/fixtures.umi/*/.umi-production
+/e2e/fixtures/less.postcss/node_modules
 /tmp
 /packages/*/node_modules
 /node_modules
