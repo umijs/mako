@@ -73,11 +73,6 @@ async fn main() {
         libc::umask(0o00);
     }
 
-    // Ensure the version is up to date, weak dependency
-    if let Err(_e) = init_auto_update().await {
-        log_warning(&format!("Auto update cancelled"));
-    }
-
     let cli = Cli::parse();
 
     // global verbose
@@ -85,6 +80,11 @@ async fn main() {
 
     // global registry
     set_registry(&cli.registry);
+
+    // Ensure the version is up to date, weak dependency
+    if let Err(_e) = init_auto_update().await {
+        log_warning(&format!("Auto update cancelled"));
+    }
 
     // load package.json
     // if let Some(result) = cmd::pkg::handle_command_v4(&cli) {
