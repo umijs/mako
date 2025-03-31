@@ -70,6 +70,7 @@ turbopack-ecmascript-runtime = { workspace = true }
 turbopack-node = { workspace = true }
 turbopack-nodejs = { workspace = true }
 turbopack-static = { workspace = true }
+turbopack-resolve = { workspace = true }
 turbopack-trace-utils = { workspace = true }
 
 [build-dependencies]

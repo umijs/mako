@@ -1,16 +1,19 @@
-use turbo_tasks::{Completion, ResolvedVc, Vc};
+use anyhow::Result;
+use turbo_rcstr::RcStr;
+use turbo_tasks::{Completion, OperationVc, ResolvedVc, Vc};
 use turbopack_core::{
     module_graph::{GraphEntries, ModuleGraph},
     output::OutputAssets,
 };
 
-use crate::project::Project;
+use crate::{paths::ServerPath, project::Project};
 
 #[turbo_tasks::value(shared)]
 #[derive(Debug, Clone)]
 pub struct EndpointOutput {
     pub output_assets: ResolvedVc<OutputAssets>,
     pub project: ResolvedVc<Project>,
+    pub output_paths: ResolvedVc<EndpointOutputPaths>,
 }
 
 #[turbo_tasks::value_trait]
@@ -28,5 +31,65 @@ pub trait Endpoint {
     }
 }
 
+#[turbo_tasks::value(shared)]
+#[derive(Debug, Clone)]
+pub enum EndpointOutputPaths {
+    NodeJs {
+        /// Relative to the root_path
+        server_entry_path: String,
+        server_paths: Vec<ServerPath>,
+        client_paths: Vec<RcStr>,
+    },
+    Edge {
+        server_paths: Vec<ServerPath>,
+        client_paths: Vec<RcStr>,
+    },
+}
+
 #[turbo_tasks::value(transparent)]
-pub struct Endpoints(Vec<ResolvedVc<Box<dyn Endpoint>>>);
+pub struct Endpoints(pub Vec<ResolvedVc<Box<dyn Endpoint>>>);
+
+#[turbo_tasks::function(operation)]
+pub fn endpoint_server_changed_operation(
+    endpoint: OperationVc<Box<dyn Endpoint>>,
+) -> Vc<Completion> {
+    endpoint.connect().server_changed()
+}
+
+#[turbo_tasks::function(operation)]
+pub fn endpoint_write_to_disk_operation(
+    endpoint: OperationVc<Box<dyn Endpoint>>,
+) -> Vc<EndpointOutputPaths> {
+    endpoint_write_to_disk(endpoint.connect())
+}
+
+#[turbo_tasks::function]
+pub async fn endpoint_write_to_disk(
+    endpoint: ResolvedVc<Box<dyn Endpoint>>,
+) -> Result<Vc<EndpointOutputPaths>> {
+    let output_op = output_assets_operation(endpoint);
+    let EndpointOutput {
+        project,
+        output_paths,
+        ..
+    } = *output_op.connect().await?;
+
+    let _ = project
+        .emit_all_output_assets(endpoint_output_assets_operation(output_op))
+        .resolve()
+        .await?;
+
+    Ok(*output_paths)
+}
+
+#[turbo_tasks::function(operation)]
+fn output_assets_operation(endpoint: ResolvedVc<Box<dyn Endpoint>>) -> Vc<EndpointOutput> {
+    endpoint.output()
+}
+
+#[turbo_tasks::function(operation)]
+async fn endpoint_output_assets_operation(
+    output: OperationVc<EndpointOutput>,
+) -> Result<Vc<OutputAssets>> {
+    Ok(*output.connect().await?.output_assets)
+}
