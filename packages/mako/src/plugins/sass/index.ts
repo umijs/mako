@@ -59,6 +59,11 @@ export class SassPlugin implements binding.JsHooks {
       filename,
       opts: this.sassOptions,
       extOpts: this.extOpts,
+      postLoaders: [
+        this.params.config.postcss
+          ? { loader: require.resolve('postcss-loader') }
+          : undefined,
+      ].filter((loader) => !!loader) as Array<{ loader: string }>,
     });
 
     let content: string = '';

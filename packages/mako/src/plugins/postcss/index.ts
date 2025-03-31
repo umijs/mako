@@ -30,6 +30,7 @@ export class PostcssPlugin implements binding.JsHooks {
     this.parallelLoader ||= createParallelLoader(
       path.resolve(__dirname, './render.js'),
     );
+
     const result = await this.parallelLoader.run({
       filename,
       extOpts: this.extOpts,
@@ -67,11 +68,7 @@ function getFilename(filePath: string) {
 function isTargetFile(filePath: string) {
   let filename = getFilename(filePath);
 
-  if (
-    filename?.endsWith('.less') ||
-    filename?.endsWith('.scss') ||
-    filename?.endsWith('.css')
-  ) {
+  if (filename?.endsWith('.css')) {
     return true;
   }
 

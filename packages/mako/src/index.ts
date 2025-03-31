@@ -105,6 +105,18 @@ export async function build(params: BuildParams) {
       {},
     ) || {};
 
+  // built-in postcss-loader
+  if ((makoConfig as any)?.postcss || params.config?.postcss) {
+    params.config.postcss = true;
+
+    params.config.plugins.push(
+      new PostcssPlugin({
+        ...params,
+        resolveAlias,
+      }),
+    );
+  }
+
   // built-in less-loader
   params.config.plugins.push(
     new LessPlugin({
@@ -121,15 +133,6 @@ export async function build(params: BuildParams) {
 
     params.config.plugins.push(
       new SassPlugin({
-        ...params,
-        resolveAlias,
-      }),
-    );
-  }
-
-  if ((makoConfig as any)?.postcss || params.config?.postcss) {
-    params.config.plugins.push(
-      new PostcssPlugin({
         ...params,
         resolveAlias,
       }),

@@ -5,6 +5,10 @@ module.exports = async function render(param: {
   filename: string;
   opts: LessLoaderOpts;
   extOpts: RunLoadersOptions;
+  postLoaders?: Array<{
+    loader: string;
+    options?: Record<string, unknown>;
+  }>;
 }) {
   const { modifyVars, globalVars, math, sourceMap, plugins } = param.opts;
   const extOpts = param.extOpts;
@@ -26,6 +30,7 @@ module.exports = async function render(param: {
     root: extOpts.root,
     resource: param.filename,
     loaders: [
+      ...(param.postLoaders || []),
       {
         loader: require.resolve('less-loader'),
         options: {

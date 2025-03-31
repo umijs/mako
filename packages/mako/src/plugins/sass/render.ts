@@ -5,6 +5,10 @@ async function render(param: {
   filename: string;
   opts: Options<'async'> & { resources: string[] };
   extOpts: RunLoadersOptions;
+  postLoaders?: Array<{
+    loader: string;
+    options?: Record<string, unknown>;
+  }>;
 }) {
   const options = { style: 'compressed', ...param.opts };
   const extOpts = param.extOpts;
@@ -14,6 +18,7 @@ async function render(param: {
     root: extOpts.root,
     resource: param.filename,
     loaders: [
+      ...(param.postLoaders || []),
       {
         loader: require.resolve('sass-loader'),
         options: {
