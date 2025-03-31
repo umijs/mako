@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "crates/bundler",
+  "crates/bundler-cli",
   "crates/bundler-api",
   "crates/bundler-core",
   "crates/bundler-napi",

@@ -33,8 +33,8 @@ pub async fn get_library_chunking_context(
         library_root,
         library_root_to_root_path,
         library_root,
-        library_root.join("dist".into()).to_resolved().await?,
-        library_root.join("dist".into()).to_resolved().await?,
+        library_root,
+        library_root,
         environment,
         mode.runtime_type(),
     )
