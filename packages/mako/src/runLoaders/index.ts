@@ -78,6 +78,7 @@ export function runLoaders(
   options: {
     resource: string;
     loaders: any[];
+    processResource?: (ctx: any, resource: string, callback: any) => void;
   } & RunLoadersOptions,
 ): Promise<loaderRunner.RunLoaderResult> {
   return new Promise((resolve, reject) => {
@@ -90,6 +91,8 @@ export function runLoaders(
           alias: options.alias,
         }),
         loaders: options.loaders,
+        // @ts-ignore
+        processResource: options.processResource,
       },
       (error, data) => {
         if (error) {

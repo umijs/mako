@@ -6,12 +6,9 @@ export function createParallelLoader<T>(renderPath: string) {
   return new Piscina<
     {
       filename: string;
+      content?: string;
       opts?: T;
       extOpts: RunLoadersOptions;
-      postLoaders?: Array<{
-        loader: string;
-        options?: Record<string, unknown>;
-      }>;
     },
     RunLoaderResult & { missingDependencies: string[] }
   >({

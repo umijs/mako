@@ -20,7 +20,7 @@ export class PostcssPlugin implements binding.JsHooks {
   }
 
   transform = async (
-    _content: string,
+    content: string,
     filename: string,
   ): Promise<{ content: string; type: 'css' | 'js' } | void> => {
     if (!isTargetFile(filename)) {
@@ -33,6 +33,7 @@ export class PostcssPlugin implements binding.JsHooks {
 
     const result = await this.parallelLoader.run({
       filename,
+      content,
       extOpts: this.extOpts,
     });
 
@@ -68,7 +69,11 @@ function getFilename(filePath: string) {
 function isTargetFile(filePath: string) {
   let filename = getFilename(filePath);
 
-  if (filename?.endsWith('.css')) {
+  if (
+    filename?.endsWith('.css') ||
+    filename?.endsWith('.less') ||
+    filename?.endsWith('.scss')
+  ) {
     return true;
   }
 

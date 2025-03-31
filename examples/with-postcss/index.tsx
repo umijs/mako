@@ -9,6 +9,9 @@ function App() {
       <h1>
         Hello, <span className="blue">Less</span>
       </h1>
+      <h2>
+        Hello, <span className="blue">Css</span>
+      </h2>
     </div>
   );
 }

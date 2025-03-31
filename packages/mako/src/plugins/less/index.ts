@@ -86,11 +86,6 @@ export class LessPlugin implements binding.JsHooks {
       filename,
       opts: this.lessOptions,
       extOpts: this.extOpts,
-      postLoaders: [
-        this.params.config.postcss
-          ? { loader: require.resolve('postcss-loader') }
-          : undefined,
-      ].filter((loader) => !!loader) as Array<{ loader: string }>,
     });
 
     let content: string = '';
