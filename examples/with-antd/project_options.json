@@ -4,5 +4,6 @@
       "import": "./src/index.tsx",
       "library": {}
     }
-  ]
+  ],
+  "noMangling": false
 }

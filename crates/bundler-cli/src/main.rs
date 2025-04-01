@@ -4,7 +4,7 @@
 use bundler_api::project::{PartialProjectOptions, ProjectOptions, WatchOptions};
 use clap::Parser;
 use dunce::canonicalize;
-use std::{env::current_dir, fs::File, path::PathBuf, time::Instant};
+use std::{env::current_dir, fs::File, io::Read, path::PathBuf, time::Instant};
 use turbo_rcstr::RcStr;
 
 use bundler_core::tracing_presets::{
@@ -125,19 +125,26 @@ fn main() {
                 noop_backing_storage(),
             ));
 
-            let path = PathBuf::from(&project_path).join("project_options.json");
-            let mut file =
-                File::open(&path).unwrap_or_else(|_| panic!("failed to load {}", path.display()));
-
+            let project_options_path = PathBuf::from(&project_path).join("project_options.json");
+            let mut project_options_file =
+                File::open(&project_options_path).unwrap_or_else(|_| panic!("failed to load {}", project_options_path.display()));
+            let config_path = PathBuf::from(&project_path).join("config.json");
+            let mut config_file =
+                File::open(&config_path).unwrap_or_else(|_| panic!("failed to load {}", config_path.display()));
+            let mut config= String::new();
+            config_file.read_to_string(&mut config).unwrap();
+            
             let partial_project_options: PartialProjectOptions =
-                serde_json::from_reader(&mut file).unwrap();
+                serde_json::from_reader(&mut project_options_file).unwrap();
             let  project_options = ProjectOptions {
                 root_path,
                 project_path,
                 entry: partial_project_options.entry.unwrap_or_default(),
-                config: partial_project_options
-                    .config
-                    .unwrap_or(r#"{ "env":{},"experimental": { "turbo": { "minify": false, "moduleIdStrategy": "named" } } }"#.into()),
+                config: if config.is_empty() {
+                    r#"{ "env": { },"experimental": { } }"#.into()
+                    } else {
+                        config.into()
+                    },
                 js_config: partial_project_options.js_config.unwrap_or(r#"{}"#.into()),
                 env: partial_project_options.env.unwrap_or_default(),
                 define_env: partial_project_options.define_env.unwrap_or_default(),
