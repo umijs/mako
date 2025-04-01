@@ -1,7 +1,7 @@
 #![feature(future_join)]
 #![feature(min_specialization)]
 
-use bundler_api::project::{PartialProjectOptions, ProjectOptions};
+use bundler_api::project::{PartialProjectOptions, ProjectOptions, WatchOptions};
 use clap::Parser;
 use dunce::canonicalize;
 use std::{env::current_dir, fs::File, path::PathBuf, time::Instant};
@@ -11,12 +11,13 @@ use bundler_core::tracing_presets::{
     TRACING_BUNDLER_OVERVIEW_TARGETS, TRACING_BUNDLER_TARGETS, TRACING_BUNDLER_TURBOPACK_TARGETS,
     TRACING_BUNDLER_TURBO_TASKS_TARGETS,
 };
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Registry};
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
 use turbo_tasks::TurboTasks;
 use turbo_tasks_backend::{noop_backing_storage, BackendOptions, TurboTasksBackend};
 use turbo_tasks_malloc::TurboMalloc;
 use turbopack_trace_utils::{
-    exit::ExitGuard, filter_layer::FilterLayer, raw_trace::RawTraceLayer, trace_writer::TraceWriter,
+    filter_layer::FilterLayer,
+    exit::ExitGuard,raw_trace::RawTraceLayer, trace_writer::TraceWriter,
 };
 
 use bundler_cli::{args::CliArgs, main_inner};
@@ -104,7 +105,13 @@ fn main() {
 
                 Some(guard)
             } else {
-                tracing_subscriber::fmt::init();
+                tracing_subscriber::fmt()
+                    .with_env_filter(
+                        EnvFilter::try_from_default_env()
+                            .unwrap_or_else(|_| EnvFilter::new("bundler_cli=info")),
+                    )
+                    .with_timer(fmt::time::SystemTime)
+                    .init();
 
                 None
             };
@@ -124,53 +131,34 @@ fn main() {
 
             let partial_project_options: PartialProjectOptions =
                 serde_json::from_reader(&mut file).unwrap();
-            let mut project_options = ProjectOptions {
+            let  project_options = ProjectOptions {
                 root_path,
                 project_path,
+                entry: partial_project_options.entry.unwrap_or_default(),
+                config: partial_project_options
+                    .config
+                    .unwrap_or(r#"{ "env":{},"experimental": { "turbo": { "minify": false, "moduleIdStrategy": "named" } } }"#.into()),
+                js_config: partial_project_options.js_config.unwrap_or(r#"{}"#.into()),
+                env: partial_project_options.env.unwrap_or_default(),
+                define_env: partial_project_options.define_env.unwrap_or_default(),
+                browserslist_query: partial_project_options.browserslist_query.unwrap_or("last 1 Chrome versions, last 1 Firefox versions, last 1 Safari versions, last 1 Edge versions".into()),
+                no_mangling: partial_project_options.no_mangling.unwrap_or(false),
+                watch: if dev {
+                    WatchOptions {
+                        enable: true,
+                        ..Default::default()
+                    }
+                } else {
+                    WatchOptions {
+                        enable: false,
+                        ..Default::default()
+                    }
+                },
+                build_id: partial_project_options.build_id.unwrap_or_default(),
                 dev,
-                ..Default::default()
             };
 
-            if let Some(root_path) = partial_project_options.root_path {
-                project_options.root_path = root_path;
-            }
-            if let Some(project_path) = partial_project_options.project_path {
-                project_options.project_path = project_path;
-            }
-            if let Some(entry) = partial_project_options.entry {
-                project_options.entry = entry;
-            }
-            if let Some(config) = partial_project_options.config {
-                project_options.config = config;
-            }
-            if let Some(js_config) = partial_project_options.js_config {
-                project_options.js_config = js_config;
-            }
-            if let Some(env) = partial_project_options.env {
-                project_options.env = env;
-            }
-            if let Some(define_env) = partial_project_options.define_env {
-                project_options.define_env = define_env;
-            }
-            if let Some(watch) = partial_project_options.watch {
-                project_options.watch = watch;
-            }
-
-            if let Some(build_id) = partial_project_options.build_id {
-                project_options.build_id = build_id;
-            }
-
-            if let Some(browserslist_query) = partial_project_options.browserslist_query {
-                project_options.browserslist_query = browserslist_query;
-            }
-
-            if let Some(no_mangling) = partial_project_options.no_mangling {
-                project_options.no_mangling = no_mangling;
-            }
-
-            if project_options.dev {
-                project_options.watch.enable = true
-            }
+   
 
             let result = main_inner(&tt, project_options).await;
             let memory = TurboMalloc::memory_usage();

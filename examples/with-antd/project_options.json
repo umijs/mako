@@ -4,16 +4,5 @@
       "import": "./src/index.tsx",
       "library": {}
     }
-  ],
-  "config": "{\"env\":{},\"experimental\":{}}",
-  "jsConfig": "{}",
-  "env": [],
-  "defineEnv": {
-    "client": [],
-    "edge": [],
-    "nodejs": []
-  },
-  "buildId": "with-antd",
-  "browserslistQuery": "last 1 Chrome versions, last 1 Firefox versions, last 1 Safari versions, last 1 Edge versions",
-  "noMangling": true
+  ]
 }
