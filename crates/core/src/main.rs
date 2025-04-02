@@ -34,10 +34,13 @@ enum ConfigCommands {
         key: String,
         #[arg(long)]
         global: bool,
-        /// Allow any --key=value override
         #[arg(allow_hyphen_values = true)]
         #[arg(trailing_var_arg = true)]
         override_values: Vec<String>,
+    },
+    List {
+        #[arg(long)]
+        global: bool,
     },
 }
 
@@ -84,6 +87,12 @@ fn main() -> Result<()> {
                         Some(value) => println!("{}", value),
                         None => println!("No value set for {}", key),
                     }
+                }
+            }
+            ConfigCommands::List { global } => {
+                let config = Config::load(global)?;
+                for (key, value) in config.list()? {
+                    println!("{} = {}", key, value);
                 }
             }
         },

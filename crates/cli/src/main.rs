@@ -36,8 +36,8 @@ struct Cli {
     #[arg(short, long)]
     version: bool,
 
-    #[arg(long, global = true, default_value = "https://registry.npmmirror.com")]
-    registry: String,
+    #[arg(long, global = true)]
+    registry: Option<String>,
 
     #[command(subcommand)]
     command: Option<Commands>,
@@ -79,7 +79,7 @@ async fn main() {
     set_verbose(cli.verbose);
 
     // global registry
-    set_registry(&cli.registry);
+    set_registry(cli.registry);
 
     // Ensure the version is up to date, weak dependency
     if let Err(_e) = init_auto_update().await {
