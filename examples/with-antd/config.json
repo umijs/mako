@@ -1,1 +1,4 @@
-{ "env": {}, "experimental": { "turbo": { "minify": false } } }
+{
+  "env": {},
+  "experimental": { "turbo": { "minify": true } }
+}

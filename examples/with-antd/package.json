@@ -8,7 +8,7 @@
   "scripts": {
     "build": "../../target/release/bundler-cli build -p . --root ../../",
     "dev": "../../target/release/bundler-cli dev -p . --root ./../",
-    "serve": "tnpm run build && cp ./index.html ./dist && serve ./dist"
+    "serve": "rm -rf ./dist && npm run build && cp ./index.html ./dist && serve ./dist"
   },
   "dependencies": {
     "@ant-design/icons": "^5.0.1",

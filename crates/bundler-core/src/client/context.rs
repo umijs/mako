@@ -20,7 +20,7 @@ use turbopack_core::{
     },
     compile_time_info::{
         CompileTimeDefineValue, CompileTimeDefines, CompileTimeInfo, DefineableNameSegment,
-        FreeVarReference, FreeVarReferences,
+        FreeVarReferences,
     },
     environment::{BrowserEnvironment, Environment, ExecutionEnvironment},
     free_var_references,
@@ -33,7 +33,10 @@ use turbopack_node::{
 use crate::{
     client::runtime_entry::RuntimeEntries,
     config::Config,
-    import_map::get_postcss_package_mapping,
+    import_map::{
+        get_client_fallback_import_map, get_client_import_map, get_client_resolved_map,
+        get_postcss_package_mapping,
+    },
     mode::Mode,
     shared::{
         transforms::{
@@ -87,17 +90,16 @@ async fn client_defines(define_env: Vc<EnvMap>) -> Result<Vc<CompileTimeDefines>
 #[turbo_tasks::function]
 async fn client_free_vars(define_env: Vc<EnvMap>) -> Result<Vc<FreeVarReferences>> {
     Ok(free_var_references!(
-        ..defines(&*define_env.await?).into_iter(),
-        Buffer = FreeVarReference::EcmaScriptModule {
-            request: "node:buffer".into(),
-            lookup_path: None,
-            export: Some("Buffer".into()),
-        },
-        process = FreeVarReference::EcmaScriptModule {
-            request: "node:process".into(),
-            lookup_path: None,
-            export: Some("default".into()),
-        }
+        ..defines(&*define_env.await?).into_iter() // FIXME: Buffer = FreeVarReference::EcmaScriptModule {
+                                                   //     request: "node:buffer".into(),
+                                                   //     lookup_path: None,
+                                                   //     export: Some("Buffer".into()),
+                                                   // },
+                                                   // process = FreeVarReference::EcmaScriptModule {
+                                                   //     request: "node:process".into(),
+                                                   //     lookup_path: None,
+                                                   //     export: Some("default".into()),
+                                                   // }
     )
     .cell())
 }
@@ -345,15 +347,22 @@ pub async fn get_client_resolve_options_context(
     project_path: ResolvedVc<FileSystemPath>,
     mode: Vc<Mode>,
     config: Vc<Config>,
-    _execution_context: Vc<ExecutionContext>,
+    execution_context: Vc<ExecutionContext>,
 ) -> Result<Vc<ResolveOptionsContext>> {
+    let client_import_map = get_client_import_map(*project_path, config, execution_context)
+        .to_resolved()
+        .await?;
+    let client_fallback_import_map = get_client_fallback_import_map().to_resolved().await?;
+    let client_resolved_map = get_client_resolved_map(*project_path, project_path, *mode.await?)
+        .to_resolved()
+        .await?;
     let custom_conditions = vec![mode.await?.condition().into()];
     let module_options_context = ResolveOptionsContext {
         enable_node_modules: Some(project_path.root().to_resolved().await?),
         custom_conditions,
-        import_map: None,
-        fallback_import_map: None,
-        resolved_map: None,
+        import_map: Some(client_import_map),
+        fallback_import_map: Some(client_fallback_import_map),
+        resolved_map: Some(client_resolved_map),
         browser: true,
         module: true,
         before_resolve_plugins: vec![],

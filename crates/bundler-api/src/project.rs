@@ -429,20 +429,53 @@ impl ProjectContainer {
         let project_path;
         let entry;
         let watch;
-        let dev;
         let build_id;
         let browserslist_query;
         let no_mangling;
+        let mode;
         {
             let options = self.options_state.get();
             let options = options
                 .as_ref()
                 .context("ProjectContainer need to be initialized with initialize()")?;
+            mode = if options.dev {
+                Mode::Development
+            } else {
+                Mode::Build
+            };
+            let node_env_define: [(RcStr, RcStr); 1] = [(
+                "process.env.NODE_ENV".into(),
+                serde_json::to_string(mode.node_env()).unwrap().into(),
+            )];
             env_map = Vc::cell(options.env.iter().cloned().collect());
             define_env = ProjectDefineEnv {
-                client: ResolvedVc::cell(options.define_env.client.iter().cloned().collect()),
-                edge: ResolvedVc::cell(options.define_env.edge.iter().cloned().collect()),
-                nodejs: ResolvedVc::cell(options.define_env.nodejs.iter().cloned().collect()),
+                client: ResolvedVc::cell(
+                    options
+                        .define_env
+                        .client
+                        .iter()
+                        .chain(&node_env_define)
+                        .cloned()
+                        .collect(),
+                ),
+                edge: ResolvedVc::cell(
+                    options
+                        .define_env
+                        .edge
+                        .iter()
+                        .chain(&node_env_define)
+                        .cloned()
+                        .collect(),
+                ),
+                nodejs: ResolvedVc::cell(
+                    options
+                        .define_env
+                        .nodejs
+                        .iter()
+                        .chain(&node_env_define)
+                        .cloned()
+                        .collect(),
+                ),
             }
             .cell();
             config = Config::from_string(Vc::cell(options.config.clone()));
@@ -451,7 +484,6 @@ impl ProjectContainer {
             project_path = options.project_path.clone();
             entry = options.entry.clone();
             watch = options.watch;
-            dev = options.dev;
             build_id = options.build_id.clone();
             browserslist_query = options.browserslist_query.clone();
             no_mangling = options.no_mangling
@@ -474,11 +506,7 @@ impl ProjectContainer {
             env: ResolvedVc::upcast(env_map.to_resolved().await?),
             define_env: define_env.to_resolved().await?,
             browserslist_query,
-            mode: if dev {
-                Mode::Development.resolved_cell()
-            } else {
-                Mode::Build.resolved_cell()
-            },
+            mode: mode.resolved_cell(),
             versioned_content_map: self.versioned_content_map,
             build_id,
             no_mangling,
@@ -561,6 +589,7 @@ pub struct Project {
     no_mangling: bool,
 }
 
+// TODO: This may be not needed.
 #[turbo_tasks::value]
 pub struct ProjectDefineEnv {
     client: ResolvedVc<EnvMap>,

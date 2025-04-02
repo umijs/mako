@@ -17,7 +17,7 @@ use turbopack_core::{
     },
     ident::AssetIdent,
     module::Module,
-    module_graph::{chunk_group_info::ChunkGroup, GraphEntries, ModuleGraph},
+    module_graph::{GraphEntries, ModuleGraph},
     output::OutputAssets,
     reference_type::{EntryReferenceSubType, ReferenceType},
     resolve::{
@@ -232,12 +232,9 @@ impl LibraryEndpoint {
 
             let module_graph = self.library_module_graph();
 
-            let library_chunk_group = library_chunking_context.chunk_group(
+            let library_chunk_group = library_chunking_context.evaluated_chunk_group(
                 AssetIdent::from_path(project_path.join(this.import.clone())),
-                ChunkGroup::Entry {
-                    entries: vec![self.library_main_module().to_resolved().await?],
-                    ty: ChunkGroupType::Entry,
-                },
+                self.library_evaluatable_assets(),
                 module_graph,
                 Value::new(AvailabilityInfo::Root),
             );
