@@ -59,8 +59,8 @@ pub async fn get_library_chunking_context(
         builder = builder.hot_module_replacement().use_file_source_map_uris();
     } else {
         builder = builder.ecmascript_chunking_config(ChunkingConfig {
-            min_chunk_size: usize::MIN,
-            max_chunk_count_per_group: usize::MAX,
+            min_chunk_size: usize::MAX,
+            max_chunk_count_per_group: 1,
             max_merge_chunk_size: usize::MAX,
             ..Default::default()
         })

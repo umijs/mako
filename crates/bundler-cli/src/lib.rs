@@ -76,7 +76,6 @@ pub async fn render_endpoints(
             tt.run_once({
                 async move {
                     endpoint_write_to_disk_with_effects(*library).await?;
-
                     Ok(())
                 }
             })

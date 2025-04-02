@@ -912,7 +912,7 @@ impl Project {
 
             Ok(module_graphs_vc)
         }
-        .instrument(tracing::info_span!("module graph for app"))
+        .instrument(tracing::info_span!("module graph for project"))
         .await
     }
 
@@ -1154,22 +1154,8 @@ impl Project {
 
     #[turbo_tasks::function]
     pub async fn client_main_modules(self: Vc<Self>) -> Result<Vc<GraphEntries>> {
-        let mut modules = vec![];
-
-        if let Some(lp) = *self.library_project().await? {
-            let library_modules = lp
-                .get_library_endpoints()
-                .await?
-                .iter()
-                .map(|l| async move {
-                    let main_module = l.library_main_module().to_resolved().await?;
-                    Ok((vec![main_module], ChunkGroupType::Evaluated))
-                })
-                .try_join()
-                .await?;
-            modules.extend(library_modules);
-        }
-
+        let modules = vec![];
+        // TODO:
         Ok(Vc::cell(modules))
     }
 

@@ -44,6 +44,7 @@ pub enum EndpointOutputPaths {
         server_paths: Vec<ServerPath>,
         client_paths: Vec<RcStr>,
     },
+    // TODO: add library paths
 }
 
 #[turbo_tasks::value(transparent)]

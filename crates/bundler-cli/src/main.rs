@@ -11,7 +11,7 @@ use bundler_core::tracing_presets::{
     TRACING_BUNDLER_OVERVIEW_TARGETS, TRACING_BUNDLER_TARGETS, TRACING_BUNDLER_TURBOPACK_TARGETS,
     TRACING_BUNDLER_TURBO_TASKS_TARGETS,
 };
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
 use turbo_tasks::TurboTasks;
 use turbo_tasks_backend::{noop_backing_storage, BackendOptions, TurboTasksBackend};
 use turbo_tasks_malloc::TurboMalloc;
@@ -110,7 +110,8 @@ fn main() {
                         EnvFilter::try_from_default_env()
                             .unwrap_or_else(|_| EnvFilter::new("bundler_cli=info")),
                     )
-                    .with_timer(fmt::time::SystemTime)
+                    .with_timer(tracing_subscriber::fmt::time::SystemTime)
+                    // .with_span_events(FmtSpan::ACTIVE)
                     .init();
 
                 None
