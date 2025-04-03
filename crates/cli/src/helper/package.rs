@@ -43,7 +43,6 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
                 "version": current.version,
             })
         } else {
-            total_packages = total_packages + 1;
             let mut info = json!({
                 "name": current.package.get("name"),
             });
@@ -73,6 +72,7 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
                     .get("dist")
                     .unwrap_or(&json!(""))
                     .get("integrity"));
+                total_packages = total_packages + 1;
             }
 
             if *current.is_peer.read().unwrap() == Some(true) {
@@ -94,6 +94,7 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
             if current.package.get("hasInstallScript") == Some(&json!(true)) {
                 info["hasInstallScript"] = json!(true);
             }
+
             info
         };
 
