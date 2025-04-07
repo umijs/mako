@@ -1,6 +1,6 @@
 use glob::glob;
 
-use semver::{Version, VersionReq};
+use deno_semver::{Version, VersionReq};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::io;
@@ -247,7 +247,7 @@ pub enum FindResult {
 }
 
 fn find_compatible_node(from: &Arc<Node>, name: &str, version_spec: &str) -> FindResult {
-    let req = match VersionReq::parse(version_spec) {
+    let req = match VersionReq::parse_from_npm(version_spec) {
         Ok(r) => r,
         Err(_) => return FindResult::New(from.clone()),
     };
@@ -262,7 +262,7 @@ fn find_compatible_node(from: &Arc<Node>, name: &str, version_spec: &str) -> Fin
 
         for child in children.iter() {
             if child.name == name {
-                if let Ok(version) = Version::parse(&child.version) {
+                if let Ok(version) = Version::parse_from_npm(&child.version) {
                     if req.matches(&version) {
                         log_verbose(&format!(
                             "found existing deps {}@{} got {}",
@@ -481,6 +481,12 @@ impl Ruborist {
 
         start_progress_bar();
         build_deps(root.clone()).await?;
+
+        let res = self.get_dup_deps(root.clone());
+        for dup_node in res {
+            self.replace_deps(dup_node).await?;
+        }
+
         store_cache("./node_modules/.utoo-manifest.json").await?;
         finish_progress_bar("Building dependency tree complete.");
         self.ideal_tree = Some(root);
@@ -529,6 +535,94 @@ impl Ruborist {
 
         finish_progress_bar("Building workspace dependency tree complete.");
         self.ideal_tree = Some(root.clone());
+        Ok(())
+    }
+
+    pub fn get_dup_deps(&self, root: Arc<Node>) -> Vec<Arc<Node>> {
+        let mut duplicates = Vec::new();
+
+        fn process_node(node: &Arc<Node>, duplicates: &mut Vec<Arc<Node>>) {
+            let children = node.children.read().unwrap();
+            let mut name_map: HashMap<String, Vec<Arc<Node>>> = HashMap::new();
+
+            // find duplicate deps
+            for child in children.iter() {
+                name_map
+                    .entry(child.name.clone())
+                    .or_insert_with(Vec::new)
+                    .push(child.clone());
+            }
+
+            // hanlde dup node
+            for (_, nodes) in name_map {
+                if nodes.len() > 1 {
+                    // find max edges_in node to save the cost
+                    let mut max_edges = 0;
+                    let mut primary_node = None;
+
+                    for node in &nodes {
+                        let edges_count = node.edges_in.read().unwrap().len();
+                        if edges_count > max_edges {
+                            max_edges = edges_count;
+                            primary_node = Some(node.clone());
+                        }
+                    }
+
+                    // add to duplicates
+                    if let Some(primary) = primary_node {
+                        for node in nodes {
+                            if !Arc::ptr_eq(&node, &primary) {
+                                duplicates.push(node);
+                            }
+                        }
+                    }
+                }
+            }
+
+            for child in children.iter() {
+                process_node(child, duplicates);
+            }
+        }
+
+        process_node(&root, &mut duplicates);
+        duplicates
+    }
+
+    pub async fn replace_deps(&self, node: Arc<Node>) -> io::Result<()> {
+        // 1. remove from parent node
+        if let Some(parent) = node.parent.read().unwrap().as_ref() {
+            let mut parent_children = parent.children.write().unwrap();
+            parent_children.retain(|child| !Arc::ptr_eq(child, &node));
+        }
+
+        // 2. clean edges_out
+        {
+            let mut edges_out = node.edges_out.write().unwrap();
+            edges_out.clear();
+        }
+
+        // 3. clean edges_in
+        let edges_from = {
+            let edges_in = node.edges_in.read().unwrap();
+            edges_in
+                .iter()
+                .map(|edge| {
+                    let mut valid = edge.valid.write().unwrap();
+                    *valid = false;
+
+                    let mut to = edge.to.write().unwrap();
+                    *to = None;
+
+                    edge.from.clone()
+                })
+                .collect::<Vec<_>>()
+        };
+
+        // 4. rebuild deps
+        for from_node in edges_from {
+            build_deps(from_node).await?;
+        }
+
         Ok(())
     }
 }

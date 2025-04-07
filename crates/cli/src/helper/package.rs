@@ -1,4 +1,7 @@
-use crate::util::{logger::{log_info, log_warning}, node::Node};
+use crate::util::{
+    logger::{log_info, log_warning},
+    node::Node,
+};
 use serde_json::{json, Value};
 use std::{collections::HashMap, sync::Arc};
 
@@ -43,8 +46,10 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
         }
         for (name, count) in name_count {
             if count > 1 {
-                log_warning(&format!("Found {} duplicate dependencies named '{}' under '{}'",
-                    count, name, current.name));
+                log_warning(&format!(
+                    "Found {} duplicate dependencies named '{}' under '{}'",
+                    count, name, current.name
+                ));
             }
         }
         let mut pkg_info = if current.is_root {
