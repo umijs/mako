@@ -20,6 +20,7 @@ qstring = "0.7.2"
 regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_qs = { workspace = true }
 indexmap = { workspace = true, features = ["serde"] }
 mime_guess = "2.0.4"
 indoc = "2.0.6"
@@ -30,6 +31,7 @@ rustc-hash = { workspace = true }
 react_remove_properties = "0.33.0"
 remove_console = "0.34.0"
 auto-hash-map = { workspace = true }
+urlencoding = { workspace = true }
 
 swc_core = { workspace = true, features = [
   "base",
@@ -48,6 +50,7 @@ swc_core = { workspace = true, features = [
   "ecma_transforms_typescript",
   "ecma_utils",
   "ecma_visit",
+  "ecma_visit_serde",
 ] }
 modularize_imports = { version = "0.79.0" }
 swc_relay = { version = "0.53.0" }

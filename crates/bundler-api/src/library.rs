@@ -5,16 +5,17 @@ use bundler_core::client::context::{
 };
 use tracing::{info_span, Instrument};
 use turbo_rcstr::RcStr;
-use turbo_tasks::{Completion, ResolvedVc, TryJoinIterExt, Value, Vc};
+use turbo_tasks::{Completion, JoinIterExt, ResolvedVc, Value, Vc};
 use turbopack::{
     module_options::ModuleOptionsContext, resolve_options_context::ResolveOptionsContext,
     transition::TransitionOptions, ModuleAssetContext,
 };
 use turbopack_core::{
     chunk::{
-        availability_info::AvailabilityInfo, ChunkGroupType, ChunkingContext,
-        EntryChunkGroupResult, EvaluatableAsset, EvaluatableAssets,
+        availability_info::AvailabilityInfo, ChunkGroupResult, ChunkGroupType, ChunkingContext,
+        EvaluatableAsset, EvaluatableAssets,
     },
+    ident::AssetIdent,
     module::Module,
     module_graph::{GraphEntries, ModuleGraph},
     output::OutputAssets,
@@ -26,7 +27,7 @@ use turbopack_core::{
 };
 
 use crate::{
-    endpoints::{Endpoint, EndpointOutput, EndpointOutputPaths, Endpoints},
+    endpoints::{Endpoint, EndpointOutput, EndpointOutputPaths},
     paths::{all_paths_in_root, all_server_paths},
     project::Project,
 };
@@ -64,7 +65,7 @@ impl LibraryProject {
     }
 
     #[turbo_tasks::function]
-    pub async fn get_library_endpoints(self: Vc<Self>) -> Result<Vc<Endpoints>> {
+    pub async fn get_library_endpoints(self: Vc<Self>) -> Result<Vc<LibraryEndpoints>> {
         let this = self.await?;
 
         let project = this.project;
@@ -74,21 +75,18 @@ impl LibraryProject {
             .await?
             .iter()
             .map(|l| async move {
-                let endpoint: Vc<Box<dyn Endpoint>> = Vc::upcast(
-                    LibraryEndpoint {
-                        project,
-                        import: l.import.clone(),
-                        filename: l.filename.clone(),
-                        export: l.export.clone(),
-                    }
-                    .cell(),
-                );
-                endpoint.to_resolved().await
+                LibraryEndpoint {
+                    project,
+                    import: l.import.clone(),
+                    filename: l.filename.clone(),
+                    export: l.export.clone(),
+                }
+                .resolved_cell()
             })
-            .try_join()
-            .await?;
+            .join()
+            .await;
 
-        Ok(Endpoints(endpoints).cell())
+        Ok(LibraryEndpoints(endpoints).cell())
     }
 }
 
@@ -99,6 +97,9 @@ pub struct LibraryEndpoint {
     pub filename: Option<RcStr>,
     pub export: Option<Vec<RcStr>>,
 }
+
+#[turbo_tasks::value(transparent)]
+pub struct LibraryEndpoints(pub Vec<ResolvedVc<LibraryEndpoint>>);
 
 #[turbo_tasks::value_impl]
 impl LibraryEndpoint {
@@ -130,6 +131,7 @@ impl LibraryEndpoint {
             self.project().mode(),
             self.project().config(),
             self.project().no_mangling(),
+            Vc::cell(true),
         ))
     }
 
@@ -155,7 +157,7 @@ impl LibraryEndpoint {
     }
 
     #[turbo_tasks::function]
-    async fn library_main_module(self: Vc<Self>) -> Result<Vc<Box<dyn Module>>> {
+    pub async fn library_main_module(self: Vc<Self>) -> Result<Vc<Box<dyn Module>>> {
         let this = self.await?;
         let entry_request = Request::relative(
             Value::new(this.import.clone().into()),
@@ -196,17 +198,17 @@ impl LibraryEndpoint {
 
     #[turbo_tasks::function]
     async fn library_evaluatable_assets(self: Vc<Self>) -> Result<Vc<EvaluatableAssets>> {
-        let client_main_module = self.library_main_module();
+        let library_main_module = self.library_main_module();
 
-        let Some(client_main_module) =
-            Vc::try_resolve_sidecast::<Box<dyn EvaluatableAsset>>(client_main_module).await?
+        let Some(library_main_module) =
+            Vc::try_resolve_sidecast::<Box<dyn EvaluatableAsset>>(library_main_module).await?
         else {
             bail!("expected an evaluateable asset");
         };
 
         let evaluatable_assets = self
             .library_runtime_entries()
-            .with_entry(client_main_module);
+            .with_entry(library_main_module);
 
         Ok(evaluatable_assets)
     }
@@ -219,7 +221,7 @@ impl LibraryEndpoint {
     }
 
     #[turbo_tasks::function]
-    async fn library_chunk(self: Vc<Self>) -> Result<Vc<EntryChunkGroupResult>> {
+    async fn library_chunk(self: Vc<Self>) -> Result<Vc<ChunkGroupResult>> {
         async move {
             let this = self.await?;
 
@@ -231,11 +233,10 @@ impl LibraryEndpoint {
 
             let module_graph = self.library_module_graph();
 
-            let library_chunk_group = library_chunking_context.entry_chunk_group(
-                project_path.join(this.import.clone()),
+            let library_chunk_group = library_chunking_context.evaluated_chunk_group(
+                AssetIdent::from_path(project_path.join(this.import.clone())),
                 self.library_evaluatable_assets(),
                 module_graph,
-                OutputAssets::empty(),
                 Value::new(AvailabilityInfo::Root),
             );
 
@@ -247,7 +248,8 @@ impl LibraryEndpoint {
 
     #[turbo_tasks::function]
     pub async fn output_assets(self: Vc<Self>) -> Result<Vc<OutputAssets>> {
-        Ok(OutputAssets::new(vec![*self.library_chunk().await?.asset]))
+        let chunk_group_assets = *self.library_chunk().await?.assets;
+        Ok(chunk_group_assets)
     }
 }
 
@@ -255,21 +257,15 @@ impl LibraryEndpoint {
 impl Endpoint for LibraryEndpoint {
     #[turbo_tasks::function]
     async fn entries(self: Vc<Self>) -> Result<Vc<GraphEntries>> {
-        Ok(Vc::cell(vec![
-            (
-                vec![self.library_main_module().to_resolved().await?],
-                ChunkGroupType::Evaluated,
-            ),
-            (
-                self.library_runtime_entries()
-                    .await?
-                    .iter()
-                    .copied()
-                    .map(ResolvedVc::upcast)
-                    .collect(),
-                ChunkGroupType::Evaluated,
-            ),
-        ]))
+        let mut entry_modules: Vec<ResolvedVc<Box<dyn Module>>> = self
+            .library_runtime_entries()
+            .await?
+            .iter()
+            .copied()
+            .map(ResolvedVc::upcast)
+            .collect();
+        entry_modules.push(self.library_main_module().to_resolved().await?);
+        Ok(Vc::cell(vec![(entry_modules, ChunkGroupType::Evaluated)]))
     }
 
     #[turbo_tasks::function]
@@ -303,7 +299,7 @@ impl Endpoint for LibraryEndpoint {
             };
 
             Ok(EndpointOutput {
-                output_assets: self.output_assets().to_resolved().await?,
+                output_assets: output_assets.to_resolved().await?,
                 output_paths: written_endpoint.resolved_cell(),
                 project: this.project,
             }

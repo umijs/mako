@@ -441,7 +441,7 @@ impl Config {
     pub async fn from_string(string: Vc<RcStr>) -> Result<Vc<Self>> {
         let string = string.await?;
         let config: Config = serde_json::from_str(&string)
-            .with_context(|| format!("failed to parse next.config.js: {}", string))?;
+            .with_context(|| format!("failed to parse config.js: {}", string))?;
         Ok(config.cell())
     }
 
@@ -715,12 +715,20 @@ impl Config {
 
     #[turbo_tasks::function]
     pub fn sass_config(&self) -> Vc<JsonValue> {
-        Vc::cell(self.sass_options.clone().unwrap_or_default())
+        Vc::cell(
+            self.sass_options
+                .clone()
+                .unwrap_or(JsonValue::Object(serde_json::Map::new())),
+        )
     }
 
     #[turbo_tasks::function]
     pub fn less_config(&self) -> Vc<JsonValue> {
-        Vc::cell(self.less_options.clone().unwrap_or_default())
+        Vc::cell(
+            self.less_options
+                .clone()
+                .unwrap_or(JsonValue::Object(serde_json::Map::new())),
+        )
     }
 
     /// Returns the final asset prefix. If an assetPrefix is set, it's used.
@@ -899,7 +907,7 @@ impl JsConfig {
     pub async fn from_string(string: Vc<RcStr>) -> Result<Vc<Self>> {
         let string = string.await?;
         let config: JsConfig = serde_json::from_str(&string)
-            .with_context(|| format!("failed to parse next.config.js: {}", string))?;
+            .with_context(|| format!("failed to parse config.js: {}", string))?;
 
         Ok(config.cell())
     }

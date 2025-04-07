@@ -1,27 +1,17 @@
 [package]
-name = "utoo-bundler"
+name = "bundler-cli"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "utoo-bundler-cli"
+name = "bundler-cli"
 path = "src/main.rs"
 
 
-[features]
-default = ["custom_allocator"]
-serializable = []
-tokio_console = [
-  "dep:console-subscriber",
-  "tokio/tracing",
-  "turbo-tasks/tokio_tracing",
-]
-profile = []
-custom_allocator = ["turbo-tasks-malloc/custom_allocator"]
-
 [dependencies]
-crossterm = "0.28.1"
+bundler-api = { workspace = true }
+bundler-core = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
@@ -30,10 +20,10 @@ tokio = { workspace = true }
 rustc-hash = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 serde = { workspace = true }
-owo-colors = { workspace = true }
 dunce = { workspace = true }
-webbrowser = { workspace = true }
-
+serde_json = { workspace = true }
+tokio-stream = "0.1.15"
+futures-util = "0.3.30"
 turbo-rcstr = { workspace = true }
 turbo-tasks = { workspace = true }
 turbo-tasks-backend = { workspace = true }
@@ -44,23 +34,8 @@ turbo-tasks-malloc = { workspace = true }
 turbopack = { workspace = true }
 turbopack-browser = { workspace = true }
 turbopack-core = { workspace = true }
-turbopack-ecmascript = { workspace = true }
-turbopack-ecmascript-plugins = { workspace = true, features = [
-  "transform_emotion",
-] }
-turbopack-ecmascript-runtime = { workspace = true }
-turbopack-image = { workspace = true }
-turbopack-node = { workspace = true }
-turbopack-nodejs = { workspace = true }
-turbopack-static = { workspace = true }
-turbopack-resolve = { workspace = true }
 turbopack-trace-utils = { workspace = true }
-turbopack-dev-server = { workspace = true }
 
-
-[dev-dependencies]
-criterion = { workspace = true, features = ["async_tokio"] }
-regex = { workspace = true }
 
 [build-dependencies]
 turbo-tasks-build = { workspace = true }
