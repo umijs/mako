@@ -74,8 +74,6 @@ async fn build_deps(root: Arc<Node>) -> io::Result<()> {
                             {
                                 let mut to = edge.to.write().unwrap();
                                 *to = Some(existing_node.clone());
-                            }
-                            {
                                 let mut valid = edge.valid.write().unwrap();
                                 *valid = true;
                             }
@@ -102,12 +100,9 @@ async fn build_deps(root: Arc<Node>) -> io::Result<()> {
                             {
                                 let mut parent = new_node.parent.write().unwrap();
                                 *parent = Some(install_parent.clone());
-                            }
-                            {
                                 let mut children = install_parent.children.write().unwrap();
                                 children.push(new_node.clone());
-                            }
-                            {
+
                                 let mut to = edge.to.write().unwrap();
                                 *to = Some(new_node.clone());
                                 let mut valid = edge.valid.write().unwrap();
