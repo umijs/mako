@@ -235,8 +235,8 @@ fn place_deps(name: String, pkg: ResolvedPackage, parent: &Arc<Node>) -> io::Res
     let new_node = Node::new(name, parent.path.clone(), pkg.manifest);
 
     log_verbose(&format!(
-        "\nInstalling {}@{} under parent chain:",
-        new_node.name, new_node.version
+        "\nInstalling {}@{} under parent chain: {}",
+        new_node.name, new_node.version, parent
     ));
     // log_verbose(&print_parent_chain(parent));
     log_verbose("");

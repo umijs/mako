@@ -382,13 +382,13 @@ impl Node {
             }
         }
 
-        log_verbose(&format!(
-            "{}@{} type changed [all_optional {}]",
-            &self.name, &self.version, all_optional
-        ));
-
         // Propagate changes
         if changed {
+            log_verbose(&format!(
+                "{}@{} type changed [all_optional {}]",
+                &self.name, &self.version, all_optional
+            ));
+
             let edges_out = self.edges_out.read().unwrap();
             for edge in edges_out.iter() {
                 if let Some(to_node) = edge.to.read().unwrap().as_ref() {
@@ -396,6 +396,22 @@ impl Node {
                 }
             }
         }
+    }
+}
+
+impl std::fmt::Display for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // 输出基本信息
+        write!(f, "{}@{}", self.name, self.version)?;
+
+        // 如果不是根节点，则递归打印父节点链
+        if !self.is_root {
+            if let Some(parent) = self.parent.read().unwrap().as_ref() {
+                write!(f, " <- {}", parent)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
