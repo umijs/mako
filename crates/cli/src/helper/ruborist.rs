@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::sync::Semaphore;
 
+use crate::util::config::get_legacy_peer_deps;
 use crate::util::logger::{
     finish_progress_bar, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
 };
@@ -27,7 +28,11 @@ use once_cell::sync::Lazy;
 static CONCURRENCY_LIMITER: Lazy<Arc<Semaphore>> = Lazy::new(|| Arc::new(Semaphore::new(100)));
 
 async fn build_deps(root: Arc<Node>) -> io::Result<()> {
-    log_verbose(&format!("going to build deps for {}", root.name));
+    let legacy_peer_deps = get_legacy_peer_deps();
+    log_verbose(&format!(
+        "going to build deps for {}, legacy_peer_deps: {}",
+        root.name, legacy_peer_deps
+    ));
     let current_level = Arc::new(Mutex::new(vec![root.clone()]));
 
     while !current_level.lock().unwrap().is_empty() {
@@ -111,12 +116,19 @@ async fn build_deps(root: Arc<Node>) -> io::Result<()> {
                                 new_node.add_invoke(&edge);
                                 new_node.update_type();
                             }
-                            // update dep types
-                            let dep_types = [
-                                ("dependencies", EdgeType::Prod),
-                                ("peerDependencies", EdgeType::Peer),
-                                ("optionalDependencies", EdgeType::Optional),
-                            ];
+
+                            let dep_types = if legacy_peer_deps {
+                                vec![
+                                    ("dependencies", EdgeType::Prod),
+                                    ("optionalDependencies", EdgeType::Optional),
+                                ]
+                            } else {
+                                vec![
+                                    ("dependencies", EdgeType::Prod),
+                                    ("peerDependencies", EdgeType::Peer),
+                                    ("optionalDependencies", EdgeType::Optional),
+                                ]
+                            };
 
                             for (field, edge_type) in dep_types {
                                 if let Some(deps) = new_node.package.get(field) {
@@ -180,19 +192,23 @@ async fn build_deps(root: Arc<Node>) -> io::Result<()> {
                                     }
                                 }
                             }
-                            if let Some(deps) = new_node.package.get("peerDependencies") {
-                                if let Some(deps) = deps.as_object() {
-                                    for (name, version) in deps {
-                                        let version_spec = version.as_str().unwrap_or("").to_string();
-                                        let dep_edge = Edge::new(new_node.clone(), EdgeType::Peer, name.clone(), version_spec);
-                                        log_verbose(&format!(
-                                            "add edge {}@{} for {}",
-                                            name, version, new_node.name
-                                        ));
-                                        new_node.add_edge(dep_edge).await;
+
+                            if legacy_peer_deps {
+                                if let Some(deps) = new_node.package.get("peerDependencies") {
+                                    if let Some(deps) = deps.as_object() {
+                                        for (name, version) in deps {
+                                            let version_spec = version.as_str().unwrap_or("").to_string();
+                                            let dep_edge = Edge::new(new_node.clone(), EdgeType::Peer, name.clone(), version_spec);
+                                            log_verbose(&format!(
+                                                "add edge {}@{} for {}",
+                                                name, version, new_node.name
+                                            ));
+                                            new_node.add_edge(dep_edge).await;
+                                        }
                                     }
                                 }
                             }
+
                             if let Some(deps) = new_node.package.get("optionalDependencies") {
                                 if let Some(deps) = deps.as_object() {
                                     for (name, version) in deps {
@@ -321,11 +337,21 @@ impl Ruborist {
         self.init_workspaces(root.clone()).await?;
 
         // collect deps type
-        let dep_types = [
-            ("dependencies", EdgeType::Prod),
-            ("devDependencies", EdgeType::Dev),
-            ("optionalDependencies", EdgeType::Optional),
-        ];
+        let legacy_peer_deps = get_legacy_peer_deps();
+        let dep_types = if legacy_peer_deps {
+            vec![
+                ("dependencies", EdgeType::Prod),
+                ("devDependencies", EdgeType::Dev),
+                ("optionalDependencies", EdgeType::Optional),
+            ]
+        } else {
+            vec![
+                ("dependencies", EdgeType::Prod),
+                ("devDependencies", EdgeType::Dev),
+                ("peerDependencies", EdgeType::Peer),
+                ("optionalDependencies", EdgeType::Optional),
+            ]
+        };
 
         // process deps in root
         for (field, dep_type) in dep_types {
@@ -430,11 +456,21 @@ impl Ruborist {
                                             name, path
                                         ));
 
-                                        let dep_types = [
-                                            ("devDependencies", EdgeType::Dev),
-                                            ("dependencies", EdgeType::Prod),
-                                            ("optionalDependencies", EdgeType::Optional),
-                                        ];
+                                        let legacy_peer_deps = get_legacy_peer_deps();
+                                        let dep_types = if legacy_peer_deps {
+                                            vec![
+                                                ("devDependencies", EdgeType::Dev),
+                                                ("dependencies", EdgeType::Prod),
+                                                ("optionalDependencies", EdgeType::Optional),
+                                            ]
+                                        } else {
+                                            vec![
+                                                ("devDependencies", EdgeType::Dev),
+                                                ("dependencies", EdgeType::Prod),
+                                                ("peerDependencies", EdgeType::Peer),
+                                                ("optionalDependencies", EdgeType::Optional),
+                                            ]
+                                        };
 
                                         for (field, edge_type) in dep_types {
                                             if let Some(deps) = workspace_node.package.get(field) {
@@ -589,6 +625,7 @@ impl Ruborist {
     }
 
     pub async fn replace_deps(&self, node: Arc<Node>) -> io::Result<()> {
+        log_verbose(&format!("going to replace node {}", node));
         // 1. remove from parent node
         if let Some(parent) = node.parent.read().unwrap().as_ref() {
             let mut parent_children = parent.children.write().unwrap();

@@ -6,7 +6,7 @@ use cmd::install::install;
 use cmd::rebuild::rebuild;
 use cmd::{clean::clean, deps::build_workspace};
 use helper::auto_update::init_auto_update;
-use util::config::set_registry;
+use util::config::{set_legacy_peer_deps, set_registry};
 use util::logger::{log_error, log_info, log_warning, set_verbose, write_verbose_logs_to_file};
 
 mod cmd;
@@ -38,6 +38,9 @@ struct Cli {
 
     #[arg(long, global = true)]
     registry: Option<String>,
+
+    #[arg(long, global = true, action = clap::ArgAction::SetTrue)]
+    legacy_peer_deps: Option<bool>,
 
     #[command(subcommand)]
     command: Option<Commands>,
@@ -80,6 +83,11 @@ async fn main() {
 
     // global registry
     set_registry(cli.registry);
+
+    // set legacy_peer_deps when set --legacy
+    if cli.legacy_peer_deps == Some(true) {
+        set_legacy_peer_deps(cli.legacy_peer_deps);
+    }
 
     // Ensure the version is up to date, weak dependency
     if let Err(_e) = init_auto_update().await {

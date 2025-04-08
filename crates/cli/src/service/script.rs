@@ -34,6 +34,13 @@ impl ScriptService {
                 .env("PATH", env_path)
                 .env("npm_lifecycle_event", script_type)
                 .env(
+                    "INIT_CWD",
+                    env::current_dir()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string(),
+                )
+                .env(
                     "npm_package_json",
                     package.path.join("package.json").display().to_string(),
                 )

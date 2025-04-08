@@ -1,34 +1,86 @@
+use super::logger::log_verbose;
+use std::fmt::Debug;
+use std::sync::LazyLock;
 use std::sync::OnceLock;
 use utoo_core::config::Config;
 
-use super::logger::log_verbose;
+trait ConfigValueParser<T> {
+    fn parse_config_value(&self, value: &str) -> T;
+}
 
-static REGISTRY: OnceLock<String> = OnceLock::new();
+struct ConfigValue<T> {
+    value: OnceLock<T>,
+    key: &'static str,
+    default: T,
+}
 
-pub fn set_registry(registry: Option<String>) {
-    if let Some(registry) = registry {
-        if !registry.trim().is_empty() {
-            log_verbose(&format!("set registry: {}", registry));
-            let _ = REGISTRY.set(registry);
+impl<T: Clone + Debug + 'static> ConfigValue<T> {
+    const fn new(key: &'static str, default: T) -> Self {
+        Self {
+            value: OnceLock::new(),
+            key,
+            default,
         }
+    }
+
+    fn set(&self, new_value: Option<T>) {
+        if let Some(value) = new_value {
+            log_verbose(&format!("set {}: {:?}", self.key, value));
+            let _ = self.value.set(value);
+        }
+    }
+
+    fn get(&self) -> T
+    where
+        Self: ConfigValueParser<T>,
+    {
+        if let Some(value) = self.value.get() {
+            return value.clone();
+        }
+
+        // load from utoo-core config
+        if let Ok(config) = Config::load(false) {
+            if let Ok(Some(value)) = config.get(self.key) {
+                let parsed_value = self.parse_config_value(&value);
+                let _ = self.value.set(parsed_value.clone());
+                return parsed_value;
+            }
+        }
+
+        self.default.clone()
     }
 }
 
-pub fn get_registry() -> &'static str {
-    if let Some(registry) = REGISTRY.get() {
-        if !registry.is_empty() {
-            return registry.as_str();
-        }
+impl ConfigValueParser<String> for ConfigValue<String> {
+    fn parse_config_value(&self, value: &str) -> String {
+        value.to_string()
     }
+}
 
-    // load from utoo-core config
-    if let Ok(config) = Config::load(false) {
-        if let Ok(Some(registry)) = config.get("registry") {
-            let _ = REGISTRY.set(registry);
-            return REGISTRY.get().unwrap().as_str();
-        }
+impl ConfigValueParser<bool> for ConfigValue<bool> {
+    fn parse_config_value(&self, value: &str) -> bool {
+        value.to_lowercase() == "true"
     }
+}
 
-    // default to npmmirror
-    "https://registry.npmmirror.com"
+static REGISTRY: LazyLock<ConfigValue<String>> =
+    LazyLock::new(|| ConfigValue::new("registry", "https://registry.npmmirror.com".to_string()));
+
+static LEGACY_PEER_DEPS: LazyLock<ConfigValue<bool>> =
+    LazyLock::new(|| ConfigValue::new("legacy-peer-deps", false));
+
+pub fn set_registry(registry: Option<String>) {
+    REGISTRY.set(registry);
+}
+
+pub fn get_registry() -> String {
+    REGISTRY.get()
+}
+
+pub fn set_legacy_peer_deps(value: Option<bool>) {
+    LEGACY_PEER_DEPS.set(value);
+}
+
+pub fn get_legacy_peer_deps() -> bool {
+    LEGACY_PEER_DEPS.get()
 }
