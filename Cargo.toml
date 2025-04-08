@@ -6,8 +6,7 @@ members = [
   "crates/bundler-napi",
   "crates/cli",
   "crates/core",
-  # Waiting https://github.com/denoland/deno_ast/pull/297 to be resolved
-  # "crates/runtime",
+  "crates/runtime",
 ]
 resolver = "2"
 
@@ -82,3 +81,6 @@ turbopack-dev-server = { git = "https://github.com/vercel/next.js.git", package 
 
 [workspace.lints.clippy]
 too_many_arguments = "allow"
+
+[patch.crates-io]
+deno_ast = { git = "https://github.com/cnpm/deno_ast.git", rev = "24dd9b6eb826b4a0985b4a271e56b42d9d345e64" }
