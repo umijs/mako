@@ -6,7 +6,7 @@ use cmd::install::install;
 use cmd::rebuild::rebuild;
 use cmd::{clean::clean, deps::build_workspace};
 use helper::auto_update::init_auto_update;
-use util::config::{set_registry, set_legacy_peer_deps};
+use util::config::{set_legacy_peer_deps, set_registry};
 use util::logger::{log_error, log_info, log_warning, set_verbose, write_verbose_logs_to_file};
 
 mod cmd;

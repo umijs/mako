@@ -1,7 +1,7 @@
 use crate::helper::{package::serialize_tree_to_packages, ruborist::Ruborist};
+use crate::util::config::get_legacy_peer_deps;
 use crate::util::logger::log_warning;
 use crate::util::semver;
-use crate::util::config::get_legacy_peer_deps;
 use serde_json::json;
 use std::collections::HashSet;
 use std::fs;

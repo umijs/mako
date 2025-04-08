@@ -29,7 +29,10 @@ static CONCURRENCY_LIMITER: Lazy<Arc<Semaphore>> = Lazy::new(|| Arc::new(Semapho
 
 async fn build_deps(root: Arc<Node>) -> io::Result<()> {
     let legacy_peer_deps = get_legacy_peer_deps();
-    log_verbose(&format!("going to build deps for {}, legacy_peer_deps: {}", root.name, legacy_peer_deps));
+    log_verbose(&format!(
+        "going to build deps for {}, legacy_peer_deps: {}",
+        root.name, legacy_peer_deps
+    ));
     let current_level = Arc::new(Mutex::new(vec![root.clone()]));
 
     while !current_level.lock().unwrap().is_empty() {

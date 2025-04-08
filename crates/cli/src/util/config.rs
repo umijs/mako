@@ -1,8 +1,8 @@
-use std::sync::OnceLock;
-use std::sync::LazyLock;
-use std::fmt::Debug;
-use utoo_core::config::Config;
 use super::logger::log_verbose;
+use std::fmt::Debug;
+use std::sync::LazyLock;
+use std::sync::OnceLock;
+use utoo_core::config::Config;
 
 trait ConfigValueParser<T> {
     fn parse_config_value(&self, value: &str) -> T;
@@ -63,13 +63,11 @@ impl ConfigValueParser<bool> for ConfigValue<bool> {
     }
 }
 
-static REGISTRY: LazyLock<ConfigValue<String>> = LazyLock::new(|| {
-    ConfigValue::new("registry", "https://registry.npmmirror.com".to_string())
-});
+static REGISTRY: LazyLock<ConfigValue<String>> =
+    LazyLock::new(|| ConfigValue::new("registry", "https://registry.npmmirror.com".to_string()));
 
-static LEGACY_PEER_DEPS: LazyLock<ConfigValue<bool>> = LazyLock::new(|| {
-    ConfigValue::new("legacy-peer-deps", false)
-});
+static LEGACY_PEER_DEPS: LazyLock<ConfigValue<bool>> =
+    LazyLock::new(|| ConfigValue::new("legacy-peer-deps", false));
 
 pub fn set_registry(registry: Option<String>) {
     REGISTRY.set(registry);
