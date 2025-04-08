@@ -6,6 +6,13 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 
+const DEP_TYPES: [(&str, bool); 4] = [
+    ("dependencies", false),
+    ("peerDependencies", true),
+    ("optionalDependencies", true),
+    ("devDependencies", false),
+];
+
 pub async fn build_deps() -> std::io::Result<()> {
     let path = PathBuf::from(".");
     let mut ruborist = Ruborist::new(path.clone());
@@ -93,14 +100,7 @@ fn validate_deps() -> std::io::Result<()> {
 
     if let Some(packages) = lock_file.get("packages").and_then(|p| p.as_object()) {
         for (pkg_path, pkg_info) in packages {
-            let dep_types = [
-                ("dependencies", false),
-                ("peerDependencies", true),
-                ("optionalDependencies", true),
-                ("devDependencies", false),
-            ];
-
-            for (dep_field, is_optional) in dep_types {
+            for (dep_field, is_optional) in DEP_TYPES {
                 if let Some(dependencies) = pkg_info.get(dep_field).and_then(|d| d.as_object()) {
                     for (dep_name, req_version) in dependencies {
                         let req_version_str = req_version.as_str().unwrap_or_default();
