@@ -9,6 +9,17 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
     - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
