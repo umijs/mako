@@ -1,6 +1,9 @@
-use crate::util::{logger::log_info, node::Node};
+use crate::util::{
+    logger::{log_info, log_warning},
+    node::Node,
+};
 use serde_json::{json, Value};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 pub fn parse_package_name(path: &str) -> (Option<String>, String, String) {
     let parts: Vec<&str> = path.split('/').collect();
@@ -31,19 +34,30 @@ pub fn parse_package_name(path: &str) -> (Option<String>, String, String) {
 }
 
 pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
-    // 修改参数类型
     let mut packages = json!({});
     let mut stack = vec![(node.clone(), String::new())];
     let mut total_packages = 0;
 
     while let Some((current, prefix)) = stack.pop() {
+        let children = current.children.read().unwrap();
+        let mut name_count = HashMap::new();
+        for child in children.iter() {
+            *name_count.entry(child.name.as_str()).or_insert(0) += 1;
+        }
+        for (name, count) in name_count {
+            if count > 1 {
+                log_warning(&format!(
+                    "Found {} duplicate dependencies named '{}' under '{}'",
+                    count, name, current.name
+                ));
+            }
+        }
         let mut pkg_info = if current.is_root {
             json!({
                 "name": current.name,
                 "version": current.version,
             })
         } else {
-            total_packages = total_packages + 1;
             let mut info = json!({
                 "name": current.package.get("name"),
             });
@@ -73,6 +87,7 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
                     .get("dist")
                     .unwrap_or(&json!(""))
                     .get("integrity"));
+                total_packages = total_packages + 1;
             }
 
             if *current.is_peer.read().unwrap() == Some(true) {
@@ -94,6 +109,7 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
             if current.package.get("hasInstallScript") == Some(&json!(true)) {
                 info["hasInstallScript"] = json!(true);
             }
+
             info
         };
 

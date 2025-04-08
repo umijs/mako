@@ -1,8 +1,17 @@
 use crate::helper::{package::serialize_tree_to_packages, ruborist::Ruborist};
+use crate::util::logger::log_warning;
+use crate::util::semver;
 use serde_json::json;
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
+
+const DEP_TYPES: [(&str, bool); 4] = [
+    ("dependencies", false),
+    ("peerDependencies", true),
+    ("optionalDependencies", true),
+    ("devDependencies", false),
+];
 
 pub async fn build_deps() -> std::io::Result<()> {
     let path = PathBuf::from(".");
@@ -31,6 +40,7 @@ pub async fn build_deps() -> std::io::Result<()> {
         fs::rename(temp_path, target_path)?;
     }
 
+    validate_deps()?;
     Ok(())
 }
 
@@ -76,6 +86,82 @@ pub async fn build_workspace() -> std::io::Result<()> {
 
         fs::write(&temp_path, serde_json::to_string_pretty(&workspace_file)?)?;
         fs::rename(temp_path, target_path)?;
+    }
+
+    Ok(())
+}
+
+fn validate_deps() -> std::io::Result<()> {
+    let path = PathBuf::from(".");
+    let lock_path = path.join("package-lock.json");
+
+    let lock_content = fs::read_to_string(lock_path)?;
+    let lock_file: serde_json::Value = serde_json::from_str(&lock_content)?;
+
+    if let Some(packages) = lock_file.get("packages").and_then(|p| p.as_object()) {
+        for (pkg_path, pkg_info) in packages {
+            for (dep_field, is_optional) in DEP_TYPES {
+                if let Some(dependencies) = pkg_info.get(dep_field).and_then(|d| d.as_object()) {
+                    for (dep_name, req_version) in dependencies {
+                        let req_version_str = req_version.as_str().unwrap_or_default();
+
+                        // find the actual version of the dependency
+                        let mut current_path = if pkg_path.is_empty() {
+                            String::new()
+                        } else {
+                            pkg_path.to_string()
+                        };
+                        let mut dep_info = None;
+
+                        // until root or found
+                        loop {
+                            let search_path = if current_path.is_empty() {
+                                format!("node_modules/{}", dep_name)
+                            } else {
+                                format!("{}/node_modules/{}", current_path, dep_name)
+                            };
+
+                            if let Some(info) = packages.get(&search_path) {
+                                dep_info = Some(info);
+                                current_path = search_path;
+                                break;
+                            }
+
+                            // find in root path
+                            if current_path.is_empty() {
+                                break;
+                            }
+
+                            // find in parent path
+                            if let Some(last_modules) = current_path.rfind("/node_modules/") {
+                                current_path = current_path[..last_modules].to_string();
+                            } else {
+                                current_path = String::new();
+                            }
+                        }
+
+                        // optional dependency not found is allowed
+                        if let Some(dep_info) = dep_info {
+                            if let Some(actual_version) =
+                                dep_info.get("version").and_then(|v| v.as_str())
+                            {
+                                if !semver::matches(&req_version_str, &actual_version) {
+                                    log_warning(&format!(
+                                        "Package {} {} dependency {} (required version: {}) does not match actual version {}@{}",
+                                        pkg_path, dep_field, dep_name, req_version_str, current_path, actual_version
+                                    ));
+                                }
+                            }
+                        } else if !is_optional {
+                            log_warning(&format!(
+                                "pkg_path {} dep_field {} dep_name {} not found",
+                                pkg_path, dep_field, dep_name
+                            ));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Ok(())

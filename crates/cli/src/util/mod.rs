@@ -7,4 +7,5 @@ pub mod logger;
 pub mod node;
 pub mod registry;
 pub mod retry;
+pub mod semver;
 pub mod timer;

@@ -1,6 +1,6 @@
 [package]
 name = "utoo-cli"
-version = "0.0.0-alpha.0"
+version = "0.0.0-alpha.5"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -47,7 +47,7 @@ async-compression = { version = "0.3", features = ["tokio", "gzip"] }
 tokio-tar = "0.3.1"
 tokio-retry = "0.3"
 tempfile = "3.15.0"
-semver = "1.0.25"
+deno_semver = "0.7"
 futures = { workspace = true }
 glob = "0.3.1"
 criterion = { workspace = true }

@@ -1,4 +1,4 @@
-use semver::{Version, VersionReq};
+use deno_semver::{Version, VersionReq};
 use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
@@ -208,12 +208,12 @@ impl Node {
                             true
                         } else {
                             // Handle version matching logic
-                            match Version::parse(&rule.spec) {
-                                Ok(rule_version) => match VersionReq::parse(&edge.spec) {
+                            match Version::parse_from_npm(&rule.spec) {
+                                Ok(rule_version) => match VersionReq::parse_from_npm(&edge.spec) {
                                     Ok(edge_req) => edge_req.matches(&rule_version),
                                     _ => edge.spec == "*" || edge.spec == rule.spec,
                                 },
-                                _ => match VersionReq::parse(&rule.spec) {
+                                _ => match VersionReq::parse_from_npm(&rule.spec) {
                                     Ok(rule_req) => {
                                         if let Ok(resolved) = resolve(&edge.name, &edge.spec).await
                                         {
@@ -222,7 +222,9 @@ impl Node {
                                                 .get("version")
                                                 .and_then(|v| v.as_str())
                                             {
-                                                if let Ok(version) = Version::parse(version) {
+                                                if let Ok(version) =
+                                                    Version::parse_from_npm(version)
+                                                {
                                                     rule_req.matches(&version)
                                                 } else {
                                                     false
@@ -253,8 +255,8 @@ impl Node {
                                     true
                                 } else {
                                     match (
-                                        Version::parse(&node.version),
-                                        VersionReq::parse(&current_rule.spec),
+                                        Version::parse_from_npm(&node.version),
+                                        VersionReq::parse_from_npm(&current_rule.spec),
                                     ) {
                                         (Ok(version), Ok(req)) => req.matches(&version),
                                         _ => node.version == current_rule.spec,
@@ -382,13 +384,13 @@ impl Node {
             }
         }
 
-        log_verbose(&format!(
-            "{}@{} type changed [all_optional {}]",
-            &self.name, &self.version, all_optional
-        ));
-
         // Propagate changes
         if changed {
+            log_verbose(&format!(
+                "{}@{} type changed [all_optional {}]",
+                &self.name, &self.version, all_optional
+            ));
+
             let edges_out = self.edges_out.read().unwrap();
             for edge in edges_out.iter() {
                 if let Some(to_node) = edge.to.read().unwrap().as_ref() {
@@ -396,6 +398,22 @@ impl Node {
                 }
             }
         }
+    }
+}
+
+impl std::fmt::Display for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // stdout name & version
+        write!(f, "{}@{}", self.name, self.version)?;
+
+        // stdout parent
+        if !self.is_root {
+            if let Some(parent) = self.parent.read().unwrap().as_ref() {
+                write!(f, " <- {}", parent)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
