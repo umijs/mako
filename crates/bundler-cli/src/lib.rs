@@ -10,12 +10,18 @@ use bundler_api::{
     endpoints::{endpoint_write_to_disk, Endpoint, EndpointOutputPaths},
     project::{ProjectContainer, ProjectOptions},
 };
+use clap::Parser;
 use futures_util::{StreamExt, TryStreamExt};
 use turbo_tasks::{get_effects, ReadConsistency, ResolvedVc, TransientInstance, TurboTasks, Vc};
 use turbo_tasks_backend::{NoopBackingStorage, TurboTasksBackend};
 use turbo_tasks_malloc::TurboMalloc;
 
-pub mod args;
+#[derive(Debug, Parser)]
+#[clap(author, version, about, long_about = None)]
+pub enum Command {
+    Build,
+    Dev,
+}
 
 pub async fn main_inner(
     tt: &TurboTasks<TurboTasksBackend<NoopBackingStorage>>,

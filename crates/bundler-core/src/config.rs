@@ -55,7 +55,6 @@ pub struct Config {
 
     pub env: FxIndexMap<String, JsonValue>,
     pub experimental: ExperimentalConfig,
-    pub react_production_profiling: Option<bool>,
     pub transpile_packages: Option<Vec<RcStr>>,
     pub modularize_imports: Option<FxIndexMap<String, ModularizeImportPackageConfig>>,
     pub dist_dir: Option<RcStr>,
@@ -443,11 +442,6 @@ impl Config {
         let config: Config = serde_json::from_str(&string)
             .with_context(|| format!("failed to parse config.js: {}", string))?;
         Ok(config.cell())
-    }
-
-    #[turbo_tasks::function]
-    pub fn enable_react_production_profiling(&self) -> Vc<bool> {
-        Vc::cell(self.react_production_profiling.unwrap_or_default())
     }
 
     #[turbo_tasks::function]

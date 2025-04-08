@@ -52,6 +52,7 @@ swc_core = { workspace = true, features = [
   "ecma_visit",
   "ecma_visit_serde",
 ] }
+swc_parallel = { version = "1.2.0" }
 modularize_imports = { version = "0.79.0" }
 swc_relay = { version = "0.53.0" }
 
