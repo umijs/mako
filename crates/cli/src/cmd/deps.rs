@@ -1,17 +1,21 @@
 use crate::helper::{package::serialize_tree_to_packages, ruborist::Ruborist};
 use crate::util::logger::log_warning;
 use crate::util::semver;
+use crate::util::config::get_legacy_peer_deps;
 use serde_json::json;
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 
-const DEP_TYPES: [(&str, bool); 4] = [
-    ("dependencies", false),
-    ("peerDependencies", true),
-    ("optionalDependencies", true),
-    ("devDependencies", false),
-];
+fn get_dep_types() -> [(&'static str, bool); 4] {
+    let legacy_peer_deps = get_legacy_peer_deps();
+    [
+        ("dependencies", false),
+        ("peerDependencies", legacy_peer_deps),
+        ("optionalDependencies", true),
+        ("devDependencies", false),
+    ]
+}
 
 pub async fn build_deps() -> std::io::Result<()> {
     let path = PathBuf::from(".");
@@ -100,7 +104,7 @@ fn validate_deps() -> std::io::Result<()> {
 
     if let Some(packages) = lock_file.get("packages").and_then(|p| p.as_object()) {
         for (pkg_path, pkg_info) in packages {
-            for (dep_field, is_optional) in DEP_TYPES {
+            for (dep_field, is_optional) in get_dep_types() {
                 if let Some(dependencies) = pkg_info.get(dep_field).and_then(|d| d.as_object()) {
                     for (dep_name, req_version) in dependencies {
                         let req_version_str = req_version.as_str().unwrap_or_default();

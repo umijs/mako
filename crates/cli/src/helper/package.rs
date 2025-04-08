@@ -42,7 +42,9 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
         let children = current.children.read().unwrap();
         let mut name_count = HashMap::new();
         for child in children.iter() {
-            *name_count.entry(child.name.as_str()).or_insert(0) += 1;
+            if !child.is_link {
+                *name_count.entry(child.name.as_str()).or_insert(0) += 1;
+            }
         }
         for (name, count) in name_count {
             if count > 1 {
