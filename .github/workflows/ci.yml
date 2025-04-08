@@ -4,7 +4,6 @@ on: [pull_request]
 
 env:
   CARGO_INCREMENTAL: 1
-  RUSTC_WRAPPER: sccache
 
 jobs:
   build:
@@ -20,13 +19,9 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-          ~/.cache/sccache
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
-
-    - name: Install sccache
-      uses: mozilla-actions/sccache-action@v0.0.4
 
     - name: Install Rust
       uses: actions-rs/toolchain@v1
