@@ -179,49 +179,15 @@ async fn build_deps(root: Arc<Node>) -> io::Result<()> {
                                 new_node.add_invoke(&edge);
                                 new_node.update_type();
                             }
-                            if let Some(deps) = new_node.package.get("dependencies") {
-                                if let Some(deps) = deps.as_object() {
-                                    for (name, version) in deps {
-                                        let version_spec = version.as_str().unwrap_or("").to_string();
-                                        let dep_edge = Edge::new(new_node.clone(), EdgeType::Prod, name.clone(), version_spec);
-                                        log_verbose(&format!(
-                                            "add edge {}@{} for {}",
-                                            name, version, new_node.name
-                                        ));
-                                        new_node.add_edge(dep_edge).await;
-                                    }
-                                }
+
+                            add_dependency_edge(&new_node, "dependencies", EdgeType::Prod).await;
+
+                            if !legacy_peer_deps {
+                                add_dependency_edge(&new_node, "peerDependencies", EdgeType::Peer).await;
                             }
 
-                            if legacy_peer_deps {
-                                if let Some(deps) = new_node.package.get("peerDependencies") {
-                                    if let Some(deps) = deps.as_object() {
-                                        for (name, version) in deps {
-                                            let version_spec = version.as_str().unwrap_or("").to_string();
-                                            let dep_edge = Edge::new(new_node.clone(), EdgeType::Peer, name.clone(), version_spec);
-                                            log_verbose(&format!(
-                                                "add edge {}@{} for {}",
-                                                name, version, new_node.name
-                                            ));
-                                            new_node.add_edge(dep_edge).await;
-                                        }
-                                    }
-                                }
-                            }
+                            add_dependency_edge(&new_node, "optionalDependencies", EdgeType::Optional).await;
 
-                            if let Some(deps) = new_node.package.get("optionalDependencies") {
-                                if let Some(deps) = deps.as_object() {
-                                    for (name, version) in deps {
-                                        let version_spec = version.as_str().unwrap_or("").to_string();
-                                        let dep_edge = Edge::new(new_node.clone(), EdgeType::Optional, name.clone(), version_spec);
-                                        log_verbose(&format!(
-                                            "add edge {}@{} for {}",
-                                            name, version, new_node.name
-                                        ));
-                                        new_node.add_edge(dep_edge).await;
-                                    }
-                                }
-                            }
                             next_level.lock().unwrap().push(new_node);
                         }
                     }
@@ -583,6 +549,9 @@ impl Ruborist {
 
             // find duplicate deps
             for child in children.iter() {
+                if child.is_workspace {
+                    continue;
+                }
                 name_map
                     .entry(child.name.clone())
                     .or_insert_with(Vec::new)
@@ -661,5 +630,19 @@ impl Ruborist {
         }
 
         Ok(())
+    }
+}
+
+async fn add_dependency_edge(node: &Arc<Node>, field: &str, edge_type: EdgeType) {
+    if let Some(deps) = node.package.get(field) {
+        if let Some(deps) = deps.as_object() {
+            for (name, version) in deps {
+                let version_spec = version.as_str().unwrap_or("").to_string();
+                let dep_edge =
+                    Edge::new(node.clone(), edge_type.clone(), name.clone(), version_spec);
+                log_verbose(&format!("add edge {}@{} for {}", name, version, node.name));
+                node.add_edge(dep_edge).await;
+            }
+        }
     }
 }
