@@ -3,7 +3,7 @@ use std::{path::MAIN_SEPARATOR, time::Duration};
 use anyhow::{bail, Context, Result};
 use bundler_core::{
     all_assets_from_entries,
-    client::context::get_client_chunking_context,
+    client::context::{get_client_chunking_context, get_client_compile_time_info},
     config::{Config, JsConfig, ModuleIdStrategy as ModuleIdStrategyConfig},
     emit_assets,
     library::contexts::get_library_chunking_context,
@@ -18,7 +18,7 @@ use turbo_tasks::{
     mark_root,
     trace::TraceRawVcs,
     Completion, Completions, IntoTraitRef, NonLocalValue, OperationValue, OperationVc, ReadRef,
-    ResolvedVc, State, TaskInput, TransientInstance, TryFlatJoinIterExt, Vc,
+    ResolvedVc, State, TaskInput, TransientInstance, TryFlatJoinIterExt, TryJoinIterExt, Vc,
 };
 use turbo_tasks_env::{EnvMap, ProcessEnv};
 use turbo_tasks_fs::{DiskFileSystem, FileSystem, FileSystemPath, VirtualFileSystem};
@@ -125,6 +125,7 @@ pub struct LibraryOptions {
     Debug,
     Serialize,
     Deserialize,
+    Default,
     Clone,
     TaskInput,
     PartialEq,
@@ -179,7 +180,17 @@ pub struct ProjectOptions {
 }
 
 #[derive(
-    Debug, Serialize, Deserialize, Clone, TaskInput, PartialEq, Eq, Hash, TraceRawVcs, NonLocalValue,
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    Clone,
+    TaskInput,
+    PartialEq,
+    Eq,
+    Hash,
+    TraceRawVcs,
+    NonLocalValue,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct PartialProjectOptions {
@@ -213,6 +224,12 @@ pub struct PartialProjectOptions {
 
     /// The build id.
     pub build_id: Option<RcStr>,
+
+    /// The browserslist query to use for targeting browsers.
+    pub browserslist_query: Option<RcStr>,
+
+    /// The browserslist query to use for targeting browsers.
+    pub no_mangling: Option<bool>,
 }
 
 #[derive(
@@ -220,6 +237,7 @@ pub struct PartialProjectOptions {
     Serialize,
     Deserialize,
     Clone,
+    Default,
     TaskInput,
     PartialEq,
     Eq,
@@ -309,6 +327,8 @@ impl ProjectContainer {
             watch,
             dev,
             build_id,
+            browserslist_query,
+            no_mangling,
         } = options;
 
         let this = self.await?;
@@ -349,6 +369,14 @@ impl ProjectContainer {
 
         if let Some(build_id) = build_id {
             new_options.build_id = build_id;
+        }
+
+        if let Some(browserslist_query) = browserslist_query {
+            new_options.browserslist_query = browserslist_query;
+        }
+
+        if let Some(no_mangling) = no_mangling {
+            new_options.no_mangling = no_mangling;
         }
 
         // TODO: Handle mode switch, should prevent mode being switched.
@@ -401,20 +429,53 @@ impl ProjectContainer {
         let project_path;
         let entry;
         let watch;
-        let dev;
         let build_id;
         let browserslist_query;
         let no_mangling;
+        let mode;
         {
             let options = self.options_state.get();
             let options = options
                 .as_ref()
                 .context("ProjectContainer need to be initialized with initialize()")?;
+            mode = if options.dev {
+                Mode::Development
+            } else {
+                Mode::Build
+            };
+            let node_env_define: [(RcStr, RcStr); 1] = [(
+                "process.env.NODE_ENV".into(),
+                serde_json::to_string(mode.node_env()).unwrap().into(),
+            )];
             env_map = Vc::cell(options.env.iter().cloned().collect());
             define_env = ProjectDefineEnv {
-                client: ResolvedVc::cell(options.define_env.client.iter().cloned().collect()),
-                edge: ResolvedVc::cell(options.define_env.edge.iter().cloned().collect()),
-                nodejs: ResolvedVc::cell(options.define_env.nodejs.iter().cloned().collect()),
+                client: ResolvedVc::cell(
+                    options
+                        .define_env
+                        .client
+                        .iter()
+                        .chain(&node_env_define)
+                        .cloned()
+                        .collect(),
+                ),
+                edge: ResolvedVc::cell(
+                    options
+                        .define_env
+                        .edge
+                        .iter()
+                        .chain(&node_env_define)
+                        .cloned()
+                        .collect(),
+                ),
+                nodejs: ResolvedVc::cell(
+                    options
+                        .define_env
+                        .nodejs
+                        .iter()
+                        .chain(&node_env_define)
+                        .cloned()
+                        .collect(),
+                ),
             }
             .cell();
             config = Config::from_string(Vc::cell(options.config.clone()));
@@ -423,7 +484,6 @@ impl ProjectContainer {
             project_path = options.project_path.clone();
             entry = options.entry.clone();
             watch = options.watch;
-            dev = options.dev;
             build_id = options.build_id.clone();
             browserslist_query = options.browserslist_query.clone();
             no_mangling = options.no_mangling
@@ -446,11 +506,7 @@ impl ProjectContainer {
             env: ResolvedVc::upcast(env_map.to_resolved().await?),
             define_env: define_env.to_resolved().await?,
             browserslist_query,
-            mode: if dev {
-                Mode::Development.resolved_cell()
-            } else {
-                Mode::Build.resolved_cell()
-            },
+            mode: mode.resolved_cell(),
             versioned_content_map: self.versioned_content_map,
             build_id,
             no_mangling,
@@ -533,6 +589,7 @@ pub struct Project {
     no_mangling: bool,
 }
 
+// TODO: This may be not needed.
 #[turbo_tasks::value]
 pub struct ProjectDefineEnv {
     client: ResolvedVc<EnvMap>,
@@ -765,7 +822,7 @@ impl Project {
 
     #[turbo_tasks::function]
     pub(super) fn client_compile_time_info(&self) -> Vc<CompileTimeInfo> {
-        todo!()
+        get_client_compile_time_info(self.browserslist_query.clone(), self.define_env.client())
     }
 
     #[turbo_tasks::function]
@@ -855,7 +912,7 @@ impl Project {
 
             Ok(module_graphs_vc)
         }
-        .instrument(tracing::info_span!("module graph for app"))
+        .instrument(tracing::info_span!("module graph for project"))
         .await
     }
 
@@ -942,8 +999,20 @@ impl Project {
     pub async fn entrypoints(self: Vc<Self>) -> Result<Vc<Entrypoints>> {
         let library_project = self.library_project().to_resolved().await?.await?;
         Ok(Entrypoints {
-            libraries: match library_project.as_ref() {
-                Some(l) => Some(l.get_library_endpoints().to_resolved().await?),
+            libraries: match *library_project {
+                Some(lp) => {
+                    let endpoints = lp
+                        .get_library_endpoints()
+                        .await?
+                        .into_iter()
+                        .map(|l| async move {
+                            let endpoint: Vc<Box<dyn Endpoint>> = Vc::upcast(**l);
+                            endpoint.to_resolved().await
+                        })
+                        .try_join()
+                        .await?;
+                    Some(Endpoints(endpoints.to_vec()).resolved_cell())
+                }
                 None => None,
             },
         }
@@ -1085,7 +1154,9 @@ impl Project {
 
     #[turbo_tasks::function]
     pub async fn client_main_modules(self: Vc<Self>) -> Result<Vc<GraphEntries>> {
-        todo!()
+        let modules = vec![];
+        // TODO:
+        Ok(Vc::cell(modules))
     }
 
     /// Gets the module id strategy for the project.

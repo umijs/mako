@@ -286,6 +286,8 @@ impl From<NapiPartialProjectOptions> for PartialProjectOptions {
             define_env: val.define_env.map(|env| env.into()),
             dev: val.dev,
             build_id: val.build_id.map(From::from),
+            browserslist_query: val.browserslist_query.map(From::from),
+            no_mangling: val.no_mangling,
         }
     }
 }

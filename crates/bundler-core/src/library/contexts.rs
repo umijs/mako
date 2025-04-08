@@ -2,16 +2,14 @@ use anyhow::Result;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{ResolvedVc, Vc};
 use turbo_tasks_fs::FileSystemPath;
-use turbopack_browser::BrowserChunkingContext;
 use turbopack_core::{
-    chunk::{
-        module_id_strategies::ModuleIdStrategy, ChunkingConfig, ChunkingContext, MinifyType,
-        SourceMapsType,
-    },
+    chunk::{module_id_strategies::ModuleIdStrategy, ChunkingContext, MinifyType, SourceMapsType},
     environment::Environment,
 };
 
 use crate::mode::Mode;
+
+use super::LibraryChunkingContext;
 
 #[turbo_tasks::function]
 pub async fn get_library_chunking_context(
@@ -28,13 +26,13 @@ pub async fn get_library_chunking_context(
     no_mangling: Vc<bool>,
 ) -> Result<Vc<Box<dyn ChunkingContext>>> {
     let mode = mode.await?;
-    let mut builder = BrowserChunkingContext::builder(
+    let builder = LibraryChunkingContext::builder(
         root_path,
         library_root,
         library_root_to_root_path,
         library_root,
-        library_root.join("dist".into()).to_resolved().await?,
-        library_root.join("dist".into()).to_resolved().await?,
+        library_root,
+        library_root,
         environment,
         mode.runtime_type(),
     )
@@ -54,17 +52,6 @@ pub async fn get_library_chunking_context(
     })
     .asset_base_path(asset_prefix)
     .module_id_strategy(module_id_strategy);
-
-    if mode.is_development() {
-        builder = builder.hot_module_replacement().use_file_source_map_uris();
-    } else {
-        builder = builder.ecmascript_chunking_config(ChunkingConfig {
-            min_chunk_size: usize::MIN,
-            max_chunk_count_per_group: usize::MAX,
-            max_merge_chunk_size: usize::MAX,
-            ..Default::default()
-        })
-    }
 
     Ok(Vc::upcast(builder.build()))
 }

@@ -4,6 +4,7 @@ use turbopack::module_options::{ModuleRule, ModuleRuleEffect, RuleCondition};
 use turbopack_core::reference_type::{ReferenceType, UrlReferenceSubType};
 use turbopack_ecmascript::{CustomTransformer, EcmascriptInputTransform};
 
+pub mod dynamic_import_to_require;
 pub mod emotion;
 pub mod modularize_imports;
 pub mod remove_console;

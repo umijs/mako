@@ -1,0 +1,4 @@
+{
+  "env": {},
+  "experimental": { "turbo": { "minify": false, "moduleIdStrategy": "named" } }
+}
