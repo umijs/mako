@@ -8,6 +8,7 @@ import { type Options } from 'sass';
 import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, LessPlugin } from './plugins/less';
+import { PostcssPlugin } from './plugins/postcss';
 import { SassPlugin } from './plugins/sass';
 import { rustPluginResolver } from './rustPlugins';
 
@@ -15,6 +16,7 @@ type Config = binding.BuildParams['config'] & {
   plugins?: binding.BuildParams['plugins'];
   less?: LessLoaderOpts;
   sass?: Options<'async'> & { resources: string[] };
+  postcss?: boolean;
   forkTSChecker?: boolean;
 };
 
@@ -102,6 +104,18 @@ export async function build(params: BuildParams) {
       },
       {},
     ) || {};
+
+  // built-in postcss-loader
+  if ((makoConfig as any)?.postcss || params.config?.postcss) {
+    params.config.postcss = true;
+
+    params.config.plugins.push(
+      new PostcssPlugin({
+        ...params,
+        resolveAlias,
+      }),
+    );
+  }
 
   // built-in less-loader
   params.config.plugins.push(
@@ -322,6 +336,7 @@ export async function build(params: BuildParams) {
   params.config = omit(params.config, [
     'less',
     'sass',
+    'postcss',
     'forkTSChecker',
     'plugins',
   ]) as BuildParams['config'];
