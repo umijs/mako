@@ -278,7 +278,6 @@ fn find_compatible_node(from: &Arc<Node>, name: &str, version_spec: &str) -> Fin
     }
 }
 
-
 impl Ruborist {
     pub fn new<P: Into<PathBuf>>(path: P) -> Self {
         Self {
@@ -550,6 +549,9 @@ impl Ruborist {
 
             // find duplicate deps
             for child in children.iter() {
+                if child.is_workspace {
+                    continue;
+                }
                 name_map
                     .entry(child.name.clone())
                     .or_insert_with(Vec::new)
@@ -631,20 +633,14 @@ impl Ruborist {
     }
 }
 
-async fn add_dependency_edge(
-    node: &Arc<Node>,
-    field: &str,
-    edge_type: EdgeType,
-) {
+async fn add_dependency_edge(node: &Arc<Node>, field: &str, edge_type: EdgeType) {
     if let Some(deps) = node.package.get(field) {
         if let Some(deps) = deps.as_object() {
             for (name, version) in deps {
                 let version_spec = version.as_str().unwrap_or("").to_string();
-                let dep_edge = Edge::new(node.clone(), edge_type.clone(), name.clone(), version_spec);
-                log_verbose(&format!(
-                    "add edge {}@{} for {}",
-                    name, version, node.name
-                ));
+                let dep_edge =
+                    Edge::new(node.clone(), edge_type.clone(), name.clone(), version_spec);
+                log_verbose(&format!("add edge {}@{} for {}", name, version, node.name));
                 node.add_edge(dep_edge).await;
             }
         }
