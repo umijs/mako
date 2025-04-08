@@ -1,4 +1,7 @@
 {
+  "rootPath": "../../",
+  "projectPath": "./",
+  "distDir": "./dist",
   "entry": [
     {
       "import": "./src/index.tsx",
