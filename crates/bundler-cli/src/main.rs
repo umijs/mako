@@ -19,47 +19,27 @@ use turbopack_trace_utils::{
     exit::ExitGuard, filter_layer::FilterLayer, raw_trace::RawTraceLayer, trace_writer::TraceWriter,
 };
 
-use bundler_cli::{args::CliArgs, main_inner};
+use bundler_cli::{main_inner, Command};
 
 #[global_allocator]
 static ALLOC: TurboMalloc = TurboMalloc;
 
 fn main() {
-    let args = CliArgs::parse();
+    let args = Command::parse();
 
     let dev;
-    let options;
     {
         match args {
-            CliArgs::Build(opts) => {
+            Command::Build => {
                 dev = false;
-                options = opts
             }
-            CliArgs::Dev(opts) => {
+            Command::Dev => {
                 dev = true;
-                options = opts
             }
         }
     }
 
-    let project_path: RcStr = options
-        .project
-        .as_ref()
-        .map(canonicalize)
-        .unwrap_or_else(current_dir)
-        .expect("project directory can't be found")
-        .to_str()
-        .expect("project directory contains invalid characters")
-        .into();
-
-    let root_path = match options.root.as_ref() {
-        Some(root) => canonicalize(root)
-            .expect("root directory can't be found")
-            .to_str()
-            .expect("root directory contains invalid characters")
-            .into(),
-        None => project_path.clone(),
-    };
+    let project_path: RcStr = current_dir().unwrap().to_str().unwrap().into();
 
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -137,7 +117,7 @@ fn main() {
             let partial_project_options: PartialProjectOptions =
                 serde_json::from_reader(&mut project_options_file).unwrap();
             let  project_options = ProjectOptions {
-                root_path,
+                root_path: partial_project_options.root_path.as_ref().map(|r| canonicalize(r).unwrap().to_str().unwrap().into()).unwrap_or_else(|| project_path.clone()),
                 project_path,
                 entry: partial_project_options.entry.unwrap_or_default(),
                 config: if config.is_empty() {
