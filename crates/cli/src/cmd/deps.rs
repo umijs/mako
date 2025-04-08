@@ -7,14 +7,23 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 
-fn get_dep_types() -> [(&'static str, bool); 4] {
+fn get_dep_types() -> Vec<(&'static str, bool)> {
     let legacy_peer_deps = get_legacy_peer_deps();
-    [
-        ("dependencies", false),
-        ("peerDependencies", legacy_peer_deps),
-        ("optionalDependencies", true),
-        ("devDependencies", false),
-    ]
+
+    if legacy_peer_deps {
+        vec![
+            ("dependencies", false),
+            ("optionalDependencies", true),
+            ("devDependencies", false),
+        ]
+    } else {
+        vec![
+            ("dependencies", false),
+            ("peerDependencies", false),
+            ("optionalDependencies", true),
+            ("devDependencies", false),
+        ]
+    }
 }
 
 pub async fn build_deps() -> std::io::Result<()> {
