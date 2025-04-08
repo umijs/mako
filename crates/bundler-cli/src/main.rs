@@ -16,8 +16,7 @@ use turbo_tasks::TurboTasks;
 use turbo_tasks_backend::{noop_backing_storage, BackendOptions, TurboTasksBackend};
 use turbo_tasks_malloc::TurboMalloc;
 use turbopack_trace_utils::{
-    filter_layer::FilterLayer,
-    exit::ExitGuard,raw_trace::RawTraceLayer, trace_writer::TraceWriter,
+    exit::ExitGuard, filter_layer::FilterLayer, raw_trace::RawTraceLayer, trace_writer::TraceWriter,
 };
 
 use bundler_cli::{args::CliArgs, main_inner};
@@ -134,7 +133,7 @@ fn main() {
             if let Ok(mut config_file) = File::open(&config_path) {
                 config_file.read_to_string(&mut config).unwrap();
             }
-            
+
             let partial_project_options: PartialProjectOptions =
                 serde_json::from_reader(&mut project_options_file).unwrap();
             let  project_options = ProjectOptions {
@@ -165,8 +164,6 @@ fn main() {
                 build_id: partial_project_options.build_id.unwrap_or_default(),
                 dev,
             };
-
-   
 
             let result = main_inner(&tt, project_options).await;
             let memory = TurboMalloc::memory_usage();

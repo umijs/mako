@@ -80,4 +80,3 @@ impl CustomTransformer for DynamicImportToRequireTransformer {
         Ok(())
     }
 }
-
