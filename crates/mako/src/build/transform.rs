@@ -95,7 +95,7 @@ impl Transform {
                                     }
                                 }
 
-                                // swc_ecma_lints， 考虑是否需要加个 lint开关
+                                // swc_ecma_lints
                                 if context.config.experimental.swc_lints {
                                     let lints = LintConfig::default();
                                     let unresolved_ctxt =
