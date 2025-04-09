@@ -17,10 +17,12 @@ jobs:
         settings:
           - host: macos-latest
             target: aarch64-apple-darwin
-            build: cd packages/bundler && npm run build:binding -- --target aarch64-apple-darwin
+            build: |
+              cd packages/bundler && npm run build:binding -- --target aarch64-apple-darwin
           - host: macos-13
             target: x86_64-apple-darwin
-            build: cd packages/bundler && npm run build:binding -- --target x86_64-apple-darwin
+            build: |
+              cd packages/bundler && npm run build:binding -- --target x86_64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
@@ -49,14 +51,17 @@ jobs:
               apk add --no-cache libc6-compat pkgconfig dav1d libdav1d dav1d-dev clang-static llvm-dev &&
               rustup target add x86_64-unknown-linux-musl && 
               cd packages/bundler && npm run build:binding -- --target x86_64-unknown-linux-musl
-          # - host: windows-latest
-          #   target: aarch64-pc-windows-msvc
-          #   build: |
-          #     rustup target add aarch64-pc-windows-msvc &&
-          #     cd packages/bundler && npm run build:binding -- --target aarch64-pc-windows-msvc
-          # - host: windows-latest
-          #   build: cd packages/bundler && npm run build:binding -- --target x86_64-pc-windows-msvc
-          #   target: x86_64-pc-windows-msvc
+          - host: windows-latest
+            target: aarch64-pc-windows-msvc
+            build: |
+              git config --system core.longpaths true &&
+              rustup target add aarch64-pc-windows-msvc &&
+              cd packages/bundler && npm run build:binding -- --target aarch64-pc-windows-msvc
+          - host: windows-latest
+            build: |
+              git config --system core.longpaths true &&
+              cd packages/bundler && npm run build:binding -- --target x86_64-pc-windows-msvc
+            target: x86_64-pc-windows-msvc
 
     name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
