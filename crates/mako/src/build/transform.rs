@@ -3,11 +3,13 @@ use std::sync::Arc;
 use anyhow::Result;
 use swc_core::base::try_with_handler;
 use swc_core::common::errors::HANDLER;
-use swc_core::common::{Mark, GLOBALS};
+use swc_core::common::{Mark, SyntaxContext, GLOBALS};
 use swc_core::css::ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
 use swc_core::css::compat::compiler::{self, Compiler};
 use swc_core::css::{compat as swc_css_compat, prefixer, visit as swc_css_visit};
-use swc_core::ecma::ast::Module;
+use swc_core::ecma::ast::{EsVersion, Module, Program};
+use swc_core::ecma::lints::config::LintConfig;
+use swc_core::ecma::lints::rules::{all as lint_all, lint_to_fold, LintParams};
 use swc_core::ecma::preset_env::{self as swc_preset_env};
 use swc_core::ecma::transforms::base::feature::FeatureFlag;
 use swc_core::ecma::transforms::base::fixer::paren_remover;
@@ -92,6 +94,23 @@ impl Transform {
                                         strip_unresolved_ts(&mut ast.ast);
                                     }
                                 }
+
+                                // swc_ecma_lints， 考虑是否需要加个 lint开关
+                                let lints = LintConfig::default();
+                                let unresolved_ctxt =
+                                    SyntaxContext::empty().apply_mark(ast.unresolved_mark);
+                                let top_level_ctxt =
+                                    SyntaxContext::empty().apply_mark(ast.top_level_mark);
+                                let program = Program::Module(ast.ast.clone());
+                                lint_to_fold(lint_all(LintParams {
+                                    program: &program,
+                                    lint_config: &lints,
+                                    top_level_ctxt,
+                                    unresolved_ctxt,
+                                    es_version: EsVersion::Es2015, // 与js_ast中的一致
+                                    source_map: cm.clone(),
+                                }))
+                                .fold_module(ast.ast.clone());
 
                                 // visitors
                                 let mut visitors: Vec<Box<dyn VisitMut>> = vec![
