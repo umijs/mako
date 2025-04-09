@@ -1,9 +1,14 @@
 {
   "name": "@utoo/bundler",
-  "version": "0.0.0",
+  "version": "0.0.0-alpha.1",
   "main": "cjs/index.js",
   "module": "esm/index.js",
   "bin": "./bin/cli.js",
+  "files": [
+    "./cjs/*",
+    "./bin/cli.js",
+    "./global.d.ts"
+  ],
   "napi": {
     "name": "bundler",
     "triples": {
