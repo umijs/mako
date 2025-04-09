@@ -279,20 +279,22 @@ jobs:
       - name: List packages
         run: cd packages/bundler && ls -R ./npm
         shell: bash
+      - name: Get version from release or use alpha version
+        id: get_version
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/@utoo/bundler-v}" >> $GITHUB_OUTPUT
+      - name: Update package.json version
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" packages/bundler/package.json
+          rm packages/bundler/package.json.bak
       - name: Publish
         run: |
           # npm config set provenance true
-          if git log -1 --pretty=%B | grep "^@utoo\/bundler\s[0-9]\+\.[0-9]\+\.[0-9]\+$";
-          then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-            cd packages/bundler && npm publish --access public
-          elif git log -1 --pretty=%B | grep "^@utoo\/bbundler\s[0-9]\+\.[0-9]\+\.[0-9]\+";
-          then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-            cd packages/bundler && npm publish --tag next --access public
-          else
-            echo "Not a release, skipping publish"
-          fi
+          cd packages/bundler && 
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc &&
+          npm run version &&
+          npm publish --access public
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
