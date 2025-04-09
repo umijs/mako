@@ -16,6 +16,7 @@ use crate::util::logger::{
 };
 use crate::util::node::{Edge, EdgeType, Node};
 use crate::util::registry::{load_cache, resolve, store_cache, ResolvedPackage};
+use crate::util::semver::matches;
 
 pub struct Ruborist {
     path: PathBuf,
@@ -229,42 +230,35 @@ pub enum FindResult {
 }
 
 fn find_compatible_node(from: &Arc<Node>, name: &str, version_spec: &str) -> FindResult {
-    let req = match VersionReq::parse_from_npm(version_spec) {
-        Ok(r) => r,
-        Err(_) => return FindResult::New(from.clone()),
-    };
-
     fn find_in_node(
         node: &Arc<Node>,
         name: &str,
-        req: &VersionReq,
+        version_spec: &str,
         current: &Arc<Node>,
     ) -> FindResult {
         let children = node.children.read().unwrap();
 
         for child in children.iter() {
             if child.name == name {
-                if let Ok(version) = Version::parse_from_npm(&child.version) {
-                    if req.matches(&version) {
-                        log_verbose(&format!(
-                            "found existing deps {}@{} got {}",
-                            name, req, child.version
-                        ));
-                        return FindResult::Reuse(child.clone());
-                    } else {
-                        log_verbose(&format!(
-                            "found conflict deps {}@{} got {}",
-                            name, req, child.version
-                        ));
-                        return FindResult::Conflict(current.clone());
-                    }
+                if matches(version_spec, &child.version) {
+                    log_verbose(&format!(
+                        "found existing deps {}@{} got {}",
+                        name, version_spec, child.version
+                    ));
+                    return FindResult::Reuse(child.clone());
+                } else {
+                    log_verbose(&format!(
+                        "found conflict deps {}@{} got {}",
+                        name, version_spec, child.version
+                    ));
+                    return FindResult::Conflict(current.clone());
                 }
             }
         }
 
         // find in parent
         if let Some(parent) = node.parent.read().unwrap().as_ref() {
-            find_in_node(parent, name, req, current)
+            find_in_node(parent, name, version_spec, current)
         } else {
             // not found, return new
             FindResult::New(node.clone())
@@ -272,9 +266,9 @@ fn find_compatible_node(from: &Arc<Node>, name: &str, version_spec: &str) -> Fin
     }
 
     if let Some(parent) = from.parent.read().unwrap().as_ref() {
-        find_in_node(parent, name, &req, from)
+        find_in_node(parent, name, version_spec, from)
     } else {
-        find_in_node(from, name, &req, from)
+        find_in_node(from, name, version_spec, from)
     }
 }
 
