@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { projectFactory } from "./project";
 import fs from "fs";
 import path from "path";
+import { formatIssue } from "./util";
 
 // ref:
 // https://github.com/vercel/next.js/pull/51883
@@ -58,8 +59,40 @@ export async function build(dir?: string) {
   if (entrypointsResult.done) {
     throw new Error("Turbopack did not return any entrypoints");
   }
+  entrypointsSubscription.return?.().catch(() => {});
+
+  const entrypoints = entrypointsResult.value;
+
+  const topLevelErrors: {
+    message: string;
+  }[] = [];
+
+  for (const issue of entrypoints.issues) {
+    topLevelErrors.push({
+      message: formatIssue(issue),
+    });
+  }
+
+  if (topLevelErrors.length > 0) {
+    throw new Error(
+      `Turbopack build failed with ${
+        topLevelErrors.length
+      } issues:\n${topLevelErrors.map((e) => e.message).join("\n")}`,
+    );
+  }
+
   await Promise.all(
     entrypointsResult.value.libraries.map((l) => l.writeToDisk()),
   );
-  entrypointsSubscription.return?.().catch(() => {});
+
+  await project.shutdown();
+
+  console.log(`${new Date().toISOString()} ****** finished ******`);
+
+  // TODO: Need to exit manually now. May run tasks in worker is a better way, see
+  // https://github.com/vercel/next.js/blob/512d8283054407ab92b2583ecce3b253c3be7b85/packages/next/src/lib/worker.ts
+
+  if (!process.env.BUNDLER_TURBOPACK_TRACE_SERVER) {
+    process.exit();
+  }
 }
