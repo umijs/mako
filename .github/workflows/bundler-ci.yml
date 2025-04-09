@@ -30,8 +30,10 @@ jobs:
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
-            build: |-
+            build: |
               set -e &&
+              apk update &&
+              apk add --no-cache llvm-dev &&
               rustup target add aarch64-unknown-linux-musl &&
               cd packages/bundler && npm run build:binding -- --target aarch64-unknown-linux-musl
           - host: ubuntu-latest
@@ -41,7 +43,12 @@ jobs:
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
-            build: cd packages/bundler && npm run build:binding -- --target x86_64-unknown-linux-musl
+            build: |
+              set -ex &&
+              apk update &&
+              apk add --no-cache llvm-dev &&
+              rustup target add x86_64-unknown-linux-musl && 
+              cd packages/bundler && npm run build:binding -- --target x86_64-unknown-linux-musl
           # - host: windows-latest
           #   target: aarch64-pc-windows-msvc
           #   build: |
