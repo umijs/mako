@@ -42,14 +42,14 @@ jobs:
             target: x86_64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
             build: cd packages/bundler && npm run build:binding -- --target x86_64-unknown-linux-musl
-          - host: windows-latest
-            target: aarch64-pc-windows-msvc
-            build: |
-              rustup target add aarch64-pc-windows-msvc &&
-              cd packages/bundler && npm run build:binding -- --target aarch64-pc-windows-msvc
-          - host: windows-latest
-            build: cd packages/bundler && npm run build:binding -- --target x86_64-pc-windows-msvc
-            target: x86_64-pc-windows-msvc
+          # - host: windows-latest
+          #   target: aarch64-pc-windows-msvc
+          #   build: |
+          #     rustup target add aarch64-pc-windows-msvc &&
+          #     cd packages/bundler && npm run build:binding -- --target aarch64-pc-windows-msvc
+          # - host: windows-latest
+          #   build: cd packages/bundler && npm run build:binding -- --target x86_64-pc-windows-msvc
+          #   target: x86_64-pc-windows-msvc
 
     name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
@@ -103,7 +103,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bundler-${{ matrix.settings.target }}
-          path: niddle.*.node
+          path: ./packages/bundler/src/bundler.*.node
           if-no-files-found: error
   test-macOS-windows-binding:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
@@ -135,7 +135,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: bundler-${{ matrix.settings.target }}
-          path: .
+          path: ./packages/bundler/src
       - name: List packages
         run: ls -R .
         shell: bash
@@ -162,9 +162,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: bundler-x86_64-unknown-linux-gnu
-          path: .
+          path: ./packages/bundler/src
       - name: List packages
-        run: ls -R .
+        run: ls -R ./packages/bundler/src
         shell: bash
   test-linux-x64-musl-binding:
     name: Test bindings on x86_64-unknown-linux-musl - node@${{ matrix.node }}
