@@ -1,10 +1,10 @@
-use deno_semver::{Version, VersionReq};
 use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use super::logger::{log_info, log_verbose};
 use super::registry::resolve;
+use crate::util::semver::matches;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum EdgeType {
@@ -207,37 +207,16 @@ impl Node {
                         let matches = if edge.spec == "*" {
                             true
                         } else {
-                            // Handle version matching logic
-                            match Version::parse_from_npm(&rule.spec) {
-                                Ok(rule_version) => match VersionReq::parse_from_npm(&edge.spec) {
-                                    Ok(edge_req) => edge_req.matches(&rule_version),
-                                    _ => edge.spec == "*" || edge.spec == rule.spec,
-                                },
-                                _ => match VersionReq::parse_from_npm(&rule.spec) {
-                                    Ok(rule_req) => {
-                                        if let Ok(resolved) = resolve(&edge.name, &edge.spec).await
-                                        {
-                                            if let Some(version) = resolved
-                                                .manifest
-                                                .get("version")
-                                                .and_then(|v| v.as_str())
-                                            {
-                                                if let Ok(version) =
-                                                    Version::parse_from_npm(version)
-                                                {
-                                                    rule_req.matches(&version)
-                                                } else {
-                                                    false
-                                                }
-                                            } else {
-                                                false
-                                            }
-                                        } else {
-                                            false
-                                        }
-                                    }
-                                    _ => edge.spec == "*" || edge.spec == rule.spec,
-                                },
+                            if let Ok(resolved) = resolve(&edge.name, &edge.spec).await {
+                                if let Some(version) =
+                                    resolved.manifest.get("version").and_then(|v| v.as_str())
+                                {
+                                    matches(&rule.spec, version)
+                                } else {
+                                    false
+                                }
+                            } else {
+                                edge.spec == "*" || edge.spec == rule.spec
                             }
                         };
                         if !matches {
@@ -254,13 +233,7 @@ impl Node {
                                 let matches = if current_rule.spec == "*" {
                                     true
                                 } else {
-                                    match (
-                                        Version::parse_from_npm(&node.version),
-                                        VersionReq::parse_from_npm(&current_rule.spec),
-                                    ) {
-                                        (Ok(version), Ok(req)) => req.matches(&version),
-                                        _ => node.version == current_rule.spec,
-                                    }
+                                    matches(&current_rule.spec, &node.version)
                                 };
 
                                 if matches {
