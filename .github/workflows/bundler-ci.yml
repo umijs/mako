@@ -17,38 +17,38 @@ jobs:
         settings:
           - host: macos-latest
             target: aarch64-apple-darwin
-            build: cp packages/bundler && npm run build:binding --target aarch64-apple-darwin
+            build: cd packages/bundler && npm run build:binding --target aarch64-apple-darwin
           - host: macos-13
             target: x86_64-apple-darwin
-            build: cp packages/bundler && npm run build:binding --target x86_64-apple-darwin
+            build: cd packages/bundler && npm run build:binding --target x86_64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
             build: |
               rustup target add aarch64-unknown-linux-gnu &&
-              cp packages/bundler && npm run build:binding --target aarch64-unknown-linux-gnu
+              cd packages/bundler && npm run build:binding --target aarch64-unknown-linux-gnu
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
             build: |-
               set -e &&
               rustup target add aarch64-unknown-linux-musl &&
-              cp packages/bundler && npm run build:binding --target aarch64-unknown-linux-musl
+              cd packages/bundler && npm run build:binding --target aarch64-unknown-linux-musl
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
-            build: cp packages/bundler && npm run build:binding --target x86_64-unknown-linux-gnu
+            build: cd packages/bundler && npm run build:binding --target x86_64-unknown-linux-gnu
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
-            build: cp packages/bundler && npm run build:binding --target x86_64-unknown-linux-musl
+            build: cd packages/bundler && npm run build:binding --target x86_64-unknown-linux-musl
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             build: |
               rustup target add aarch64-pc-windows-msvc &&
-              cp packages/bundler && npm run build:binding --target aarch64-pc-windows-msvc
+              cd packages/bundler && npm run build:binding --target aarch64-pc-windows-msvc
           - host: windows-latest
-            build: cp packages/bundler && npm run build:binding --target x86_64-pc-windows-msvc
+            build: cd packages/bundler && npm run build:binding --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
 
     name: stable - ${{ matrix.settings.target }} - node@20
