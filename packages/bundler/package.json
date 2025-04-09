@@ -19,18 +19,21 @@
   },
   "license": "MIT",
   "dependencies": {
-    "nanoid": "^3.3.11"
+    "nanoid": "^3.3.11",
+    "picocolors": "^1.1.1",
+    "@babel/code-frame": "7.22.5"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0",
     "@types/node": "^20.3.0",
+    "@types/babel__code-frame": "7.0.2",
     "typescript": "^5.8.3"
   },
   "engines": {
     "node": ">= 10"
   },
   "scripts": {
-    "build:cjs": "rm -rf cjs && tsc -p ./tsconfig.json --module commonjs --outDir cjs && cp src/*.d.ts cjs/",
+    "build:cjs": "rm -rf cjs && tsc -p ./tsconfig.json --module commonjs --outDir cjs && cp src/*.d.ts cjs/ && cp src/*.node cjs/",
     "build:esm": "rm -rf esm && tsc -p ./tsconfig.json --module esnext --outDir esm && cp src/*.d.ts esm/",
     "artifacts": "napi artifacts --dir ./src --dist npm",
     "build:binding": "napi build src --platform --release -p bundler-napi --cargo-cwd ../../ --cargo-name bundler_napi --features plugin --js binding.js --dts binding.d.ts --strip",
