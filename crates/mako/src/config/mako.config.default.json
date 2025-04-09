@@ -74,7 +74,8 @@
       "graphviz": false
     },
     "centralEnsure": true,
-    "importsChecker": false
+    "importsChecker": false,
+    "swcLints": false
   },
   "useDefineForClassFields": true,
   "emitDecoratorMetadata": false,

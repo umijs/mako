@@ -96,21 +96,23 @@ impl Transform {
                                 }
 
                                 // swc_ecma_lints， 考虑是否需要加个 lint开关
-                                let lints = LintConfig::default();
-                                let unresolved_ctxt =
-                                    SyntaxContext::empty().apply_mark(ast.unresolved_mark);
-                                let top_level_ctxt =
-                                    SyntaxContext::empty().apply_mark(ast.top_level_mark);
-                                let program = Program::Module(ast.ast.clone());
-                                lint_to_fold(lint_all(LintParams {
-                                    program: &program,
-                                    lint_config: &lints,
-                                    top_level_ctxt,
-                                    unresolved_ctxt,
-                                    es_version: EsVersion::Es2015, // 与js_ast中的一致
-                                    source_map: cm.clone(),
-                                }))
-                                .fold_module(ast.ast.clone());
+                                if context.config.experimental.swc_lints {
+                                    let lints = LintConfig::default();
+                                    let unresolved_ctxt =
+                                        SyntaxContext::empty().apply_mark(ast.unresolved_mark);
+                                    let top_level_ctxt =
+                                        SyntaxContext::empty().apply_mark(ast.top_level_mark);
+                                    let program = Program::Module(ast.ast.clone());
+                                    lint_to_fold(lint_all(LintParams {
+                                        program: &program,
+                                        lint_config: &lints,
+                                        top_level_ctxt,
+                                        unresolved_ctxt,
+                                        es_version: EsVersion::Es2015, // 与js_ast中的一致
+                                        source_map: cm.clone(),
+                                    }))
+                                    .fold_module(ast.ast.clone());
+                                }
 
                                 // visitors
                                 let mut visitors: Vec<Box<dyn VisitMut>> = vec![

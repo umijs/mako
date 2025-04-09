@@ -185,6 +185,7 @@ pub struct BuildParams {
         rustPlugins?: Array<[string, any]>;
         centralEnsure?: bool,
         importsChecker?: bool,
+        swcLints?: bool,
     };
     watch?: {
         ignoredPaths?: string[];
