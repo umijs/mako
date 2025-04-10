@@ -281,34 +281,34 @@ impl PackageService {
             .join(&node_abi)
     }
 
-    fn has_cached(package: &PackageInfo) -> bool {
-        // FIXME disable cache for now
-        return false;
-        if !package.has_script() {
-            return false;
-        }
-        let target_dir = Self::get_package_cache_dir(package);
-        target_dir.exists()
+    fn has_cached(_package: &PackageInfo) -> bool {
+        // TODO: Implement caching
+        false
+        // if !package.has_script() {
+        //     return false;
+        // }
+        // let target_dir = Self::get_package_cache_dir(package);
+        // target_dir.exists()
     }
 
-    async fn store_build_result(package: &PackageInfo) {
-        // FIXME disable cache for now
+    async fn store_build_result(_package: &PackageInfo) {
+        // TODO: Implement build result storage
         return;
-        if Self::has_cached(package) {
-            return;
-        }
-        let target_dir = Self::get_package_cache_dir(package);
+        // if Self::has_cached(package) {
+        //     return;
+        // }
+        // let target_dir = Self::get_package_cache_dir(package);
 
-        match clone(&package.path, &target_dir, false).await {
-            Ok(_) => log_info(&format!(
-                "Cached build result for package {}/{}, will be reused later",
-                package.fullname, package.version
-            )),
-            Err(e) => log_warning(&format!(
-                "Failed to cache package {}: {}",
-                package.fullname, e
-            )),
-        }
+        // match clone(&package.path, &target_dir, false).await {
+        //     Ok(_) => log_info(&format!(
+        //         "Cached build result for package {}/{}, will be reused later",
+        //         package.fullname, package.version
+        //     )),
+        //     Err(e) => log_warning(&format!(
+        //         "Failed to cache package {}: {}",
+        //         package.fullname, e
+        //     )),
+        // }
     }
 
     async fn restore_build_result(package: &PackageInfo) -> Result<(), String> {

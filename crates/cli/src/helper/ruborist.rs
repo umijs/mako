@@ -1,6 +1,5 @@
 use glob::glob;
 
-use deno_semver::{Version, VersionReq};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::io;
