@@ -9,6 +9,10 @@ on:
   release:
     types: [published]
 
+defaults:
+  run:
+    working-directory: ./packages/bundler
+
 jobs:
   build:
     strategy:
@@ -18,17 +22,17 @@ jobs:
           - host: macos-latest
             target: aarch64-apple-darwin
             build: |
-              cd packages/bundler && npm run build:binding -- --target aarch64-apple-darwin
-          - host: macos-13
+              npm run build:binding -- --target aarch64-apple-darwin
+          - host: macos-latest
             target: x86_64-apple-darwin
             build: |
-              cd packages/bundler && npm run build:binding -- --target x86_64-apple-darwin
+              npm run build:binding -- --target x86_64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
             build: |
               rustup target add aarch64-unknown-linux-gnu &&
-              cd packages/bundler && npm run build:binding -- --target aarch64-unknown-linux-gnu
+              npm run build:binding -- --target aarch64-unknown-linux-gnu
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
@@ -37,11 +41,11 @@ jobs:
               apk update &&
               apk add --no-cache libc6-compat pkgconfig dav1d libdav1d dav1d-dev clang-static llvm-dev &&
               rustup target add aarch64-unknown-linux-musl &&
-              cd packages/bundler && npm run build:binding -- --target aarch64-unknown-linux-musl
+              npm run build:binding -- --target aarch64-unknown-linux-musl
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
-            build: cd packages/bundler && npm run build:binding -- --target x86_64-unknown-linux-gnu
+            build: npm run build:binding -- --target x86_64-unknown-linux-gnu
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
@@ -50,17 +54,18 @@ jobs:
               apk update &&
               apk add --no-cache libc6-compat pkgconfig dav1d libdav1d dav1d-dev clang-static llvm-dev &&
               rustup target add x86_64-unknown-linux-musl && 
-              cd packages/bundler && npm run build:binding -- --target x86_64-unknown-linux-musl
+              npm run build:binding -- --target x86_64-unknown-linux-musl
+          # swc_plugin_runner not supported on aarch64 windows now
+          # - host: windows-latest
+          #   target: aarch64-pc-windows-msvc
+          #   build: |
+          #     git config --system core.longpaths true &&
+          #     rustup target add aarch64-pc-windows-msvc &&
+          #     npm run build:binding -- --target aarch64-pc-windows-msvc
           - host: windows-latest
-            target: aarch64-pc-windows-msvc
             build: |
               git config --system core.longpaths true &&
-              rustup target add aarch64-pc-windows-msvc &&
-              cd packages/bundler && npm run build:binding -- --target aarch64-pc-windows-msvc
-          - host: windows-latest
-            build: |
-              git config --system core.longpaths true &&
-              cd packages/bundler && npm run build:binding -- --target x86_64-pc-windows-msvc
+              npm run build:binding -- --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
 
     name: stable - ${{ matrix.settings.target }} - node@20
@@ -97,7 +102,7 @@ jobs:
         run: npm config set supportedArchitectures.cpu "ia32"
         shell: bash
       - name: Install dependencies
-        run: cd packages/bundler && npm install
+        run: npm install
       - name: Setup node x86
         uses: actions/setup-node@v4
       - name: Build in docker
@@ -117,163 +122,11 @@ jobs:
           name: bundler-${{ matrix.settings.target }}
           path: ./packages/bundler/src/bundler.*.node
           if-no-files-found: error
-  test-macOS-windows-binding:
-    name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
-    needs:
-      - build
-    strategy:
-      fail-fast: false
-      matrix:
-        settings:
-          - host: windows-latest
-            target: x86_64-pc-windows-msvc
-          - host: macos-13
-            target: x86_64-apple-darwin
-          - host: macos-latest
-            target: aarch64-apple-darwin
-        node:
-          - "18"
-          - "20"
-    runs-on: ${{ matrix.settings.host }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-      - name: Install dependencies
-        run: cd packages/bundler && npm install
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: bundler-${{ matrix.settings.target }}
-          path: ./packages/bundler/src
-      - name: List packages
-        run: ls -R .
-        shell: bash
-  test-linux-x64-gnu-binding:
-    name: Test bindings on Linux-x64-gnu - node@${{ matrix.node }}
-    needs:
-      - build
-    strategy:
-      fail-fast: false
-      matrix:
-        node:
-          - "18"
-          - "20"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-      - name: Install dependencies
-        run: cd packages/bundler && npm install
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: bundler-x86_64-unknown-linux-gnu
-          path: ./packages/bundler/src
-      - name: List packages
-        run: ls -R ./packages/bundler/src
-        shell: bash
-  test-linux-x64-musl-binding:
-    name: Test bindings on x86_64-unknown-linux-musl - node@${{ matrix.node }}
-    needs:
-      - build
-    strategy:
-      fail-fast: false
-      matrix:
-        node:
-          - "18"
-          - "20"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-      - name: Install dependencies
-        run: |
-          npm config set supportedArchitectures.libc "musl"
-          cd packages/bundler && npm install
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: bundler-x86_64-unknown-linux-musl
-          path: .
-      - name: List packages
-        run: ls -R .
-        shell: bash
-  test-linux-aarch64-gnu-binding:
-    name: Test bindings on aarch64-unknown-linux-gnu - node@${{ matrix.node }}
-    needs:
-      - build
-    strategy:
-      fail-fast: false
-      matrix:
-        node:
-          - "18"
-          - "20"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: bundler-aarch64-unknown-linux-gnu
-          path: .
-      - name: List packages
-        run: ls -R .
-        shell: bash
-      - name: Install dependencies
-        run: |
-          npm config set supportedArchitectures.cpu "arm64"
-          npm config set supportedArchitectures.libc "glibc"
-          cd packages/bundler && npm install
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-      - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-
-  test-linux-aarch64-musl-binding:
-    name: Test bindings on aarch64-unknown-linux-musl - node@${{ matrix.node }}
-    needs:
-      - build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: bundler-aarch64-unknown-linux-musl
-          path: .
-      - name: List packages
-        run: ls -R .
-        shell: bash
-      - name: Install dependencies
-        run: |
-          npm config set supportedArchitectures.cpu "arm64"
-          npm config set supportedArchitectures.libc "musl"
-          cd packages/bundler && npm install
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-      - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-
   publish:
     name: Publish
     runs-on: ubuntu-latest
     needs:
-      - test-macOS-windows-binding
-      - test-linux-x64-gnu-binding
-      - test-linux-x64-musl-binding
-      - test-linux-aarch64-gnu-binding
-      - test-linux-aarch64-musl-binding
+      - build
     steps:
       - uses: actions/checkout@v4
       - name: Setup node
@@ -281,15 +134,15 @@ jobs:
         with:
           node-version: 20
       - name: Install dependencies
-        run: cd packages/bundler && npm install
+        run: npm install
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
       - name: Move artifacts
-        run: cd packages/bundler && npm run artifacts
+        run: npm run artifacts
       - name: List packages
-        run: cd packages/bundler && ls -R ./npm
+        run: ls -R ./npm
         shell: bash
       - name: Get version from release or use alpha version
         id: get_version
@@ -303,7 +156,7 @@ jobs:
       - name: Publish
         run: |
           # npm config set provenance true
-          cd packages/bundler && 
+
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc &&
           npm run version &&
           npm publish --access public
