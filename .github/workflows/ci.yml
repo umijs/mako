@@ -6,7 +6,30 @@ env:
   CARGO_INCREMENTAL: 1
 
 jobs:
+  detect-changes:
+    runs-on: macos-latest
+    outputs:
+      changed-crates: ${{ steps.detect.outputs.changed-crates }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Detect changes
+      id: detect
+      run: |
+        CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
+
+        CHANGED_CRATES=$(echo "$CHANGED_FILES" | grep -E '^crates/[^/]+/' | sed 's|^crates/\([^/]\+\)/.*|\1|' | sort -u | tr '\n' ' ')
+        if [ -n "$CHANGED_CRATES" ]; then
+          echo "changed-crates=$CHANGED_CRATES" >> $GITHUB_OUTPUT
+        else
+          echo "changed-crates=" >> $GITHUB_OUTPUT
+        fi
+
   build:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.changed-crates != ''
     runs-on: macos-latest
 
     steps:
@@ -38,14 +61,16 @@ jobs:
         toolchain: nightly-2025-02-12
         args: --all -- --check
 
-    - name: Build
-      uses: actions-rs/cargo@v1
-      with:
-        toolchain: nightly-2025-02-12
-        command: build
+    - name: Build changed crates
+      run: |
+        for crate in ${{ needs.detect-changes.outputs.changed-crates }}; do
+          echo "Building crate: $crate"
+          cargo build -p $crate
+        done
 
-    - name: Run tests
-      uses: actions-rs/cargo@v1
-      with:
-        toolchain: nightly-2025-02-12
-        command: test
+    - name: Test changed crates
+      run: |
+        for crate in ${{ needs.detect-changes.outputs.changed-crates }}; do
+          echo "Testing crate: $crate"
+          cargo test -p $crate
+        done
