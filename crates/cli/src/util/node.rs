@@ -52,9 +52,6 @@ pub struct Node {
     pub is_link: bool,
     pub target: RwLock<Option<Arc<Node>>>,
 
-    // Installation configuration
-    pub install_links: bool,
-
     // Dependency type flags (mutable)
     pub is_optional: RwLock<Option<bool>>,
     pub is_peer: RwLock<Option<bool>>,
@@ -97,7 +94,6 @@ impl Node {
             is_link: false,
             target: RwLock::new(None),
             is_workspace: false,
-            install_links: false,
             is_dev: RwLock::new(None),
             is_peer: RwLock::new(None),
             is_optional: RwLock::new(None),
@@ -120,7 +116,6 @@ impl Node {
             is_link: false,
             target: RwLock::new(None),
             is_workspace: false,
-            install_links: false,
             is_dev: RwLock::new(None),
             is_peer: RwLock::new(None),
             is_optional: RwLock::new(None),
@@ -143,7 +138,6 @@ impl Node {
             edges_in: RwLock::new(Vec::new()),
             is_root: false,
             is_workspace: false,
-            install_links: false,
             is_dev: RwLock::new(None),
             is_peer: RwLock::new(None),
             is_optional: RwLock::new(None),
@@ -166,18 +160,12 @@ impl Node {
             is_workspace: true,
             is_link: false,
             target: RwLock::new(None),
-            install_links: false,
             is_dev: RwLock::new(None),
             is_peer: RwLock::new(None),
             is_optional: RwLock::new(None),
             is_prod: RwLock::new(None),
             overrides: None,
         })
-    }
-
-    pub fn add_child(&self, child: Arc<Node>) {
-        let mut children = self.children.write().unwrap();
-        children.push(child);
     }
 
     pub async fn add_edge(&self, mut edge: Arc<Edge>) {
@@ -228,7 +216,7 @@ impl Node {
                     if let Some(mut current_rule) = rule.parent.as_ref() {
                         let mut current_node = edge.from.parent.read().unwrap().clone();
 
-                        'find_match: while let Some(node) = current_node {
+                        while let Some(node) = current_node {
                             if node.name == current_rule.name {
                                 let matches = if current_rule.spec == "*" {
                                     true

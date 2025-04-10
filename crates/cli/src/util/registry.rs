@@ -22,8 +22,8 @@ pub struct PackageCache {
     cache: Arc<RwLock<CacheMap>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct CacheData {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CacheData {
     cache: CacheMap,
 }
 
@@ -46,7 +46,7 @@ impl PackageCache {
         *cache = data.cache;
     }
 
-    pub async fn get_manifest(&self, name: &str, spec: &str, version: &str) -> Option<Value> {
+    pub async fn get_manifest(&self, name: &str, _spec: &str, version: &str) -> Option<Value> {
         let cache = self.cache.read().await;
         cache
             .get(name)
@@ -93,9 +93,10 @@ static REGISTRY: Lazy<Registry> = Lazy::new(|| Registry::new());
 
 #[derive(Debug, Clone)]
 pub struct ResolvedPackage {
+    #[allow(dead_code)]
     pub name: String,
-    pub version: String,
     pub manifest: Value,
+    pub version: String,
 }
 
 impl Registry {

@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, Default, Clone)]
 pub struct Scripts {
@@ -35,9 +35,11 @@ pub struct PackageInfo {
     pub path: PathBuf,
     pub bin_files: Vec<(String, String)>, // (bin_name, relative_path)
     pub scripts: Scripts,
+    #[allow(dead_code)]
     pub scope: Option<String>, // exp "@babel"
-    pub fullname: String,      // exp "@babel/parser"
-    pub name: String,          // exp parser
+    pub fullname: String, // exp "@babel/parser"
+    #[allow(dead_code)]
+    pub name: String, // exp parser
     pub version: String,
 }
 
@@ -49,10 +51,12 @@ impl PackageInfo {
             .map(|p| p.to_path_buf().join(".bin"))
     }
 
+    #[allow(dead_code)]
     pub fn has_bin_files(&self) -> bool {
         !self.bin_files.is_empty()
     }
 
+    #[allow(dead_code)]
     pub fn needs_processing(&self) -> bool {
         self.has_bin_files() || self.scripts.has_any_script()
     }

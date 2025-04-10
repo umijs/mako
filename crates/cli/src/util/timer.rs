@@ -3,20 +3,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub struct Timer;
 
 impl Timer {
-    pub fn now_timestamp() -> u64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-    }
-
-    pub fn now_timestamp_millis() -> u128 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis()
-    }
-
     pub fn format_datetime() -> String {
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
 
@@ -39,18 +25,6 @@ impl Timer {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_timestamp() {
-        let ts = Timer::now_timestamp();
-        assert!(ts > 0);
-    }
-
-    #[test]
-    fn test_timestamp_millis() {
-        let ts = Timer::now_timestamp_millis();
-        assert!(ts > 0);
-    }
 
     #[test]
     fn test_format_datetime() {
