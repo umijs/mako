@@ -22,6 +22,7 @@ jobs:
           - host: macos-latest
             target: x86_64-apple-darwin
             build: |
+              rustup target add x86_64-apple-darwin &&
               cd packages/bundler && npm run build:binding -- --target x86_64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
