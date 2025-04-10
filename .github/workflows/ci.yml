@@ -20,12 +20,20 @@ jobs:
       run: |
         CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
 
-        CHANGED_CRATES=$(echo "$CHANGED_FILES" | grep -E '^crates/[^/]+/' | sed 's|^crates/\([^/]\+\)/.*|\1|' | sort -u | tr '\n' ' ')
-        if [ -n "$CHANGED_CRATES" ]; then
-          echo "changed-crates=$CHANGED_CRATES" >> $GITHUB_OUTPUT
-        else
-          echo "changed-crates=" >> $GITHUB_OUTPUT
-        fi
+        CHANGED_CRATES=""
+        for file in $CHANGED_FILES; do
+          if [[ $file =~ ^crates/[^/]+/ ]]; then
+            CRATE_DIR=$(echo $file | sed 's|^crates/\([^/]\+\)/.*|\1|')
+            if [ -f "crates/$CRATE_DIR/Cargo.toml" ]; then
+              PACKAGE_NAME=$(grep -m 1 '^name = ' "crates/$CRATE_DIR/Cargo.toml" | sed 's/name = "\(.*\)"/\1/')
+              if [ -n "$PACKAGE_NAME" ]; then
+                CHANGED_CRATES="$CHANGED_CRATES $PACKAGE_NAME"
+              fi
+            fi
+          fi
+        done
+        CHANGED_CRATES=$(echo $CHANGED_CRATES | tr ' ' '\n' | sort -u | tr '\n' ' ')
+        echo "changed-crates=$CHANGED_CRATES" >> $GITHUB_OUTPUT
 
   build:
     needs: detect-changes
