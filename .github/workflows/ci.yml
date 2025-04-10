@@ -17,22 +17,34 @@ jobs:
 
     - name: Detect changes
       id: detect
+      shell: bash
       run: |
         CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
+        echo "Changed files:"
+        echo "$CHANGED_FILES"
 
         CHANGED_CRATES=""
-        for file in $CHANGED_FILES; do
-          if [[ $file =~ ^crates/[^/]+/ ]]; then
-            CRATE_DIR=$(echo $file | sed 's|^crates/\([^/]\+\)/.*|\1|')
+        while IFS= read -r file; do
+          echo "Processing file: $file"
+          if [[ $file =~ ^crates/([^/]+)/ ]]; then
+            CRATE_DIR="${BASH_REMATCH[1]}"
+            echo "Found crate directory: $CRATE_DIR"
             if [ -f "crates/$CRATE_DIR/Cargo.toml" ]; then
+              echo "Found Cargo.toml for $CRATE_DIR"
               PACKAGE_NAME=$(grep -m 1 '^name = ' "crates/$CRATE_DIR/Cargo.toml" | sed 's/name = "\(.*\)"/\1/')
+              echo "Package name: $PACKAGE_NAME"
               if [ -n "$PACKAGE_NAME" ]; then
                 CHANGED_CRATES="$CHANGED_CRATES $PACKAGE_NAME"
+                echo "Added to changed crates: $PACKAGE_NAME"
               fi
+            else
+              echo "No Cargo.toml found for $CRATE_DIR"
             fi
           fi
-        done
+        done <<< "$CHANGED_FILES"
+
         CHANGED_CRATES=$(echo $CHANGED_CRATES | tr ' ' '\n' | sort -u | tr '\n' ' ')
+        echo "Final changed crates: $CHANGED_CRATES"
         echo "changed-crates=$CHANGED_CRATES" >> $GITHUB_OUTPUT
 
   build:
