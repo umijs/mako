@@ -144,8 +144,7 @@ jobs:
       - name: Update package.json version
         run: |
           VERSION=${{ steps.get_version.outputs.VERSION }}
-          cd packages/bundler
-          sed -i.bak "s/^version: \".*\"/version: \"$VERSION\"/" packages/bundler/package.json
+          sed -i.bak "s/^ "version": \".*\"/ "version": \"$VERSION\"/" packages/bundler/package.json
           rm packages/bundler/package.json.bak
       - name: Publish
         run: |
