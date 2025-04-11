@@ -149,9 +149,10 @@ jobs:
       - name: Publish
         run: |
           # npm config set provenance true
+          VERSION=${{ steps.get_version.outputs.VERSION }} &&
           cd packages/bundler &&
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc &&
-          npm run version &&
+          npm version ${{ VERSION }} &&
           npm publish --access public
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
