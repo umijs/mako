@@ -133,6 +133,7 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
+          name: bundler-${{ matrix.settings.target }}
           path: ./packages/bundler/src
 
       - name: Move artifacts
