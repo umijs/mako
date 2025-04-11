@@ -133,7 +133,7 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          path: ./packages/bundler/src
 
       - name: Move artifacts
         run: cd packages/bundler && npm run artifacts
