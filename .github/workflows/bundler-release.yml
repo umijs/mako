@@ -152,7 +152,7 @@ jobs:
           # npm config set provenance true
           cd packages/bundler &&
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc &&
-          npm version ${{ VERSION }} &&
+          npm version "${VERSION}" &&
           npm publish --access public
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
