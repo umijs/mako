@@ -141,11 +141,6 @@ jobs:
         id: get_version
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/@utoo/bundler-v}" >> $GITHUB_OUTPUT
-      - name: Update package.json version
-        run: |
-          VERSION=${{ steps.get_version.outputs.VERSION }}
-          sed -i.bak "s/^ "version": \".*\"/ "version": \"$VERSION\"/" packages/bundler/package.json
-          rm packages/bundler/package.json.bak
       - name: Publish
         run: |
           # npm config set provenance true
