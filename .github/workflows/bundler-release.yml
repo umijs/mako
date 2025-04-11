@@ -121,25 +121,32 @@ jobs:
       - build
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - name: Install dependencies
         run: cd packages/bundler && npm install
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+
       - name: Move artifacts
         run: cd packages/bundler && npm run artifacts
+
       - name: List packages
         run: cd packages/bundler && ls -R ./npm
         shell: bash
+
       - name: Get version from release or use alpha version
         id: get_version
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/@utoo/bundler-v}" >> $GITHUB_OUTPUT
+
       - name: Publish
         run: |
           # npm config set provenance true
