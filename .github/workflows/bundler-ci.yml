@@ -3,7 +3,6 @@ name: utoo-bundler-ci
 env:
   DEBUG: napi:*
   APP_NAME: "@utoo/bundler"
-  MACOSX_DEPLOYMENT_TARGET: "10.13"
 
 on:
   release:
