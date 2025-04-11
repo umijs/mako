@@ -1,4 +1,4 @@
-name: utoo-bundler-ci
+name: utoo-bundler-release
 
 env:
   DEBUG: napi:*
