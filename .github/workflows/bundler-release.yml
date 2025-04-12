@@ -1,17 +1,12 @@
-name: utoo-bundler-ci
+name: utoo-bundler-release
 
 env:
   DEBUG: napi:*
   APP_NAME: "@utoo/bundler"
-  MACOSX_DEPLOYMENT_TARGET: "10.13"
 
 on:
   release:
     types: [published]
-
-defaults:
-  run:
-    working-directory: ./packages/bundler
 
 jobs:
   build:
@@ -22,17 +17,18 @@ jobs:
           - host: macos-latest
             target: aarch64-apple-darwin
             build: |
-              npm run build:binding -- --target aarch64-apple-darwin
+              cd packages/bundler && npm run build:binding -- --target aarch64-apple-darwin
           - host: macos-latest
             target: x86_64-apple-darwin
             build: |
-              npm run build:binding -- --target x86_64-apple-darwin
+              rustup target add x86_64-apple-darwin &&
+              cd packages/bundler && npm run build:binding -- --target x86_64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
             build: |
               rustup target add aarch64-unknown-linux-gnu &&
-              npm run build:binding -- --target aarch64-unknown-linux-gnu
+              cd packages/bundler && npm run build:binding -- --target aarch64-unknown-linux-gnu
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
@@ -41,11 +37,11 @@ jobs:
               apk update &&
               apk add --no-cache libc6-compat pkgconfig dav1d libdav1d dav1d-dev clang-static llvm-dev &&
               rustup target add aarch64-unknown-linux-musl &&
-              npm run build:binding -- --target aarch64-unknown-linux-musl
+              cd packages/bundler && npm run build:binding -- --target aarch64-unknown-linux-musl
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
-            build: npm run build:binding -- --target x86_64-unknown-linux-gnu
+            build: cd packages/bundler && npm run build:binding -- --target x86_64-unknown-linux-gnu
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
@@ -54,18 +50,18 @@ jobs:
               apk update &&
               apk add --no-cache libc6-compat pkgconfig dav1d libdav1d dav1d-dev clang-static llvm-dev &&
               rustup target add x86_64-unknown-linux-musl && 
-              npm run build:binding -- --target x86_64-unknown-linux-musl
+              cd packages/bundler && npm run build:binding -- --target x86_64-unknown-linux-musl
           # swc_plugin_runner not supported on aarch64 windows now
           # - host: windows-latest
           #   target: aarch64-pc-windows-msvc
           #   build: |
           #     git config --system core.longpaths true &&
           #     rustup target add aarch64-pc-windows-msvc &&
-          #     npm run build:binding -- --target aarch64-pc-windows-msvc
+          #     cd packages/bundler && npm run build:binding -- --target aarch64-pc-windows-msvc
           - host: windows-latest
             build: |
               git config --system core.longpaths true &&
-              npm run build:binding -- --target x86_64-pc-windows-msvc
+              cd packages/bundler && npm run build:binding -- --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
 
     name: stable - ${{ matrix.settings.target }} - node@20
@@ -97,12 +93,8 @@ jobs:
         run: ${{ matrix.settings.setup }}
         if: ${{ matrix.settings.setup }}
         shell: bash
-      - name: Setup node x86
-        if: matrix.settings.target == 'i686-pc-windows-msvc'
-        run: npm config set supportedArchitectures.cpu "ia32"
-        shell: bash
       - name: Install dependencies
-        run: npm install
+        run: cd packages/bundler && npm install
       - name: Setup node x86
         uses: actions/setup-node@v4
       - name: Build in docker
@@ -129,37 +121,39 @@ jobs:
       - build
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - name: Install dependencies
-        run: npm install
+        run: cd packages/bundler && npm install
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          path: ./packages/bundler/src
+
       - name: Move artifacts
-        run: npm run artifacts
+        run: cd packages/bundler && npm run artifacts
+
       - name: List packages
-        run: ls -R ./npm
+        run: cd packages/bundler && ls -R ./npm
         shell: bash
+
       - name: Get version from release or use alpha version
         id: get_version
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/@utoo/bundler-v}" >> $GITHUB_OUTPUT
-      - name: Update package.json version
-        run: |
-          VERSION=${{ steps.get_version.outputs.VERSION }}
-          sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" packages/bundler/package.json
-          rm packages/bundler/package.json.bak
+
       - name: Publish
         run: |
           # npm config set provenance true
-
+          cd packages/bundler &&
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc &&
-          npm run version &&
+          npm version "${VERSION}" &&
           npm publish --access public
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

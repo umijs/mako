@@ -41,7 +41,7 @@
     "node": ">= 10"
   },
   "scripts": {
-    "build:cjs": "rm -rf cjs && tsc -p ./tsconfig.json --module commonjs --outDir cjs && cp src/*.d.ts cjs/ && cp src/*.node cjs/",
+    "build:cjs": "rm -rf cjs && tsc -p ./tsconfig.json --module commonjs --outDir cjs && cp src/*.d.ts cjs/",
     "build:esm": "rm -rf esm && tsc -p ./tsconfig.json --module esnext --outDir esm && cp src/*.d.ts esm/",
     "artifacts": "napi artifacts --dir ./src --dist npm",
     "build:binding": "napi build src --platform --release -p bundler-napi --cargo-cwd ../../ --cargo-name bundler_napi --features plugin --js binding.js --dts binding.d.ts --strip",
