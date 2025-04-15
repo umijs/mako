@@ -6,6 +6,17 @@ rustflags = [
   "-Zthreads=8",
   "-Csymbol-mangling-version=v0",
 ]
+incremental = true
+target-dir = "target"
+
+[profile.dev]
+incremental = true
+debug = true
+
+[profile.release]
+incremental = true
+lto = "thin"
+codegen-units = 1
 
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld"
