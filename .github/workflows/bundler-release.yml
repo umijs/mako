@@ -5,6 +5,7 @@ env:
   APP_NAME: "@utoo/bundler"
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "@utoo/bundler-v.**"
