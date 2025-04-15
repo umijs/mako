@@ -68,9 +68,9 @@ async fn insert_shared_aliases(
     _execution_context: Vc<ExecutionContext>,
     _config: Vc<Config>,
 ) -> Result<()> {
-    let bundler_package = get_bundler_package(*project_path).to_resolved().await?;
-    import_map.insert_singleton_alias("@swc/helpers", bundler_package);
-    import_map.insert_singleton_alias("styled-jsx", bundler_package);
+    // let bundler_package = get_bundler_package(*project_path).to_resolved().await?;
+    // import_map.insert_singleton_alias("@swc/helpers", bundler_package);
+    // import_map.insert_singleton_alias("styled-jsx", bundler_package);
     import_map.insert_singleton_alias("react", project_path);
     import_map.insert_singleton_alias("react-dom", project_path);
 
@@ -112,6 +112,7 @@ async fn insert_turbopack_dev_alias(import_map: &mut ImportMap) -> Result<()> {
 }
 
 #[turbo_tasks::function]
+#[allow(dead_code)]
 pub async fn get_bundler_package(
     context_directory: Vc<FileSystemPath>,
 ) -> Result<Vc<FileSystemPath>> {
