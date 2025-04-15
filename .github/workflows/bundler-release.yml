@@ -5,8 +5,9 @@ env:
   APP_NAME: "@utoo/bundler"
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - \@utoo/bundler-v.**
 
 jobs:
   build:
