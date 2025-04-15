@@ -5,12 +5,11 @@ env:
   APP_NAME: "@utoo/bundler"
 
 on:
-  release:
-    types: [published]
+  push:
+    tags: ["@utoo/bundler-v**"]
 
 jobs:
   build:
-    if: ${{ startsWith(github.event.release.tag_name, '@utoo/bundler-v') }}
     strategy:
       fail-fast: false
       matrix:
@@ -64,7 +63,6 @@ jobs:
               git config --system core.longpaths true &&
               cd packages/bundler && npm run build:binding -- --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
-
     name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     steps:
@@ -116,39 +114,31 @@ jobs:
           path: ./packages/bundler/src/bundler.*.node
           if-no-files-found: error
   publish:
-    if: ${{ startsWith(github.event.release.tag_name, '@utoo/bundler-v') }}
     name: Publish
     runs-on: ubuntu-latest
     needs:
       - build
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - name: Install dependencies
         run: cd packages/bundler && npm install
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./packages/bundler/src
-
       - name: Move artifacts
         run: cd packages/bundler && npm run artifacts
-
       - name: List packages
         run: cd packages/bundler && ls -R ./npm
         shell: bash
-
       - name: Get version from release or use alpha version
         id: get_version
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/@utoo/bundler-v}" >> $GITHUB_OUTPUT
-
       - name: Publish
         run: |
           # npm config set provenance true
