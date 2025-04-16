@@ -1,11 +1,15 @@
 import { type Options } from 'sass';
-import { RunLoadersOptions, runLoaders } from '../../runLoaders';
+import {
+  RunLoaderResult,
+  RunLoadersOptions,
+  runLoaders,
+} from '../../runLoaders';
 
-async function render(param: {
+export async function renderSass(param: {
   filename: string;
-  opts: Options<'async'> & { resources: string[] };
+  opts: Options<'async'>;
   extOpts: RunLoadersOptions;
-}) {
+}): Promise<RunLoaderResult & { missingDependencies: string[] }> {
   const options = { style: 'compressed', ...param.opts };
   const extOpts = param.extOpts;
 
@@ -27,5 +31,3 @@ async function render(param: {
       throw new Error(err.toString());
     });
 }
-
-module.exports = render;
