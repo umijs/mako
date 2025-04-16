@@ -1,5 +1,5 @@
-//
 'use strict';
+// mako/runtime/hmr plugin
 !(function () {
   requireModule._h = '_%full_hash%_';
   requireModule.currentHash = function () {
@@ -31,14 +31,14 @@
       }
       return require(request);
     };
-    var createPropertyDescriptor = function createPropertyDescriptor(name) {
+    var createPropertyDescriptor = function (name) {
       return {
         configurable: true,
         enumerable: true,
-        get: function get() {
+        get: function () {
           return require[name];
         },
-        set: function set(value) {
+        set: function (value) {
           require[name] = value;
         },
       };
@@ -54,216 +54,73 @@
     var modules = update.modules,
       removedModules = update.removedModules;
     var outdatedModules = [];
-    var _iteratorNormalCompletion = true,
-      _didIteratorError = false,
-      _iteratorError = undefined;
-    try {
-      for (
-        var _iterator = Object.keys(modules)[Symbol.iterator](), _step;
-        !(_iteratorNormalCompletion = (_step = _iterator.next()).done);
-        _iteratorNormalCompletion = true
-      ) {
-        var moduleId = _step.value;
-        if (!modulesRegistry[moduleId]) continue;
-        if (outdatedModules.includes(moduleId)) continue;
-        outdatedModules.push(moduleId);
-        var queue = [moduleId];
-        while (queue.length) {
-          var item = queue.pop();
-          var module = modulesRegistry[item];
-          if (!module) continue;
-          if (module.hot._main) {
-            location.reload();
-          }
-          if (module.hot._selfAccepted) {
-            continue;
-          }
-          var _iteratorNormalCompletion1 = true,
-            _didIteratorError1 = false,
-            _iteratorError1 = undefined;
-          try {
-            for (
-              var _iterator1 = module.parents[Symbol.iterator](), _step1;
-              !(_iteratorNormalCompletion1 = (_step1 = _iterator1.next()).done);
-              _iteratorNormalCompletion1 = true
-            ) {
-              var parentModule = _step1.value;
-              if (outdatedModules.includes(parentModule)) continue;
-              outdatedModules.push(parentModule);
-              queue.push(parentModule);
-            }
-          } catch (err) {
-            _didIteratorError1 = true;
-            _iteratorError1 = err;
-          } finally {
-            try {
-              if (!_iteratorNormalCompletion1 && _iterator1.return != null) {
-                _iterator1.return();
-              }
-            } finally {
-              if (_didIteratorError1) {
-                throw _iteratorError1;
-              }
-            }
-          }
+    for (var _i = 0, _a = Object.keys(modules); _i < _a.length; _i++) {
+      var moduleId = _a[_i];
+      if (!modulesRegistry[moduleId]) continue;
+      if (outdatedModules.includes(moduleId)) continue;
+      outdatedModules.push(moduleId);
+      var queue = [moduleId];
+      while (queue.length) {
+        var item = queue.pop();
+        var module = modulesRegistry[item];
+        if (!module) continue;
+        if (module.hot._main) {
+          location.reload();
         }
-      }
-    } catch (err) {
-      _didIteratorError = true;
-      _iteratorError = err;
-    } finally {
-      try {
-        if (!_iteratorNormalCompletion && _iterator.return != null) {
-          _iterator.return();
+        if (module.hot._selfAccepted) {
+          continue;
         }
-      } finally {
-        if (_didIteratorError) {
-          throw _iteratorError;
+        for (var _b = 0, _c = module.parents; _b < _c.length; _b++) {
+          var parentModule = _c[_b];
+          if (outdatedModules.includes(parentModule)) continue;
+          outdatedModules.push(parentModule);
+          queue.push(parentModule);
         }
       }
     }
     var outdatedSelfAcceptedModules = [];
-    var _iteratorNormalCompletion2 = true,
-      _didIteratorError2 = false,
-      _iteratorError2 = undefined;
-    try {
-      for (
-        var _iterator2 = outdatedModules[Symbol.iterator](), _step2;
-        !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done);
-        _iteratorNormalCompletion2 = true
-      ) {
-        var moduleId1 = _step2.value;
-        var module1 = modulesRegistry[moduleId1];
-        if (module1.hot._selfAccepted) {
-          outdatedSelfAcceptedModules.push(module1);
-        }
-      }
-    } catch (err) {
-      _didIteratorError2 = true;
-      _iteratorError2 = err;
-    } finally {
-      try {
-        if (!_iteratorNormalCompletion2 && _iterator2.return != null) {
-          _iterator2.return();
-        }
-      } finally {
-        if (_didIteratorError2) {
-          throw _iteratorError2;
-        }
+    for (
+      var _d = 0, outdatedModules_1 = outdatedModules;
+      _d < outdatedModules_1.length;
+      _d++
+    ) {
+      var moduleId = outdatedModules_1[_d];
+      var module = modulesRegistry[moduleId];
+      if (module.hot._selfAccepted) {
+        outdatedSelfAcceptedModules.push(module);
       }
     }
-    var _iteratorNormalCompletion3 = true,
-      _didIteratorError3 = false,
-      _iteratorError3 = undefined;
-    try {
-      for (
-        var _iterator3 = outdatedModules[Symbol.iterator](), _step3;
-        !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done);
-        _iteratorNormalCompletion3 = true
-      ) {
-        var moduleId2 = _step3.value;
-        var module2 = modulesRegistry[moduleId2];
-        var _iteratorNormalCompletion4 = true,
-          _didIteratorError4 = false,
-          _iteratorError4 = undefined;
-        try {
-          for (
-            var _iterator4 = module2.hot._disposeHandlers[Symbol.iterator](),
-              _step4;
-            !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done);
-            _iteratorNormalCompletion4 = true
-          ) {
-            var handler = _step4.value;
-            handler();
-          }
-        } catch (err) {
-          _didIteratorError4 = true;
-          _iteratorError4 = err;
-        } finally {
-          try {
-            if (!_iteratorNormalCompletion4 && _iterator4.return != null) {
-              _iterator4.return();
-            }
-          } finally {
-            if (_didIteratorError4) {
-              throw _iteratorError4;
-            }
-          }
-        }
-        module2.hot.active = false;
-        delete modulesRegistry[moduleId2];
-        var _iteratorNormalCompletion5 = true,
-          _didIteratorError5 = false,
-          _iteratorError5 = undefined;
-        try {
-          for (
-            var _iterator5 = module2.children[Symbol.iterator](), _step5;
-            !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done);
-            _iteratorNormalCompletion5 = true
-          ) {
-            var childModule = _step5.value;
-            var child = modulesRegistry[childModule];
-            if (!child) continue;
-            var idx = child.parents.indexOf(moduleId2);
-            if (idx !== -1) {
-              child.parents.splice(idx, 1);
-            }
-          }
-        } catch (err) {
-          _didIteratorError5 = true;
-          _iteratorError5 = err;
-        } finally {
-          try {
-            if (!_iteratorNormalCompletion5 && _iterator5.return != null) {
-              _iterator5.return();
-            }
-          } finally {
-            if (_didIteratorError5) {
-              throw _iteratorError5;
-            }
-          }
-        }
+    for (
+      var _e = 0, outdatedModules_2 = outdatedModules;
+      _e < outdatedModules_2.length;
+      _e++
+    ) {
+      var moduleId = outdatedModules_2[_e];
+      var module = modulesRegistry[moduleId];
+      for (var _f = 0, _g = module.hot._disposeHandlers; _f < _g.length; _f++) {
+        var handler = _g[_f];
+        handler();
       }
-    } catch (err) {
-      _didIteratorError3 = true;
-      _iteratorError3 = err;
-    } finally {
-      try {
-        if (!_iteratorNormalCompletion3 && _iterator3.return != null) {
-          _iterator3.return();
-        }
-      } finally {
-        if (_didIteratorError3) {
-          throw _iteratorError3;
+      module.hot.active = false;
+      delete modulesRegistry[moduleId];
+      for (var _j = 0, _k = module.children; _j < _k.length; _j++) {
+        var childModule = _k[_j];
+        var child = modulesRegistry[childModule];
+        if (!child) continue;
+        var idx = child.parents.indexOf(moduleId);
+        if (idx !== -1) {
+          child.parents.splice(idx, 1);
         }
       }
     }
     registerModules(modules);
-    var _iteratorNormalCompletion6 = true,
-      _didIteratorError6 = false,
-      _iteratorError6 = undefined;
-    try {
-      for (
-        var _iterator6 = outdatedSelfAcceptedModules[Symbol.iterator](), _step6;
-        !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done);
-        _iteratorNormalCompletion6 = true
-      ) {
-        var module3 = _step6.value;
-        module3.hot._requireSelf();
-      }
-    } catch (err) {
-      _didIteratorError6 = true;
-      _iteratorError6 = err;
-    } finally {
-      try {
-        if (!_iteratorNormalCompletion6 && _iterator6.return != null) {
-          _iterator6.return();
-        }
-      } finally {
-        if (_didIteratorError6) {
-          throw _iteratorError6;
-        }
-      }
+    for (
+      var _l = 0, outdatedSelfAcceptedModules_1 = outdatedSelfAcceptedModules;
+      _l < outdatedSelfAcceptedModules_1.length;
+      _l++
+    ) {
+      var module = outdatedSelfAcceptedModules_1[_l];
+      module.hot._requireSelf();
     }
   };
   var createModuleHotObject = function (moduleId, me) {
@@ -275,7 +132,7 @@
       _selfDeclined: false,
       _selfInvalidated: false,
       _disposeHandlers: [],
-      _requireSelf: function _requireSelf() {
+      _requireSelf: function () {
         currentParents = me.parents.slice();
         currentChildModule = _main ? undefined : moduleId;
         requireModule(moduleId);
@@ -357,20 +214,20 @@
           var fullUrl = requireModule.publicPath + url;
           var oldLink = requireModule.findStylesheet(url);
           if (oldLink) {
-            var newLink = requireModule.createStylesheet(
+            var newLink_1 = requireModule.createStylesheet(
               chunkId,
               ''.concat(fullUrl, '?').concat(Date.now()),
               oldLink,
               function () {
-                newLink.rel = 'stylesheet';
-                newLink.as = null;
+                newLink_1.rel = 'stylesheet';
+                newLink_1.as = null;
                 oldLink.parentNode.removeChild(oldLink);
                 resolve();
               },
               reject,
             );
-            newLink.rel = 'prereload';
-            newLink.as = 'style';
+            newLink_1.rel = 'prereload';
+            newLink_1.as = 'style';
           }
         }),
       );
