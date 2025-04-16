@@ -1,73 +1,69 @@
+// swc will hois
+'use strict';
 // swc will hoist
-const RefreshRuntime = require('react-refresh');
+var RefreshRuntime = require('react-refresh');
 RefreshRuntime.injectIntoGlobalHook(self);
-self.$RefreshReg$ = () => {};
-self.$RefreshSig$ = () => (type) => type;
-
+self.$RefreshReg$ = function () {};
+self.$RefreshSig$ = function () {
+  return function (type) {
+    return type;
+  };
+};
 (function () {
-  let hadRuntimeError = false;
-
+  var hadRuntimeError = false;
   function startReportingRuntimeErrors(options) {
-    const errorHandler = (e) => {
+    var errorHandler = function (e) {
       options.onError(e);
       hadRuntimeError = true;
     };
     window.addEventListener('error', errorHandler);
     // window.addEventListener('unhandledrejection', errorHandler);
-    return () => {
+    return function () {
       window.removeEventListener('error', errorHandler);
       // window.removeEventListener('unhandledrejection', errorHandler);
     };
   }
-
-  const stopReportingRuntimeError = startReportingRuntimeErrors({
+  var stopReportingRuntimeError = startReportingRuntimeErrors({
     onError: function (e) {
       console.error(
-        `[Mako] Runtime error found, and it will cause a full reload. If you want HMR to work, please fix the error.`,
+        '[Mako] Runtime error found, and it will cause a full reload. If you want HMR to work, please fix the error.',
         e,
       );
       hadRuntimeError = true;
     },
   });
-
   if (module.hot && typeof module.hot.dispose === 'function') {
     module.hot.dispose(function () {
       stopReportingRuntimeError();
     });
   }
-
   function getHost() {
     if (process.env.SOCKET_SERVER) {
       return new URL(process.env.SOCKET_SERVER);
     }
     return location;
   }
-
   function getSocketUrl() {
-    const h = getHost();
-    const host = h.host;
-    const isHttps = h.protocol === 'https:';
-    return `${isHttps ? 'wss' : 'ws'}://${host}/__/hmr-ws`;
+    var h = getHost();
+    var host = h.host;
+    var isHttps = h.protocol === 'https:';
+    return ''.concat(isHttps ? 'wss' : 'ws', '://').concat(host, '/__/hmr-ws');
   }
-
-  const socket = new WebSocket(getSocketUrl());
-
-  let latestHash = '';
-  let updating = false;
-
+  var socket = new WebSocket(getSocketUrl());
+  var latestHash = '';
+  var updating = false;
   function runHotUpdate() {
     if (hadRuntimeError) {
       location.reload();
     }
-
     if (latestHash !== require.currentHash()) {
       updating = true;
       return Promise.all([module.hot.check(), module.hot.updateChunksUrlMap()])
-        .then(() => {
+        .then(function () {
           updating = false;
           return runHotUpdate();
         })
-        .catch((e) => {
+        .catch(function (e) {
           // need a reload?
           console.error('[HMR] HMR check failed', e);
         });
@@ -75,11 +71,9 @@ self.$RefreshSig$ = () => (type) => type;
       return Promise.resolve();
     }
   }
-
-  socket.addEventListener('message', (rawMessage) => {
-    const msg = JSON.parse(rawMessage.data);
+  socket.addEventListener('message', function (rawMessage) {
+    var msg = JSON.parse(rawMessage.data);
     latestHash = msg.hash;
-
     if (!updating) {
       runHotUpdate();
     }
