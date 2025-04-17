@@ -80,7 +80,7 @@ export function runLoaders(
     loaders: any[];
     processResource?: (ctx: any, resource: string, callback: any) => void;
   } & RunLoadersOptions,
-): Promise<loaderRunner.RunLoaderResult> {
+): Promise<loaderRunner.RunLoaderResult & { missingDependencies: string[] }> {
   return new Promise((resolve, reject) => {
     loaderRunner.runLoaders(
       {
@@ -99,7 +99,11 @@ export function runLoaders(
           reject(error);
           return;
         }
-        resolve(data);
+        resolve(
+          data as loaderRunner.RunLoaderResult & {
+            missingDependencies: string[];
+          },
+        );
       },
     );
   });
