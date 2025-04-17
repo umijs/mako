@@ -15,8 +15,8 @@ use turbopack::{
 use turbopack_browser::BrowserChunkingContext;
 use turbopack_core::{
     chunk::{
-        module_id_strategies::ModuleIdStrategy, ChunkingConfig, ChunkingContext, MinifyType,
-        SourceMapsType,
+        module_id_strategies::ModuleIdStrategy, ChunkingConfig, ChunkingContext, MangleType,
+        MinifyType, SourceMapsType,
     },
     compile_time_info::{
         CompileTimeDefineValue, CompileTimeDefines, CompileTimeInfo, DefineableNameSegment,
@@ -25,6 +25,7 @@ use turbopack_core::{
     environment::{BrowserEnvironment, Environment, ExecutionEnvironment},
     free_var_references,
 };
+use turbopack_ecmascript::chunk::EcmascriptChunkType;
 use turbopack_node::{
     execution_context::ExecutionContext,
     transforms::postcss::{PostCssConfigLocation, PostCssTransformOptions},
@@ -323,7 +324,7 @@ pub async fn get_client_module_options_context(
         css: CssOptionsContext {
             minify_type: if *config.turbo_minify(mode).await? {
                 MinifyType::Minify {
-                    mangle: !*no_mangling.await?,
+                    mangle: (!*no_mangling.await?).then_some(MangleType::OptimalSize),
                 }
             } else {
                 MinifyType::NoMinify
@@ -418,7 +419,7 @@ pub async fn get_client_chunking_context(
     .chunk_suffix_path(chunk_suffix_path)
     .minify_type(if *minify.await? {
         MinifyType::Minify {
-            mangle: !*no_mangling.await?,
+            mangle: (!*no_mangling.await?).then_some(MangleType::OptimalSize),
         }
     } else {
         MinifyType::NoMinify
@@ -434,12 +435,15 @@ pub async fn get_client_chunking_context(
     if mode.is_development() {
         builder = builder.hot_module_replacement().use_file_source_map_uris();
     } else {
-        builder = builder.ecmascript_chunking_config(ChunkingConfig {
-            min_chunk_size: 50_000,
-            max_chunk_count_per_group: 40,
-            max_merge_chunk_size: 200_000,
-            ..Default::default()
-        })
+        builder = builder.chunking_config(
+            Vc::<EcmascriptChunkType>::default().to_resolved().await?,
+            ChunkingConfig {
+                min_chunk_size: 50_000,
+                max_chunk_count_per_group: 40,
+                max_merge_chunk_size: 200_000,
+                ..Default::default()
+            },
+        )
     }
 
     Ok(Vc::upcast(builder.build()))
