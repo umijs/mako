@@ -29,14 +29,17 @@ use turbopack_core::{
     changed::content_changed,
     chunk::{
         module_id_strategies::{DevModuleIdStrategy, ModuleIdStrategy},
-        ChunkGroupType, ChunkingContext, EvaluatableAssets, SourceMapsType,
+        ChunkingContext, EvaluatableAssets, SourceMapsType,
     },
     compile_time_info::CompileTimeInfo,
     issue::{
         Issue, IssueDescriptionExt, IssueSeverity, IssueStage, OptionStyledString, StyledString,
     },
     module::Module,
-    module_graph::{GraphEntries, ModuleGraph, SingleModuleGraph, VisitedModules},
+    module_graph::{
+        chunk_group_info::ChunkGroupEntry, GraphEntries, ModuleGraph, SingleModuleGraph,
+        VisitedModules,
+    },
     output::{OutputAsset, OutputAssets},
     source_map::OptionStringifiedSourceMap,
     version::{
@@ -867,20 +870,18 @@ impl Project {
     pub async fn module_graph(
         self: Vc<Self>,
         entry: ResolvedVc<Box<dyn Module>>,
-        chunk_group_type: ChunkGroupType,
     ) -> Result<Vc<ModuleGraph>> {
         Ok(if *self.per_entry_module_graph().await? {
-            ModuleGraph::from_module(*entry, chunk_group_type)
+            ModuleGraph::from_entry_module(*entry)
         } else {
             *self.whole_app_module_graphs().await?.full
         })
     }
 
     #[turbo_tasks::function]
-    pub async fn module_graph_for_entries(
+    pub async fn module_graph_for_modules(
         self: Vc<Self>,
         evaluatable_assets: Vc<EvaluatableAssets>,
-        chunk_group_type: ChunkGroupType,
     ) -> Result<Vc<ModuleGraph>> {
         Ok(if *self.per_entry_module_graph().await? {
             let entries = evaluatable_assets
@@ -889,7 +890,19 @@ impl Project {
                 .copied()
                 .map(ResolvedVc::upcast)
                 .collect();
-            ModuleGraph::from_modules(Vc::cell(vec![(entries, chunk_group_type)]))
+            ModuleGraph::from_modules(Vc::cell(vec![ChunkGroupEntry::Entry(entries)]))
+        } else {
+            *self.whole_app_module_graphs().await?.full
+        })
+    }
+
+    #[turbo_tasks::function]
+    pub async fn module_graph_for_entries(
+        self: Vc<Self>,
+        entries: Vc<GraphEntries>,
+    ) -> Result<Vc<ModuleGraph>> {
+        Ok(if *self.per_entry_module_graph().await? {
+            ModuleGraph::from_modules(entries)
         } else {
             *self.whole_app_module_graphs().await?.full
         })
@@ -1197,10 +1210,8 @@ async fn whole_app_module_graph_operation(
     let base = ModuleGraph::from_single_graph(base_single_module_graph);
     let additional_entries = project.get_all_additional_entries(base);
 
-    let additional_module_graph = SingleModuleGraph::new_with_entries_visited(
-        additional_entries.owned().await?,
-        base_visited_modules,
-    );
+    let additional_module_graph =
+        SingleModuleGraph::new_with_entries_visited(additional_entries, base_visited_modules);
 
     let full = ModuleGraph::from_graphs(vec![base_single_module_graph, additional_module_graph]);
     Ok(ModuleGraphs {

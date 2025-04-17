@@ -12,12 +12,15 @@ use turbopack::{
 };
 use turbopack_core::{
     chunk::{
-        availability_info::AvailabilityInfo, ChunkGroupResult, ChunkGroupType, ChunkingContext,
-        EvaluatableAsset, EvaluatableAssets,
+        availability_info::AvailabilityInfo, ChunkGroupResult, ChunkingContext, EvaluatableAsset,
+        EvaluatableAssets,
     },
     ident::AssetIdent,
     module::Module,
-    module_graph::{GraphEntries, ModuleGraph},
+    module_graph::{
+        chunk_group_info::{ChunkGroup, ChunkGroupEntry},
+        GraphEntries, ModuleGraph,
+    },
     output::OutputAssets,
     reference_type::{EntryReferenceSubType, ReferenceType},
     resolve::{
@@ -217,7 +220,7 @@ impl LibraryEndpoint {
     async fn library_module_graph(self: Vc<Self>) -> Result<Vc<ModuleGraph>> {
         let project = self.project();
         let evaluatable_assets = self.library_evaluatable_assets();
-        Ok(project.module_graph_for_entries(evaluatable_assets, ChunkGroupType::Evaluated))
+        Ok(project.module_graph_for_modules(evaluatable_assets))
     }
 
     #[turbo_tasks::function]
@@ -235,7 +238,11 @@ impl LibraryEndpoint {
 
             let library_chunk_group = library_chunking_context.evaluated_chunk_group(
                 AssetIdent::from_path(project_path.join(this.import.clone())),
-                self.library_evaluatable_assets(),
+                ChunkGroup::Entry(
+                    [self.library_main_module().to_resolved().await?]
+                        .into_iter()
+                        .collect(),
+                ),
                 module_graph,
                 Value::new(AvailabilityInfo::Root),
             );
@@ -265,7 +272,7 @@ impl Endpoint for LibraryEndpoint {
             .map(ResolvedVc::upcast)
             .collect();
         entry_modules.push(self.library_main_module().to_resolved().await?);
-        Ok(Vc::cell(vec![(entry_modules, ChunkGroupType::Evaluated)]))
+        Ok(Vc::cell(vec![ChunkGroupEntry::Entry(entry_modules)]))
     }
 
     #[turbo_tasks::function]

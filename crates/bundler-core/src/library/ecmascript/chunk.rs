@@ -1,12 +1,13 @@
 use anyhow::Result;
 use turbo_rcstr::RcStr;
-use turbo_tasks::{FxIndexSet, ResolvedVc, ValueToString, Vc};
+use turbo_tasks::{FxIndexSet, ResolvedVc, TryJoinIterExt, Value, ValueToString, Vc};
 use turbo_tasks_fs::FileSystemPath;
 use turbopack_core::{
     asset::{Asset, AssetContent},
     chunk::{Chunk, ChunkingContext, EvaluatableAssets, OutputChunk, OutputChunkRuntimeInfo},
     ident::AssetIdent,
     introspect::{Introspectable, IntrospectableChildren},
+    module::Module,
     output::{OutputAsset, OutputAssets},
     source_map::{GenerateSourceMap, OptionStringifiedSourceMap, SourceMapAsset},
     version::VersionedContent,
@@ -41,6 +42,34 @@ impl EcmascriptLibraryChunk {
             evaluatable_assets,
         }
         .cell()
+    }
+
+    #[turbo_tasks::function]
+    async fn ident_for_path(&self) -> Result<Vc<AssetIdent>> {
+        let mut ident = self.ident.owned().await?;
+
+        ident.add_modifier(modifier().to_resolved().await?);
+
+        let evaluatable_assets = self.evaluatable_assets.await?;
+        ident.modifiers.extend(
+            evaluatable_assets
+                .iter()
+                .map(|entry| entry.ident().to_string().to_resolved())
+                .try_join()
+                .await?,
+        );
+
+        Ok(AssetIdent::new(Value::new(ident)))
+    }
+
+    #[turbo_tasks::function]
+    async fn source_map(self: Vc<Self>) -> Result<Vc<SourceMapAsset>> {
+        let this = self.await?;
+        Ok(SourceMapAsset::new(
+            Vc::upcast(*this.chunking_context),
+            self.ident_for_path(),
+            Vc::upcast(self),
+        ))
     }
 }
 
@@ -90,8 +119,12 @@ impl EcmascriptLibraryChunk {
 #[turbo_tasks::value_impl]
 impl OutputAsset for EcmascriptLibraryChunk {
     #[turbo_tasks::function]
-    fn path(&self) -> Vc<FileSystemPath> {
-        self.chunking_context.chunk_path(*self.ident, ".js".into())
+    async fn path(self: Vc<Self>) -> Result<Vc<FileSystemPath>> {
+        let this = self.await?;
+        let ident = self.ident_for_path();
+        Ok(this
+            .chunking_context
+            .chunk_path(Some(Vc::upcast(self)), ident, ".js".into()))
     }
 
     #[turbo_tasks::function]
@@ -113,9 +146,7 @@ impl OutputAsset for EcmascriptLibraryChunk {
         references.extend(chunk_references.iter().copied());
 
         if include_source_map {
-            references.push(ResolvedVc::upcast(
-                SourceMapAsset::new(Vc::upcast(self)).to_resolved().await?,
-            ));
+            references.push(ResolvedVc::upcast(self.source_map().to_resolved().await?));
         }
 
         Ok(Vc::cell(references))

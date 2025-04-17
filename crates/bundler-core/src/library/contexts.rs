@@ -3,7 +3,10 @@ use turbo_rcstr::RcStr;
 use turbo_tasks::{ResolvedVc, Vc};
 use turbo_tasks_fs::FileSystemPath;
 use turbopack_core::{
-    chunk::{module_id_strategies::ModuleIdStrategy, ChunkingContext, MinifyType, SourceMapsType},
+    chunk::{
+        module_id_strategies::ModuleIdStrategy, ChunkingContext, MangleType, MinifyType,
+        SourceMapsType,
+    },
     environment::Environment,
 };
 
@@ -40,7 +43,7 @@ pub async fn get_library_chunking_context(
     .chunk_suffix_path(chunk_suffix_path)
     .minify_type(if *minify.await? {
         MinifyType::Minify {
-            mangle: !*no_mangling.await?,
+            mangle: (!*no_mangling.await?).then_some(MangleType::OptimalSize),
         }
     } else {
         MinifyType::NoMinify
