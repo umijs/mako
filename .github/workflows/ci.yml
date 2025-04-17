@@ -85,12 +85,20 @@ jobs:
       run: |
         for crate in ${{ needs.detect-changes.outputs.changed-crates }}; do
           echo "Building crate: $crate"
-          cargo build -p $crate
+          if [ "$crate" == "utoo_runtime" ]; then
+            cd crates/runtime && cargo build
+          else
+            cargo build -p $crate
+          fi
         done
 
     - name: Test changed crates
       run: |
         for crate in ${{ needs.detect-changes.outputs.changed-crates }}; do
           echo "Testing crate: $crate"
-          cargo test -p $crate
+          if [ "$crate" == "utoo_runtime" ]; then
+            cd crates/runtime && cargo test
+          else
+            cargo test -p $crate
+          fi
         done
