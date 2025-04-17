@@ -1,3 +1,13 @@
+## 0.11.8
+
+`2025-04-17`
+
+- fix: disable parallel sassLoader because sassOptions.function cann't be shared cross workers by [xusd320](https://github.com/xusd320) in [#1816](https://github.com/umijs/mako/pull/1816)
+- fix: use transpiled hmr runtime entry by [xusd320](https://github.com/xusd320) in [#1815](https://github.com/umijs/mako/pull/1815)
+- fix: package-lock.json by [xusd320](https://github.com/xusd320)
+- release: [umijs/mako@0.11.7 by @xusd320](https://github.com/umijs/mako@0.11.7 by @xusd320)
+
+
 ## 0.11.7
 
 `2025-04-16`
