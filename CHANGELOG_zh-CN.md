@@ -1,3 +1,21 @@
+## 0.11.8
+
+`2025-04-17`
+
+- fix: 禁用并行的 sass-loader by [xusd320](https://github.com/xusd320) in [#1816](https://github.com/umijs/mako/pull/1816)
+- fix: hmr runtime entry 语法降级 by [xusd320](https://github.com/xusd320) in [#1815](https://github.com/umijs/mako/pull/1815)
+
+
+## 0.11.7
+
+`2025-04-16`
+
+- fix: hmr runtime 语法降级 by [xusd320](https://github.com/xusd320) in [#1813](https://github.com/umijs/mako/pull/1813),[#1814](https://github.com/umijs/mako/pull/1814)
+- feat: 支持 postcss-loader by [御风](https://github.com/YufJi) in [#1787](https://github.com/umijs/mako/pull/1787)
+- refactor: 添加 before_rebuild hook by [xusd320](https://github.com/xusd320) in [#1785](https://github.com/umijs/mako/pull/1785)
+- fix: watch 模式下 less 和 sass 依赖分析问题 by [御风](https://github.com/YufJi) in [#1779](https://github.com/umijs/mako/pull/1779)
+-
+
 ## 0.11.6
 
 `2025-03-11`
