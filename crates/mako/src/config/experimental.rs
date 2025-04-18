@@ -22,6 +22,7 @@ pub struct ExperimentalConfig {
     pub rust_plugins: Vec<RustPlugin>,
     pub central_ensure: bool,
     pub imports_checker: bool,
+    pub swc_lints: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
