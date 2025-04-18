@@ -33,7 +33,12 @@
   "dependencies": {
     "nanoid": "^3.3.11",
     "picocolors": "^1.1.1",
-    "@babel/code-frame": "7.22.5"
+    "@babel/code-frame": "7.22.5",
+    "loader-runner": "^4.3.0",
+    "postcss": "8.4.31",
+    "sass": "1.54.0",
+    "sass-loader": "^13.2.0",
+    "less-loader": "^12.0.0"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0",
@@ -47,6 +52,7 @@
   "scripts": {
     "build:cjs": "rm -rf cjs && tsc -p ./tsconfig.json --module commonjs --outDir cjs && cp src/*.d.ts cjs/",
     "build:esm": "rm -rf esm && tsc -p ./tsconfig.json --module esnext --outDir esm && cp src/*.d.ts esm/",
+    "build:local": "npm run build:binding && npm run build:cjs && cp src/*.node cjs/",
     "artifacts": "napi artifacts --dir ./src --dist npm",
     "build:binding": "napi build src --platform --release -p bundler-napi --cargo-cwd ../../ --cargo-name bundler_napi --features plugin --js binding.js --dts binding.d.ts --strip",
     "build:binding:debug": "napi build src --platform -p bundler-napi --cargo-cwd ../../ --cargo-name bundler_napi --features plugin --js binding.js --dts binding.d.ts",
@@ -54,4 +60,3 @@
     "version": "napi version"
   }
 }
-
