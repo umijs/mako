@@ -1,3 +1,15 @@
+## 0.11.9
+
+`2025-04-18`
+
+- fix: less,sass,postcss loader panic by [xusd320](https://github.com/xusd320) in [#1818](https://github.com/umijs/mako/pull/1818)
+- chore: update changelog for v0.11.8 by [xusd320](https://github.com/xusd320)
+- fix: typos by [xusd320](https://github.com/xusd320)
+- fix: package-lock.json by [xusd320](https://github.com/xusd320)
+- fix: package-lock.json by [xusd320](https://github.com/xusd320)
+- release: [umijs/mako@0.11.8 by @xusd320](https://github.com/umijs/mako@0.11.8 by @xusd320)
+
+
 ## 0.11.8
 
 `2025-04-17`
