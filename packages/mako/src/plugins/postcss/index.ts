@@ -9,6 +9,7 @@ export class PostcssPlugin implements binding.JsHooks {
   params: BuildParams & { resolveAlias: Record<string, string> };
   extOpts: RunLoadersOptions;
   parallelLoader: ReturnType<typeof createParallelLoader> | undefined;
+  __isPatched = true;
 
   constructor(params: BuildParams & { resolveAlias: Record<string, string> }) {
     this.name = 'postcss';
@@ -19,7 +20,9 @@ export class PostcssPlugin implements binding.JsHooks {
     };
   }
 
+  // @ts-ignore
   transform = async (
+    _ctx: binding.PluginContext,
     content: string,
     filename: string,
   ): Promise<{ content: string; type: 'css' | 'js' } | void> => {

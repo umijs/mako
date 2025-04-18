@@ -110,6 +110,7 @@ export async function build(params: BuildParams) {
     params.config.postcss = true;
 
     params.config.plugins.push(
+      // @ts-ignore
       new PostcssPlugin({
         ...params,
         resolveAlias,
@@ -119,6 +120,7 @@ export async function build(params: BuildParams) {
 
   // built-in less-loader
   params.config.plugins.push(
+    // @ts-ignore
     new LessPlugin({
       ...params,
       resolveAlias,
@@ -132,6 +134,7 @@ export async function build(params: BuildParams) {
     };
 
     params.config.plugins.push(
+      // @ts-ignore
       new SassPlugin({
         ...params,
         resolveAlias,

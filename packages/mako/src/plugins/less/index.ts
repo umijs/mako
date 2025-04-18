@@ -2,6 +2,7 @@ import path from 'path';
 import url from 'url';
 import { BuildParams } from '../../';
 import * as binding from '../../../binding';
+import { PluginContext } from '../../binding';
 import { RunLoadersOptions, createParallelLoader } from '../../runLoaders';
 
 export interface LessLoaderOpts {
@@ -40,6 +41,7 @@ export class LessPlugin implements binding.JsHooks {
   extOpts: RunLoadersOptions;
   lessOptions: LessLoaderOpts;
   moduleGraph: Map<string, LessModule> = new Map();
+  __isPatched = true;
 
   constructor(params: BuildParams & { resolveAlias: Record<string, string> }) {
     this.name = 'less';
@@ -57,9 +59,12 @@ export class LessPlugin implements binding.JsHooks {
     };
   }
 
+  // @ts-ignore
   load: (
+    _ctx: PluginContext,
     filePath: string,
   ) => Promise<{ content: string; type: 'css' } | undefined> = async (
+    _ctx: PluginContext,
     filePath: string,
   ) => {
     if (!isTargetFile(filePath)) {
@@ -142,7 +147,8 @@ export class LessPlugin implements binding.JsHooks {
     };
   };
 
-  beforeRebuild = async (paths: string[]) => {
+  // @ts-ignore
+  beforeRebuild = async (_ctx: {}, paths: string[]) => {
     const result = new Set<string>();
 
     paths.forEach((filePath) => {
