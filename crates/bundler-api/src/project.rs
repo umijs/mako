@@ -4,7 +4,7 @@ use anyhow::{bail, Context, Result};
 use bundler_core::{
     all_assets_from_entries,
     client::context::{get_client_chunking_context, get_client_compile_time_info},
-    config::{Config, JsConfig, ModuleIdStrategy as ModuleIdStrategyConfig},
+    config::{Config, JsConfig, ModuleIds as ModuleIdStrategyConfig},
     emit_assets,
     library::contexts::get_library_chunking_context,
     mode::Mode,
@@ -709,6 +709,11 @@ impl Project {
 
     #[turbo_tasks::function]
     pub async fn node_root(self: Vc<Self>) -> Result<Vc<FileSystemPath>> {
+        Ok(self.output_fs().root().join(".turbopack".into()))
+    }
+
+    #[turbo_tasks::function]
+    pub async fn dist_root(self: Vc<Self>) -> Result<Vc<FileSystemPath>> {
         let this = self.await?;
         Ok(self.output_fs().root().join(this.dist_dir.clone()))
     }
@@ -733,10 +738,9 @@ impl Project {
 
     #[turbo_tasks::function]
     pub async fn node_root_to_root_path(self: Vc<Self>) -> Result<Vc<RcStr>> {
-        let this = self.await?;
         let output_root_to_root_path = self
             .project_path()
-            .join(this.dist_dir.clone())
+            .join(".turbopack".into())
             .await?
             .get_relative_path_to(&*self.project_root_path().await?)
             .context("Project path need to be in root path")?;
@@ -954,7 +958,7 @@ impl Project {
             self.config().chunk_suffix_path(),
             self.client_compile_time_info().environment(),
             self.mode(),
-            self.module_id_strategy(),
+            self.module_ids(),
             self.config().turbo_minify(self.mode()),
             self.config().turbo_source_maps(),
             self.no_mangling(),
@@ -973,7 +977,7 @@ impl Project {
             self.config().chunk_suffix_path(),
             self.client_compile_time_info().environment(),
             self.mode(),
-            self.module_id_strategy(),
+            self.module_ids(),
             self.config().turbo_minify(self.mode()),
             self.config().turbo_source_maps(),
             self.no_mangling(),
@@ -1042,15 +1046,15 @@ impl Project {
             let all_output_assets = all_assets_from_entries_operation(output_assets);
 
             let client_relative_path = self.client_relative_path();
-            let node_root = self.node_root();
+            let dist_root = self.dist_root();
 
             if let Some(map) = self.await?.versioned_content_map {
                 let _ = map
                     .insert_output_assets(
                         all_output_assets,
-                        node_root,
+                        dist_root,
                         client_relative_path,
-                        node_root,
+                        dist_root,
                     )
                     .resolve()
                     .await?;
@@ -1059,9 +1063,9 @@ impl Project {
             } else {
                 let _ = emit_assets(
                     all_output_assets.connect(),
-                    node_root,
+                    dist_root,
                     client_relative_path,
-                    node_root,
+                    dist_root,
                 )
                 .resolve()
                 .await?;
@@ -1174,16 +1178,15 @@ impl Project {
 
     /// Gets the module id strategy for the project.
     #[turbo_tasks::function]
-    pub async fn module_id_strategy(self: Vc<Self>) -> Result<Vc<Box<dyn ModuleIdStrategy>>> {
-        let module_id_strategy =
-            if let Some(module_id_strategy) = &*self.config().module_id_strategy_config().await? {
-                *module_id_strategy
-            } else {
-                match *self.mode().await? {
-                    Mode::Development => ModuleIdStrategyConfig::Named,
-                    Mode::Build => ModuleIdStrategyConfig::Deterministic,
-                }
-            };
+    pub async fn module_ids(self: Vc<Self>) -> Result<Vc<Box<dyn ModuleIdStrategy>>> {
+        let module_id_strategy = if let Some(module_ids) = &*self.config().module_ids().await? {
+            *module_ids
+        } else {
+            match *self.mode().await? {
+                Mode::Development => ModuleIdStrategyConfig::Named,
+                Mode::Build => ModuleIdStrategyConfig::Deterministic,
+            }
+        };
 
         match module_id_strategy {
             ModuleIdStrategyConfig::Named => Ok(Vc::upcast(DevModuleIdStrategy::new())),

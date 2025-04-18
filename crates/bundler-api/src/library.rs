@@ -31,7 +31,6 @@ use turbopack_core::{
 
 use crate::{
     endpoints::{Endpoint, EndpointOutput, EndpointOutputPaths},
-    paths::{all_paths_in_root, all_server_paths},
     project::Project,
 };
 
@@ -114,6 +113,7 @@ impl LibraryEndpoint {
     #[turbo_tasks::function]
     async fn library_module_context(self: Vc<Self>) -> Result<Vc<ModuleAssetContext>> {
         Ok(ModuleAssetContext::new(
+            // FIXME:
             TransitionOptions {
                 ..Default::default()
             }
@@ -281,26 +281,13 @@ impl Endpoint for LibraryEndpoint {
         async move {
             let this = self.await?;
             let output_assets = self.output_assets();
-            let node_root = self.project().node_root();
-            let node_root_ref = &node_root.await?;
+            let dist_root = self.project().dist_root().await?;
 
-            let (server_paths, client_paths) = if self.project().mode().await?.is_development() {
-                let node_root = self.project().node_root();
-                let server_paths = all_server_paths(output_assets, node_root).owned().await?;
-
-                let client_relative_root = self.project().client_relative_path();
-                let client_paths = all_paths_in_root(output_assets, client_relative_root)
-                    .owned()
-                    .instrument(tracing::info_span!("client_paths"))
-                    .await?;
-                (server_paths, client_paths)
-            } else {
-                (vec![], vec![])
-            };
+            let (server_paths, client_paths) = (vec![], vec![]);
 
             let written_endpoint = EndpointOutputPaths::NodeJs {
                 // FIXME: No server path when bundling library
-                server_entry_path: node_root_ref.to_string(),
+                server_entry_path: dist_root.to_string(),
                 server_paths,
                 client_paths,
             };

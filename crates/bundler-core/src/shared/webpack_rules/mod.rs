@@ -2,7 +2,7 @@ use anyhow::Result;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{ResolvedVc, Vc};
 use turbopack::module_options::WebpackLoadersOptions;
-use turbopack_core::resolve::{options::ImportMapping, ExternalTraced, ExternalType};
+use turbopack_core::resolve::options::ImportMapping;
 
 use self::less::maybe_add_less_loader;
 use self::sass::maybe_add_sass_loader;
@@ -34,12 +34,12 @@ pub async fn webpack_loader_options(
 
 #[turbo_tasks::function]
 async fn loader_runner_package_mapping() -> Result<Vc<ImportMapping>> {
-    Ok(ImportMapping::Alternatives(vec![ImportMapping::External(
-        // TODO: Add loader-runner npm package
-        Some("loader-runner".into()),
-        ExternalType::CommonJs,
-        ExternalTraced::Untraced,
+    Ok(
+        ImportMapping::Alternatives(vec![ImportMapping::PrimaryAlternative(
+            "loader-runner".into(),
+            None,
+        )
+        .resolved_cell()])
+        .cell(),
     )
-    .resolved_cell()])
-    .cell())
 }

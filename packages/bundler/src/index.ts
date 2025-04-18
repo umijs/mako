@@ -3,6 +3,7 @@ import { projectFactory } from "./project";
 import fs from "fs";
 import path from "path";
 import { formatIssue } from "./util";
+import { ProjectOptions } from "./types";
 
 // ref:
 // https://github.com/vercel/next.js/pull/51883
@@ -23,7 +24,7 @@ export async function build(dir?: string) {
 
   const cwd = dir || process.cwd();
 
-  const projectOptions = JSON.parse(
+  const projectOptions: ProjectOptions = JSON.parse(
     fs.readFileSync(path.join(cwd, "project_options.json"), {
       encoding: "utf-8",
     }),
@@ -32,9 +33,9 @@ export async function build(dir?: string) {
   const createProject = projectFactory();
   const project = await createProject(
     {
+      ...projectOptions,
       env: {} as Record<string, string>,
       defineEnv: { client: [], nodejs: [], edge: [] },
-      config: { env: {}, experimental: {} },
       jsConfig: {
         compilerOptions: {},
       },
@@ -46,7 +47,7 @@ export async function build(dir?: string) {
       noMangling: false,
       browserslistQuery:
         "last 1 Chrome versions, last 1 Firefox versions, last 1 Safari versions, last 1 Edge versions",
-      ...projectOptions,
+      config: { ...projectOptions.config, env: {}, experimental: {} },
       rootPath: path.resolve(cwd, projectOptions.rootPath),
       projectPath: path.resolve(cwd, projectOptions.projectPath),
     },
