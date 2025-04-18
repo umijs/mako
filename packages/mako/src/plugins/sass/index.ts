@@ -18,6 +18,7 @@ export class SassPlugin implements binding.JsHooks {
   sassOptions: Options<'async'>;
   extOpts: RunLoadersOptions;
   moduleGraph: Map<string, SassModule> = new Map();
+  __isPatched = true;
 
   constructor(params: BuildParams & { resolveAlias: Record<string, string> }) {
     this.name = 'sass';
@@ -29,9 +30,12 @@ export class SassPlugin implements binding.JsHooks {
     this.sassOptions = params.config?.sass || {};
   }
 
+  // @ts-ignore
   load: (
+    _ctx: binding.PluginContext,
     filePath: string,
   ) => Promise<{ content: string; type: 'css' } | undefined> = async (
+    _ctx: binding.PluginContext,
     filePath: string,
   ) => {
     if (!isTargetFile(filePath)) {
@@ -111,7 +115,8 @@ export class SassPlugin implements binding.JsHooks {
     };
   };
 
-  beforeRebuild = async (paths: string[]) => {
+  // @ts-ignore
+  beforeRebuild = async (_ctx: {}, paths: string[]) => {
     const result = new Set<string>();
 
     paths.forEach((filePath) => {
