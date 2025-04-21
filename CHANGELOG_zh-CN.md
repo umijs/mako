@@ -1,3 +1,10 @@
+## 0.11.9
+
+`2025-04-18`
+
+- fix: less,sass,postcss loader 导致程序崩溃 by [xusd320](https://github.com/xusd320) in [#1818](https://github.com/umijs/mako/pull/1818)
+
+
 ## 0.11.8
 
 `2025-04-17`
