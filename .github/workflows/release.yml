@@ -81,7 +81,7 @@ jobs:
         run: |
           set -e
           cd vendor/scripts
-          BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean")
+          BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean" "utoo-core")
           for BIN in "${BINS[@]}"; do
             PACKAGE_NAME=$(echo "$BIN")
             ./npm-binary.sh "$PACKAGE_NAME" "$VERSION" \
@@ -117,7 +117,7 @@ jobs:
         run: |
           set -e
           cd vendor/scripts
-          BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean")
+          BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean" "utoo-core")
           for BIN in "${BINS[@]}"; do
             PACKAGE_NAME=$(echo "$BIN")
             ./npm-main.sh "$PACKAGE_NAME" "$VERSION"
