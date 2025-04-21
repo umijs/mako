@@ -1,17 +1,20 @@
 use anyhow::Result;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{ResolvedVc, Vc};
+use turbo_tasks_fs::FileSystemPath;
 use turbopack::module_options::WebpackLoadersOptions;
 use turbopack_core::resolve::options::ImportMapping;
 
 use self::less::maybe_add_less_loader;
 use self::sass::maybe_add_sass_loader;
 use crate::config::Config;
+use crate::import_map::get_bundler_package;
 
 pub(crate) mod less;
 pub(crate) mod sass;
 
 pub async fn webpack_loader_options(
+    project_path: ResolvedVc<FileSystemPath>,
     config: Vc<Config>,
     conditions: Vec<RcStr>,
 ) -> Result<Option<ResolvedVc<WebpackLoadersOptions>>> {
@@ -23,7 +26,11 @@ pub async fn webpack_loader_options(
         Some(
             WebpackLoadersOptions {
                 rules,
-                loader_runner_package: Some(loader_runner_package_mapping().to_resolved().await?),
+                loader_runner_package: Some(
+                    loader_runner_package_mapping(*project_path)
+                        .to_resolved()
+                        .await?,
+                ),
             }
             .resolved_cell(),
         )
@@ -33,11 +40,13 @@ pub async fn webpack_loader_options(
 }
 
 #[turbo_tasks::function]
-async fn loader_runner_package_mapping() -> Result<Vc<ImportMapping>> {
+async fn loader_runner_package_mapping(
+    project_path: ResolvedVc<FileSystemPath>,
+) -> Result<Vc<ImportMapping>> {
     Ok(
         ImportMapping::Alternatives(vec![ImportMapping::PrimaryAlternative(
-            "loader-runner".into(),
-            None,
+            "@utoo/loader-runner".into(),
+            Some(get_bundler_package(*project_path).to_resolved().await?),
         )
         .resolved_cell()])
         .cell(),

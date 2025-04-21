@@ -35,10 +35,11 @@ pub async fn maybe_add_sass_loader(
         ("*.sass", ".css"),
     ] {
         // additionalData is a loader option but Next.js has it under `sassOptions` in
-        // `next.config.js`
-        let additional_data = sass_options
-            .get("prependData")
-            .or(sass_options.get("additionalData"));
+        // `config.js`
+        let empty_additional_data = serde_json::Value::String("".to_string());
+        let additional_data = sass_options.get("prependData").or(sass_options
+            .get("additionalData")
+            .or(Some(&empty_additional_data)));
         let rule = rules.get_mut(pattern);
         let sass_loader = WebpackLoaderItem {
             // TODO: Add sass-loader npm package

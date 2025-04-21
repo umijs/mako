@@ -110,7 +110,6 @@ async fn insert_turbopack_dev_alias(import_map: &mut ImportMap) -> Result<()> {
 }
 
 #[turbo_tasks::function]
-#[allow(dead_code)]
 pub async fn get_bundler_package(
     context_directory: Vc<FileSystemPath>,
 ) -> Result<Vc<FileSystemPath>> {

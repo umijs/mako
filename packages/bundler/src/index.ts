@@ -33,21 +33,32 @@ export async function build(dir?: string) {
   const createProject = projectFactory();
   const project = await createProject(
     {
-      ...projectOptions,
-      env: {} as Record<string, string>,
-      defineEnv: { client: [], nodejs: [], edge: [] },
-      jsConfig: {
+      entry: projectOptions.entry,
+      distDir: projectOptions.distDir,
+      env: projectOptions.env ?? ({} as Record<string, string>),
+      defineEnv: projectOptions.defineEnv ?? {
+        client: [],
+        nodejs: [],
+        edge: [],
+      },
+      jsConfig: projectOptions.jsConfig ?? {
         compilerOptions: {},
       },
-      watch: {
+      watch: projectOptions.watch ?? {
         enable: false,
       },
       dev: false,
       buildId: nanoid(),
-      noMangling: false,
+      noMangling: projectOptions.noMangling ?? false,
       browserslistQuery:
         "last 1 Chrome versions, last 1 Firefox versions, last 1 Safari versions, last 1 Edge versions",
-      config: { ...projectOptions.config, env: {}, experimental: {} },
+      // FIXME
+      config: {
+        env: projectOptions.config?.env ?? {},
+        experimental: projectOptions.config?.experimental ?? {},
+        lessOptions: projectOptions.config?.lessOptions,
+        sassOptions: projectOptions.config?.sassOptions,
+      },
       rootPath: path.resolve(cwd, projectOptions.rootPath),
       projectPath: path.resolve(cwd, projectOptions.projectPath),
     },
