@@ -1,0 +1,20 @@
+{
+  "name": "with-sass",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": [],
+  "author": "xusd320",
+  "license": "MIT",
+  "scripts": {
+    "build": "npx utoo-bundler .",
+    "dev": "npx utoo-bundler . dev",
+    "build-by-native": "../../target/release/bundler-cli build",
+    "dev-by-native": "../../target/release/bundler-cli dev",
+    "serve": "rm -rf ./dist && npm run build && node ./genHtml.js && serve ./dist"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@utoo/bundler": "*"
+  },
+  "repository": "git@github.com:umijs/mako.git"
+}

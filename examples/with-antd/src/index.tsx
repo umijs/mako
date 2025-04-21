@@ -1,2 +1,2 @@
 // import './index-ant-design-icons-only';
-import("./index-orig").then(console.log);
+import("./index-orig");

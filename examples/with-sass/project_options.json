@@ -1,0 +1,12 @@
+{
+  "rootPath": "../../",
+  "projectPath": "./",
+  "distDir": "./dist",
+  "entry": [
+    {
+      "import": "./src/index.ts",
+      "library": {}
+    }
+  ],
+  "noMangling": true
+}

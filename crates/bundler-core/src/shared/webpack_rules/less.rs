@@ -23,10 +23,11 @@ pub async fn maybe_add_less_loader(
     };
     for (pattern, rename) in [("*.module.less", ".module.css"), ("*.less", ".css")] {
         // additionalData is a loader option but Next.js has it under `lessOptions` in
-        // `next.config.js`
-        let additional_data = less_options
-            .get("prependData")
-            .or(less_options.get("additionalData"));
+        // `config.js`
+        let empty_additional_data = serde_json::Value::String("".to_string());
+        let additional_data = less_options.get("prependData").or(less_options
+            .get("additionalData")
+            .or(Some(&empty_additional_data)));
         let rule = rules.get_mut(pattern);
         let less_loader = WebpackLoaderItem {
             // TODO: Add less-loader npm package

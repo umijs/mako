@@ -199,6 +199,7 @@ pub async fn get_client_module_options_context(
     // does by default.
     let conditions = vec!["browser".into(), mode.await?.condition().into()];
     let foreign_enable_webpack_loaders = webpack_loader_options(
+        project_path,
         config,
         conditions
             .iter()
@@ -209,7 +210,7 @@ pub async fn get_client_module_options_context(
     .await?;
 
     // Now creates a webpack rules that applies to all codes.
-    let enable_webpack_loaders = webpack_loader_options(config, conditions).await?;
+    let enable_webpack_loaders = webpack_loader_options(project_path, config, conditions).await?;
 
     let tree_shaking_mode_for_user_code = *config
         .tree_shaking_mode_for_user_code(mode_ref.is_development())
