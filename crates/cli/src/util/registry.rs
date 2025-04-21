@@ -5,6 +5,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::io;
 use std::sync::Arc;
+use std::time::Instant;
 use tokio::sync::RwLock;
 
 use super::config::get_registry;
@@ -136,6 +137,9 @@ impl Registry {
         // Build request URL
         let url = self.build_url(name, spec);
 
+        // Record start time
+        let start_time = Instant::now();
+
         // Send request
         let response = self
             .client
@@ -144,6 +148,13 @@ impl Registry {
             .send()
             .await
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+        // Calculate and log request duration
+        let duration = start_time.elapsed();
+        log_verbose(&format!(
+            "HTTP request for {}@{} took {:?}",
+            name, spec, duration
+        ));
 
         // Check response status
         if !response.status().is_success() {
