@@ -32,13 +32,19 @@ pub async fn install_packages(
                         let link_name = extract_package_name(&path);
                         if link_name.is_empty() {
                             PROGRESS_BAR.inc(1);
-                            log_verbose(&format!("Link skipped due to empty package name: {}", path));
+                            log_verbose(&format!(
+                                "Link skipped due to empty package name: {}",
+                                path
+                            ));
                             log_progress(&format!("empty package name link skipped"));
                             continue;
                         }
                         log_verbose(&format!("Attempting to link from {} to {}", resolved, path));
                         if let Err(e) = link(Path::new(&resolved), Path::new(&path)) {
-                            log_verbose(&format!("Link failed: source={}, target={}, error={}", resolved, path, e));
+                            log_verbose(&format!(
+                                "Link failed: source={}, target={}, error={}",
+                                resolved, path, e
+                            ));
                             return Err(format!("Link failed: {}", e).into());
                         }
                         PROGRESS_BAR.inc(1);
@@ -84,12 +90,17 @@ pub async fn install_packages(
                                     log_verbose(&format!("{} downloaded", name));
                                 }
                                 Err(e) => {
-                                    log_verbose(&format!("Download failed: source={}, target={}, error={}", resolved, cache_path.display(), e));
+                                    log_verbose(&format!(
+                                        "Download failed: source={}, target={}, error={}",
+                                        resolved,
+                                        cache_path.display(),
+                                        e
+                                    ));
                                     return Err(Box::new(std::io::Error::new(
                                         std::io::ErrorKind::Other,
                                         format!("{} download failed: {}", name, e),
                                     ))
-                                        as Box<dyn std::error::Error + Send + Sync>)
+                                        as Box<dyn std::error::Error + Send + Sync>);
                                 }
                             }
                         }
@@ -123,12 +134,12 @@ pub async fn install_packages(
                     Ok(Ok(())) => continue,
                     Ok(Err(e)) => {
                         log_verbose(&format!("Task execution error: {}", e));
-                        return Err(format!("Error during installation: {}", e).into())
-                    },
+                        return Err(format!("Error during installation: {}", e).into());
+                    }
                     Err(e) => {
                         log_verbose(&format!("Task join error: {}", e));
-                        return Err(format!("Task execution failed: {}", e).into())
-                    },
+                        return Err(format!("Task execution failed: {}", e).into());
+                    }
                 }
             }
         }
