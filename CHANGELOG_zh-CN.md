@@ -1,3 +1,10 @@
+## 0.11.10
+
+`2025-04-22`
+
+- fix: worker threads 在 linux 上崩溃 by [xusd320](https://github.com/xusd320) in [#1823](https://github.com/umijs/mako/pull/1823)
+
+
 ## 0.11.9
 
 `2025-04-18`
