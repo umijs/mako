@@ -1,3 +1,13 @@
+## 0.11.10
+
+`2025-04-22`
+
+- fix: worker threads panic on linux by [xusd320](https://github.com/xusd320) in [#1823](https://github.com/umijs/mako/pull/1823)
+- chore: update changelog for v0.11.9 by [xusd320](https://github.com/xusd320)
+- fix: package-lock.json by [xusd320](https://github.com/xusd320)
+- release: [umijs/mako@0.11.9 by @xusd320](https://github.com/umijs/mako@0.11.9 by @xusd320)
+
+
 ## 0.11.9
 
 `2025-04-18`

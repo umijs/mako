@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako-linux-x64-gnu",
-  "version": "0.11.9",
+  "version": "0.11.10",
   "os": [
     "linux"
   ],
