@@ -35,6 +35,7 @@
     "picocolors": "^1.1.1",
     "@babel/code-frame": "7.22.5",
     "@utoo/loader-runner": "^1.0.0",
+    "@utoo/style-loader": "^1.0.0",
     "postcss": "8.4.31",
     "sass": "1.54.0",
     "less": "^4.0.0",
