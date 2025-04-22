@@ -1,3 +1,4 @@
+import os from 'os';
 import { RunLoaderResult } from 'loader-runner';
 import { Piscina } from 'piscina';
 import { RunLoadersOptions } from '.';
@@ -16,5 +17,8 @@ export function createParallelLoader<T>(renderPath: string) {
     idleTimeout: 30000,
     recordTiming: false,
     useAtomics: false,
+    maxThreads:
+      // when cpus is less than "4", the worker pool may lead to panic on linux
+      os.platform() === 'linux' ? Math.max(os.cpus().length - 3, 1) : undefined,
   });
 }
