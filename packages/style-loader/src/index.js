@@ -17,7 +17,7 @@ var options = ${JSON.stringify(options)};
 
 options.insert = ${insert};
 
-var update = api([[undefined, content, undefined, undefined]], options);
+var update = api([[${JSON.stringify(this.resourcePath.replace(this.rootContext, ""))}, content, undefined, undefined]], options);
 
 
 ${"export default {}"}`;
@@ -42,7 +42,7 @@ var exported = {};
 exported.locals = content.locals || {};
 exported.use = function() {
   if (!(refs++)) {
-    update = api([[undefined, content, undefined, undefined]], options);
+    update = api([[${JSON.stringify(this.resourcePath.replace(this.rootContext, ""))}, content, undefined, undefined]], options);
   }
 
   return exported;
@@ -70,7 +70,7 @@ var options = ${JSON.stringify(options)};
 options.insert = ${insert};
 options.singleton = ${isSingleton};
 
-var update = api([[undefined,content, undefined, undefined]], options);
+var update = api([[${JSON.stringify(this.resourcePath.replace(this.rootContext, ""))}, content, undefined, undefined]], options);
 
 
 ${"export default"} content.locals || {};`;
