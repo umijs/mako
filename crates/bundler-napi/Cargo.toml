@@ -78,9 +78,6 @@ owo-colors = { workspace = true }
 dhat = { version = "0.3.2", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-lightningcss-napi = { version = "0.4.3", default-features = false, features = [
-  "visitor",
-] }
 tokio = { workspace = true, features = ["full"] }
 turbo-rcstr = { workspace = true }
 turbo-tasks = { workspace = true }

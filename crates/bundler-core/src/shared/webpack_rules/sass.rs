@@ -6,9 +6,14 @@ use turbo_tasks::{ResolvedVc, Vc};
 use turbopack::module_options::{LoaderRuleItem, OptionWebpackRules, WebpackRules};
 use turbopack_node::transforms::webpack::WebpackLoaderItem;
 
+use crate::config::OptionalJsonValue;
+
+use super::style_loader::style_loader;
+
 #[turbo_tasks::function]
 pub async fn maybe_add_sass_loader(
     sass_options: Vc<JsonValue>,
+    style_options: Vc<OptionalJsonValue>,
     webpack_rules: Option<Vc<WebpackRules>>,
 ) -> Result<Vc<OptionWebpackRules>> {
     let sass_options = sass_options.await?;
@@ -34,6 +39,14 @@ pub async fn maybe_add_sass_loader(
         ("*.scss", ".css"),
         ("*.sass", ".css"),
     ] {
+        let style_options = &*style_options.await?;
+
+        let rename = if style_options.is_some() {
+            format!("{}.js", rename)
+        } else {
+            rename.to_string()
+        };
+
         // additionalData is a loader option but Next.js has it under `sassOptions` in
         // `config.js`
         let empty_additional_data = serde_json::Value::String("".to_string());
@@ -42,7 +55,6 @@ pub async fn maybe_add_sass_loader(
             .or(Some(&empty_additional_data)));
         let rule = rules.get_mut(pattern);
         let sass_loader = WebpackLoaderItem {
-            // TODO: Add sass-loader npm package
             loader: "sass-loader".into(),
             options: take(
                 serde_json::json!({
@@ -56,7 +68,6 @@ pub async fn maybe_add_sass_loader(
             ),
         };
         let resolve_url_loader = WebpackLoaderItem {
-            // TODO: Add resolve-url-loader npm package
             loader: "resolve-url-loader".into(),
             options: take(
                 serde_json::json!({
@@ -80,14 +91,26 @@ pub async fn maybe_add_sass_loader(
                 continue;
             }
             let mut loaders = rule.loaders.owned().await?;
+            if let Some(style_options) = style_options {
+                loaders.push(style_loader(style_options)?);
+            }
             loaders.push(resolve_url_loader);
             loaders.push(sass_loader);
             rule.loaders = ResolvedVc::cell(loaders);
         } else {
+            let loaders = if let Some(style_options) = style_options {
+                vec![
+                    style_loader(style_options)?,
+                    resolve_url_loader,
+                    sass_loader,
+                ]
+            } else {
+                vec![resolve_url_loader, sass_loader]
+            };
             rules.insert(
                 pattern.into(),
                 LoaderRuleItem {
-                    loaders: ResolvedVc::cell(vec![resolve_url_loader, sass_loader]),
+                    loaders: ResolvedVc::cell(loaders),
                     rename_as: Some(format!("*{rename}").into()),
                 },
             );
