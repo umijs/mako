@@ -4,7 +4,6 @@ import { nanoid } from "nanoid";
 
 import type {
   HmrIdentifiers,
-  NapiEntrypoints,
   NapiPartialProjectOptions,
   NapiProjectOptions,
   NapiUpdateMessage,

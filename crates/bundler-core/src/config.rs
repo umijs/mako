@@ -46,6 +46,9 @@ impl Default for CacheKinds {
     }
 }
 
+#[turbo_tasks::value(transparent)]
+pub struct OptionalJsonValue(Option<JsonValue>);
+
 #[turbo_tasks::value(serialization = "custom", eq = "manual")]
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, OperationValue)]
 #[serde(rename_all = "camelCase")]
@@ -60,6 +63,7 @@ pub struct Config {
     pub dist_dir: Option<RcStr>,
     sass_options: Option<serde_json::Value>,
     less_options: Option<serde_json::Value>,
+    style_options: Option<serde_json::Value>,
     pub asset_prefix: Option<RcStr>,
     pub base_path: Option<RcStr>,
     pub output: Option<OutputType>,
@@ -733,6 +737,11 @@ impl Config {
                 .clone()
                 .unwrap_or(JsonValue::Object(serde_json::Map::new())),
         )
+    }
+
+    #[turbo_tasks::function]
+    pub fn style_options(&self) -> Vc<OptionalJsonValue> {
+        Vc::cell(self.style_options.clone())
     }
 
     /// Returns the final asset prefix. If an assetPrefix is set, it's used.

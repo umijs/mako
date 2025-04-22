@@ -12,6 +12,7 @@
   "workspaces": [
     "packages/bundler",
     "packages/loader-runner",
+    "packages/style-loader",
     "examples/*",
     "crates/bundler-core/js",
     "crates/bundler/js"

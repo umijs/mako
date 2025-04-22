@@ -58,6 +58,7 @@ export async function build(dir?: string) {
         experimental: projectOptions.config?.experimental ?? {},
         lessOptions: projectOptions.config?.lessOptions,
         sassOptions: projectOptions.config?.sassOptions,
+        styleOptions: projectOptions.config?.styleOptions,
       },
       rootPath: path.resolve(cwd, projectOptions.rootPath),
       projectPath: path.resolve(cwd, projectOptions.projectPath),

@@ -12,6 +12,7 @@ use crate::import_map::get_bundler_package;
 
 pub(crate) mod less;
 pub(crate) mod sass;
+pub(crate) mod style_loader;
 
 pub async fn webpack_loader_options(
     project_path: ResolvedVc<FileSystemPath>,
@@ -19,8 +20,18 @@ pub async fn webpack_loader_options(
     conditions: Vec<RcStr>,
 ) -> Result<Option<ResolvedVc<WebpackLoadersOptions>>> {
     let rules = *config.webpack_rules(conditions).await?;
-    let rules = *maybe_add_sass_loader(config.sass_config(), rules.map(|v| *v)).await?;
-    let rules = *maybe_add_less_loader(config.less_config(), rules.map(|v| *v)).await?;
+    let rules = *maybe_add_sass_loader(
+        config.sass_config(),
+        config.style_options(),
+        rules.map(|v| *v),
+    )
+    .await?;
+    let rules = *maybe_add_less_loader(
+        config.less_config(),
+        config.style_options(),
+        rules.map(|v| *v),
+    )
+    .await?;
 
     Ok(if let Some(rules) = rules {
         Some(

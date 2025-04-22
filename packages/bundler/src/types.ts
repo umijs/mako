@@ -119,6 +119,9 @@ export interface ConfigComplete {
     implementation?: string;
     [key: string]: any;
   };
+  styleOptions?: {
+    [key: string]: any;
+  };
   assetPrefix?: string;
   basePath?: string;
   output?: "standalone" | "export";

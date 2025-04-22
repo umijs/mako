@@ -455,7 +455,7 @@ dependencies = [
  "funty",
  "radium",
  "tap",
- "wyz 0.5.1",
+ "wyz",
 ]
 
 [[package]]
@@ -596,7 +596,6 @@ dependencies = [
  "mime_guess",
  "modularize_imports 0.79.0",
  "qstring",
- "react_remove_properties",
  "regex",
  "remove_console",
  "rustc-hash 2.1.1",
@@ -639,7 +638,6 @@ dependencies = [
  "bundler-core",
  "console-subscriber",
  "dhat",
- "lightningcss-napi",
  "mdxjs",
  "napi",
  "napi-build",
@@ -3371,22 +3369,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lightningcss-napi"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f5e41d371670417f71b779fe6d66959a68c21fbda563a747d795ac525f72450"
-dependencies = [
- "cssparser",
- "lightningcss",
- "napi",
- "parcel_sourcemap",
- "serde",
- "serde-detach",
- "serde_bytes",
- "smallvec",
-]
-
-[[package]]
 name = "linked-hash-map"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4787,20 +4769,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "react_remove_properties"
-version = "0.33.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72d372e993feb533a8bd7442355935c1a53836f84aa7c2a0b944b46741ce1859"
-dependencies = [
- "serde",
- "swc_atoms",
- "swc_cached",
- "swc_common",
- "swc_ecma_ast",
- "swc_ecma_visit",
-]
-
-[[package]]
 name = "redox_syscall"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5391,16 +5359,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f0e2c6ed6606019b4e29e69dbaba95b11854410e5347d525002456dbbb786b6"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-detach"
-version = "0.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c621150da442b6a854bb63c431347bcd4de19219a3e1f06fd744208ded057288"
-dependencies = [
- "serde",
- "wyz 0.2.0",
 ]
 
 [[package]]
@@ -10254,12 +10212,6 @@ name = "writeable"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e9df38ee2d2c3c5948ea468a8406ff0db0b29ae1ffde1bcf20ef305bcc95c51"
-
-[[package]]
-name = "wyz"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85e60b0d1b5f99db2556934e21937020776a5d31520bf169e851ac44e6420214"
 
 [[package]]
 name = "wyz"
