@@ -122,6 +122,9 @@ export interface ConfigComplete {
   styleOptions?: {
     [key: string]: any;
   };
+  optimizeImage?: {
+    inlineLimit?: number;
+  };
   assetPrefix?: string;
   basePath?: string;
   output?: "standalone" | "export";

@@ -337,9 +337,6 @@ impl ChunkingContext for LibraryChunkingContext {
     #[turbo_tasks::function]
     async fn asset_url(&self, ident: Vc<FileSystemPath>) -> Result<Vc<RcStr>> {
         let asset_path = ident.await?.to_string();
-        let asset_path = asset_path
-            .strip_prefix(&format!("{}/", self.client_root.await?.path))
-            .context("expected asset_path to contain client_root")?;
 
         Ok(Vc::cell(
             format!(

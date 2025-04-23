@@ -59,6 +59,7 @@ export async function build(dir?: string) {
         lessOptions: projectOptions.config?.lessOptions,
         sassOptions: projectOptions.config?.sassOptions,
         styleOptions: projectOptions.config?.styleOptions,
+        optimizeImage: projectOptions.config?.optimizeImage,
       },
       rootPath: path.resolve(cwd, projectOptions.rootPath),
       projectPath: path.resolve(cwd, projectOptions.projectPath),

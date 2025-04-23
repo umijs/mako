@@ -1,8 +1,11 @@
+use anyhow::Result;
 pub use modularize_imports::ModularizeImportPackageConfig;
-use turbo_tasks::ResolvedVc;
-use turbopack::module_options::{ModuleRule, ModuleRuleEffect, RuleCondition};
+use turbo_tasks::{ResolvedVc, Value};
+use turbopack::module_options::{ModuleRule, ModuleRuleEffect, ModuleType, RuleCondition};
 use turbopack_core::reference_type::{ReferenceType, UrlReferenceSubType};
 use turbopack_ecmascript::{CustomTransformer, EcmascriptInputTransform};
+
+use crate::image::{module::BlurPlaceholderMode, StructuredImageModuleType};
 
 pub mod dynamic_import_to_require;
 pub mod emotion;
@@ -11,6 +14,38 @@ pub mod remove_console;
 pub mod styled_components;
 pub mod styled_jsx;
 pub mod swc_ecma_transform_plugins;
+
+pub async fn get_image_rule(inline_limit: Option<u64>) -> Result<ModuleRule> {
+    Ok(ModuleRule::new(
+        RuleCondition::All(vec![
+            RuleCondition::not(RuleCondition::ReferenceType(ReferenceType::Url(
+                UrlReferenceSubType::Undefined,
+            ))),
+            RuleCondition::any(vec![
+                RuleCondition::ResourcePathEndsWith(".jpg".to_string()),
+                RuleCondition::ResourcePathEndsWith(".jpeg".to_string()),
+                RuleCondition::ResourcePathEndsWith(".png".to_string()),
+                RuleCondition::ResourcePathEndsWith(".apng".to_string()),
+                RuleCondition::ResourcePathEndsWith(".gif".to_string()),
+                RuleCondition::ResourcePathEndsWith(".svg".to_string()),
+                RuleCondition::ResourcePathEndsWith(".bmp".to_string()),
+                RuleCondition::ResourcePathEndsWith(".ico".to_string()),
+                RuleCondition::ResourcePathEndsWith(".webp".to_string()),
+                RuleCondition::ResourcePathEndsWith(".avif".to_string()),
+            ]),
+        ]),
+        vec![ModuleRuleEffect::ModuleType(ModuleType::Custom(
+            ResolvedVc::upcast(
+                StructuredImageModuleType::new(
+                    inline_limit,
+                    Value::new(BlurPlaceholderMode::DataUrl),
+                )
+                .to_resolved()
+                .await?,
+            ),
+        ))],
+    ))
+}
 
 fn match_js_extension(enable_mdx_rs: bool) -> Vec<RuleCondition> {
     let mut conditions = vec![
