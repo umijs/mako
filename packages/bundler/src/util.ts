@@ -8,6 +8,57 @@ import {
   MAGIC_IDENTIFIER_REGEX,
 } from "./magicIdentifier";
 
+export class ModuleBuildError extends Error {
+  name = "ModuleBuildError";
+}
+
+export function processIssues(
+  result: TurbopackResult,
+  throwIssue: boolean,
+  logErrors: boolean,
+) {
+  const relevantIssues = new Set();
+
+  for (const issue of result.issues) {
+    if (
+      issue.severity !== "error" &&
+      issue.severity !== "fatal" &&
+      issue.severity !== "warning"
+    )
+      continue;
+
+    if (issue.severity !== "warning") {
+      if (throwIssue) {
+        const formatted = formatIssue(issue);
+        relevantIssues.add(formatted);
+      }
+      // if we throw the issue it will most likely get handed and logged elsewhere
+      else if (logErrors && isWellKnownError(issue)) {
+        const formatted = formatIssue(issue);
+        console.error(formatted);
+      }
+    }
+  }
+
+  if (relevantIssues.size && throwIssue) {
+    throw new ModuleBuildError([...relevantIssues].join("\n\n"));
+  }
+}
+
+export function isWellKnownError(issue: NapiIssue): boolean {
+  const { title } = issue;
+  const formattedTitle = renderStyledStringToErrorAnsi(title);
+  // TODO: add more well known errors
+  if (
+    formattedTitle.includes("Module not found") ||
+    formattedTitle.includes("Unknown module type")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export function formatIssue(issue: NapiIssue) {
   const { filePath, title, description, source } = issue;
   let { documentationLink } = issue;

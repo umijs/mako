@@ -1,6 +1,6 @@
 {
   "name": "@utoo/bundler",
-  "version": "0.0.0-alpha.1",
+  "version": "0.0.1",
   "main": "cjs/index.js",
   "module": "esm/index.js",
   "bin": {
@@ -61,5 +61,6 @@
     "build:binding:debug": "napi build src --platform -p bundler-napi --cargo-cwd ../../ --cargo-name bundler_napi --features plugin --js binding.js --dts binding.d.ts",
     "prepublishOnly": "npm run build:esm && npm run build:cjs && napi prepublish -t npm",
     "version": "napi version"
-  }
+  },
+  "repository": "git@github.com:umijs/mako.git"
 }
