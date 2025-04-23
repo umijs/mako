@@ -2,7 +2,7 @@ import { nanoid } from "nanoid";
 import { projectFactory } from "./project";
 import fs from "fs";
 import path from "path";
-import { formatIssue } from "./util";
+import { formatIssue, processIssues } from "./util";
 import { ProjectOptions } from "./types";
 
 // ref:
@@ -95,7 +95,9 @@ export async function build(dir?: string) {
   }
 
   await Promise.all(
-    entrypointsResult.value.libraries.map((l) => l.writeToDisk()),
+    entrypointsResult.value.libraries.map((l) =>
+      l.writeToDisk().then((res) => processIssues(res, true, true)),
+    ),
   );
 
   await project.shutdown();
