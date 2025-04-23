@@ -230,14 +230,16 @@ impl LibraryEndpoint {
 
             let project = self.project();
 
-            let project_path = project.project_path().to_resolved().await?;
-
             let library_chunking_context = self.project().library_chunking_context();
 
             let module_graph = self.library_module_graph();
 
             let library_chunk_group = library_chunking_context.evaluated_chunk_group(
-                AssetIdent::from_path(project_path.join(this.import.clone())),
+                AssetIdent::from_path(
+                    project
+                        .project_root_path()
+                        .join(this.filename.clone().unwrap_or(this.import.clone())),
+                ),
                 ChunkGroup::Entry(
                     [self.library_main_module().to_resolved().await?]
                         .into_iter()
