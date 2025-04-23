@@ -6,6 +6,7 @@ pub mod config;
 pub mod embed_js;
 pub mod emit;
 pub mod hmr_entry;
+pub mod image;
 pub mod import_map;
 pub mod library;
 pub mod mode;
@@ -26,6 +27,7 @@ pub fn register() {
     turbopack_browser::register();
     turbopack_node::register();
     turbopack::register();
+    turbopack_image::register();
     turbopack_ecmascript::register();
     turbopack_ecmascript_plugins::register();
     include!(concat!(env!("OUT_DIR"), "/register.rs"));

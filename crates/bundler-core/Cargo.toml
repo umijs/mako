@@ -31,7 +31,7 @@ rustc-hash = { workspace = true }
 remove_console = "0.34.0"
 auto-hash-map = { workspace = true }
 urlencoding = { workspace = true }
-
+modularize_imports = { version = "0.79.0" }
 swc_core = { workspace = true, features = [
   "base",
   "cached",
@@ -51,9 +51,6 @@ swc_core = { workspace = true, features = [
   "ecma_visit",
   "ecma_visit_serde",
 ] }
-swc_parallel = { version = "1.2.0" }
-modularize_imports = { version = "0.79.0" }
-swc_relay = { version = "0.53.0" }
 
 turbo-rcstr = { workspace = true }
 turbo-tasks = { workspace = true }
@@ -73,6 +70,7 @@ turbopack-ecmascript-runtime = { workspace = true }
 turbopack-node = { workspace = true }
 turbopack-nodejs = { workspace = true }
 turbopack-static = { workspace = true }
+turbopack-image = { workspace = true }
 turbopack-resolve = { workspace = true }
 turbopack-trace-utils = { workspace = true }
 

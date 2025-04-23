@@ -64,6 +64,7 @@ pub struct Config {
     sass_options: Option<serde_json::Value>,
     less_options: Option<serde_json::Value>,
     style_options: Option<serde_json::Value>,
+    pub optimize_image: Option<ImageConfig>,
     pub asset_prefix: Option<RcStr>,
     pub base_path: Option<RcStr>,
     pub output: Option<OutputType>,
@@ -78,6 +79,27 @@ pub struct Config {
     // Partially supported
     pub compiler: Option<CompilerConfig>,
 }
+
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    Default,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    TraceRawVcs,
+    ValueDebugFormat,
+    NonLocalValue,
+    OperationValue,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageConfig {
+    pub inline_limit: Option<u64>,
+}
+
+#[turbo_tasks::value(transparent)]
+pub struct OptionImageConfig(Option<ImageConfig>);
 
 #[derive(
     Clone, Debug, PartialEq, Serialize, Deserialize, TraceRawVcs, NonLocalValue, OperationValue,
@@ -675,6 +697,11 @@ impl Config {
         };
 
         options.cell()
+    }
+
+    #[turbo_tasks::function]
+    pub fn image_config(&self) -> Vc<OptionImageConfig> {
+        Vc::cell(self.optimize_image.clone())
     }
 
     #[turbo_tasks::function]
