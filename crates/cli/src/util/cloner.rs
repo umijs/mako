@@ -6,8 +6,10 @@ use tokio_retry::Retry;
 use super::logger::{log_verbose, log_warning};
 use super::retry::create_retry_strategy;
 
-#[cfg(target_os = "macos")]
 use libc::clonefile;
+#[cfg(target_os = "macos")]
+use std::ffi::CString;
+use std::os::unix::ffi::OsStrExt;
 
 #[cfg(target_os = "linux")]
 mod linux_clone {
