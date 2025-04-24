@@ -46,6 +46,7 @@ swc_core = { version = "21.0.1", features = [
 rand = "0.9.0"
 url = "2.2.2"
 urlencoding = "2.1.2"
+par-core = { version = "1.0.3", features = ["rayon"] }
 
 # Dependencies from nextjs, should keep the same rev!
 ## Dependencies for common cache and task. See https://github.com/vercel/next.js/blob/canary/turbopack/crates/turbopack/architecture.md

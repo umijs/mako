@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use turbo_rcstr::RcStr;
 use turbo_tasks::{ResolvedVc, Value, Vc};
-use turbo_tasks_fs::{FileSystem, FileSystemPath};
+use turbo_tasks_fs::FileSystemPath;
 use turbopack_core::{
     reference_type::{CommonJsReferenceSubType, ReferenceType},
     resolve::{
@@ -37,9 +37,16 @@ pub async fn get_postcss_package_mapping() -> Result<Vc<ImportMapping>> {
 /// polyfills to Node.js externals.
 #[turbo_tasks::function]
 pub async fn get_client_fallback_import_map() -> Result<Vc<ImportMap>> {
-    let mut import_map = ImportMap::empty();
+    let import_map = ImportMap::empty();
 
-    insert_turbopack_dev_alias(&mut import_map).await?;
+    // insert_package_alias(
+    //     &mut import_map,
+    //     "@utoo/turbopack-ecmascript-runtime/",
+    //     turbopack_ecmascript_runtime::embed_fs()
+    //         .root()
+    //         .to_resolved()
+    //         .await?,
+    // );
 
     Ok(import_map.cell())
 }
@@ -72,19 +79,28 @@ async fn insert_shared_aliases(
     import_map.insert_singleton_alias("react", project_path);
     import_map.insert_singleton_alias("react-dom", project_path);
 
-    insert_turbopack_dev_alias(import_map).await?;
-    insert_package_alias(
-        import_map,
-        "@vercel/turbopack-node/",
-        turbopack_node::embed_js::embed_fs()
-            .root()
-            .to_resolved()
-            .await?,
-    );
+    // insert_package_alias(
+    //     import_map,
+    //     "@utoo/turbopack-ecmascript-runtime/",
+    //     turbopack_ecmascript_runtime::embed_fs()
+    //         .root()
+    //         .to_resolved()
+    //         .await?,
+    // );
+    // insert_package_alias(
+    //     import_map,
+    //     "@utoo/turbopack-node/",
+    //     turbopack_node::embed_js::embed_fs()
+    //         .root()
+    //         .to_resolved()
+    //         .await?,
+    // );
+
     Ok(())
 }
 
 /// Inserts an alias to an import mapping into an import map.
+#[allow(dead_code)]
 fn insert_package_alias(
     import_map: &mut ImportMap,
     prefix: &str,
@@ -94,19 +110,6 @@ fn insert_package_alias(
         prefix,
         ImportMapping::PrimaryAlternative("./*".into(), Some(package_root)).resolved_cell(),
     );
-}
-
-/// Inserts an alias to @vercel/turbopack-dev into an import map.
-async fn insert_turbopack_dev_alias(import_map: &mut ImportMap) -> Result<()> {
-    insert_package_alias(
-        import_map,
-        "@vercel/turbopack-ecmascript-runtime/",
-        turbopack_ecmascript_runtime::embed_fs()
-            .root()
-            .to_resolved()
-            .await?,
-    );
-    Ok(())
 }
 
 #[turbo_tasks::function]

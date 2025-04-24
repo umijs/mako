@@ -642,6 +642,7 @@ dependencies = [
  "napi-build",
  "napi-derive",
  "owo-colors 4.2.0",
+ "par-core",
  "rand 0.9.0",
  "rustc-hash 2.1.1",
  "serde",

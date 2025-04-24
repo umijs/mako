@@ -63,6 +63,7 @@ swc_core = { workspace = true, features = [
   "ecma_utils",
   "ecma_visit",
 ] }
+par-core = { workspace = true, features = ["rayon"] }
 turbopack-ecmascript-plugins = { workspace = true, optional = true }
 console-subscriber = { workspace = true, optional = true }
 rand = { workspace = true }
