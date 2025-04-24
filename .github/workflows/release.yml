@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             platform_os: linux
             platform_cpu: x64
@@ -53,7 +53,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --bin utoo --bin utoo-install --bin utoo-rebuild --bin utoo-deps --bin utoo-clean
+          args: --release --bin utoo --bin utoo-install --bin utoo-rebuild --bin utoo-deps --bin utoo-clean --bin utoo-core
 
       - name: Package Binaries
         run: |
@@ -91,7 +91,7 @@ jobs:
 
   publish-main:
     needs: build-and-publish-binary
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
