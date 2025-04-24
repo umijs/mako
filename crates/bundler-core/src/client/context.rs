@@ -110,7 +110,17 @@ async fn client_free_vars(define_env: Vc<EnvMap>) -> Result<Vc<FreeVarReferences
 pub async fn get_client_compile_time_info(
     browserslist_query: RcStr,
     define_env: Vc<EnvMap>,
+    mode: Vc<Mode>,
 ) -> Result<Vc<CompileTimeInfo>> {
+    let mut define_env = (*define_env.await?).clone();
+    define_env.extend([(
+        "process.env.NODE_ENV".into(),
+        serde_json::to_string(mode.await?.node_env())
+            .unwrap()
+            .into(),
+    )]);
+    let define_env = Vc::cell(define_env);
+
     CompileTimeInfo::builder(
         Environment::new(Value::new(ExecutionEnvironment::Browser(
             BrowserEnvironment {

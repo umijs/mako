@@ -106,30 +106,33 @@ fn main() {
             ));
 
             let project_options_path = PathBuf::from(&project_path).join("project_options.json");
-            let mut project_options_file =
-                File::open(&project_options_path).unwrap_or_else(|_| panic!("failed to load {}", project_options_path.display()));
+            let mut project_options_file = File::open(&project_options_path)
+                .unwrap_or_else(|_| panic!("failed to load {}", project_options_path.display()));
             let config_path = PathBuf::from(&project_path).join("config.json");
-            let mut config= String::new();
+            let mut config = String::new();
             if let Ok(mut config_file) = File::open(&config_path) {
                 config_file.read_to_string(&mut config).unwrap();
             }
 
             let partial_project_options: PartialProjectOptions =
                 serde_json::from_reader(&mut project_options_file).unwrap();
-            let  project_options = ProjectOptions {
-                root_path: partial_project_options.root_path.as_ref().map(|r| canonicalize(r).unwrap().to_str().unwrap().into()).unwrap_or_else(|| project_path.clone()),
+            let project_options = ProjectOptions {
+                root_path: partial_project_options
+                    .root_path
+                    .as_ref()
+                    .map(|r| canonicalize(r).unwrap().to_str().unwrap().into())
+                    .unwrap_or_else(|| project_path.clone()),
                 project_path,
-                entry: partial_project_options.entry.unwrap_or_default(),
                 config: if config.is_empty() {
                     r#"{ "env": { },"experimental": { } }"#.into()
-                    } else {
-                        config.into()
-                    },
-                js_config: partial_project_options.js_config.unwrap_or(r#"{}"#.into()),
-                env: partial_project_options.env.unwrap_or_default(),
-                define_env: partial_project_options.define_env.unwrap_or_default(),
-                browserslist_query: partial_project_options.browserslist_query.unwrap_or("last 1 Chrome versions, last 1 Firefox versions, last 1 Safari versions, last 1 Edge versions".into()),
-                no_mangling: partial_project_options.no_mangling.unwrap_or(false),
+                } else {
+                    config.into()
+                },
+                process_env: partial_project_options.process_env.unwrap_or_default(),
+                process_define_env: partial_project_options
+                    .process_define_env
+                    .unwrap_or_default(),
+
                 watch: if dev {
                     WatchOptions {
                         enable: true,

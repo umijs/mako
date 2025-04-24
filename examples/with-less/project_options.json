@@ -1,12 +1,15 @@
 {
   "rootPath": "../../",
   "projectPath": "./",
-  "distDir": "./dist",
-  "entry": [
-    {
-      "import": "./src/index.ts",
-      "library": {}
+  "config": {
+    "entry": [
+      {
+        "import": "./src/index.ts",
+        "library": {}
+      }
+    ],
+    "output": {
+      "path": "./dist"
     }
-  ],
-  "noMangling": true
+  }
 }

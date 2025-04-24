@@ -1,14 +1,18 @@
-use turbo_tasks::TaskInput;
+use turbo_tasks::OperationValue;
 use turbopack_ecmascript_runtime::RuntimeType;
 
 /// The mode in which Next.js is running.
 #[turbo_tasks::value(shared)]
-#[derive(Debug, Copy, Clone, TaskInput, Ord, PartialOrd, Hash)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Hash, OperationValue)]
 pub enum Mode {
-    /// `next dev --turbopack`
     Development,
-    /// `next build`
-    Build,
+    Production,
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Self::Production
+    }
 }
 
 impl Mode {
@@ -16,7 +20,7 @@ impl Mode {
     pub fn node_env(&self) -> &'static str {
         match self {
             Mode::Development => "development",
-            Mode::Build => "production",
+            Mode::Production => "production",
         }
     }
 
@@ -24,7 +28,7 @@ impl Mode {
     pub fn condition(&self) -> &'static str {
         match self {
             Mode::Development => "development",
-            Mode::Build => "production",
+            Mode::Production => "production",
         }
     }
 
@@ -32,28 +36,28 @@ impl Mode {
     pub fn is_react_development(&self) -> bool {
         match self {
             Mode::Development => true,
-            Mode::Build => false,
+            Mode::Production => false,
         }
     }
 
     pub fn is_development(&self) -> bool {
         match self {
             Mode::Development => true,
-            Mode::Build => false,
+            Mode::Production => false,
         }
     }
 
     pub fn is_production(&self) -> bool {
         match self {
             Mode::Development => false,
-            Mode::Build => true,
+            Mode::Production => true,
         }
     }
 
     pub fn runtime_type(&self) -> RuntimeType {
         match self {
             Mode::Development => RuntimeType::Development,
-            Mode::Build => RuntimeType::Production,
+            Mode::Production => RuntimeType::Production,
         }
     }
 }

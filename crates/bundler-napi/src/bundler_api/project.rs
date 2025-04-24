@@ -5,8 +5,7 @@ use bundler_api::{
     entrypoints::Entrypoints,
     operation::EntrypointsOperation,
     project::{
-        DefineEnv, EntryOptions, LibraryOptions, PartialProjectOptions, Project, ProjectContainer,
-        ProjectOptions, WatchOptions,
+        DefineEnv, PartialProjectOptions, Project, ProjectContainer, ProjectOptions, WatchOptions,
     },
 };
 use bundler_core::tracing_presets::{
@@ -64,44 +63,6 @@ pub struct NapiEnvVar {
 }
 
 #[napi(object)]
-#[derive(Clone, Debug)]
-pub struct NapiEntryOptions {
-    pub name: Option<String>,
-    pub import: String,
-    pub filename: Option<String>,
-    pub library: Option<NapiLibraryOptions>,
-}
-
-impl From<NapiEntryOptions> for EntryOptions {
-    fn from(val: NapiEntryOptions) -> Self {
-        Self {
-            name: val.name.map(|n| n.into()),
-            import: val.import.into(),
-            filename: val.filename.map(|f| f.into()),
-            library: val.library.map(|l| l.into()),
-        }
-    }
-}
-
-impl From<NapiLibraryOptions> for LibraryOptions {
-    fn from(val: NapiLibraryOptions) -> Self {
-        Self {
-            name: val.name.map(|n| n.into()),
-            export: val
-                .export
-                .map(|e| e.into_iter().map(|e| e.into()).collect()),
-        }
-    }
-}
-
-#[napi(object)]
-#[derive(Clone, Debug)]
-pub struct NapiLibraryOptions {
-    pub name: Option<String>,
-    pub export: Option<Vec<String>>,
-}
-
-#[napi(object)]
 pub struct NapiWatchOptions {
     /// Whether to watch the filesystem for file changes.
     pub enable: bool,
@@ -120,42 +81,24 @@ pub struct NapiProjectOptions {
     /// A path inside the root_path which contains the app/pages directories.
     pub project_path: String,
 
-    /// next.config's distDir. Project initialization occurs earlier than
-    /// deserializing next.config, so passing it as separate option.
-    pub dist_dir: String,
-
-    // Entry Config
-    pub entry: Vec<NapiEntryOptions>,
-
     /// Filesystem watcher options.
     pub watch: NapiWatchOptions,
 
     /// The contents of config.js, serialized to JSON.
     pub config: String,
 
-    /// The contents of ts/config read by load-jsconfig, serialized to JSON.
-    pub js_config: String,
-
     /// A map of environment variables to use when compiling code.
-    pub env: Vec<NapiEnvVar>,
+    pub process_env: Vec<NapiEnvVar>,
 
     /// A map of environment variables which should get injected at compile
     /// time.
-    pub define_env: NapiDefineEnv,
+    pub process_define_env: NapiDefineEnv,
 
     /// The mode in which Next.js is running.
     pub dev: bool,
 
     /// The build id.
     pub build_id: String,
-
-    /// The browserslist query to use for targeting browsers.
-    pub browserslist_query: String,
-
-    /// When the code is minified, this opts out of the default mangling of
-    /// local names for variables, functions etc., which can be useful for
-    /// debugging/profiling purposes.
-    pub no_mangling: bool,
 }
 
 /// [NapiProjectOptions] with all fields optional.
@@ -168,37 +111,24 @@ pub struct NapiPartialProjectOptions {
     /// A path inside the root_path which contains the app/pages directories.
     pub project_path: Option<String>,
 
-    // Entry Config
-    pub entry: Option<Vec<NapiEntryOptions>>,
-
-    /// next.config's distDir. Project initialization occurs earlier than
-    /// deserializing next.config, so passing it as separate option.
-    pub dist_dir: Option<Option<String>>,
-
     /// Filesystem watcher options.
     pub watch: Option<NapiWatchOptions>,
 
     /// The contents of config.js, serialized to JSON.
     pub config: Option<String>,
 
-    /// The contents of ts/config read by load-jsconfig, serialized to JSON.
-    pub js_config: Option<String>,
-
     /// A map of environment variables to use when compiling code.
-    pub env: Option<Vec<NapiEnvVar>>,
+    pub process_env: Option<Vec<NapiEnvVar>>,
 
     /// A map of environment variables which should get injected at compile
     /// time.
-    pub define_env: Option<NapiDefineEnv>,
+    pub process_define_env: Option<NapiDefineEnv>,
 
     /// The mode in which Next.js is running.
     pub dev: Option<bool>,
 
     /// The build id.
     pub build_id: Option<String>,
-
-    /// The browserslist query to use for targeting browsers.
-    pub browserslist_query: Option<String>,
 
     /// When the code is minified, this opts out of the default mangling of
     /// local names for variables, functions etc., which can be useful for
@@ -241,20 +171,16 @@ impl From<NapiProjectOptions> for ProjectOptions {
         ProjectOptions {
             root_path: val.root_path.into(),
             project_path: val.project_path.into(),
-            entry: val.entry.into_iter().map(|e| e.into()).collect(),
             watch: val.watch.into(),
             config: val.config.into(),
-            js_config: val.js_config.into(),
-            env: val
-                .env
+            process_env: val
+                .process_env
                 .into_iter()
                 .map(|var| (var.name.into(), var.value.into()))
                 .collect(),
-            define_env: val.define_env.into(),
+            process_define_env: val.process_define_env.into(),
             dev: val.dev,
             build_id: val.build_id.into(),
-            browserslist_query: val.browserslist_query.into(),
-            no_mangling: val.no_mangling,
         }
     }
 }
@@ -264,22 +190,15 @@ impl From<NapiPartialProjectOptions> for PartialProjectOptions {
         PartialProjectOptions {
             root_path: val.root_path.map(From::from),
             project_path: val.project_path.map(From::from),
-            entry: val
-                .entry
-                .map(|entry| entry.into_iter().map(|e| e.into()).collect()),
             watch: val.watch.map(From::from),
             config: val.config.map(From::from),
-            js_config: val.js_config.map(From::from),
-            env: val.env.map(|env| {
+            process_env: val.process_env.map(|env| {
                 env.into_iter()
                     .map(|var| (var.name.into(), var.value.into()))
                     .collect()
             }),
-            define_env: val.define_env.map(|env| env.into()),
-            dev: val.dev,
+            process_define_env: val.process_define_env.map(|env| env.into()),
             build_id: val.build_id.map(From::from),
-            browserslist_query: val.browserslist_query.map(From::from),
-            no_mangling: val.no_mangling,
         }
     }
 }
@@ -365,13 +284,12 @@ pub async fn project_new(
         let subscriber = subscriber.with(console_subscriber::spawn());
 
         let subscriber = subscriber.with(FilterLayer::try_new(&trace).unwrap());
-        let dist_dir = options.dist_dir.clone();
 
-        let internal_dir = PathBuf::from(&options.project_path).join(dist_dir);
+        let internal_dir = PathBuf::from(&options.project_path).join(".turbopack");
         std::fs::create_dir_all(&internal_dir)
             .context("Unable to create dist directory")
             .unwrap();
-        let trace_file = internal_dir.join("trace-turbopack");
+        let trace_file = internal_dir.join(".trace-turbopack");
         let trace_writer = std::fs::File::create(trace_file.clone()).unwrap();
         let (trace_writer, trace_writer_guard) = TraceWriter::new(trace_writer);
         let subscriber = subscriber.with(RawTraceLayer::new(trace_writer));
@@ -406,7 +324,7 @@ pub async fn project_new(
     let persistent_caching = turbo_engine_options.persistent_caching.unwrap_or_default();
     let dependency_tracking = turbo_engine_options.dependency_tracking.unwrap_or(true);
     let turbo_tasks = create_turbo_tasks(
-        PathBuf::from(&options.dist_dir),
+        PathBuf::from(&options.project_path),
         persistent_caching,
         memory_limit,
         dependency_tracking,

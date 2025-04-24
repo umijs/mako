@@ -1,7 +1,5 @@
 import {
   HmrIdentifiers,
-  NapiEntryOptions,
-  NapiEntrypoints,
   NapiIssue,
   NapiUpdateMessage,
   NapiWrittenEndpoint,
@@ -39,6 +37,18 @@ export type Update = IssuesUpdate | PartialUpdate;
 
 export type RustifiedEnv = { name: string; value: string }[];
 
+export interface EntryOptions {
+  name?: string;
+  import: string;
+  filename?: string;
+  library?: LibraryOptions;
+}
+
+export interface LibraryOptions {
+  name?: string;
+  export?: Array<string>;
+}
+
 export interface DefineEnv {
   client: RustifiedEnv;
   edge: RustifiedEnv;
@@ -54,7 +64,19 @@ export type TurbopackRuleConfigItem =
   | { [condition: string]: TurbopackRuleConfigItem }
   | false;
 
+/**
+ * @deprecated Use `TurbopackRuleConfigItem` instead.
+ */
+export type TurbopackLoaderItem =
+  | string
+  | {
+      loader: string;
+      // At the moment, Turbopack options must be JSON-serializable, so restrict values.
+      options: Record<string, JSONValue>;
+    };
+
 export type TurbopackRuleConfigItemOptions = {
+  loaders: TurbopackLoaderItem[];
   as?: string;
 };
 
@@ -68,12 +90,15 @@ export interface ResolveOptions {
 }
 
 export interface ConfigComplete {
+  entry: EntryOptions[];
+  mode?: "production" | "development";
   module?: ModuleOptions;
   resolve?: ResolveOptions;
   output?: {
     path?: string;
     type?: "standalone" | "export";
   };
+  target?: string;
   sourceMaps?: boolean;
   optimization?: {
     moduleIds?: "named" | "deterministic";
@@ -170,28 +195,6 @@ export type JSONValue =
   | JSONValue[]
   | { [k: string]: JSONValue };
 
-export type TurboLoaderItem =
-  | string
-  | {
-      loader: string;
-      // At the moment, Turbopack options must be JSON-serializable, so restrict values.
-      options: Record<string, JSONValue>;
-    };
-
-export type TurboRuleConfigItemOrShortcut =
-  | TurboLoaderItem[]
-  | TurboRuleConfigItem;
-
-export type TurboRuleConfigItemOptions = {
-  loaders: TurboLoaderItem[];
-  as?: string;
-};
-
-export type TurboRuleConfigItem =
-  | TurboRuleConfigItemOptions
-  | { [condition: string]: TurboRuleConfigItem }
-  | false;
-
 export interface ProjectOptions {
   /**
    * A root path from which all files must be nested under. Trying to access
@@ -204,35 +207,17 @@ export interface ProjectOptions {
    */
   projectPath: string;
 
-  entry: NapiEntryOptions[];
-
-  /**
-   * The path to the .next directory.
-   */
-  distDir: string;
-
   /**
    * The next.config.js contents.
    */
   config: ConfigComplete;
 
   /**
-   * Jsconfig, or tsconfig contents.
-   *
-   * Next.js implicitly requires to read it to support few options
-   * https://nextjs.org/docs/architecture/nextjs-compiler#legacy-decorators
-   * https://nextjs.org/docs/architecture/nextjs-compiler#importsource
-   */
-  jsConfig: {
-    compilerOptions: object;
-  };
-
-  /**
    * A map of environment variables to use when compiling code.
    */
-  env: Record<string, string>;
+  processEnv: Record<string, string>;
 
-  defineEnv: DefineEnv;
+  processDefineEnv: DefineEnv;
 
   /**
    * Whether to watch the filesystem for file changes.
@@ -251,18 +236,6 @@ export interface ProjectOptions {
    * The build id.
    */
   buildId: string;
-
-  /**
-   * The browserslist query to use for targeting browsers.
-   */
-  browserslistQuery: string;
-
-  /**
-   * When the code is minified, this opts out of the default mangling of local
-   * names for variables, functions etc., which can be useful for
-   * debugging/profiling purposes.
-   */
-  noMangling: boolean;
 }
 
 export interface Project {

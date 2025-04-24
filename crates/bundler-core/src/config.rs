@@ -2,6 +2,7 @@ use anyhow::{bail, Context, Result};
 use rustc_hash::FxHashSet;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
+use std::time::Duration;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{
     debug::ValueDebugFormat, trace::TraceRawVcs, FxIndexMap, NonLocalValue, OperationValue,
@@ -49,14 +50,59 @@ impl Default for CacheKinds {
 #[turbo_tasks::value(transparent)]
 pub struct OptionalJsonValue(Option<JsonValue>);
 
+#[derive(
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    TraceRawVcs,
+    NonLocalValue,
+    OperationValue,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct EntryOptions {
+    pub name: Option<RcStr>,
+    pub import: RcStr,
+    pub filename: Option<RcStr>,
+    pub library: Option<LibraryOptions>,
+}
+
+#[derive(
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    TraceRawVcs,
+    NonLocalValue,
+    OperationValue,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryOptions {
+    pub name: Option<RcStr>,
+    pub export: Option<Vec<RcStr>>,
+}
+
+#[turbo_tasks::value(transparent)]
+pub struct Entries(Vec<EntryOptions>);
+
 #[turbo_tasks::value(serialization = "custom", eq = "manual")]
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, OperationValue)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    /// custom path to a cache handler to use
+    mode: Option<Mode>,
+    entry: Vec<EntryOptions>,
     module: Option<ModuleConfig>,
     resolve: Option<ResolveConfig>,
     output: Option<OutputConfig>,
+    target: Option<RcStr>,
     source_maps: Option<bool>,
     optimization: Option<OptimizationConfig>,
     define_env: Option<FxIndexMap<String, JsonValue>>,
@@ -127,6 +173,10 @@ pub struct OptionImageConfig(Option<ImageConfig>);
 #[serde(rename_all = "camelCase")]
 pub struct OptimizationConfig {
     pub module_ids: Option<ModuleIds>,
+    /// When the code is minified, this opts out of the default mangling of
+    /// local names for variables, functions etc., which can be useful for
+    /// debugging/profiling purposes.
+    pub no_mangling: Option<bool>,
     pub minify: Option<bool>,
     pub tree_shaking: Option<bool>,
     pub package_imports: Option<Vec<RcStr>>,
@@ -474,6 +524,18 @@ impl RemoveConsoleConfig {
     }
 }
 
+#[turbo_tasks::value(eq = "manual")]
+#[derive(Clone, Debug, PartialEq, Default, OperationValue)]
+#[serde(rename_all = "camelCase")]
+pub struct WatchOptions {
+    /// Whether to watch the filesystem for file changes.
+    pub enable: bool,
+
+    /// Enable polling at a certain interval if the native file watching doesn't work (e.g.
+    /// docker).
+    pub poll_interval: Option<Duration>,
+}
+
 #[turbo_tasks::value(transparent)]
 pub struct ResolveExtensions(Option<Vec<RcStr>>);
 
@@ -531,6 +593,18 @@ impl Config {
     }
 
     #[turbo_tasks::function]
+    pub fn mode(&self) -> Vc<Mode> {
+        self.mode.unwrap_or_default().cell()
+    }
+
+    #[turbo_tasks::function]
+    pub fn target(&self) -> Vc<RcStr> {
+        Vc::cell(self.target.clone().unwrap_or(
+            "last 1 Chrome versions, last 1 Firefox versions, last 1 Safari versions, last 1 Edge versions".into()
+        ))
+    }
+
+    #[turbo_tasks::function]
     pub fn define_env(&self) -> Vc<EnvMap> {
         let define_env = self
             .define_env
@@ -561,6 +635,11 @@ impl Config {
                 .map(|op| op.transpile_packages.clone().unwrap_or_default())
                 .unwrap_or_default(),
         )
+    }
+
+    #[turbo_tasks::function]
+    pub fn entries(&self) -> Vc<Entries> {
+        Vc::cell(self.entry.clone())
     }
 
     #[turbo_tasks::function]
@@ -904,42 +983,26 @@ impl Config {
         let minify = self
             .optimization
             .as_ref()
-            .map(|op| op.minify.is_some_and(|minify| minify));
+            .map(|op| op.minify.is_none_or(|minify| minify));
 
         Ok(Vc::cell(
-            minify.unwrap_or(matches!(*mode.await?, Mode::Build)),
+            minify.unwrap_or(matches!(*mode.await?, Mode::Production)),
         ))
+    }
+
+    #[turbo_tasks::function]
+    pub fn no_mangling(&self) -> Vc<bool> {
+        Vc::cell(
+            self.optimization
+                .as_ref()
+                .map(|op| op.no_mangling.is_some_and(|no_mangling| no_mangling))
+                .unwrap_or(false),
+        )
     }
 
     #[turbo_tasks::function]
     pub async fn source_maps(&self) -> Result<Vc<bool>> {
         Ok(Vc::cell(self.source_maps.unwrap_or(true)))
-    }
-}
-
-/// A subset of ts/jsconfig that next.js implicitly
-/// interops with.
-#[turbo_tasks::value(serialization = "custom", eq = "manual")]
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JsConfig {
-    compiler_options: Option<serde_json::Value>,
-}
-
-#[turbo_tasks::value_impl]
-impl JsConfig {
-    #[turbo_tasks::function]
-    pub async fn from_string(string: Vc<RcStr>) -> Result<Vc<Self>> {
-        let string = string.await?;
-        let config: JsConfig = serde_json::from_str(&string)
-            .with_context(|| format!("failed to parse config.js: {}", string))?;
-
-        Ok(config.cell())
-    }
-
-    #[turbo_tasks::function]
-    pub fn compiler_options(&self) -> Vc<serde_json::Value> {
-        Vc::cell(self.compiler_options.clone().unwrap_or_default())
     }
 }
 
