@@ -30,12 +30,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Prepare Env
-        id: parepare_env
-        run: |
-          apk update &&
-          apk add --no-cache libc6-compat pkgconfig dav1d libdav1d dav1d-dev clang-static llvm-dev
-
       - name: Get version from release or use alpha version
         id: get_version
         run: |
