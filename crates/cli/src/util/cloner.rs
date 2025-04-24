@@ -46,7 +46,7 @@ mod linux_clone {
             let target_path = dst.join(file_name);
 
             if entry.metadata().await?.is_dir() {
-                clone_dir(&entry_path, &target_path).await?;
+                Box::pin(clone_dir(&entry_path, &target_path)).await?;
             } else {
                 let src_file = File::open(&entry_path)?;
                 let dst_file = File::create(&target_path)?;

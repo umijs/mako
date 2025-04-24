@@ -7,7 +7,7 @@ env:
 
 jobs:
   detect-changes:
-    runs-on: macos-latest
+    runs-on: ubuntu-22.04
     outputs:
       changed-crates: ${{ steps.detect.outputs.changed-crates }}
     steps:
