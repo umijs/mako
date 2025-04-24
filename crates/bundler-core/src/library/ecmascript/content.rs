@@ -62,7 +62,6 @@ impl EcmascriptLibraryChunkContent {
     #[turbo_tasks::function]
     async fn code(self: Vc<Self>) -> Result<Vc<Code>> {
         let this = self.await?;
-        let chunking_context = this.chunking_context.await?;
         let environment = this.chunking_context.environment();
 
         let output_root = this.chunking_context.output_root().await?;
@@ -149,8 +148,8 @@ impl EcmascriptLibraryChunkContent {
 
         let runtime_code = turbopack_ecmascript_runtime::get_browser_runtime_code(
             environment,
-            chunking_context.chunk_base_path(),
-            chunking_context.chunk_suffix_path(),
+            Vc::cell(None),
+            Vc::cell(None),
             Value::new(RuntimeType::Production),
             output_root_to_root_path,
             source_maps,

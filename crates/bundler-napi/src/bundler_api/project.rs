@@ -953,10 +953,7 @@ pub async fn get_source_map_rope(
 
     let server_path = container.project().node_root().join(chunk_base.into());
 
-    let client_path = container
-        .project()
-        .client_relative_path()
-        .join(chunk_base.into());
+    let client_path = container.project().client_root().join(chunk_base.into());
 
     let mut map = container.get_source_map(server_path, module.clone());
 
@@ -1031,7 +1028,7 @@ pub async fn project_trace_source(
             };
 
             let project_root_uri =
-                uri_from_file(project.container.project().project_root_path(), None).await? + "/";
+                uri_from_file(project.container.project().project_root(), None).await? + "/";
             let (file, original_file, is_internal) =
                 if let Some(source_file) = original_file.strip_prefix(&project_root_uri) {
                     // Client code uses file://

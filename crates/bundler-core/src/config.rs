@@ -54,30 +54,40 @@ pub struct OptionalJsonValue(Option<JsonValue>);
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     /// custom path to a cache handler to use
-    pub cache_handler: Option<RcStr>,
-
-    pub env: FxIndexMap<String, JsonValue>,
-    pub experimental: ExperimentalConfig,
-    pub transpile_packages: Option<Vec<RcStr>>,
-    pub modularize_imports: Option<FxIndexMap<String, ModularizeImportPackageConfig>>,
-    pub dist_dir: Option<RcStr>,
+    module: Option<ModuleConfig>,
+    resolve: Option<ResolveConfig>,
+    output: Option<OutputConfig>,
+    source_maps: Option<bool>,
+    optimization: Option<OptimizationConfig>,
+    define_env: Option<FxIndexMap<String, JsonValue>>,
     sass_options: Option<serde_json::Value>,
     less_options: Option<serde_json::Value>,
     style_options: Option<serde_json::Value>,
-    pub optimize_image: Option<ImageConfig>,
-    pub asset_prefix: Option<RcStr>,
-    pub base_path: Option<RcStr>,
-    pub output: Option<OutputType>,
-    pub turbopack: Option<TurbopackConfig>,
+    server_external_packages: Option<Vec<RcStr>>,
+    compiler: Option<CompilerConfig>,
+    #[serde(default)]
+    experimental: ExperimentalConfig,
+    persistent_caching: Option<bool>,
+    cache_handler: Option<RcStr>,
+}
 
-    /// A list of packages that should be treated as external on the server
-    /// build.
-    ///
-    /// [API Reference](https://nextjs.org/docs/app/api-reference/next-config-js/serverExternalPackages)
-    pub server_external_packages: Option<Vec<RcStr>>,
-
-    // Partially supported
-    pub compiler: Option<CompilerConfig>,
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    Default,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    TraceRawVcs,
+    ValueDebugFormat,
+    NonLocalValue,
+    OperationValue,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolveConfig {
+    resolve_alias: Option<FxIndexMap<RcStr, JsonValue>>,
+    resolve_extensions: Option<Vec<RcStr>>,
 }
 
 #[derive(
@@ -100,6 +110,38 @@ pub struct ImageConfig {
 
 #[turbo_tasks::value(transparent)]
 pub struct OptionImageConfig(Option<ImageConfig>);
+
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    Default,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    TraceRawVcs,
+    ValueDebugFormat,
+    NonLocalValue,
+    OperationValue,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct OptimizationConfig {
+    pub module_ids: Option<ModuleIds>,
+    pub minify: Option<bool>,
+    pub tree_shaking: Option<bool>,
+    pub package_imports: Option<Vec<RcStr>>,
+    pub modularize_imports: Option<FxIndexMap<String, ModularizeImportPackageConfig>>,
+    pub transpile_packages: Option<Vec<RcStr>>,
+    pub image: Option<ImageConfig>,
+}
+
+#[turbo_tasks::value(eq = "manual")]
+#[derive(Clone, Debug, PartialEq, Default, OperationValue)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputConfig {
+    pub path: Option<RcStr>,
+    pub r#type: Option<OutputType>,
+}
 
 #[derive(
     Clone, Debug, PartialEq, Serialize, Deserialize, TraceRawVcs, NonLocalValue, OperationValue,
@@ -212,13 +254,8 @@ pub struct OptionalReactCompilerOptions(Option<ResolvedVc<ReactCompilerOptions>>
     OperationValue,
 )]
 #[serde(rename_all = "camelCase")]
-pub struct TurbopackConfig {
-    /// This option has been replaced by `rules`.
-    pub loaders: Option<JsonValue>,
+pub struct ModuleConfig {
     pub rules: Option<FxIndexMap<RcStr, RuleConfigItemOrShortcut>>,
-    pub resolve_alias: Option<FxIndexMap<RcStr, JsonValue>>,
-    pub resolve_extensions: Option<Vec<RcStr>>,
-    pub module_ids: Option<ModuleIds>,
 }
 
 #[derive(
@@ -242,24 +279,13 @@ pub struct ExperimentalConfig {
     use_cache: Option<bool>,
     cache_handlers: Option<FxIndexMap<RcStr, RcStr>>,
     esm_externals: Option<EsmExternals>,
-
-    /// Automatically apply the "modularize_imports" optimization to imports of
-    /// the specified packages.
-    optimize_package_imports: Option<Vec<RcStr>>,
-
     /// Using this feature will enable the `react@experimental` for the `app`
     /// directory.
     ppr: Option<ExperimentalPartialPrerendering>,
     taint: Option<bool>,
-    react_owner_stack: Option<bool>,
     react_compiler: Option<ReactCompilerOptionsOrBoolean>,
     view_transition: Option<bool>,
     server_actions: Option<ServerActionsOrLegacyBool>,
-    pub inline_css: Option<bool>,
-    turbopack_tree_shaking: Option<bool>,
-    turbopack_minify: Option<bool>,
-    turbopack_source_maps: Option<bool>,
-    turbopack_persistent_caching: Option<bool>,
 }
 
 #[derive(
@@ -482,7 +508,11 @@ impl Config {
 
     #[turbo_tasks::function]
     pub fn is_standalone(&self) -> Vc<bool> {
-        Vc::cell(self.output == Some(OutputType::Standalone))
+        Vc::cell(
+            self.output
+                .as_ref()
+                .is_some_and(|o| o.r#type == Some(OutputType::Standalone)),
+        )
     }
 
     #[turbo_tasks::function]
@@ -496,12 +526,16 @@ impl Config {
     }
 
     #[turbo_tasks::function]
-    pub fn env(&self) -> Vc<EnvMap> {
-        // The value expected for env is Record<String, String>, but config itself
-        // allows arbitrary object (https://github.com/vercel/next.js/blob/25ba8a74b7544dfb6b30d1b67c47b9cb5360cb4e/packages/next/src/server/config-schema.ts#L203)
-        // then stringifies it. We do the interop here as well.
-        let env = self
-            .env
+    pub fn output(&self) -> Vc<OutputConfig> {
+        self.output.clone().unwrap_or_default().cell()
+    }
+
+    #[turbo_tasks::function]
+    pub fn define_env(&self) -> Vc<EnvMap> {
+        let define_env = self
+            .define_env
+            .as_ref()
+            .unwrap_or(&FxIndexMap::default())
             .iter()
             .map(|(k, v)| {
                 (
@@ -516,17 +550,22 @@ impl Config {
             })
             .collect();
 
-        Vc::cell(env)
+        Vc::cell(define_env)
     }
 
     #[turbo_tasks::function]
     pub fn transpile_packages(&self) -> Vc<Vec<RcStr>> {
-        Vc::cell(self.transpile_packages.clone().unwrap_or_default())
+        Vc::cell(
+            self.optimization
+                .as_ref()
+                .map(|op| op.transpile_packages.clone().unwrap_or_default())
+                .unwrap_or_default(),
+        )
     }
 
     #[turbo_tasks::function]
     pub fn webpack_rules(&self, active_conditions: Vec<RcStr>) -> Vc<OptionWebpackRules> {
-        let Some(turbo_rules) = self.turbopack.as_ref().and_then(|t| t.rules.as_ref()) else {
+        let Some(turbo_rules) = self.module.as_ref().and_then(|t| t.rules.as_ref()) else {
             return Vc::cell(None);
         };
         if turbo_rules.is_empty() {
@@ -609,19 +648,12 @@ impl Config {
 
     #[turbo_tasks::function]
     pub fn persistent_caching_enabled(&self) -> Result<Vc<bool>> {
-        Ok(Vc::cell(
-            self.experimental
-                .turbopack_persistent_caching
-                .unwrap_or_default(),
-        ))
+        Ok(Vc::cell(self.persistent_caching.unwrap_or_default()))
     }
 
     #[turbo_tasks::function]
     pub fn resolve_alias_options(&self) -> Result<Vc<ResolveAliasMap>> {
-        let Some(resolve_alias) = self
-            .turbopack
-            .as_ref()
-            .and_then(|t| t.resolve_alias.as_ref())
+        let Some(resolve_alias) = self.resolve.as_ref().and_then(|t| t.resolve_alias.as_ref())
         else {
             return Ok(ResolveAliasMap::cell(ResolveAliasMap::default()));
         };
@@ -632,7 +664,7 @@ impl Config {
     #[turbo_tasks::function]
     pub fn resolve_extension(&self) -> Vc<ResolveExtensions> {
         let Some(resolve_extensions) = self
-            .turbopack
+            .resolve
             .as_ref()
             .and_then(|t| t.resolve_extensions.as_ref())
         else {
@@ -682,12 +714,22 @@ impl Config {
 
     #[turbo_tasks::function]
     pub fn image_config(&self) -> Vc<OptionImageConfig> {
-        Vc::cell(self.optimize_image.clone())
+        Vc::cell(
+            self.optimization
+                .as_ref()
+                .map(|op| op.image.clone())
+                .unwrap_or_default(),
+        )
     }
 
     #[turbo_tasks::function]
     pub fn modularize_imports(&self) -> Vc<ModularizeImports> {
-        Vc::cell(self.modularize_imports.clone().unwrap_or_default())
+        Vc::cell(
+            self.optimization
+                .as_ref()
+                .map(|op| op.modularize_imports.clone().unwrap_or_default())
+                .unwrap_or_default(),
+        )
     }
 
     #[turbo_tasks::function]
@@ -752,33 +794,6 @@ impl Config {
         Vc::cell(self.style_options.clone())
     }
 
-    /// Returns the final asset prefix. If an assetPrefix is set, it's used.
-    /// Otherwise, the basePath is used.
-    #[turbo_tasks::function]
-    pub async fn computed_asset_prefix(self: Vc<Self>) -> Result<Vc<Option<RcStr>>> {
-        let this = self.await?;
-
-        Ok(Vc::cell(Some(
-            format!(
-                "{}/",
-                if let Some(asset_prefix) = &this.asset_prefix {
-                    asset_prefix
-                } else {
-                    this.base_path.as_ref().map_or("", |b| b.as_str())
-                }
-                .trim_end_matches('/')
-            )
-            .into(),
-        )))
-    }
-
-    /// Returns the suffix to use for chunk loading.
-    #[turbo_tasks::function]
-    pub async fn chunk_suffix_path(self: Vc<Self>) -> Result<Vc<Option<RcStr>>> {
-        // TODO: Maybe remove this
-        Ok(Vc::cell(None))
-    }
-
     #[turbo_tasks::function]
     pub fn enable_ppr(&self) -> Vc<bool> {
         Vc::cell(
@@ -798,11 +813,6 @@ impl Config {
     #[turbo_tasks::function]
     pub fn enable_taint(&self) -> Vc<bool> {
         Vc::cell(self.experimental.taint.unwrap_or(false))
-    }
-
-    #[turbo_tasks::function]
-    pub fn enable_react_owner_stack(&self) -> Vc<bool> {
-        Vc::cell(self.experimental.react_owner_stack.unwrap_or(false))
     }
 
     #[turbo_tasks::function]
@@ -841,9 +851,9 @@ impl Config {
     #[turbo_tasks::function]
     pub fn optimize_package_imports(&self) -> Vc<Vec<RcStr>> {
         Vc::cell(
-            self.experimental
-                .optimize_package_imports
-                .clone()
+            self.optimization
+                .as_ref()
+                .map(|op| op.package_imports.clone().unwrap_or_default())
                 .unwrap_or_default(),
         )
     }
@@ -853,7 +863,10 @@ impl Config {
         &self,
         _is_development: bool,
     ) -> Vc<OptionTreeShaking> {
-        let tree_shaking = self.experimental.turbopack_tree_shaking;
+        let tree_shaking = self
+            .optimization
+            .as_ref()
+            .map(|op| op.tree_shaking.unwrap_or_default());
 
         OptionTreeShaking(match tree_shaking {
             Some(false) => Some(TreeShakingMode::ReexportsOnly),
@@ -865,7 +878,10 @@ impl Config {
 
     #[turbo_tasks::function]
     pub fn tree_shaking_mode_for_user_code(&self, _is_development: bool) -> Vc<OptionTreeShaking> {
-        let tree_shaking = self.experimental.turbopack_tree_shaking;
+        let tree_shaking = self
+            .optimization
+            .as_ref()
+            .map(|op| op.tree_shaking.unwrap_or_default());
 
         OptionTreeShaking(match tree_shaking {
             Some(false) => Some(TreeShakingMode::ReexportsOnly),
@@ -877,15 +893,18 @@ impl Config {
 
     #[turbo_tasks::function]
     pub fn module_ids(&self) -> Vc<OptionModuleIds> {
-        let Some(module_ids) = self.turbopack.as_ref().and_then(|t| t.module_ids) else {
+        let Some(module_ids) = self.optimization.as_ref().and_then(|t| t.module_ids) else {
             return Vc::cell(None);
         };
         Vc::cell(Some(module_ids))
     }
 
     #[turbo_tasks::function]
-    pub async fn turbo_minify(&self, mode: Vc<Mode>) -> Result<Vc<bool>> {
-        let minify = self.experimental.turbopack_minify;
+    pub async fn minify(&self, mode: Vc<Mode>) -> Result<Vc<bool>> {
+        let minify = self
+            .optimization
+            .as_ref()
+            .map(|op| op.minify.is_some_and(|minify| minify));
 
         Ok(Vc::cell(
             minify.unwrap_or(matches!(*mode.await?, Mode::Build)),
@@ -893,10 +912,8 @@ impl Config {
     }
 
     #[turbo_tasks::function]
-    pub async fn turbo_source_maps(&self) -> Result<Vc<bool>> {
-        let source_maps = self.experimental.turbopack_source_maps;
-
-        Ok(Vc::cell(source_maps.unwrap_or(true)))
+    pub async fn source_maps(&self) -> Result<Vc<bool>> {
+        Ok(Vc::cell(self.source_maps.unwrap_or(true)))
     }
 }
 

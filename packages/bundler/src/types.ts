@@ -58,59 +58,42 @@ export type TurbopackRuleConfigItemOptions = {
   as?: string;
 };
 
-export interface TurbopackOptions {
-  /**
-   * (`next --turbopack` only) A mapping of aliased imports to modules to load in their place.
-   *
-   * @see [Resolve Alias](https://nextjs.org/docs/app/api-reference/next-config-js/turbo#resolve-alias)
-   */
-  resolveAlias?: Record<
-    string,
-    string | string[] | Record<string, string | string[]>
-  >;
-
-  /**
-   * (`next --turbopack` only) A list of extensions to resolve when importing files.
-   *
-   * @see [Resolve Extensions](https://nextjs.org/docs/app/api-reference/next-config-js/turbo#resolve-extensions)
-   */
-  resolveExtensions?: string[];
-
-  /**
-   * (`next --turbopack` only) A list of webpack loaders to apply when running with Turbopack.
-   *
-   * @see [Turbopack Loaders](https://nextjs.org/docs/app/api-reference/next-config-js/turbo#webpack-loaders)
-   */
+export interface ModuleOptions {
   rules?: Record<string, TurbopackRuleConfigItemOrShortcut>;
+}
 
-  /**
-   * The module ID strategy to use for Turbopack.
-   * If not set, the default is `'named'` for development and `'deterministic'`
-   * for production.
-   */
-  moduleIds?: "named" | "deterministic";
-
-  /**
-   * This is the repo root usually and only files above this
-   * directory can be resolved by turbopack.
-   */
-  root?: string;
+export interface ResolveOptions {
+  alias?: Record<string, string | string[] | Record<string, string | string[]>>;
+  extensions?: string[];
 }
 
 export interface ConfigComplete {
-  cacheHandler?: string;
-  env: Record<string, string | undefined>;
-  experimental?: ExperimentalConfig;
-  transpilePackages?: string[];
-  modularizeImports?: Record<
-    string,
-    {
-      transform: string | Record<string, string>;
-      preventFullImport?: boolean;
-      skipDefaultConversion?: boolean;
-    }
-  >;
-  distDir?: string;
+  module?: ModuleOptions;
+  resolve?: ResolveOptions;
+  output?: {
+    path?: string;
+    type?: "standalone" | "export";
+  };
+  sourceMaps?: boolean;
+  optimization?: {
+    moduleIds?: "named" | "deterministic";
+    minify?: boolean;
+    treeShaking?: boolean;
+    modularizeImports?: Record<
+      string,
+      {
+        transform: string | Record<string, string>;
+        preventFullImport?: boolean;
+        skipDefaultConversion?: boolean;
+      }
+    >;
+    packageImports?: string[];
+    transpilePackages?: string[];
+    image?: {
+      inlineLimit?: number;
+    };
+  };
+  defineEnv: Record<string, string | undefined>;
   sassOptions?: {
     implementation?: string;
     [key: string]: any;
@@ -122,13 +105,6 @@ export interface ConfigComplete {
   styleOptions?: {
     [key: string]: any;
   };
-  optimizeImage?: {
-    inlineLimit?: number;
-  };
-  assetPrefix?: string;
-  basePath?: string;
-  output?: "standalone" | "export";
-  turbopack?: TurbopackOptions;
   serverExternalPackages?: string[];
   compiler?: {
     removeConsole?:
@@ -151,6 +127,9 @@ export interface ConfigComplete {
      */
     define?: Record<string, string>;
   };
+  experimental?: ExperimentalConfig;
+  persistentCaching?: boolean;
+  cacheHandler?: string;
 }
 
 export interface StyledComponentsConfig {

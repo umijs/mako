@@ -19,8 +19,6 @@ pub async fn get_library_chunking_context(
     root_path: ResolvedVc<FileSystemPath>,
     library_root: ResolvedVc<FileSystemPath>,
     library_root_to_root_path: ResolvedVc<RcStr>,
-    asset_prefix: ResolvedVc<Option<RcStr>>,
-    chunk_suffix_path: ResolvedVc<Option<RcStr>>,
     environment: ResolvedVc<Environment>,
     mode: Vc<Mode>,
     module_id_strategy: ResolvedVc<Box<dyn ModuleIdStrategy>>,
@@ -33,14 +31,9 @@ pub async fn get_library_chunking_context(
         root_path,
         library_root,
         library_root_to_root_path,
-        library_root,
-        library_root,
-        library_root,
         environment,
         mode.runtime_type(),
     )
-    .chunk_base_path(asset_prefix)
-    .chunk_suffix_path(chunk_suffix_path)
     .minify_type(if *minify.await? {
         MinifyType::Minify {
             mangle: (!*no_mangling.await?).then_some(MangleType::OptimalSize),
@@ -53,7 +46,6 @@ pub async fn get_library_chunking_context(
     } else {
         SourceMapsType::None
     })
-    .asset_base_path(asset_prefix)
     .module_id_strategy(module_id_strategy);
 
     Ok(Vc::upcast(builder.build()))

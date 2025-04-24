@@ -52,15 +52,7 @@ export async function build(dir?: string) {
       noMangling: projectOptions.noMangling ?? false,
       browserslistQuery:
         "last 1 Chrome versions, last 1 Firefox versions, last 1 Safari versions, last 1 Edge versions",
-      // FIXME
-      config: {
-        env: projectOptions.config?.env ?? {},
-        experimental: projectOptions.config?.experimental ?? {},
-        lessOptions: projectOptions.config?.lessOptions,
-        sassOptions: projectOptions.config?.sassOptions,
-        styleOptions: projectOptions.config?.styleOptions,
-        optimizeImage: projectOptions.config?.optimizeImage,
-      },
+      config: projectOptions.config,
       rootPath: path.resolve(cwd, projectOptions.rootPath),
       projectPath: path.resolve(cwd, projectOptions.projectPath),
     },

@@ -492,11 +492,7 @@ impl ProjectContainer {
             no_mangling = options.no_mangling
         }
 
-        let dist_dir = config
-            .await?
-            .dist_dir
-            .as_ref()
-            .map_or_else(|| "dist".into(), |d| d.clone());
+        let dist_dir = config.output().await?.path.clone().unwrap_or("dist".into());
 
         Ok(Project {
             root_path,
@@ -724,16 +720,8 @@ impl Project {
     }
 
     #[turbo_tasks::function]
-    pub fn project_root_path(self: Vc<Self>) -> Vc<FileSystemPath> {
+    pub fn project_root(self: Vc<Self>) -> Vc<FileSystemPath> {
         self.project_fs().root()
-    }
-
-    #[turbo_tasks::function]
-    pub async fn client_relative_path(self: Vc<Self>) -> Result<Vc<FileSystemPath>> {
-        let config = self.config().await?;
-        Ok(self
-            .client_root()
-            .join(format!("{}/", config.base_path.clone().unwrap_or_else(|| "".into()),).into()))
     }
 
     #[turbo_tasks::function]
@@ -742,7 +730,7 @@ impl Project {
             .project_path()
             .join(".turbopack".into())
             .await?
-            .get_relative_path_to(&*self.project_root_path().await?)
+            .get_relative_path_to(&*self.project_root().await?)
             .context("Project path need to be in root path")?;
         Ok(Vc::cell(output_root_to_root_path))
     }
@@ -750,7 +738,7 @@ impl Project {
     #[turbo_tasks::function]
     pub async fn project_path(self: Vc<Self>) -> Result<Vc<FileSystemPath>> {
         let this = self.await?;
-        let root = self.project_root_path();
+        let root = self.project_root();
         let project_relative = this.project_path.strip_prefix(&*this.root_path).unwrap();
         let project_relative = project_relative
             .strip_prefix(MAIN_SEPARATOR)
@@ -803,7 +791,7 @@ impl Project {
 
         let node_execution_chunking_context = Vc::upcast(
             NodeJsChunkingContext::builder(
-                self.project_root_path().to_resolved().await?,
+                self.project_root().to_resolved().await?,
                 node_root,
                 self.node_root_to_root_path().to_resolved().await?,
                 node_root,
@@ -812,7 +800,7 @@ impl Project {
                 node_build_environment().to_resolved().await?,
                 mode.runtime_type(),
             )
-            .source_maps(if *self.config().turbo_source_maps().await? {
+            .source_maps(if *self.config().source_maps().await? {
                 SourceMapsType::Full
             } else {
                 SourceMapsType::None
@@ -951,16 +939,14 @@ impl Project {
     #[turbo_tasks::function]
     pub(super) fn client_chunking_context(self: Vc<Self>) -> Vc<Box<dyn ChunkingContext>> {
         get_client_chunking_context(
-            self.project_root_path(),
-            self.client_relative_path(),
+            self.project_root(),
+            self.client_root(),
             Vc::cell("/ROOT".into()),
-            self.config().computed_asset_prefix(),
-            self.config().chunk_suffix_path(),
             self.client_compile_time_info().environment(),
             self.mode(),
             self.module_ids(),
-            self.config().turbo_minify(self.mode()),
-            self.config().turbo_source_maps(),
+            self.config().minify(self.mode()),
+            self.config().source_maps(),
             self.no_mangling(),
         )
     }
@@ -970,16 +956,14 @@ impl Project {
         self: Vc<Self>,
     ) -> Result<Vc<Box<dyn ChunkingContext>>> {
         Ok(get_library_chunking_context(
-            self.project_root_path(),
-            self.client_relative_path(),
+            self.project_root(),
+            self.client_root(),
             Vc::cell("/ROOT".into()),
-            self.config().computed_asset_prefix(),
-            self.config().chunk_suffix_path(),
             self.client_compile_time_info().environment(),
             self.mode(),
             self.module_ids(),
-            self.config().turbo_minify(self.mode()),
-            self.config().turbo_source_maps(),
+            self.config().minify(self.mode()),
+            self.config().source_maps(),
             self.no_mangling(),
         ))
     }
@@ -1045,17 +1029,12 @@ impl Project {
         async move {
             let all_output_assets = all_assets_from_entries_operation(output_assets);
 
-            let client_relative_path = self.client_relative_path();
+            let client_root = self.client_root();
             let dist_root = self.dist_root();
 
             if let Some(map) = self.await?.versioned_content_map {
                 let _ = map
-                    .insert_output_assets(
-                        all_output_assets,
-                        dist_root,
-                        client_relative_path,
-                        dist_root,
-                    )
+                    .insert_output_assets(all_output_assets, dist_root, client_root, dist_root)
                     .resolve()
                     .await?;
 
@@ -1064,7 +1043,7 @@ impl Project {
                 let _ = emit_assets(
                     all_output_assets.connect(),
                     dist_root,
-                    client_relative_path,
+                    client_root,
                     dist_root,
                 )
                 .resolve()
@@ -1080,7 +1059,7 @@ impl Project {
     #[turbo_tasks::function]
     async fn hmr_content(self: Vc<Self>, identifier: RcStr) -> Result<Vc<OptionVersionedContent>> {
         if let Some(map) = self.await?.versioned_content_map {
-            let content = map.get(self.client_relative_path().join(identifier.clone()));
+            let content = map.get(self.client_root().join(identifier.clone()));
             Ok(content)
         } else {
             bail!("must be in dev mode to hmr")
@@ -1147,7 +1126,7 @@ impl Project {
     #[turbo_tasks::function]
     pub async fn hmr_identifiers(self: Vc<Self>) -> Result<Vc<Vec<RcStr>>> {
         if let Some(map) = self.await?.versioned_content_map {
-            Ok(map.keys_in_path(self.client_relative_path()))
+            Ok(map.keys_in_path(self.client_root()))
         } else {
             bail!("must be in dev mode to hmr")
         }
