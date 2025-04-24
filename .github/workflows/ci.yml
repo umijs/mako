@@ -1,13 +1,13 @@
 name: utoo-ci
 
-on: [pull_request]
+on: [push]
 
 env:
   CARGO_INCREMENTAL: 1
 
 jobs:
   detect-changes:
-    runs-on: macos-latest
+    runs-on: ubuntu-22.04
     outputs:
       changed-crates: ${{ steps.detect.outputs.changed-crates }}
     steps:
