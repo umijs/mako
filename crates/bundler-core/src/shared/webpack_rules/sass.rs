@@ -13,7 +13,7 @@ use super::style_loader::style_loader;
 #[turbo_tasks::function]
 pub async fn maybe_add_sass_loader(
     sass_options: Vc<JsonValue>,
-    style_options: Vc<OptionalJsonValue>,
+    inline_css: Vc<OptionalJsonValue>,
     webpack_rules: Option<Vc<WebpackRules>>,
 ) -> Result<Vc<OptionWebpackRules>> {
     let sass_options = sass_options.await?;
@@ -39,9 +39,9 @@ pub async fn maybe_add_sass_loader(
         ("*.scss", ".css"),
         ("*.sass", ".css"),
     ] {
-        let style_options = &*style_options.await?;
+        let inline_css = &*inline_css.await?;
 
-        let rename = if style_options.is_some() {
+        let rename = if inline_css.is_some() {
             format!("{}.js", rename)
         } else {
             rename.to_string()
@@ -91,16 +91,16 @@ pub async fn maybe_add_sass_loader(
                 continue;
             }
             let mut loaders = rule.loaders.owned().await?;
-            if let Some(style_options) = style_options {
-                loaders.push(style_loader(style_options)?);
+            if let Some(inline_css) = inline_css {
+                loaders.push(style_loader(inline_css)?);
             }
             loaders.push(resolve_url_loader);
             loaders.push(sass_loader);
             rule.loaders = ResolvedVc::cell(loaders);
         } else {
-            let loaders = if let Some(style_options) = style_options {
+            let loaders = if let Some(inline_css) = inline_css {
                 vec![
-                    style_loader(style_options)?,
+                    style_loader(inline_css)?,
                     resolve_url_loader,
                     sass_loader,
                 ]

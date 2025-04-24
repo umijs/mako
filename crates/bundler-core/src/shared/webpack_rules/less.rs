@@ -13,7 +13,7 @@ use super::style_loader::style_loader;
 #[turbo_tasks::function]
 pub async fn maybe_add_less_loader(
     less_options: Vc<JsonValue>,
-    style_options: Vc<OptionalJsonValue>,
+    inline_css: Vc<OptionalJsonValue>,
     webpack_rules: Option<Vc<WebpackRules>>,
 ) -> Result<Vc<OptionWebpackRules>> {
     let less_options = less_options.await?;
@@ -27,9 +27,9 @@ pub async fn maybe_add_less_loader(
         Default::default()
     };
     for (pattern, rename) in [("*.module.less", ".module.css"), ("*.less", ".css")] {
-        let style_options = &*style_options.await?;
+        let inline_css = &*inline_css.await?;
 
-        let rename = if style_options.is_some() {
+        let rename = if inline_css.is_some() {
             format!("{}.js", rename)
         } else {
             rename.to_string()
@@ -69,14 +69,14 @@ pub async fn maybe_add_less_loader(
                 continue;
             }
             let mut loaders = rule.loaders.owned().await?;
-            if let Some(style_options) = style_options {
-                loaders.push(style_loader(style_options)?);
+            if let Some(inline_css) = inline_css {
+                loaders.push(style_loader(inline_css)?);
             }
             loaders.push(less_loader);
             rule.loaders = ResolvedVc::cell(loaders);
         } else {
-            let loaders = if let Some(style_options) = style_options {
-                vec![style_loader(style_options)?, less_loader]
+            let loaders = if let Some(inline_css) = inline_css {
+                vec![style_loader(inline_css)?, less_loader]
             } else {
                 vec![less_loader]
             };

@@ -8,7 +8,7 @@
         "library": {}
       }
     ],
-    "styleOptions": {},
+    "inlineCss": {},
     "output": {
       "path": "./dist"
     }

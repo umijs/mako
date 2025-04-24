@@ -127,7 +127,7 @@ export interface ConfigComplete {
     implementation?: string;
     [key: string]: any;
   };
-  styleOptions?: {
+  inlineCss?: {
     [key: string]: any;
   };
   serverExternalPackages?: string[];

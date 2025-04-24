@@ -22,13 +22,13 @@ pub async fn webpack_loader_options(
     let rules = *config.webpack_rules(conditions).await?;
     let rules = *maybe_add_sass_loader(
         config.sass_config(),
-        config.style_options(),
+        config.inline_css(),
         rules.map(|v| *v),
     )
     .await?;
     let rules = *maybe_add_less_loader(
         config.less_config(),
-        config.style_options(),
+        config.inline_css(),
         rules.map(|v| *v),
     )
     .await?;

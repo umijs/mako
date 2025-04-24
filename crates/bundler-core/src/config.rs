@@ -108,7 +108,7 @@ pub struct Config {
     define_env: Option<FxIndexMap<String, JsonValue>>,
     sass_options: Option<serde_json::Value>,
     less_options: Option<serde_json::Value>,
-    style_options: Option<serde_json::Value>,
+    inline_css: Option<serde_json::Value>,
     server_external_packages: Option<Vec<RcStr>>,
     compiler: Option<CompilerConfig>,
     #[serde(default)]
@@ -869,8 +869,8 @@ impl Config {
     }
 
     #[turbo_tasks::function]
-    pub fn style_options(&self) -> Vc<OptionalJsonValue> {
-        Vc::cell(self.style_options.clone())
+    pub fn inline_css(&self) -> Vc<OptionalJsonValue> {
+        Vc::cell(self.inline_css.clone())
     }
 
     #[turbo_tasks::function]
