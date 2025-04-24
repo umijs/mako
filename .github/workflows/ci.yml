@@ -1,6 +1,6 @@
 name: utoo-ci
 
-on: [push]
+on: [pull_request]
 
 env:
   CARGO_INCREMENTAL: 1
