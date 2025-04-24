@@ -1,4 +1,7 @@
+use std::collections::BTreeMap;
+
 use anyhow::{Context, Result};
+use rustc_hash::FxHashMap;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{ResolvedVc, Value, Vc};
 use turbo_tasks_fs::FileSystemPath;
@@ -6,10 +9,10 @@ use turbopack_core::{
     reference_type::{CommonJsReferenceSubType, ReferenceType},
     resolve::{
         node::node_cjs_resolve_options,
-        options::{ImportMap, ImportMapping, ResolvedMap},
+        options::{ConditionValue, ImportMap, ImportMapping, ResolvedMap},
         parse::Request,
         pattern::Pattern,
-        resolve,
+        resolve, ResolveAliasMap, SubpathValue,
     },
     source::Source,
 };
@@ -62,6 +65,14 @@ pub async fn get_client_import_map(
     let mut import_map = ImportMap::empty();
 
     insert_shared_aliases(&mut import_map, project_path, execution_context, config).await?;
+
+    insert_alias_option(
+        &mut import_map,
+        project_path,
+        config.resolve_alias_options(),
+        ["browser"],
+    )
+    .await?;
 
     Ok(import_map.cell())
 }
@@ -141,4 +152,52 @@ pub fn get_client_resolved_map(
         by_glob: glob_mappings,
     }
     .cell()
+}
+
+pub async fn insert_alias_option<const N: usize>(
+    import_map: &mut ImportMap,
+    project_path: ResolvedVc<FileSystemPath>,
+    alias_options: Vc<ResolveAliasMap>,
+    conditions: [&'static str; N],
+) -> Result<()> {
+    let conditions = BTreeMap::from(conditions.map(|c| (c.into(), ConditionValue::Set)));
+    for (alias, value) in &alias_options.await? {
+        if let Some(mapping) = export_value_to_import_mapping(value, &conditions, project_path) {
+            import_map.insert_alias(alias, mapping);
+        }
+    }
+    Ok(())
+}
+
+fn export_value_to_import_mapping(
+    value: &SubpathValue,
+    conditions: &BTreeMap<RcStr, ConditionValue>,
+    project_path: ResolvedVc<FileSystemPath>,
+) -> Option<ResolvedVc<ImportMapping>> {
+    let mut result = Vec::new();
+    value.add_results(
+        conditions,
+        &ConditionValue::Unset,
+        &mut FxHashMap::default(),
+        &mut result,
+    );
+    if result.is_empty() {
+        None
+    } else {
+        Some(if result.len() == 1 {
+            ImportMapping::PrimaryAlternative(result[0].0.into(), Some(project_path))
+                .resolved_cell()
+        } else {
+            ImportMapping::Alternatives(
+                result
+                    .iter()
+                    .map(|(m, _)| {
+                        ImportMapping::PrimaryAlternative((*m).into(), Some(project_path))
+                            .resolved_cell()
+                    })
+                    .collect(),
+            )
+            .resolved_cell()
+        })
+    }
 }

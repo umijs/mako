@@ -16,10 +16,10 @@ import {
   Project,
   ProjectOptions,
   RustifiedEnv,
-  TurboLoaderItem,
-  TurboRuleConfigItem,
-  TurboRuleConfigItemOptions,
-  TurboRuleConfigItemOrShortcut,
+  TurbopackLoaderItem,
+  TurbopackRuleConfigItem,
+  TurbopackRuleConfigItemOptions,
+  TurbopackRuleConfigItemOrShortcut,
   Update,
 } from "./types";
 
@@ -41,7 +41,7 @@ async function withErrorCause<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 function ensureLoadersHaveSerializableOptions(
-  turbopackRules: Record<string, TurboRuleConfigItemOrShortcut>,
+  turbopackRules: Record<string, TurbopackRuleConfigItemOrShortcut>,
 ) {
   for (const [glob, rule] of Object.entries(turbopackRules)) {
     if (Array.isArray(rule)) {
@@ -51,10 +51,10 @@ function ensureLoadersHaveSerializableOptions(
     }
   }
 
-  function checkConfigItem(rule: TurboRuleConfigItem, glob: string) {
+  function checkConfigItem(rule: TurbopackRuleConfigItem, glob: string) {
     if (!rule) return;
     if ("loaders" in rule) {
-      checkLoaderItems((rule as TurboRuleConfigItemOptions).loaders, glob);
+      checkLoaderItems((rule as TurbopackRuleConfigItemOptions).loaders, glob);
     } else {
       for (const key in rule) {
         const inner = rule[key];
@@ -65,7 +65,7 @@ function ensureLoadersHaveSerializableOptions(
     }
   }
 
-  function checkLoaderItems(loaderItems: TurboLoaderItem[], glob: string) {
+  function checkLoaderItems(loaderItems: TurbopackLoaderItem[], glob: string) {
     for (const loaderItem of loaderItems) {
       if (
         typeof loaderItem !== "string" &&
@@ -83,7 +83,7 @@ async function serializeConfig(config: ConfigComplete): Promise<string> {
   // Avoid mutating the existing `nextConfig` object.
   let configSerializable = { ...(config as any) };
 
-  configSerializable.generateBuildId = await nanoid();
+  configSerializable.generateBuildId = nanoid();
 
   if (configSerializable.experimental?.turbo?.rules) {
     ensureLoadersHaveSerializableOptions(
@@ -129,8 +129,7 @@ async function rustifyPartialProjectOptions(
   return {
     ...options,
     config: options.config && (await serializeConfig(options.config)),
-    jsConfig: options.jsConfig && JSON.stringify(options.jsConfig),
-    env: options.env && rustifyEnv(options.env),
+    processEnv: options.processEnv && rustifyEnv(options.processEnv),
   };
 }
 
@@ -144,8 +143,7 @@ async function rustifyProjectOptions(
   return {
     ...options,
     config: await serializeConfig(options.config),
-    jsConfig: JSON.stringify(options.jsConfig),
-    env: rustifyEnv(options.env),
+    processEnv: rustifyEnv(options.processEnv),
   };
 }
 

@@ -65,26 +65,6 @@ impl LibraryChunkingContextBuilder {
         self
     }
 
-    pub fn tracing(mut self, enable_tracing: bool) -> Self {
-        self.chunking_context.enable_tracing = enable_tracing;
-        self
-    }
-
-    pub fn asset_base_path(mut self, asset_base_path: ResolvedVc<Option<RcStr>>) -> Self {
-        self.chunking_context.asset_base_path = asset_base_path;
-        self
-    }
-
-    pub fn chunk_base_path(mut self, chunk_base_path: ResolvedVc<Option<RcStr>>) -> Self {
-        self.chunking_context.chunk_base_path = chunk_base_path;
-        self
-    }
-
-    pub fn chunk_suffix_path(mut self, chunk_suffix_path: ResolvedVc<Option<RcStr>>) -> Self {
-        self.chunking_context.chunk_suffix_path = chunk_suffix_path;
-        self
-    }
-
     pub fn runtime_type(mut self, runtime_type: RuntimeType) -> Self {
         self.chunking_context.runtime_type = runtime_type;
         self
@@ -131,23 +111,6 @@ pub struct LibraryChunkingContext {
     output_root: ResolvedVc<FileSystemPath>,
     /// The relative path from the output_root to the root_path.
     output_root_to_root_path: ResolvedVc<RcStr>,
-    /// This path is used to compute the url to request assets from
-    client_root: ResolvedVc<FileSystemPath>,
-    /// Chunks are placed at this path
-    chunk_root_path: ResolvedVc<FileSystemPath>,
-    /// Static assets are placed at this path
-    asset_root_path: ResolvedVc<FileSystemPath>,
-    /// Base path that will be prepended to all chunk URLs when loading them.
-    /// This path will not appear in chunk paths or chunk data.
-    chunk_base_path: ResolvedVc<Option<RcStr>>,
-    /// Suffix path that will be appended to all chunk URLs when loading them.
-    /// This path will not appear in chunk paths or chunk data.
-    chunk_suffix_path: ResolvedVc<Option<RcStr>>,
-    /// URL prefix that will be prepended to all static asset URLs when loading
-    /// them.
-    asset_base_path: ResolvedVc<Option<RcStr>>,
-    /// Enable tracing for this chunking
-    enable_tracing: bool,
     /// The environment chunks will be evaluated in.
     environment: ResolvedVc<Environment>,
     /// The kind of runtime to include in the output.
@@ -167,9 +130,6 @@ impl LibraryChunkingContext {
         root_path: ResolvedVc<FileSystemPath>,
         output_root: ResolvedVc<FileSystemPath>,
         output_root_to_root_path: ResolvedVc<RcStr>,
-        client_root: ResolvedVc<FileSystemPath>,
-        chunk_root_path: ResolvedVc<FileSystemPath>,
-        asset_root_path: ResolvedVc<FileSystemPath>,
         environment: ResolvedVc<Environment>,
         runtime_type: RuntimeType,
     ) -> LibraryChunkingContextBuilder {
@@ -179,14 +139,7 @@ impl LibraryChunkingContext {
                 root_path,
                 output_root,
                 output_root_to_root_path,
-                client_root,
-                chunk_root_path,
                 should_use_file_source_map_uris: false,
-                asset_root_path,
-                chunk_base_path: ResolvedVc::cell(None),
-                chunk_suffix_path: ResolvedVc::cell(None),
-                asset_base_path: ResolvedVc::cell(None),
-                enable_tracing: false,
                 environment,
                 runtime_type,
                 minify_type: MinifyType::NoMinify,
@@ -205,16 +158,6 @@ impl LibraryChunkingContext {
     /// when `RuntimeType` has a single variant.
     pub fn runtime_type(&self) -> RuntimeType {
         self.runtime_type
-    }
-
-    /// Returns the asset base path.
-    pub fn chunk_base_path(&self) -> Vc<Option<RcStr>> {
-        *self.chunk_base_path
-    }
-
-    /// Returns the asset suffix path.
-    pub fn chunk_suffix_path(&self) -> Vc<Option<RcStr>> {
-        *self.chunk_suffix_path
     }
 
     /// Returns the minify type.
@@ -296,7 +239,7 @@ impl ChunkingContext for LibraryChunkingContext {
 
     #[turbo_tasks::function]
     async fn chunk_root_path(&self) -> Vc<FileSystemPath> {
-        *self.chunk_root_path
+        *self.output_root
     }
 
     #[turbo_tasks::function]
@@ -306,7 +249,7 @@ impl ChunkingContext for LibraryChunkingContext {
         ident: Vc<AssetIdent>,
         extension: RcStr,
     ) -> Result<Vc<FileSystemPath>> {
-        let root_path = self.chunk_root_path;
+        let root_path = self.output_root;
         let name = match self.content_hashing {
             None => {
                 ident
@@ -338,18 +281,7 @@ impl ChunkingContext for LibraryChunkingContext {
     async fn asset_url(&self, ident: Vc<FileSystemPath>) -> Result<Vc<RcStr>> {
         let asset_path = ident.await?.to_string();
 
-        Ok(Vc::cell(
-            format!(
-                "{}{}",
-                self.asset_base_path
-                    .await?
-                    .as_ref()
-                    .map(|s| s.as_str())
-                    .unwrap_or("/"),
-                asset_path
-            )
-            .into(),
-        ))
+        Ok(Vc::cell(asset_path.into()))
     }
 
     #[turbo_tasks::function]
@@ -387,7 +319,7 @@ impl ChunkingContext for LibraryChunkingContext {
                 content_hash = &content_hash[..8]
             ),
         };
-        Ok(self.asset_root_path.join(asset_path.into()))
+        Ok(self.output_root.join(asset_path.into()))
     }
 
     #[turbo_tasks::function]
@@ -408,11 +340,6 @@ impl ChunkingContext for LibraryChunkingContext {
     #[turbo_tasks::function]
     fn should_use_file_source_map_uris(&self) -> Vc<bool> {
         Vc::cell(self.should_use_file_source_map_uris)
-    }
-
-    #[turbo_tasks::function]
-    fn is_tracing_enabled(&self) -> Vc<bool> {
-        Vc::cell(self.enable_tracing)
     }
 
     #[turbo_tasks::function]

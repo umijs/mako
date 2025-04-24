@@ -4,7 +4,7 @@ use anyhow::{bail, Context, Result};
 use bundler_core::{
     all_assets_from_entries,
     client::context::{get_client_chunking_context, get_client_compile_time_info},
-    config::{Config, JsConfig, ModuleIds as ModuleIdStrategyConfig},
+    config::{Config, ModuleIds as ModuleIdStrategyConfig},
     emit_assets,
     library::contexts::get_library_chunking_context,
     mode::Mode,
@@ -84,48 +84,6 @@ pub struct WatchOptions {
 
 #[derive(
     Debug,
-    Default,
-    Serialize,
-    Deserialize,
-    Clone,
-    TaskInput,
-    PartialEq,
-    Eq,
-    Hash,
-    TraceRawVcs,
-    NonLocalValue,
-    OperationValue,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct EntryOptions {
-    pub name: Option<RcStr>,
-    pub import: RcStr,
-    pub filename: Option<RcStr>,
-    pub library: Option<LibraryOptions>,
-}
-
-#[derive(
-    Debug,
-    Default,
-    Serialize,
-    Deserialize,
-    Clone,
-    TaskInput,
-    PartialEq,
-    Eq,
-    Hash,
-    TraceRawVcs,
-    NonLocalValue,
-    OperationValue,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct LibraryOptions {
-    pub name: Option<RcStr>,
-    pub export: Option<Vec<RcStr>>,
-}
-
-#[derive(
-    Debug,
     Serialize,
     Deserialize,
     Default,
@@ -144,25 +102,18 @@ pub struct ProjectOptions {
     /// a file outside this root will fail. Think of this as a chroot.
     pub root_path: RcStr,
 
-    /// A path inside the root_path which contains the app/pages directories.
+    /// A path inside the root_path which contains the app directories.
     pub project_path: RcStr,
-
-    /// The entrypoints of the project. Resolved relative to the project's
-    /// directory (`--dir`).
-    pub entry: Vec<EntryOptions>,
 
     /// The contents of next.config.js, serialized to JSON.
     pub config: RcStr,
 
-    /// The contents of ts/config read by load-jsconfig, serialized to JSON.
-    pub js_config: RcStr,
-
     /// A map of environment variables to use when compiling code.
-    pub env: Vec<(RcStr, RcStr)>,
+    pub process_env: Vec<(RcStr, RcStr)>,
 
     /// A map of environment variables which should get injected at compile
     /// time.
-    pub define_env: DefineEnv,
+    pub process_define_env: DefineEnv,
 
     /// Filesystem watcher options.
     pub watch: WatchOptions,
@@ -172,14 +123,6 @@ pub struct ProjectOptions {
 
     /// The build id.
     pub build_id: RcStr,
-
-    /// The browserslist query to use for targeting browsers.
-    pub browserslist_query: RcStr,
-
-    /// When the code is minified, this opts out of the default mangling of
-    /// local names for variables, functions etc., which can be useful for
-    /// debugging/profiling purposes.
-    pub no_mangling: bool,
 }
 
 #[derive(
@@ -204,35 +147,21 @@ pub struct PartialProjectOptions {
     /// A path inside the root_path which contains the app/pages directories.
     pub project_path: Option<RcStr>,
 
-    pub entry: Option<Vec<EntryOptions>>,
-
     /// The contents of next.config.js, serialized to JSON.
     pub config: Option<RcStr>,
 
-    /// The contents of ts/config read by load-jsconfig, serialized to JSON.
-    pub js_config: Option<RcStr>,
-
     /// A map of environment variables to use when compiling code.
-    pub env: Option<Vec<(RcStr, RcStr)>>,
+    pub process_env: Option<Vec<(RcStr, RcStr)>>,
 
     /// A map of environment variables which should get injected at compile
     /// time.
-    pub define_env: Option<DefineEnv>,
+    pub process_define_env: Option<DefineEnv>,
 
     /// Filesystem watcher options.
     pub watch: Option<WatchOptions>,
 
-    /// The mode in which Next.js is running.
-    pub dev: Option<bool>,
-
     /// The build id.
     pub build_id: Option<RcStr>,
-
-    /// The browserslist query to use for targeting browsers.
-    pub browserslist_query: Option<RcStr>,
-
-    /// The browserslist query to use for targeting browsers.
-    pub no_mangling: Option<bool>,
 }
 
 #[derive(
@@ -322,16 +251,11 @@ impl ProjectContainer {
         let PartialProjectOptions {
             root_path,
             project_path,
-            entry,
             config,
-            js_config,
-            env,
-            define_env,
+            process_env,
+            process_define_env,
             watch,
-            dev,
             build_id,
-            browserslist_query,
-            no_mangling,
         } = options;
 
         let this = self.await?;
@@ -348,38 +272,21 @@ impl ProjectContainer {
         if let Some(project_path) = project_path {
             new_options.project_path = project_path;
         }
-        if let Some(entry) = entry {
-            new_options.entry = entry;
-        }
         if let Some(config) = config {
             new_options.config = config;
         }
-        if let Some(js_config) = js_config {
-            new_options.js_config = js_config;
+        if let Some(process_env) = process_env {
+            new_options.process_env = process_env;
         }
-        if let Some(env) = env {
-            new_options.env = env;
-        }
-        if let Some(define_env) = define_env {
-            new_options.define_env = define_env;
+        if let Some(process_define_env) = process_define_env {
+            new_options.process_define_env = process_define_env;
         }
         if let Some(watch) = watch {
             new_options.watch = watch;
         }
-        if let Some(dev) = dev {
-            new_options.dev = dev;
-        }
 
         if let Some(build_id) = build_id {
             new_options.build_id = build_id;
-        }
-
-        if let Some(browserslist_query) = browserslist_query {
-            new_options.browserslist_query = browserslist_query;
-        }
-
-        if let Some(no_mangling) = no_mangling {
-            new_options.no_mangling = no_mangling;
         }
 
         // TODO: Handle mode switch, should prevent mode being switched.
@@ -427,92 +334,43 @@ impl ProjectContainer {
         let env_map: Vc<EnvMap>;
         let config;
         let define_env;
-        let js_config;
         let root_path;
         let project_path;
-        let entry;
         let watch;
         let build_id;
-        let browserslist_query;
-        let no_mangling;
-        let mode;
         {
             let options = self.options_state.get();
             let options = options
                 .as_ref()
                 .context("ProjectContainer need to be initialized with initialize()")?;
-            mode = if options.dev {
-                Mode::Development
-            } else {
-                Mode::Build
-            };
-            let node_env_define: [(RcStr, RcStr); 1] = [(
-                "process.env.NODE_ENV".into(),
-                serde_json::to_string(mode.node_env()).unwrap().into(),
-            )];
-            env_map = Vc::cell(options.env.iter().cloned().collect());
+
+            env_map = Vc::cell(options.process_env.iter().cloned().collect());
             define_env = ProjectDefineEnv {
                 client: ResolvedVc::cell(
-                    options
-                        .define_env
-                        .client
-                        .iter()
-                        .chain(&node_env_define)
-                        .cloned()
-                        .collect(),
+                    options.process_define_env.client.iter().cloned().collect(),
                 ),
-                edge: ResolvedVc::cell(
-                    options
-                        .define_env
-                        .edge
-                        .iter()
-                        .chain(&node_env_define)
-                        .cloned()
-                        .collect(),
-                ),
+                edge: ResolvedVc::cell(options.process_define_env.edge.iter().cloned().collect()),
                 nodejs: ResolvedVc::cell(
-                    options
-                        .define_env
-                        .nodejs
-                        .iter()
-                        .chain(&node_env_define)
-                        .cloned()
-                        .collect(),
+                    options.process_define_env.nodejs.iter().cloned().collect(),
                 ),
             }
             .cell();
             config = Config::from_string(Vc::cell(options.config.clone()));
-            js_config = JsConfig::from_string(Vc::cell(options.js_config.clone()));
             root_path = options.root_path.clone();
             project_path = options.project_path.clone();
-            entry = options.entry.clone();
             watch = options.watch;
             build_id = options.build_id.clone();
-            browserslist_query = options.browserslist_query.clone();
-            no_mangling = options.no_mangling
         }
-
-        let dist_dir = config
-            .await?
-            .dist_dir
-            .as_ref()
-            .map_or_else(|| "dist".into(), |d| d.clone());
 
         Ok(Project {
             root_path,
             project_path,
-            entry,
             watch,
             config: config.to_resolved().await?,
-            js_config: js_config.to_resolved().await?,
-            dist_dir,
-            env: ResolvedVc::upcast(env_map.to_resolved().await?),
-            define_env: define_env.to_resolved().await?,
-            browserslist_query,
-            mode: mode.resolved_cell(),
+            process_env: ResolvedVc::upcast(env_map.to_resolved().await?),
+            process_define_env: define_env.to_resolved().await?,
             versioned_content_map: self.versioned_content_map,
             build_id,
-            no_mangling,
         }
         .cell())
     }
@@ -551,15 +409,8 @@ pub struct Project {
     /// a file outside this root will fail. Think of this as a chroot.
     root_path: RcStr,
 
-    /// A path where to emit the build outputs. next.config.js's distDir.
-    dist_dir: RcStr,
-
     /// A path inside the root_path which contains the app/pages directories.
     pub project_path: RcStr,
-
-    /// The entrypoints of the project. Resolved relative to the project's
-    /// directory (`--dir`).
-    pub entry: Vec<EntryOptions>,
 
     /// Filesystem watcher options.
     watch: WatchOptions,
@@ -567,29 +418,16 @@ pub struct Project {
     /// Next config.
     config: ResolvedVc<Config>,
 
-    /// Js/Tsconfig read by load-jsconfig
-    js_config: ResolvedVc<JsConfig>,
-
     /// A map of environment variables to use when compiling code.
-    env: ResolvedVc<Box<dyn ProcessEnv>>,
+    process_env: ResolvedVc<Box<dyn ProcessEnv>>,
 
     /// A map of environment variables which should get injected at compile
     /// time.
-    define_env: ResolvedVc<ProjectDefineEnv>,
-
-    /// The browserslist query to use for targeting browsers.
-    browserslist_query: RcStr,
-
-    mode: ResolvedVc<Mode>,
+    process_define_env: ResolvedVc<ProjectDefineEnv>,
 
     versioned_content_map: Option<ResolvedVc<VersionedContentMap>>,
 
     build_id: RcStr,
-
-    /// When the code is minified, this opts out of the default mangling of
-    /// local names for variables, functions etc., which can be useful for
-    /// debugging/profiling purposes.
-    no_mangling: bool,
 }
 
 // TODO: This may be not needed.
@@ -660,7 +498,9 @@ impl Project {
     pub async fn library_project(self: Vc<Self>) -> Result<Vc<OptionLibraryProject>> {
         let this = self.await?;
         let lib_vec: Vec<Library> = this
-            .entry
+            .config
+            .entries()
+            .await?
             .iter()
             .filter_map(|e| {
                 e.library.as_ref().map(|l| Library {
@@ -703,8 +543,15 @@ impl Project {
     }
 
     #[turbo_tasks::function]
-    pub fn dist_dir(&self) -> Vc<RcStr> {
-        Vc::cell(self.dist_dir.clone())
+    pub async fn dist_dir(&self) -> Result<Vc<RcStr>> {
+        Ok(Vc::cell(
+            self.config
+                .output()
+                .await?
+                .path
+                .clone()
+                .unwrap_or("./dist".into()),
+        ))
     }
 
     #[turbo_tasks::function]
@@ -714,8 +561,10 @@ impl Project {
 
     #[turbo_tasks::function]
     pub async fn dist_root(self: Vc<Self>) -> Result<Vc<FileSystemPath>> {
-        let this = self.await?;
-        Ok(self.output_fs().root().join(this.dist_dir.clone()))
+        Ok(self
+            .output_fs()
+            .root()
+            .join(self.dist_dir().await?.as_str().into()))
     }
 
     #[turbo_tasks::function]
@@ -724,16 +573,8 @@ impl Project {
     }
 
     #[turbo_tasks::function]
-    pub fn project_root_path(self: Vc<Self>) -> Vc<FileSystemPath> {
+    pub fn project_root(self: Vc<Self>) -> Vc<FileSystemPath> {
         self.project_fs().root()
-    }
-
-    #[turbo_tasks::function]
-    pub async fn client_relative_path(self: Vc<Self>) -> Result<Vc<FileSystemPath>> {
-        let config = self.config().await?;
-        Ok(self
-            .client_root()
-            .join(format!("{}/", config.base_path.clone().unwrap_or_else(|| "".into()),).into()))
     }
 
     #[turbo_tasks::function]
@@ -742,7 +583,7 @@ impl Project {
             .project_path()
             .join(".turbopack".into())
             .await?
-            .get_relative_path_to(&*self.project_root_path().await?)
+            .get_relative_path_to(&*self.project_root().await?)
             .context("Project path need to be in root path")?;
         Ok(Vc::cell(output_root_to_root_path))
     }
@@ -750,7 +591,7 @@ impl Project {
     #[turbo_tasks::function]
     pub async fn project_path(self: Vc<Self>) -> Result<Vc<FileSystemPath>> {
         let this = self.await?;
-        let root = self.project_root_path();
+        let root = self.project_root();
         let project_relative = this.project_path.strip_prefix(&*this.root_path).unwrap();
         let project_relative = project_relative
             .strip_prefix(MAIN_SEPARATOR)
@@ -761,7 +602,7 @@ impl Project {
 
     #[turbo_tasks::function]
     pub(super) fn env(&self) -> Vc<Box<dyn ProcessEnv>> {
-        *self.env
+        *self.process_env
     }
 
     #[turbo_tasks::function]
@@ -771,28 +612,26 @@ impl Project {
 
     #[turbo_tasks::function]
     pub(super) fn mode(&self) -> Vc<Mode> {
-        *self.mode
+        self.config.mode()
     }
 
     #[turbo_tasks::function]
     pub(super) async fn per_entry_module_graph(&self) -> Result<Vc<bool>> {
-        Ok(Vc::cell(*self.mode.await? == Mode::Development))
-    }
-
-    #[turbo_tasks::function]
-    pub(super) fn js_config(&self) -> Vc<JsConfig> {
-        *self.js_config
+        Ok(Vc::cell(*self.config.mode().await? == Mode::Development))
     }
 
     #[turbo_tasks::function]
     pub(super) fn no_mangling(&self) -> Vc<bool> {
-        Vc::cell(self.no_mangling)
+        self.config.no_mangling()
     }
 
     #[turbo_tasks::function]
     pub(super) async fn should_create_webpack_stats(&self) -> Result<Vc<bool>> {
         Ok(Vc::cell(
-            self.env.read("TURBOPACK_STATS".into()).await?.is_some(),
+            self.process_env
+                .read("TURBOPACK_STATS".into())
+                .await?
+                .is_some(),
         ))
     }
 
@@ -803,7 +642,7 @@ impl Project {
 
         let node_execution_chunking_context = Vc::upcast(
             NodeJsChunkingContext::builder(
-                self.project_root_path().to_resolved().await?,
+                self.project_root().to_resolved().await?,
                 node_root,
                 self.node_root_to_root_path().to_resolved().await?,
                 node_root,
@@ -812,7 +651,7 @@ impl Project {
                 node_build_environment().to_resolved().await?,
                 mode.runtime_type(),
             )
-            .source_maps(if *self.config().turbo_source_maps().await? {
+            .source_maps(if *self.config().source_maps().await? {
                 SourceMapsType::Full
             } else {
                 SourceMapsType::None
@@ -828,8 +667,12 @@ impl Project {
     }
 
     #[turbo_tasks::function]
-    pub(super) fn client_compile_time_info(&self) -> Vc<CompileTimeInfo> {
-        get_client_compile_time_info(self.browserslist_query.clone(), self.define_env.client())
+    pub(super) async fn client_compile_time_info(&self) -> Result<Vc<CompileTimeInfo>> {
+        Ok(get_client_compile_time_info(
+            (*self.config.target().await?).clone(),
+            self.process_define_env.client(),
+            self.config.mode(),
+        ))
     }
 
     #[turbo_tasks::function]
@@ -951,16 +794,14 @@ impl Project {
     #[turbo_tasks::function]
     pub(super) fn client_chunking_context(self: Vc<Self>) -> Vc<Box<dyn ChunkingContext>> {
         get_client_chunking_context(
-            self.project_root_path(),
-            self.client_relative_path(),
+            self.project_root(),
+            self.client_root(),
             Vc::cell("/ROOT".into()),
-            self.config().computed_asset_prefix(),
-            self.config().chunk_suffix_path(),
             self.client_compile_time_info().environment(),
             self.mode(),
             self.module_ids(),
-            self.config().turbo_minify(self.mode()),
-            self.config().turbo_source_maps(),
+            self.config().minify(self.mode()),
+            self.config().source_maps(),
             self.no_mangling(),
         )
     }
@@ -970,16 +811,14 @@ impl Project {
         self: Vc<Self>,
     ) -> Result<Vc<Box<dyn ChunkingContext>>> {
         Ok(get_library_chunking_context(
-            self.project_root_path(),
-            self.client_relative_path(),
+            self.project_root(),
+            self.client_root(),
             Vc::cell("/ROOT".into()),
-            self.config().computed_asset_prefix(),
-            self.config().chunk_suffix_path(),
             self.client_compile_time_info().environment(),
             self.mode(),
             self.module_ids(),
-            self.config().turbo_minify(self.mode()),
-            self.config().turbo_source_maps(),
+            self.config().minify(self.mode()),
+            self.config().source_maps(),
             self.no_mangling(),
         ))
     }
@@ -1045,17 +884,12 @@ impl Project {
         async move {
             let all_output_assets = all_assets_from_entries_operation(output_assets);
 
-            let client_relative_path = self.client_relative_path();
+            let client_root = self.client_root();
             let dist_root = self.dist_root();
 
             if let Some(map) = self.await?.versioned_content_map {
                 let _ = map
-                    .insert_output_assets(
-                        all_output_assets,
-                        dist_root,
-                        client_relative_path,
-                        dist_root,
-                    )
+                    .insert_output_assets(all_output_assets, dist_root, client_root, dist_root)
                     .resolve()
                     .await?;
 
@@ -1064,7 +898,7 @@ impl Project {
                 let _ = emit_assets(
                     all_output_assets.connect(),
                     dist_root,
-                    client_relative_path,
+                    client_root,
                     dist_root,
                 )
                 .resolve()
@@ -1080,7 +914,7 @@ impl Project {
     #[turbo_tasks::function]
     async fn hmr_content(self: Vc<Self>, identifier: RcStr) -> Result<Vc<OptionVersionedContent>> {
         if let Some(map) = self.await?.versioned_content_map {
-            let content = map.get(self.client_relative_path().join(identifier.clone()));
+            let content = map.get(self.client_root().join(identifier.clone()));
             Ok(content)
         } else {
             bail!("must be in dev mode to hmr")
@@ -1147,7 +981,7 @@ impl Project {
     #[turbo_tasks::function]
     pub async fn hmr_identifiers(self: Vc<Self>) -> Result<Vc<Vec<RcStr>>> {
         if let Some(map) = self.await?.versioned_content_map {
-            Ok(map.keys_in_path(self.client_relative_path()))
+            Ok(map.keys_in_path(self.client_root()))
         } else {
             bail!("must be in dev mode to hmr")
         }
@@ -1184,7 +1018,7 @@ impl Project {
         } else {
             match *self.mode().await? {
                 Mode::Development => ModuleIdStrategyConfig::Named,
-                Mode::Build => ModuleIdStrategyConfig::Deterministic,
+                Mode::Production => ModuleIdStrategyConfig::Deterministic,
             }
         };
 

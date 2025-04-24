@@ -36,16 +36,6 @@ export interface NapiEnvVar {
   name: string
   value: string
 }
-export interface NapiEntryOptions {
-  name?: string
-  import: string
-  filename?: string
-  library?: NapiLibraryOptions
-}
-export interface NapiLibraryOptions {
-  name?: string
-  export?: Array<string>
-}
 export interface NapiWatchOptions {
   /** Whether to watch the filesystem for file changes. */
   enable: boolean
@@ -63,37 +53,21 @@ export interface NapiProjectOptions {
   rootPath: string
   /** A path inside the root_path which contains the app/pages directories. */
   projectPath: string
-  /**
-   * next.config's distDir. Project initialization occurs earlier than
-   * deserializing next.config, so passing it as separate option.
-   */
-  distDir: string
-  entry: Array<NapiEntryOptions>
   /** Filesystem watcher options. */
   watch: NapiWatchOptions
   /** The contents of config.js, serialized to JSON. */
   config: string
-  /** The contents of ts/config read by load-jsconfig, serialized to JSON. */
-  jsConfig: string
   /** A map of environment variables to use when compiling code. */
-  env: Array<NapiEnvVar>
+  processEnv: Array<NapiEnvVar>
   /**
    * A map of environment variables which should get injected at compile
    * time.
    */
-  defineEnv: NapiDefineEnv
+  processDefineEnv: NapiDefineEnv
   /** The mode in which Next.js is running. */
   dev: boolean
   /** The build id. */
   buildId: string
-  /** The browserslist query to use for targeting browsers. */
-  browserslistQuery: string
-  /**
-   * When the code is minified, this opts out of the default mangling of
-   * local names for variables, functions etc., which can be useful for
-   * debugging/profiling purposes.
-   */
-  noMangling: boolean
 }
 /** [NapiProjectOptions] with all fields optional. */
 export interface NapiPartialProjectOptions {
@@ -104,31 +78,21 @@ export interface NapiPartialProjectOptions {
   rootPath?: string
   /** A path inside the root_path which contains the app/pages directories. */
   projectPath?: string
-  entry?: Array<NapiEntryOptions>
-  /**
-   * next.config's distDir. Project initialization occurs earlier than
-   * deserializing next.config, so passing it as separate option.
-   */
-  distDir?: string | undefined | null
   /** Filesystem watcher options. */
   watch?: NapiWatchOptions
   /** The contents of config.js, serialized to JSON. */
   config?: string
-  /** The contents of ts/config read by load-jsconfig, serialized to JSON. */
-  jsConfig?: string
   /** A map of environment variables to use when compiling code. */
-  env?: Array<NapiEnvVar>
+  processEnv?: Array<NapiEnvVar>
   /**
    * A map of environment variables which should get injected at compile
    * time.
    */
-  defineEnv?: NapiDefineEnv
+  processDefineEnv?: NapiDefineEnv
   /** The mode in which Next.js is running. */
   dev?: boolean
   /** The build id. */
   buildId?: string
-  /** The browserslist query to use for targeting browsers. */
-  browserslistQuery?: string
   /**
    * When the code is minified, this opts out of the default mangling of
    * local names for variables, functions etc., which can be useful for

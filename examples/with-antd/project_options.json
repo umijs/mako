@@ -1,11 +1,15 @@
 {
   "rootPath": "../../",
   "projectPath": "./",
-  "distDir": "./dist",
-  "entry": [
-    {
-      "import": "./src/index.tsx",
-      "library": {}
+  "config": {
+    "entry": [
+      {
+        "import": "./src/index.tsx",
+        "library": {}
+      }
+    ],
+    "output": {
+      "path": "./dist"
     }
-  ]
+  }
 }

@@ -110,7 +110,17 @@ async fn client_free_vars(define_env: Vc<EnvMap>) -> Result<Vc<FreeVarReferences
 pub async fn get_client_compile_time_info(
     browserslist_query: RcStr,
     define_env: Vc<EnvMap>,
+    mode: Vc<Mode>,
 ) -> Result<Vc<CompileTimeInfo>> {
+    let mut define_env = (*define_env.await?).clone();
+    define_env.extend([(
+        "process.env.NODE_ENV".into(),
+        serde_json::to_string(mode.await?.node_env())
+            .unwrap()
+            .into(),
+    )]);
+    let define_env = Vc::cell(define_env);
+
     CompileTimeInfo::builder(
         Environment::new(Value::new(ExecutionEnvironment::Browser(
             BrowserEnvironment {
@@ -256,7 +266,7 @@ pub async fn get_client_module_options_context(
     let module_options_context = ModuleOptionsContext {
         ecmascript: EcmascriptOptionsContext {
             enable_typeof_window_inlining: Some(TypeofWindow::Object),
-            source_maps: if *config.turbo_source_maps().await? {
+            source_maps: if *config.source_maps().await? {
                 SourceMapsType::Full
             } else {
                 SourceMapsType::None
@@ -264,7 +274,7 @@ pub async fn get_client_module_options_context(
             ..Default::default()
         },
         css: CssOptionsContext {
-            source_maps: if *config.turbo_source_maps().await? {
+            source_maps: if *config.source_maps().await? {
                 SourceMapsType::Full
             } else {
                 SourceMapsType::None
@@ -319,7 +329,7 @@ pub async fn get_client_module_options_context(
         enable_webpack_loaders,
         enable_mdx_rs,
         css: CssOptionsContext {
-            minify_type: if *config.turbo_minify(mode).await? {
+            minify_type: if *config.minify(mode).await? {
                 MinifyType::Minify {
                     mangle: (!*no_mangling.await?).then_some(MangleType::OptimalSize),
                 }
@@ -392,8 +402,6 @@ pub async fn get_client_chunking_context(
     root_path: ResolvedVc<FileSystemPath>,
     client_root: ResolvedVc<FileSystemPath>,
     client_root_to_root_path: ResolvedVc<RcStr>,
-    asset_prefix: ResolvedVc<Option<RcStr>>,
-    chunk_suffix_path: ResolvedVc<Option<RcStr>>,
     environment: ResolvedVc<Environment>,
     mode: Vc<Mode>,
     module_id_strategy: ResolvedVc<Box<dyn ModuleIdStrategy>>,
@@ -412,8 +420,6 @@ pub async fn get_client_chunking_context(
         environment,
         mode.runtime_type(),
     )
-    .chunk_base_path(asset_prefix)
-    .chunk_suffix_path(chunk_suffix_path)
     .minify_type(if *minify.await? {
         MinifyType::Minify {
             mangle: (!*no_mangling.await?).then_some(MangleType::OptimalSize),
@@ -426,7 +432,6 @@ pub async fn get_client_chunking_context(
     } else {
         SourceMapsType::None
     })
-    .asset_base_path(asset_prefix)
     .module_id_strategy(module_id_strategy);
 
     if mode.is_development() {

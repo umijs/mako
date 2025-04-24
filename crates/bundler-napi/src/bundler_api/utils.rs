@@ -147,7 +147,7 @@ pub fn create_turbo_tasks(
                     dependency_tracking,
                     ..Default::default()
                 },
-                default_backing_storage(&output_path.join("cache/turbopack"), &version_info)?,
+                default_backing_storage(&output_path.join(".turbopack/.cache"), &version_info)?,
             ),
         ))
     } else {

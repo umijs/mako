@@ -237,7 +237,7 @@ impl LibraryEndpoint {
             let library_chunk_group = library_chunking_context.evaluated_chunk_group(
                 AssetIdent::from_path(
                     project
-                        .project_root_path()
+                        .project_root()
                         .join(this.filename.clone().unwrap_or(this.import.clone())),
                 ),
                 ChunkGroup::Entry(
