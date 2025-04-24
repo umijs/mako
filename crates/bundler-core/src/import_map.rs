@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use anyhow::{Context, Result};
 use rustc_hash::FxHashMap;
 use turbo_rcstr::RcStr;
-use turbo_tasks::{ResolvedVc, Value, Vc};
+use turbo_tasks::{FxIndexMap, ResolvedVc, Value, Vc};
 use turbo_tasks_fs::FileSystemPath;
 use turbopack_core::{
     reference_type::{CommonJsReferenceSubType, ReferenceType},
@@ -12,7 +12,7 @@ use turbopack_core::{
         options::{ConditionValue, ImportMap, ImportMapping, ResolvedMap},
         parse::Request,
         pattern::Pattern,
-        resolve, ResolveAliasMap, SubpathValue,
+        resolve, ExternalTraced, ExternalType, ResolveAliasMap, SubpathValue,
     },
     source::Source,
 };
@@ -110,50 +110,6 @@ async fn insert_shared_aliases(
     Ok(())
 }
 
-/// Inserts an alias to an import mapping into an import map.
-#[allow(dead_code)]
-fn insert_package_alias(
-    import_map: &mut ImportMap,
-    prefix: &str,
-    package_root: ResolvedVc<FileSystemPath>,
-) {
-    import_map.insert_wildcard_alias(
-        prefix,
-        ImportMapping::PrimaryAlternative("./*".into(), Some(package_root)).resolved_cell(),
-    );
-}
-
-#[turbo_tasks::function]
-pub async fn get_bundler_package(
-    context_directory: Vc<FileSystemPath>,
-) -> Result<Vc<FileSystemPath>> {
-    let result = resolve(
-        context_directory,
-        Value::new(ReferenceType::CommonJs(CommonJsReferenceSubType::Undefined)),
-        Request::parse(Value::new(Pattern::Constant(
-            "@utoo/bundler/package.json".into(),
-        ))),
-        node_cjs_resolve_options(context_directory.root()),
-    );
-    let source = result
-        .first_source()
-        .await?
-        .context("@utoo/bundler package not found")?;
-    Ok(source.ident().path().parent())
-}
-
-pub fn get_client_resolved_map(
-    _context: Vc<FileSystemPath>,
-    _root: ResolvedVc<FileSystemPath>,
-    _mode: Mode,
-) -> Vc<ResolvedMap> {
-    let glob_mappings = vec![];
-    ResolvedMap {
-        by_glob: glob_mappings,
-    }
-    .cell()
-}
-
 pub async fn insert_alias_option<const N: usize>(
     import_map: &mut ImportMap,
     project_path: ResolvedVc<FileSystemPath>,
@@ -200,4 +156,126 @@ fn export_value_to_import_mapping(
             .resolved_cell()
         })
     }
+}
+
+#[allow(dead_code)]
+fn insert_exact_alias_map(
+    import_map: &mut ImportMap,
+    project_path: ResolvedVc<FileSystemPath>,
+    map: FxIndexMap<&'static str, String>,
+) {
+    for (pattern, request) in map {
+        import_map.insert_exact_alias(pattern, request_to_import_mapping(project_path, &request));
+    }
+}
+
+#[allow(dead_code)]
+fn insert_wildcard_alias_map(
+    import_map: &mut ImportMap,
+    project_path: ResolvedVc<FileSystemPath>,
+    map: FxIndexMap<&'static str, String>,
+) {
+    for (pattern, request) in map {
+        import_map
+            .insert_wildcard_alias(pattern, request_to_import_mapping(project_path, &request));
+    }
+}
+
+/// Inserts an alias to an alternative of import mappings into an import map.
+#[allow(dead_code)]
+fn insert_alias_to_alternatives<'a>(
+    import_map: &mut ImportMap,
+    alias: impl Into<String> + 'a,
+    alternatives: Vec<ResolvedVc<ImportMapping>>,
+) {
+    import_map.insert_exact_alias(
+        alias.into(),
+        ImportMapping::Alternatives(alternatives).resolved_cell(),
+    );
+}
+
+/// Inserts an alias to an import mapping into an import map.
+#[allow(dead_code)]
+fn insert_package_alias(
+    import_map: &mut ImportMap,
+    prefix: &str,
+    package_root: ResolvedVc<FileSystemPath>,
+) {
+    import_map.insert_wildcard_alias(
+        prefix,
+        ImportMapping::PrimaryAlternative("./*".into(), Some(package_root)).resolved_cell(),
+    );
+}
+
+#[turbo_tasks::function]
+pub async fn get_bundler_package(
+    context_directory: Vc<FileSystemPath>,
+) -> Result<Vc<FileSystemPath>> {
+    let result = resolve(
+        context_directory,
+        Value::new(ReferenceType::CommonJs(CommonJsReferenceSubType::Undefined)),
+        Request::parse(Value::new(Pattern::Constant(
+            "@utoo/bundler/package.json".into(),
+        ))),
+        node_cjs_resolve_options(context_directory.root()),
+    );
+    let source = result
+        .first_source()
+        .await?
+        .context("@utoo/bundler package not found")?;
+    Ok(source.ident().path().parent())
+}
+
+pub fn get_client_resolved_map(
+    _context: Vc<FileSystemPath>,
+    _root: ResolvedVc<FileSystemPath>,
+    _mode: Mode,
+) -> Vc<ResolvedMap> {
+    let glob_mappings = vec![];
+    ResolvedMap {
+        by_glob: glob_mappings,
+    }
+    .cell()
+}
+
+/// Creates a direct import mapping to the result of resolving a request
+/// in a context.
+#[allow(dead_code)]
+fn request_to_import_mapping(
+    context_path: ResolvedVc<FileSystemPath>,
+    request: &str,
+) -> ResolvedVc<ImportMapping> {
+    ImportMapping::PrimaryAlternative(request.into(), Some(context_path)).resolved_cell()
+}
+
+/// Creates a direct import mapping to the result of resolving an external
+/// request.
+#[allow(dead_code)]
+fn external_request_to_cjs_import_mapping(
+    context_dir: ResolvedVc<FileSystemPath>,
+    request: &str,
+) -> ResolvedVc<ImportMapping> {
+    ImportMapping::PrimaryAlternativeExternal {
+        name: Some(request.into()),
+        ty: ExternalType::CommonJs,
+        traced: ExternalTraced::Traced,
+        lookup_dir: context_dir,
+    }
+    .resolved_cell()
+}
+
+/// Creates a direct import mapping to the result of resolving an external
+/// request.
+#[allow(dead_code)]
+fn external_request_to_esm_import_mapping(
+    context_dir: ResolvedVc<FileSystemPath>,
+    request: &str,
+) -> ResolvedVc<ImportMapping> {
+    ImportMapping::PrimaryAlternativeExternal {
+        name: Some(request.into()),
+        ty: ExternalType::EcmaScriptModule,
+        traced: ExternalTraced::Traced,
+        lookup_dir: context_dir,
+    }
+    .resolved_cell()
 }
