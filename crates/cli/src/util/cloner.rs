@@ -15,6 +15,8 @@ use libc::clonefile;
 mod linux_clone {
     use std::fs::File;
     use std::os::unix::io::AsRawFd;
+    use std::path::Path;
+    use tokio::fs;
 
     const FICLONE: libc::c_ulong = 0x40049409;
 
@@ -25,6 +27,34 @@ mod linux_clone {
         } else {
             Err(std::io::Error::last_os_error())
         }
+    }
+
+    pub async fn clone_dir(src: &Path, dst: &Path) -> std::io::Result<()> {
+        if !fs::metadata(src).await?.is_dir() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Source is not a directory",
+            ));
+        }
+
+        fs::create_dir_all(dst).await?;
+
+        let mut read_dir = fs::read_dir(src).await?;
+        while let Some(entry) = read_dir.next_entry().await? {
+            let entry_path = entry.path();
+            let file_name = entry_path.file_name().unwrap();
+            let target_path = dst.join(file_name);
+
+            if entry.metadata().await?.is_dir() {
+                clone_dir(&entry_path, &target_path).await?;
+            } else {
+                let src_file = File::open(&entry_path)?;
+                let dst_file = File::create(&target_path)?;
+                clone_file(&src_file, &dst_file)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -205,21 +235,31 @@ pub async fn clone(src: &Path, dst: &Path, find_real: bool) -> Result<(), std::i
         use std::fs::File;
 
         Retry::spawn(create_retry_strategy(), || async {
-            let src_file = File::open(&real_src)?;
-            let dst_file = File::create(dst)?;
+            if fs::metadata(&real_src).await?.is_dir() {
+                linux_clone::clone_dir(&real_src, dst).await?;
+                log_verbose(&format!(
+                    "clone {} to {} success",
+                    real_src.display(),
+                    dst.display()
+                ));
+                Ok(())
+            } else {
+                let src_file = File::open(&real_src)?;
+                let dst_file = File::create(dst)?;
 
-            match linux_clone::clone_file(&src_file, &dst_file) {
-                Ok(()) => {
-                    log_verbose(&format!(
-                        "clone {} to {} success",
-                        real_src.display(),
-                        dst.display()
-                    ));
-                    Ok(())
-                }
-                Err(e) => {
-                    let _ = fs::remove_file(dst).await;
-                    Err(e)
+                match linux_clone::clone_file(&src_file, &dst_file) {
+                    Ok(()) => {
+                        log_verbose(&format!(
+                            "clone {} to {} success",
+                            real_src.display(),
+                            dst.display()
+                        ));
+                        Ok(())
+                    }
+                    Err(e) => {
+                        let _ = fs::remove_file(dst).await;
+                        Err(e)
+                    }
                 }
             }
         })
@@ -288,5 +328,100 @@ mod tests {
         assert_eq!(find_real_src(&dir).await.unwrap(), subdir);
 
         Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    mod linux_tests {
+        use super::*;
+        use std::fs::File;
+        use std::io::Read;
+
+        #[tokio::test]
+        async fn test_clone_dir_basic() -> std::io::Result<()> {
+            let temp = TempDir::new()?;
+            let src_dir = temp.path().join("src");
+            let dst_dir = temp.path().join("dst");
+
+            // Create source directory structure
+            create_test_structure(
+                &src_dir,
+                &[
+                    ("file1.txt", Some(b"content1")),
+                    ("file2.txt", Some(b"content2")),
+                    ("subdir", None),
+                    ("subdir/file3.txt", Some(b"content3")),
+                ],
+            )
+            .await?;
+
+            // Perform clone operation
+            linux_clone::clone_dir(&src_dir, &dst_dir).await?;
+
+            // Verify clone result
+            assert!(validate_directory(&src_dir, &dst_dir).await?);
+
+            // Verify file contents
+            let mut content = String::new();
+            File::open(dst_dir.join("file1.txt"))?.read_to_string(&mut content)?;
+            assert_eq!(content, "content1");
+
+            content.clear();
+            File::open(dst_dir.join("subdir/file3.txt"))?.read_to_string(&mut content)?;
+            assert_eq!(content, "content3");
+
+            Ok(())
+        }
+
+        #[tokio::test]
+        async fn test_clone_dir_nested() -> std::io::Result<()> {
+            let temp = TempDir::new()?;
+            let src_dir = temp.path().join("src");
+            let dst_dir = temp.path().join("dst");
+
+            // Create multi-level nested directory structure
+            create_test_structure(
+                &src_dir,
+                &[
+                    ("dir1", None),
+                    ("dir1/dir2", None),
+                    ("dir1/dir2/dir3", None),
+                    ("dir1/dir2/dir3/file.txt", Some(b"deep content")),
+                ],
+            )
+            .await?;
+
+            // Perform clone operation
+            linux_clone::clone_dir(&src_dir, &dst_dir).await?;
+
+            // Verify clone result
+            assert!(validate_directory(&src_dir, &dst_dir).await?);
+
+            // Verify deep file content
+            let mut content = String::new();
+            File::open(dst_dir.join("dir1/dir2/dir3/file.txt"))?.read_to_string(&mut content)?;
+            assert_eq!(content, "deep content");
+
+            Ok(())
+        }
+
+        #[tokio::test]
+        async fn test_clone_dir_error_cases() -> std::io::Result<()> {
+            let temp = TempDir::new()?;
+            let src_dir = temp.path().join("src");
+            let dst_dir = temp.path().join("dst");
+
+            // Test case when source directory doesn't exist
+            let result = linux_clone::clone_dir(&src_dir, &dst_dir).await;
+            assert!(result.is_err());
+            assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::NotFound);
+
+            // Test case when source path is a file instead of a directory
+            create_test_file(&temp.path(), "not_a_dir", b"content").await?;
+            let result = linux_clone::clone_dir(&temp.path().join("not_a_dir"), &dst_dir).await;
+            assert!(result.is_err());
+            assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::InvalidInput);
+
+            Ok(())
+        }
     }
 }
