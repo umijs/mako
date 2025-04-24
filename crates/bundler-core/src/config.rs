@@ -111,25 +111,6 @@ pub enum OutputType {
 }
 
 #[derive(
-    Clone,
-    Debug,
-    Default,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    TraceRawVcs,
-    NonLocalValue,
-    OperationValue,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct ExperimentalTurboConfig {
-    pub tree_shaking: Option<bool>,
-    pub minify: Option<bool>,
-    pub source_maps: Option<bool>,
-    pub unstable_persistent_caching: Option<bool>,
-}
-
-#[derive(
     Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TraceRawVcs, NonLocalValue, OperationValue,
 )]
 #[serde(rename_all = "camelCase")]
