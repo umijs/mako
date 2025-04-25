@@ -1,10 +1,8 @@
 name: utoo-release
 
-# on:
-#   release:
-#     types: [published]
-
-on: [ push ]
+on:
+  release:
+    types: [published]
 
 jobs:
   build-and-publish-binary:
@@ -27,6 +25,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
+    defaults:
+      run:
+        shell: bash
     permissions:
       contents: write
       id-token: write
@@ -147,5 +148,5 @@ jobs:
           BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean" "utoo-core")
           for BIN in "${BINS[@]}"; do
             PACKAGE_NAME=$(echo "$BIN")
-            # ./npm-main.sh "$PACKAGE_NAME" "$VERSION"
+            ./npm-main.sh "$PACKAGE_NAME" "$VERSION"
           done
