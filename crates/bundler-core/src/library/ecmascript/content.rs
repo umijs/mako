@@ -4,13 +4,13 @@ use anyhow::{bail, Result};
 use indoc::writedoc;
 use serde::Serialize;
 use turbo_tasks::{ReadRef, ResolvedVc, TryJoinIterExt, Value, Vc};
-use turbo_tasks_fs::File;
+use turbo_tasks_fs::{rope::RopeBuilder, File};
 use turbopack_core::{
     asset::AssetContent,
     chunk::{ChunkingContext, MinifyType, ModuleChunkItemIdExt, ModuleId},
     code_builder::{Code, CodeBuilder},
     output::OutputAsset,
-    source_map::{GenerateSourceMap, OptionStringifiedSourceMap},
+    source_map::{GenerateSourceMap, OptionStringifiedSourceMap, SourceMapAsset},
     version::{Version, VersionedContent},
 };
 use turbopack_ecmascript::{
@@ -28,6 +28,7 @@ pub struct EcmascriptLibraryChunkContent {
     pub(super) chunking_context: ResolvedVc<LibraryChunkingContext>,
     pub(super) chunk: ResolvedVc<EcmascriptLibraryChunk>,
     pub(super) content: ResolvedVc<EcmascriptChunkContent>,
+    pub(super) source_map: ResolvedVc<SourceMapAsset>,
 }
 
 #[turbo_tasks::value_impl]
@@ -37,11 +38,13 @@ impl EcmascriptLibraryChunkContent {
         chunking_context: ResolvedVc<LibraryChunkingContext>,
         chunk: ResolvedVc<EcmascriptLibraryChunk>,
         content: ResolvedVc<EcmascriptChunkContent>,
+        source_map: ResolvedVc<SourceMapAsset>,
     ) -> Result<Vc<Self>> {
         Ok(EcmascriptLibraryChunkContent {
             chunking_context,
             chunk,
             content,
+            source_map,
         }
         .cell())
     }
@@ -156,17 +159,6 @@ impl EcmascriptLibraryChunkContent {
         );
         code.push_code(&*runtime_code.await?);
 
-        if source_maps && code.has_source_map() {
-            let filename = chunk_path.file_name();
-            write!(
-                code,
-                // findSourceMapURL assumes this co-located sourceMappingURL,
-                // and needs to be adjusted in case this is ever changed.
-                "\n\n//# sourceMappingURL={}.map",
-                urlencoding::encode(filename)
-            )?;
-        }
-
         let mut code = code.build();
 
         if let MinifyType::Minify { mangle } = this.chunking_context.await?.minify_type() {
@@ -194,10 +186,25 @@ struct EcmascriptBrowserChunkRuntimeParams<'a, T> {
 impl VersionedContent for EcmascriptLibraryChunkContent {
     #[turbo_tasks::function]
     async fn content(self: Vc<Self>) -> Result<Vc<AssetContent>> {
+        let this = self.await?;
         let code = self.code().await?;
-        Ok(AssetContent::file(
-            File::from(code.source_code().clone()).into(),
-        ))
+
+        let rope = if code.has_source_map() {
+            use std::io::Write;
+            let mut rope_builder = RopeBuilder::default();
+            rope_builder.concat(code.source_code());
+            let source_map_path = this.source_map.path().await?;
+            write!(
+                rope_builder,
+                "\n\n//# sourceMappingURL={}",
+                urlencoding::encode(source_map_path.file_name())
+            )?;
+            rope_builder.build()
+        } else {
+            code.source_code().clone()
+        };
+
+        Ok(AssetContent::file(File::from(rope).into()))
     }
 
     #[turbo_tasks::function]

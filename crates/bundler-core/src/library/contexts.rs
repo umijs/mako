@@ -27,7 +27,7 @@ pub async fn get_library_chunking_context(
     no_mangling: Vc<bool>,
 ) -> Result<Vc<Box<dyn ChunkingContext>>> {
     let mode = mode.await?;
-    let builder = LibraryChunkingContext::builder(
+    let mut builder = LibraryChunkingContext::builder(
         root_path,
         output_root,
         output_root_to_root_path,
@@ -47,6 +47,10 @@ pub async fn get_library_chunking_context(
         SourceMapsType::None
     })
     .module_id_strategy(module_id_strategy);
+
+    if mode.is_development() {
+        builder = builder.use_file_source_map_uris();
+    }
 
     Ok(Vc::upcast(builder.build()))
 }
