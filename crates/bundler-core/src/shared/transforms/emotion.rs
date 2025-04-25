@@ -9,7 +9,7 @@ use crate::config::{Config, EmotionTransformOptionsOrBoolean};
 pub async fn get_emotion_transform_rule(config: Vc<Config>) -> Result<Option<ModuleRule>> {
     let enable_mdx_rs = config.mdx_rs().await?.is_some();
     let module_rule = config
-        .compiler()
+        .styles()
         .await?
         .emotion
         .as_ref()

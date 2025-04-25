@@ -5,10 +5,11 @@ use turbopack::module_options::{ModuleRule, ModuleRuleEffect, ModuleType, RuleCo
 use turbopack_core::reference_type::{ReferenceType, UrlReferenceSubType};
 use turbopack_ecmascript::{CustomTransformer, EcmascriptInputTransform};
 
-use crate::image::{module::BlurPlaceholderMode, StructuredImageModuleType};
+use image::{module::BlurPlaceholderMode, StructuredImageModuleType};
 
 pub mod dynamic_import_to_require;
 pub mod emotion;
+pub mod image;
 pub mod modularize_imports;
 pub mod remove_console;
 pub mod styled_components;

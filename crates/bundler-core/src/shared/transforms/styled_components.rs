@@ -14,7 +14,7 @@ pub async fn get_styled_components_transform_rule(
     let enable_mdx_rs = config.mdx_rs().await?.is_some();
 
     let module_rule = config
-        .compiler()
+        .styles()
         .await?
         .styled_components
         .as_ref()

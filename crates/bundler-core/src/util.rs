@@ -42,7 +42,12 @@ impl Runtime {
 
 #[turbo_tasks::function]
 pub async fn get_transpiled_packages(config: Vc<Config>) -> Result<Vc<Vec<RcStr>>> {
-    let transpile_packages: Vec<RcStr> = config.transpile_packages().owned().await?;
+    let transpile_packages: Vec<RcStr> = config
+        .optimization()
+        .await?
+        .transpile_packages
+        .clone()
+        .unwrap_or_default();
 
     Ok(Vc::cell(transpile_packages))
 }

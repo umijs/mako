@@ -114,43 +114,37 @@ export interface ConfigComplete {
     >;
     packageImports?: string[];
     transpilePackages?: string[];
-    image?: {
-      inlineLimit?: number;
-    };
-  };
-  defineEnv: Record<string, string | undefined>;
-  sassOptions?: {
-    implementation?: string;
-    [key: string]: any;
-  };
-  lessOptions?: {
-    implementation?: string;
-    [key: string]: any;
-  };
-  inlineCss?: {
-    [key: string]: any;
-  };
-  serverExternalPackages?: string[];
-  compiler?: {
+
     removeConsole?:
       | boolean
       | {
           exclude?: string[];
         };
-    styledComponents?: boolean | StyledComponentsConfig;
-    emotion?: boolean | EmotionConfig;
-
+  };
+  define?: Record<string, string>;
+  styles?: {
+    sass?: {
+      implementation?: string;
+      [key: string]: any;
+    };
+    less?: {
+      implementation?: string;
+      [key: string]: any;
+    };
     styledJsx?:
       | boolean
       | {
           useLightningcss?: boolean;
         };
-
-    /**
-     * Replaces variables in your code during compile time. Each key will be
-     * replaced with the respective values.
-     */
-    define?: Record<string, string>;
+    inlineCss?: {
+      insert?: string;
+      injectType: string;
+    };
+    styledComponents?: boolean | StyledComponentsConfig;
+    emotion?: boolean | EmotionConfig;
+  };
+  images?: {
+    inlineLimit?: number;
   };
   experimental?: ExperimentalConfig;
   persistentCaching?: boolean;
