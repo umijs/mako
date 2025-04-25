@@ -36,12 +36,15 @@ jobs:
 
       - name: Install Linux Dependencies
         if: ${{ matrix.platform_os == 'linux' }}
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
           apt-get update && apt-get install -y \
             build-essential \
             libc6-dev \
             libglib2.0-0 \
-            curl
+            curl \
+            tzdata
 
       - name: Get version from release or use alpha version
         id: get_version
