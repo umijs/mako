@@ -1,8 +1,10 @@
 name: utoo-release
 
-on:
-  release:
-    types: [published]
+# on:
+#   release:
+#     types: [published]
+
+on: [ push ]
 
 jobs:
   build-and-publish-binary:
@@ -52,7 +54,8 @@ jobs:
           override: true
           target: ${{ matrix.target }}
 
-      - name: Build
+      - name: Build in Docker
+        if: ${{ matrix.docker }}
         uses: addnab/docker-run-action@v3
         with:
           image: ${{ matrix.docker }}
@@ -60,6 +63,13 @@ jobs:
           run: |
             rustup target add ${{ matrix.target }} &&
             cargo build --release --bin utoo --bin utoo-install --bin utoo-rebuild --bin utoo-deps --bin utoo-clean --bin utoo-core
+
+      - name: Build
+        if: ${{ !matrix.docker }}
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --bin utoo --bin utoo-install --bin utoo-rebuild --bin utoo-deps --bin utoo-clean --bin utoo-core
 
       - name: Package Binaries
         run: |
@@ -126,5 +136,5 @@ jobs:
           BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean" "utoo-core")
           for BIN in "${BINS[@]}"; do
             PACKAGE_NAME=$(echo "$BIN")
-            ./npm-main.sh "$PACKAGE_NAME" "$VERSION"
+            # ./npm-main.sh "$PACKAGE_NAME" "$VERSION"
           done
