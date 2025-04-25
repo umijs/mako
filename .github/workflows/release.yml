@@ -39,16 +39,6 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Check git repository
-        run: |
-          echo "Current directory: $(pwd)"
-          echo "Directory contents:"
-          ls -la
-          echo "Git status:"
-          git status
-
       - name: Install Linux Dependencies
         if: ${{ matrix.platform_os == 'linux' }}
         env:
@@ -63,11 +53,22 @@ jobs:
             pkg-config \
             libssl-dev \
             gnupg2 \
-            software-properties-common
+            software-properties-common \
+            git
           curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
           chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
           apt-get update && apt-get install -y gh
+
+      - uses: actions/checkout@v3
+
+      - name: Check git repository
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          echo "Git status:"
+          git status
 
       - name: Get version from release or use alpha version
         id: get_version
