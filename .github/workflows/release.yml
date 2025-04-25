@@ -82,6 +82,7 @@ jobs:
             utoo utoo-install utoo-rebuild utoo-deps utoo-clean
 
       - name: Upload Release Asset
+        if: ${{ steps.get_version.outputs.VERSION != '0.0.0' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
