@@ -65,6 +65,8 @@ jobs:
           image: ${{ matrix.docker }}
           options: "--user 0:0 -v ${{ github.workspace }}/.cargo-cache/git/db:/usr/local/cargo/git/db -v ${{ github.workspace }}/.cargo/registry/cache:/usr/local/cargo/registry/cache -v ${{ github.workspace }}/.cargo/registry/index:/usr/local/cargo/registry/index -v ${{ github.workspace }}:/build -w /build"
           run: |
+            apt-get update &&
+            apt-get install -y libssl-dev pkg-config &&
             rustup target add ${{ matrix.target }} &&
             cargo build --release --bin utoo --bin utoo-install --bin utoo-rebuild --bin utoo-deps --bin utoo-clean --bin utoo-core
 
