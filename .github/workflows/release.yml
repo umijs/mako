@@ -44,7 +44,9 @@ jobs:
             libc6-dev \
             libglib2.0-0 \
             curl \
-            tzdata
+            tzdata \
+            pkg-config \
+            libssl-dev
 
       - name: Get version from release or use alpha version
         id: get_version
