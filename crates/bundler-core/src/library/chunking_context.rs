@@ -80,6 +80,11 @@ impl LibraryChunkingContextBuilder {
         self
     }
 
+    pub fn use_file_source_map_uris(mut self) -> Self {
+        self.chunking_context.should_use_file_source_map_uris = true;
+        self
+    }
+
     pub fn module_id_strategy(
         mut self,
         module_id_strategy: ResolvedVc<Box<dyn ModuleIdStrategy>>,

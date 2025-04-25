@@ -83,6 +83,7 @@ impl EcmascriptLibraryChunk {
             *this.chunking_context,
             self,
             this.chunk.chunk_content(),
+            self.source_map(),
         ))
     }
 
