@@ -35,7 +35,7 @@ tokio = { workspace = true }
 owo-colors = { workspace = true }
 serde = { workspace = true }
 serde_json = "1.0"
-reqwest = { version = "0.11", features = ["json", "gzip"] }
+reqwest = { version = "0.11", features = ["json", "rustls-tls", "gzip"], default-features = false }
 flate2 = "1.0"
 tar = "0.4"
 dirs = "4.0"
