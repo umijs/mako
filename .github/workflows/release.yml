@@ -1,10 +1,10 @@
 name: utoo-release
 
-# on:
-#   release:
-#     types: [published]
+on:
+  release:
+    types: [published]
 
-on: [ push ]
+# on: [ push ]
 
 jobs:
   build-and-publish-binary:
@@ -28,9 +28,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     container:
       image: ${{ matrix.container }}
-      volumes:
-        - /github/workspace:/github/workspace
-      options: --workdir /github/workspace
     defaults:
       run:
         shell: bash
@@ -65,14 +62,6 @@ jobs:
       - name: Configure git safe directory
         run: |
           git config --global --add safe.directory /__w/mako/mako
-
-      - name: Check git repository
-        run: |
-          echo "Current directory: $(pwd)"
-          echo "Directory contents:"
-          ls -la
-          echo "Git status:"
-          git status
 
       - name: Get version from release or use alpha version
         id: get_version
