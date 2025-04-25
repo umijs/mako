@@ -1,8 +1,10 @@
 name: utoo-release
 
-on:
-  release:
-    types: [published]
+# on:
+#   release:
+#     types: [published]
+
+on: [ push ]
 
 jobs:
   build-and-publish-binary:
@@ -91,10 +93,14 @@ jobs:
             utoo utoo-install utoo-rebuild utoo-deps utoo-clean
 
       - name: Upload Release Asset
-        if: ${{ steps.get_version.outputs.VERSION != '0.0.0' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Current working directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          echo "Git status:"
+          git status
           gh release upload "${GITHUB_REF#refs/tags/}" \
             utoo-${{ matrix.platform_os }}-${{ matrix.platform_cpu }}.tar.gz --clobber
 
