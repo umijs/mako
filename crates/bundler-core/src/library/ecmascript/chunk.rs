@@ -58,7 +58,7 @@ impl EcmascriptLibraryChunk {
 impl ValueToString for EcmascriptLibraryChunk {
     #[turbo_tasks::function]
     fn to_string(&self) -> Vc<RcStr> {
-        Vc::cell("Ecmascript Dev Chunk".into())
+        Vc::cell("Ecmascript Library Chunk".into())
     }
 }
 

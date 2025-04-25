@@ -812,7 +812,7 @@ impl Project {
     ) -> Result<Vc<Box<dyn ChunkingContext>>> {
         Ok(get_library_chunking_context(
             self.project_root(),
-            self.client_root(),
+            self.dist_root(),
             Vc::cell("/ROOT".into()),
             self.client_compile_time_info().environment(),
             self.mode(),
