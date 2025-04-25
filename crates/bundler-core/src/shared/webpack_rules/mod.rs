@@ -1,4 +1,5 @@
 use anyhow::Result;
+use style_loader::maybe_add_style_loader;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{ResolvedVc, Vc};
 use turbo_tasks_fs::FileSystemPath;
@@ -20,12 +21,9 @@ pub async fn webpack_loader_options(
     conditions: Vec<RcStr>,
 ) -> Result<Option<ResolvedVc<WebpackLoadersOptions>>> {
     let rules = *config.webpack_rules(conditions).await?;
-    let rules =
-        *maybe_add_sass_loader(config.sass_config(), config.inline_css(), rules.map(|v| *v))
-            .await?;
-    let rules =
-        *maybe_add_less_loader(config.less_config(), config.inline_css(), rules.map(|v| *v))
-            .await?;
+    let rules = *maybe_add_style_loader(config.inline_css(), rules.map(|v| *v)).await?;
+    let rules = *maybe_add_less_loader(config.less_config(), rules.map(|v| *v)).await?;
+    let rules = *maybe_add_sass_loader(config.sass_config(), rules.map(|v| *v)).await?;
 
     Ok(if let Some(rules) = rules {
         Some(
