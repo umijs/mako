@@ -99,11 +99,7 @@ pub async fn maybe_add_sass_loader(
             rule.loaders = ResolvedVc::cell(loaders);
         } else {
             let loaders = if let Some(inline_css) = inline_css {
-                vec![
-                    style_loader(inline_css)?,
-                    resolve_url_loader,
-                    sass_loader,
-                ]
+                vec![style_loader(inline_css)?, resolve_url_loader, sass_loader]
             } else {
                 vec![resolve_url_loader, sass_loader]
             };
