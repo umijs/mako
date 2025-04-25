@@ -20,18 +20,12 @@ pub async fn webpack_loader_options(
     conditions: Vec<RcStr>,
 ) -> Result<Option<ResolvedVc<WebpackLoadersOptions>>> {
     let rules = *config.webpack_rules(conditions).await?;
-    let rules = *maybe_add_sass_loader(
-        config.sass_config(),
-        config.style_options(),
-        rules.map(|v| *v),
-    )
-    .await?;
-    let rules = *maybe_add_less_loader(
-        config.less_config(),
-        config.style_options(),
-        rules.map(|v| *v),
-    )
-    .await?;
+    let rules =
+        *maybe_add_sass_loader(config.sass_config(), config.inline_css(), rules.map(|v| *v))
+            .await?;
+    let rules =
+        *maybe_add_less_loader(config.less_config(), config.inline_css(), rules.map(|v| *v))
+            .await?;
 
     Ok(if let Some(rules) = rules {
         Some(

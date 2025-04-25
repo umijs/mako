@@ -13,7 +13,7 @@ pub async fn get_remove_console_transform_rule(config: Vc<Config>) -> Result<Opt
     let enable_mdx_rs = config.mdx_rs().await?.is_some();
 
     let module_rule = config
-        .compiler()
+        .optimization()
         .await?
         .remove_console
         .as_ref()

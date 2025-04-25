@@ -2,7 +2,6 @@ use anyhow::{bail, Context, Result};
 use rustc_hash::FxHashSet;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use std::time::Duration;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{
     debug::ValueDebugFormat, trace::TraceRawVcs, FxIndexMap, NonLocalValue, OperationValue,
@@ -104,17 +103,25 @@ pub struct Config {
     output: Option<OutputConfig>,
     target: Option<RcStr>,
     source_maps: Option<bool>,
+    define: Option<FxIndexMap<String, JsonValue>>,
+    images: Option<ImageConfig>,
+    styles: Option<StyleConfig>,
     optimization: Option<OptimizationConfig>,
-    define_env: Option<FxIndexMap<String, JsonValue>>,
-    sass_options: Option<serde_json::Value>,
-    less_options: Option<serde_json::Value>,
-    style_options: Option<serde_json::Value>,
-    server_external_packages: Option<Vec<RcStr>>,
-    compiler: Option<CompilerConfig>,
     #[serde(default)]
     experimental: ExperimentalConfig,
     persistent_caching: Option<bool>,
     cache_handler: Option<RcStr>,
+}
+
+#[turbo_tasks::value(eq = "manual")]
+#[derive(Clone, Debug, PartialEq, Default, OperationValue)]
+#[serde(rename_all = "camelCase")]
+pub struct StyleConfig {
+    pub emotion: Option<EmotionTransformOptionsOrBoolean>,
+    pub styled_components: Option<StyledComponentsTransformOptionsOrBoolean>,
+    sass: Option<serde_json::Value>,
+    less: Option<serde_json::Value>,
+    inline_css: Option<serde_json::Value>,
 }
 
 #[derive(
@@ -157,19 +164,8 @@ pub struct ImageConfig {
 #[turbo_tasks::value(transparent)]
 pub struct OptionImageConfig(Option<ImageConfig>);
 
-#[derive(
-    Clone,
-    Debug,
-    Eq,
-    Default,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    TraceRawVcs,
-    ValueDebugFormat,
-    NonLocalValue,
-    OperationValue,
-)]
+#[turbo_tasks::value(eq = "manual")]
+#[derive(Clone, Debug, PartialEq, Default, OperationValue)]
 #[serde(rename_all = "camelCase")]
 pub struct OptimizationConfig {
     pub module_ids: Option<ModuleIds>,
@@ -182,7 +178,7 @@ pub struct OptimizationConfig {
     pub package_imports: Option<Vec<RcStr>>,
     pub modularize_imports: Option<FxIndexMap<String, ModularizeImportPackageConfig>>,
     pub transpile_packages: Option<Vec<RcStr>>,
-    pub image: Option<ImageConfig>,
+    pub remove_console: Option<RemoveConsoleConfig>,
 }
 
 #[turbo_tasks::value(eq = "manual")]
@@ -479,15 +475,6 @@ impl StyledComponentsTransformOptionsOrBoolean {
     }
 }
 
-#[turbo_tasks::value(eq = "manual")]
-#[derive(Clone, Debug, PartialEq, Default, OperationValue)]
-#[serde(rename_all = "camelCase")]
-pub struct CompilerConfig {
-    pub emotion: Option<EmotionTransformOptionsOrBoolean>,
-    pub remove_console: Option<RemoveConsoleConfig>,
-    pub styled_components: Option<StyledComponentsTransformOptionsOrBoolean>,
-}
-
 #[derive(
     Clone, Debug, PartialEq, Serialize, Deserialize, TraceRawVcs, NonLocalValue, OperationValue,
 )]
@@ -524,18 +511,6 @@ impl RemoveConsoleConfig {
     }
 }
 
-#[turbo_tasks::value(eq = "manual")]
-#[derive(Clone, Debug, PartialEq, Default, OperationValue)]
-#[serde(rename_all = "camelCase")]
-pub struct WatchOptions {
-    /// Whether to watch the filesystem for file changes.
-    pub enable: bool,
-
-    /// Enable polling at a certain interval if the native file watching doesn't work (e.g.
-    /// docker).
-    pub poll_interval: Option<Duration>,
-}
-
 #[turbo_tasks::value(transparent)]
 pub struct ResolveExtensions(Option<Vec<RcStr>>);
 
@@ -559,16 +534,6 @@ impl Config {
     }
 
     #[turbo_tasks::function]
-    pub fn server_external_packages(&self) -> Vc<Vec<RcStr>> {
-        Vc::cell(
-            self.server_external_packages
-                .as_ref()
-                .cloned()
-                .unwrap_or_default(),
-        )
-    }
-
-    #[turbo_tasks::function]
     pub fn is_standalone(&self) -> Vc<bool> {
         Vc::cell(
             self.output
@@ -583,8 +548,13 @@ impl Config {
     }
 
     #[turbo_tasks::function]
-    pub fn compiler(&self) -> Vc<CompilerConfig> {
-        self.compiler.clone().unwrap_or_default().cell()
+    pub fn optimization(&self) -> Vc<OptimizationConfig> {
+        self.optimization.clone().unwrap_or_default().cell()
+    }
+
+    #[turbo_tasks::function]
+    pub fn styles(&self) -> Vc<StyleConfig> {
+        self.styles.clone().unwrap_or_default().cell()
     }
 
     #[turbo_tasks::function]
@@ -607,7 +577,7 @@ impl Config {
     #[turbo_tasks::function]
     pub fn define_env(&self) -> Vc<EnvMap> {
         let define_env = self
-            .define_env
+            .define
             .as_ref()
             .unwrap_or(&FxIndexMap::default())
             .iter()
@@ -625,16 +595,6 @@ impl Config {
             .collect();
 
         Vc::cell(define_env)
-    }
-
-    #[turbo_tasks::function]
-    pub fn transpile_packages(&self) -> Vc<Vec<RcStr>> {
-        Vc::cell(
-            self.optimization
-                .as_ref()
-                .map(|op| op.transpile_packages.clone().unwrap_or_default())
-                .unwrap_or_default(),
-        )
     }
 
     #[turbo_tasks::function]
@@ -793,12 +753,7 @@ impl Config {
 
     #[turbo_tasks::function]
     pub fn image_config(&self) -> Vc<OptionImageConfig> {
-        Vc::cell(
-            self.optimization
-                .as_ref()
-                .map(|op| op.image.clone())
-                .unwrap_or_default(),
-        )
+        Vc::cell(self.images.clone())
     }
 
     #[turbo_tasks::function]
@@ -853,8 +808,14 @@ impl Config {
     #[turbo_tasks::function]
     pub fn sass_config(&self) -> Vc<JsonValue> {
         Vc::cell(
-            self.sass_options
-                .clone()
+            self.styles
+                .as_ref()
+                .map(|styles| {
+                    styles
+                        .sass
+                        .clone()
+                        .unwrap_or(JsonValue::Object(serde_json::Map::new()))
+                })
                 .unwrap_or(JsonValue::Object(serde_json::Map::new())),
         )
     }
@@ -862,15 +823,21 @@ impl Config {
     #[turbo_tasks::function]
     pub fn less_config(&self) -> Vc<JsonValue> {
         Vc::cell(
-            self.less_options
-                .clone()
+            self.styles
+                .as_ref()
+                .map(|styles| {
+                    styles
+                        .less
+                        .clone()
+                        .unwrap_or(JsonValue::Object(serde_json::Map::new()))
+                })
                 .unwrap_or(JsonValue::Object(serde_json::Map::new())),
         )
     }
 
     #[turbo_tasks::function]
-    pub fn style_options(&self) -> Vc<OptionalJsonValue> {
-        Vc::cell(self.style_options.clone())
+    pub fn inline_css(&self) -> Vc<OptionalJsonValue> {
+        Vc::cell(self.styles.as_ref().and_then(|op| op.inline_css.clone()))
     }
 
     #[turbo_tasks::function]
