@@ -34,6 +34,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install Linux Dependencies
+        if: ${{ matrix.platform_os == 'linux' }}
+        run: |
+          apt-get update && apt-get install -y \
+            build-essential \
+            libc6-dev \
+            libglib2.0-0 \
+            curl
+
       - name: Get version from release or use alpha version
         id: get_version
         run: |
