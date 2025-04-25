@@ -15,7 +15,7 @@ jobs:
             target: x86_64-unknown-linux-gnu
             platform_os: linux
             platform_cpu: x64
-            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
+            container: ubuntu:20.04
           - os: macos-latest
             target: x86_64-apple-darwin
             platform_os: darwin
@@ -26,6 +26,7 @@ jobs:
             platform_cpu: arm64
 
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     permissions:
       contents: write
       id-token: write
@@ -56,18 +57,7 @@ jobs:
           override: true
           target: ${{ matrix.target }}
 
-      - name: Build in Docker
-        if: ${{ matrix.docker }}
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ${{ matrix.docker }}
-          options: "--user 0:0 -v ${{ github.workspace }}/.cargo-cache/git/db:/usr/local/cargo/git/db -v ${{ github.workspace }}/.cargo/registry/cache:/usr/local/cargo/registry/cache -v ${{ github.workspace }}/.cargo/registry/index:/usr/local/cargo/registry/index -v ${{ github.workspace }}:/build -w /build"
-          run: |
-            rustup target add ${{ matrix.target }} &&
-            cargo build --release --bin utoo --bin utoo-install --bin utoo-rebuild --bin utoo-deps --bin utoo-clean --bin utoo-core
-
       - name: Build
-        if: ${{ !matrix.docker }}
         uses: actions-rs/cargo@v1
         with:
           command: build
