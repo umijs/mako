@@ -41,6 +41,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Check git repository
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          echo "Git status:"
+          git status
+
       - name: Install Linux Dependencies
         if: ${{ matrix.platform_os == 'linux' }}
         env:
