@@ -28,8 +28,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     container:
       image: ${{ matrix.container }}
-      volumes:
-        - /__w/mako/mako:/__w/mako/mako
     defaults:
       run:
         shell: bash
@@ -99,12 +97,10 @@ jobs:
         if: ${{ matrix.platform_os == 'linux' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_DISCOVERY_ACROSS_FILESYSTEM: ${{ matrix.platform_os == 'linux' && '1' || '' }}
         run: |
-          echo "Current working directory: $(pwd)"
-          echo "Directory contents:"
+          pwd
           ls -la
-          echo "Git status:"
-          git status
           gh release upload "${GITHUB_REF#refs/tags/}" \
             utoo-${{ matrix.platform_os }}-${{ matrix.platform_cpu }}.tar.gz --clobber
 
