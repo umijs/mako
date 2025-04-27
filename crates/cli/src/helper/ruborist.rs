@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::sync::Semaphore;
 
+use crate::helper::workspace::find_workspaces;
 use crate::util::config::get_legacy_peer_deps;
 use crate::util::logger::{
     finish_progress_bar, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
@@ -14,7 +15,6 @@ use crate::util::logger::{
 use crate::util::node::{Edge, EdgeType, Node};
 use crate::util::registry::{load_cache, resolve, store_cache, ResolvedPackage};
 use crate::util::semver::matches;
-use crate::helper::workspace::find_workspaces;
 
 pub struct Ruborist {
     path: PathBuf,
@@ -345,22 +345,13 @@ impl Ruborist {
             let version = pkg["version"].as_str().unwrap_or("").to_string();
 
             // Create workspace node
-            let workspace_node = Node::new_workspace(
-                name.clone(),
-                path,
-                pkg.clone(),
-            );
+            let workspace_node = Node::new_workspace(name.clone(), path, pkg.clone());
 
             // Create link node
             let link_node = Node::new_link(name.clone(), workspace_node.clone());
 
             // Create dependency edge
-            let dep_edge = Edge::new(
-                root.clone(),
-                EdgeType::Prod,
-                name.clone(),
-                version,
-            );
+            let dep_edge = Edge::new(root.clone(), EdgeType::Prod, name.clone(), version);
 
             // Set target node and validity for dependency edge
             {
