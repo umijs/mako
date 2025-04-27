@@ -9,6 +9,7 @@ use turbopack_core::{
     asset::AssetContent,
     chunk::{ChunkingContext, MinifyType, ModuleChunkItemIdExt, ModuleId},
     code_builder::{Code, CodeBuilder},
+    environment::{EdgeWorkerEnvironment, Environment, ExecutionEnvironment},
     output::OutputAsset,
     source_map::{GenerateSourceMap, OptionStringifiedSourceMap, SourceMapAsset},
     version::{Version, VersionedContent},
@@ -21,7 +22,7 @@ use turbopack_ecmascript::{
 use turbopack_ecmascript_runtime::RuntimeType;
 
 use super::{chunk::EcmascriptLibraryChunk, version::EcmascriptLibraryChunkVersion};
-use crate::library::LibraryChunkingContext;
+use crate::library::{runtime::runtime_code::get_library_runtime_code, LibraryChunkingContext};
 
 #[turbo_tasks::value(serialization = "none")]
 pub struct EcmascriptLibraryChunkContent {
@@ -65,7 +66,6 @@ impl EcmascriptLibraryChunkContent {
     #[turbo_tasks::function]
     async fn code(self: Vc<Self>) -> Result<Vc<Code>> {
         let this = self.await?;
-        let environment = this.chunking_context.environment();
 
         let output_root = this.chunking_context.output_root().await?;
         let output_root_to_root_path = this.chunking_context.output_root_to_root_path();
@@ -149,13 +149,17 @@ impl EcmascriptLibraryChunkContent {
         write!(code, "\n{},", StringifyJs(&params))?;
         writeln!(code, "\n]);")?;
 
-        let runtime_code = turbopack_ecmascript_runtime::get_browser_runtime_code(
-            environment,
+        let runtime_code = get_library_runtime_code(
+            Environment::new(Value::new(ExecutionEnvironment::EdgeWorker(
+                EdgeWorkerEnvironment {}.resolved_cell(),
+            ))),
             Vc::cell(None),
             Vc::cell(None),
             Value::new(RuntimeType::Production),
             output_root_to_root_path,
             source_maps,
+            this.chunking_context.runtime_root(),
+            this.chunking_context.runtime_export(),
         );
         code.push_code(&*runtime_code.await?);
 

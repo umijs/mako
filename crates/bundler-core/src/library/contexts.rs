@@ -25,6 +25,8 @@ pub async fn get_library_chunking_context(
     minify: Vc<bool>,
     source_maps: Vc<bool>,
     no_mangling: Vc<bool>,
+    runtime_root: Vc<RcStr>,
+    runtime_export: Vc<Vec<RcStr>>,
 ) -> Result<Vc<Box<dyn ChunkingContext>>> {
     let mode = mode.await?;
     let mut builder = LibraryChunkingContext::builder(
@@ -33,6 +35,8 @@ pub async fn get_library_chunking_context(
         output_root_to_root_path,
         environment,
         mode.runtime_type(),
+        (*runtime_root.await?).clone(),
+        (*runtime_export.await?).clone(),
     )
     .minify_type(if *minify.await? {
         MinifyType::Minify {

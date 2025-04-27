@@ -6,7 +6,6 @@ use bundler_core::{
     client::context::{get_client_chunking_context, get_client_compile_time_info},
     config::{Config, ModuleIds as ModuleIdStrategyConfig},
     emit_assets,
-    library::contexts::get_library_chunking_context,
     mode::Mode,
     util::Runtime,
 };
@@ -504,10 +503,11 @@ impl Project {
             .iter()
             .filter_map(|e| {
                 e.library.as_ref().map(|l| Library {
-                    name: l.name.clone(),
+                    name: e.name.clone(),
                     import: e.import.clone(),
-                    export: l.export.clone(),
                     filename: e.filename.clone(),
+                    runtime_root: l.name.clone(),
+                    runtime_export: l.export.clone(),
                 })
             })
             .collect();
@@ -804,23 +804,6 @@ impl Project {
             self.config().source_maps(),
             self.no_mangling(),
         )
-    }
-
-    #[turbo_tasks::function]
-    pub(super) async fn library_chunking_context(
-        self: Vc<Self>,
-    ) -> Result<Vc<Box<dyn ChunkingContext>>> {
-        Ok(get_library_chunking_context(
-            self.project_root(),
-            self.dist_root(),
-            Vc::cell("/ROOT".into()),
-            self.client_compile_time_info().environment(),
-            self.mode(),
-            self.module_ids(),
-            self.config().minify(self.mode()),
-            self.config().source_maps(),
-            self.no_mangling(),
-        ))
     }
 
     #[turbo_tasks::function]

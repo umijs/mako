@@ -1,0 +1,22 @@
+{
+  "rootPath": "../../",
+  "projectPath": "./",
+  "config": {
+    "entry": [
+      {
+        "import": "./src/index.ts",
+        "library": {
+          "name": "MyLibrary",
+          "export": ["default", "value"]
+        }
+      }
+    ],
+    "output": {
+      "path": "./dist"
+    },
+    "optimization": {
+      "moduleIds": "named",
+      "minify": false
+    }
+  }
+}

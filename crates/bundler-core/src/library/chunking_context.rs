@@ -65,6 +65,16 @@ impl LibraryChunkingContextBuilder {
         self
     }
 
+    pub fn runtime_root(mut self, runtime_root: RcStr) -> Self {
+        self.chunking_context.runtime_root = runtime_root;
+        self
+    }
+
+    pub fn runtime_export(mut self, export: Vec<RcStr>) -> Self {
+        self.chunking_context.runtime_export = export;
+        self
+    }
+
     pub fn runtime_type(mut self, runtime_type: RuntimeType) -> Self {
         self.chunking_context.runtime_type = runtime_type;
         self
@@ -108,6 +118,10 @@ impl LibraryChunkingContextBuilder {
 #[derive(Debug, Clone, Hash)]
 pub struct LibraryChunkingContext {
     name: Option<RcStr>,
+    /// The library root name
+    runtime_root: RcStr,
+    /// The library export subpaths
+    runtime_export: Vec<RcStr>,
     /// The root path of the project
     root_path: ResolvedVc<FileSystemPath>,
     /// Whether to write file sources as file:// paths in source maps
@@ -137,6 +151,8 @@ impl LibraryChunkingContext {
         output_root_to_root_path: ResolvedVc<RcStr>,
         environment: ResolvedVc<Environment>,
         runtime_type: RuntimeType,
+        runtime_root: RcStr,
+        runtime_export: Vec<RcStr>,
     ) -> LibraryChunkingContextBuilder {
         LibraryChunkingContextBuilder {
             chunking_context: LibraryChunkingContext {
@@ -151,6 +167,8 @@ impl LibraryChunkingContext {
                 content_hashing: None,
                 source_maps_type: SourceMapsType::Full,
                 module_id_strategy: ResolvedVc::upcast(DevModuleIdStrategy::new_resolved()),
+                runtime_root,
+                runtime_export,
             },
         }
     }
@@ -208,6 +226,16 @@ impl LibraryChunkingContext {
                 bail!("Unable to generate output asset for chunk");
             },
         )
+    }
+
+    #[turbo_tasks::function]
+    pub(crate) fn runtime_root(&self) -> Vc<RcStr> {
+        Vc::cell(self.runtime_root.clone())
+    }
+
+    #[turbo_tasks::function]
+    pub(crate) fn runtime_export(&self) -> Vc<Vec<RcStr>> {
+        Vc::cell(self.runtime_export.clone())
     }
 }
 
