@@ -85,7 +85,7 @@ pub struct EntryOptions {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryOptions {
-    pub name: Option<RcStr>,
+    pub name: RcStr,
     pub export: Option<Vec<RcStr>>,
 }
 

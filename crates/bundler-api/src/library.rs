@@ -1,7 +1,10 @@
 use anyhow::{bail, Context, Result};
-use bundler_core::client::context::{
-    get_client_module_options_context, get_client_resolve_options_context,
-    get_client_runtime_entries,
+use bundler_core::{
+    client::context::{
+        get_client_module_options_context, get_client_resolve_options_context,
+        get_client_runtime_entries,
+    },
+    library::contexts::get_library_chunking_context,
 };
 use tracing::{info_span, Instrument};
 use turbo_rcstr::RcStr;
@@ -38,8 +41,10 @@ use crate::{
 pub struct Library {
     pub name: Option<RcStr>,
     pub import: RcStr,
+    // TODO: support filename template like webpack to handle hash
     pub filename: Option<RcStr>,
-    pub export: Option<Vec<RcStr>>,
+    pub runtime_root: RcStr,
+    pub runtime_export: Option<Vec<RcStr>>,
 }
 
 #[turbo_tasks::value(transparent)]
@@ -79,9 +84,11 @@ impl LibraryProject {
             .map(|l| async move {
                 LibraryEndpoint {
                     project,
+                    name: l.name.clone(),
                     import: l.import.clone(),
                     filename: l.filename.clone(),
-                    export: l.export.clone(),
+                    runtime_root: l.runtime_root.clone(),
+                    runtime_export: l.runtime_export.clone().unwrap_or_default(),
                 }
                 .resolved_cell()
             })
@@ -95,9 +102,11 @@ impl LibraryProject {
 #[turbo_tasks::value]
 pub struct LibraryEndpoint {
     project: ResolvedVc<Project>,
-    pub import: RcStr,
-    pub filename: Option<RcStr>,
-    pub export: Option<Vec<RcStr>>,
+    name: Option<RcStr>,
+    import: RcStr,
+    filename: Option<RcStr>,
+    runtime_root: RcStr,
+    runtime_export: Vec<RcStr>,
 }
 
 #[turbo_tasks::value(transparent)]
@@ -224,22 +233,55 @@ impl LibraryEndpoint {
     }
 
     #[turbo_tasks::function]
+    pub(super) async fn library_chunking_context(
+        self: Vc<Self>,
+        runtime_root: Vc<RcStr>,
+        runtime_export: Vc<Vec<RcStr>>,
+    ) -> Result<Vc<Box<dyn ChunkingContext>>> {
+        let project = self.project();
+        Ok(get_library_chunking_context(
+            project.project_root(),
+            project.dist_root(),
+            Vc::cell("/ROOT".into()),
+            project.client_compile_time_info().environment(),
+            project.mode(),
+            project.module_ids(),
+            project.config().minify(project.mode()),
+            project.config().source_maps(),
+            project.no_mangling(),
+            runtime_root,
+            runtime_export,
+        ))
+    }
+
+    #[turbo_tasks::function]
     async fn library_chunk(self: Vc<Self>) -> Result<Vc<ChunkGroupResult>> {
         async move {
             let this = self.await?;
 
             let project = self.project();
 
-            let library_chunking_context = self.project().library_chunking_context();
+            let library_chunking_context = self.library_chunking_context(
+                Vc::cell(this.runtime_root.clone()),
+                Vc::cell(this.runtime_export.clone()),
+            );
 
             let module_graph = self.library_module_graph();
 
+            let filename = this
+                .filename
+                .clone()
+                .or(this.name.clone())
+                .unwrap_or(this.import.clone());
+
+            let filename = if filename.ends_with(".js") {
+                filename
+            } else {
+                format!("{filename}.js").into()
+            };
+
             let library_chunk_group = library_chunking_context.evaluated_chunk_group(
-                AssetIdent::from_path(
-                    project
-                        .project_root()
-                        .join(this.filename.clone().unwrap_or(this.import.clone())),
-                ),
+                AssetIdent::from_path(project.project_root().join(filename)),
                 ChunkGroup::Entry(
                     [self.library_main_module().to_resolved().await?]
                         .into_iter()
