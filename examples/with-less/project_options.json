@@ -5,7 +5,9 @@
     "entry": [
       {
         "import": "./src/index.ts",
-        "library": {}
+        "library": {
+          "name": "with-less"
+        }
       }
     ],
     "output": {

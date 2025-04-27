@@ -8,7 +8,8 @@
         "library": {
           "name": "MyLibrary",
           "export": ["default", "value"]
-        }
+        },
+        "filename": "index.[contenthash:8].js"
       }
     ],
     "output": {
