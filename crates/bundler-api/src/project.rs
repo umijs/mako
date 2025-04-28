@@ -1,4 +1,7 @@
-use std::{path::MAIN_SEPARATOR, time::Duration};
+use std::{
+    path::{PathBuf, MAIN_SEPARATOR},
+    time::Duration,
+};
 
 use anyhow::{bail, Context, Result};
 use bundler_core::{
@@ -503,7 +506,13 @@ impl Project {
             .iter()
             .filter_map(|e| {
                 e.library.as_ref().map(|l| Library {
-                    name: e.name.clone(),
+                    name: e.name.clone().unwrap_or(
+                        PathBuf::from(e.import.as_str())
+                            .file_stem()
+                            .unwrap()
+                            .to_string_lossy()
+                            .into(),
+                    ),
                     import: e.import.clone(),
                     filename: e.filename.clone(),
                     runtime_root: l.name.clone(),

@@ -1,4 +1,5 @@
 use anyhow::{bail, Context, Result};
+use qstring::QString;
 use regex::Regex;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
@@ -211,23 +212,11 @@ impl LibraryChunkingContext {
             if let Some(ecmascript_chunk) =
                 Vc::try_resolve_downcast_type::<EcmascriptChunk>(chunk).await?
             {
-                let path_vc = ident.path();
-                let path_str = &path_vc.await?.path;
-                let path = if CONTENT_HASH_PLACEHOLDER_REGEX.is_match(path_str) {
-                    let content_hash = self.ecmascript_chunk_content_hash(ecmascript_chunk).await?;
-                    let path_with_hash = replace_content_hash_placeholder(path_str, &content_hash);
-                    path_vc
-                        .to_resolved()
-                        .await?
-                        .root()
-                        .join(path_with_hash.into())
-                } else {
-                    path_vc
-                };
-
+                let ident =
+                    self.ecmascript_chunk_ident_with_filename_template(ident, ecmascript_chunk);
                 Vc::upcast(EcmascriptLibraryEvaluateChunk::new(
                     self,
-                    AssetIdent::from_path(path),
+                    ident,
                     ecmascript_chunk,
                     evaluatable_assets,
                 ))
@@ -239,6 +228,32 @@ impl LibraryChunkingContext {
                 bail!("Unable to generate output asset for chunk");
             },
         )
+    }
+
+    #[turbo_tasks::function]
+    pub(crate) async fn ecmascript_chunk_ident_with_filename_template(
+        self: Vc<Self>,
+        ident: Vc<AssetIdent>,
+        ecmascript_chunk: Vc<EcmascriptChunk>,
+    ) -> Result<Vc<AssetIdent>> {
+        let root = ident.path().root();
+        let query = QString::from(ident.query().await?.as_str());
+        let Some(name) = query.get("name") else {
+            bail!("Failed to get name for entry")
+        };
+        if let Some(filename) = query.get("filename") {
+            let mut filename = filename.to_string();
+            if NAME_PLACEHOLDER_REGEX.is_match(&filename) {
+                filename = replace_name_placeholder(&filename, name);
+            }
+            if CONTENT_HASH_PLACEHOLDER_REGEX.is_match(&filename) {
+                let content_hash = self.ecmascript_chunk_content_hash(ecmascript_chunk).await?;
+                filename = replace_content_hash_placeholder(&filename, &content_hash);
+            };
+            Ok(AssetIdent::from_path(root.join(filename.into())))
+        } else {
+            Ok(AssetIdent::from_path(root.join(name.into())))
+        }
     }
 
     #[turbo_tasks::function]
@@ -529,6 +544,12 @@ pub async fn output_name(
 fn clean_separators(s: &str) -> String {
     static SEPARATOR_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r".*[/#?]").unwrap());
     SEPARATOR_REGEX.replace_all(s, "").to_string()
+}
+
+static NAME_PLACEHOLDER_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[name\]").unwrap());
+
+fn replace_name_placeholder(s: &str, name: &str) -> String {
+    NAME_PLACEHOLDER_REGEX.replace_all(s, name).to_string()
 }
 
 static CONTENT_HASH_PLACEHOLDER_REGEX: LazyLock<Regex> =
