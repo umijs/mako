@@ -45,10 +45,14 @@ pub struct PackageInfo {
 
 impl PackageInfo {
     pub fn get_bin_dir(&self) -> Option<PathBuf> {
-        self.path
+        match self.path
             .ancestors()
             .find(|p| p.ends_with("node_modules"))
             .map(|p| p.to_path_buf().join(".bin"))
+        {
+            Some(path) => Some(path),
+            None => Some(PathBuf::from("node_modules/.bin"))
+        }
     }
 
     #[allow(dead_code)]
