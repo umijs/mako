@@ -1,11 +1,11 @@
 use serde::Deserialize;
 use serde_json::Value;
-use std::{collections::HashMap, fs};
 use std::path::PathBuf;
+use std::{collections::HashMap, fs};
 
+use crate::util::registry::resolve;
 use crate::util::save_type::{PackageAction, SaveType};
 use crate::{cmd::deps::build_deps, util::logger::log_info};
-use crate::util::registry::resolve;
 
 use super::workspace::find_workspaces;
 
@@ -108,7 +108,10 @@ pub async fn update_package_json(
     }
 
     // Write back to package.json
-    fs::write(&package_json_path, serde_json::to_string_pretty(&package_json)?)?;
+    fs::write(
+        &package_json_path,
+        serde_json::to_string_pretty(&package_json)?,
+    )?;
 
     // 4. Rebuild package-lock.json
     build_deps().await?;
@@ -119,12 +122,18 @@ pub async fn update_package_json(
 async fn parse_package_spec(spec: &str) -> Result<(String, String), Box<dyn std::error::Error>> {
     let parts: Vec<&str> = spec.split('@').collect();
     let name = parts[0].to_string();
-    let version_spec = parts.get(1).map(|s| s.to_string()).unwrap_or("*".to_string());
+    let version_spec = parts
+        .get(1)
+        .map(|s| s.to_string())
+        .unwrap_or("*".to_string());
     let resolved = resolve(&name, &version_spec).await?;
     Ok((name, resolved.version))
 }
 
-async fn find_workspace_path(cwd: &PathBuf, workspace: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+async fn find_workspace_path(
+    cwd: &PathBuf,
+    workspace: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let workspaces = find_workspaces(cwd).await?;
     for (name, path, _) in workspaces {
         if name == workspace || path.to_string_lossy() == workspace {

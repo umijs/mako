@@ -25,7 +25,10 @@ pub async fn update_package(
     ignore_scripts: bool,
     save_type: SaveType,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    log_verbose(&format!("update package: {:?} {:?} {:?} {:?}", action, spec, &workspace, ignore_scripts));
+    log_verbose(&format!(
+        "update package: {:?} {:?} {:?} {:?}",
+        action, spec, &workspace, ignore_scripts
+    ));
     // 1. Update package.json and package-lock.json
     update_package_json(&action, spec, &workspace, &save_type).await?;
 

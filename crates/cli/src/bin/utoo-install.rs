@@ -3,9 +3,9 @@ use std::process;
 use utoo_cli::{
     cmd::install::{install, update_package},
     constants::{cmd::INSTALL_ABOUT, APP_VERSION},
-    util::logger::{log_error, write_verbose_logs_to_file},
     util::config::{set_legacy_peer_deps, set_registry},
-    util::save_type::{parse_save_type, PackageAction },
+    util::logger::{log_error, write_verbose_logs_to_file},
+    util::save_type::{parse_save_type, PackageAction},
 };
 
 #[derive(Parser)]
@@ -69,7 +69,15 @@ async fn main() {
 
     if let Some(spec) = cli.spec {
         let save_type = parse_save_type(cli.save_dev, cli.save_peer, cli.save_optional);
-        if let Err(e) = update_package(PackageAction::Add, &spec, cli.workspace.clone(), cli.ignore_scripts, save_type).await {
+        if let Err(e) = update_package(
+            PackageAction::Add,
+            &spec,
+            cli.workspace.clone(),
+            cli.ignore_scripts,
+            save_type,
+        )
+        .await
+        {
             log_error(&e.to_string());
             let _ = write_verbose_logs_to_file();
             process::exit(1);

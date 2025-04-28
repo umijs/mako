@@ -1,16 +1,16 @@
+use glob::glob;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
-use glob::glob;
 
 use crate::helper::lock::{extract_package_name, Package};
+use crate::helper::workspace;
 use crate::helper::{is_cpu_compatible, is_os_compatible};
 use crate::util::cloner::clone;
 use crate::util::downloader::download;
 use crate::util::linker::link;
 use crate::util::logger::{log_progress, log_verbose, PROGRESS_BAR};
-use crate::helper::workspace;
 
 async fn clean_deps(
     groups: &HashMap<usize, Vec<(String, Package)>>,
@@ -37,7 +37,10 @@ async fn clean_deps(
 
     // cleanup unused packages in all workspace_members
     for node_modules in node_modules_dirs {
-        let pattern = node_modules.join("**/package.json").to_string_lossy().to_string();
+        let pattern = node_modules
+            .join("**/package.json")
+            .to_string_lossy()
+            .to_string();
         for entry in glob(&pattern)? {
             if let Ok(path) = entry {
                 let pkg_dir = path.parent().unwrap();
@@ -51,7 +54,10 @@ async fn clean_deps(
                     continue;
                 }
 
-                let node_modules_prefix = node_modules.strip_prefix(cwd)?.to_string_lossy().to_string();
+                let node_modules_prefix = node_modules
+                    .strip_prefix(cwd)?
+                    .to_string_lossy()
+                    .to_string();
                 let full_pkg_name = format!("{}/{}", node_modules_prefix, pkg_name);
 
                 if !valid_packages.contains(&full_pkg_name) {

@@ -19,9 +19,8 @@ mod service;
 mod util;
 
 use crate::constants::cmd::{
-    CLEAN_ABOUT, CLEAN_NAME, DEPS_ABOUT, DEPS_NAME, REBUILD_ABOUT,
-    REBUILD_NAME,
-    INSTALL_ABOUT, INSTALL_NAME, UNINSTALL_ABOUT, UNINSTALL_NAME, UPDATE_ABOUT
+    CLEAN_ABOUT, CLEAN_NAME, DEPS_ABOUT, DEPS_NAME, INSTALL_ABOUT, INSTALL_NAME, REBUILD_ABOUT,
+    REBUILD_NAME, UNINSTALL_ABOUT, UNINSTALL_NAME, UPDATE_ABOUT,
 };
 use crate::constants::{APP_ABOUT, APP_NAME, APP_VERSION};
 
@@ -161,7 +160,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }) => {
             if let Some(spec) = spec {
                 let save_type = parse_save_type(save_dev, save_peer, save_optional);
-                if let Err(e) = update_package(PackageAction::Add, &spec, workspace.clone(), ignore_scripts, save_type).await {
+                if let Err(e) = update_package(
+                    PackageAction::Add,
+                    &spec,
+                    workspace.clone(),
+                    ignore_scripts,
+                    save_type,
+                )
+                .await
+                {
                     log_error(&e.to_string());
                     let _ = write_verbose_logs_to_file();
                     process::exit(1);
@@ -180,7 +187,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ignore_scripts,
         }) => {
             if let Some(spec) = spec {
-                if let Err(e) = update_package(PackageAction::Remove, &spec, workspace.clone(), ignore_scripts, SaveType::Prod).await {
+                if let Err(e) = update_package(
+                    PackageAction::Remove,
+                    &spec,
+                    workspace.clone(),
+                    ignore_scripts,
+                    SaveType::Prod,
+                )
+                .await
+                {
                     log_error(&e.to_string());
                     let _ = write_verbose_logs_to_file();
                     process::exit(1);
