@@ -2,14 +2,14 @@ use std::process;
 
 use clap::{Parser, Subcommand};
 use cmd::deps::build_deps;
-use cmd::install::install;
+use cmd::install::{install, update_package};
 use cmd::rebuild::rebuild;
 use cmd::update::update;
 use cmd::{clean::clean, deps::build_workspace};
-use constants::cmd::UPDATE_ABOUT;
 use helper::auto_update::init_auto_update;
 use util::config::{set_legacy_peer_deps, set_registry};
 use util::logger::{log_error, log_info, log_warning, set_verbose, write_verbose_logs_to_file};
+use util::save_type::{parse_save_type, PackageAction, SaveType};
 
 mod cmd;
 mod constants;
@@ -20,7 +20,7 @@ mod util;
 
 use crate::constants::cmd::{
     CLEAN_ABOUT, CLEAN_NAME, DEPS_ABOUT, DEPS_NAME, INSTALL_ABOUT, INSTALL_NAME, REBUILD_ABOUT,
-    REBUILD_NAME,
+    REBUILD_NAME, UNINSTALL_ABOUT, UNINSTALL_NAME, UPDATE_ABOUT,
 };
 use crate::constants::{APP_ABOUT, APP_NAME, APP_VERSION};
 
@@ -50,8 +50,43 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Install dependencies
     #[command(name = INSTALL_NAME, alias = "i", about = INSTALL_ABOUT)]
     Install {
+        /// Package specification (e.g. "lodash@4.17.21")
+        spec: Option<String>,
+
+        /// Workspace to install in
+        #[arg(short, long)]
+        workspace: Option<String>,
+
+        /// Skip running dependency scripts
+        #[arg(long)]
+        ignore_scripts: bool,
+
+        /// Save as dev dependency
+        #[arg(long)]
+        save_dev: bool,
+
+        /// Save as peer dependency
+        #[arg(long)]
+        save_peer: bool,
+
+        /// Save as optional dependency
+        #[arg(long)]
+        save_optional: bool,
+    },
+    /// Uninstall dependencies
+    #[command(name = UNINSTALL_NAME, alias = "un", about = UNINSTALL_ABOUT)]
+    Uninstall {
+        /// Package specification (e.g. "lodash@4.17.21")
+        spec: Option<String>,
+
+        /// Workspace to uninstall from
+        #[arg(short, long)]
+        workspace: Option<String>,
+
+        /// Skip running dependency scripts
         #[arg(long)]
         ignore_scripts: bool,
     },
@@ -76,7 +111,7 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     unsafe {
         libc::umask(0o00);
     }
@@ -115,11 +150,58 @@ async fn main() {
                 process::exit(1);
             }
         }
-        Some(Commands::Install { ignore_scripts }) => {
-            if let Err(e) = install(ignore_scripts).await {
-                log_error(&e.to_string());
-                let _ = write_verbose_logs_to_file();
-                process::exit(1);
+        Some(Commands::Install {
+            spec,
+            workspace,
+            ignore_scripts,
+            save_dev,
+            save_peer,
+            save_optional,
+        }) => {
+            if let Some(spec) = spec {
+                let save_type = parse_save_type(save_dev, save_peer, save_optional);
+                if let Err(e) = update_package(
+                    PackageAction::Add,
+                    &spec,
+                    workspace.clone(),
+                    ignore_scripts,
+                    save_type,
+                )
+                .await
+                {
+                    log_error(&e.to_string());
+                    let _ = write_verbose_logs_to_file();
+                    process::exit(1);
+                }
+            } else {
+                if let Err(e) = install(ignore_scripts).await {
+                    log_error(&e.to_string());
+                    let _ = write_verbose_logs_to_file();
+                    process::exit(1);
+                }
+            }
+        }
+        Some(Commands::Uninstall {
+            spec,
+            workspace,
+            ignore_scripts,
+        }) => {
+            if let Some(spec) = spec {
+                if let Err(e) = update_package(
+                    PackageAction::Remove,
+                    &spec,
+                    workspace.clone(),
+                    ignore_scripts,
+                    SaveType::Prod,
+                )
+                .await
+                {
+                    log_error(&e.to_string());
+                    let _ = write_verbose_logs_to_file();
+                    process::exit(1);
+                }
+            } else {
+                return Err("Package specification is required for uninstall".into());
             }
         }
         Some(Commands::Rebuild) => {
@@ -159,4 +241,6 @@ async fn main() {
             }
         }
     }
+
+    Ok(())
 }

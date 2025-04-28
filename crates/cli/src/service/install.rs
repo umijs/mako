@@ -1,14 +1,77 @@
+use glob::glob;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 
 use crate::helper::lock::{extract_package_name, Package};
+use crate::helper::workspace;
 use crate::helper::{is_cpu_compatible, is_os_compatible};
 use crate::util::cloner::clone;
 use crate::util::downloader::download;
 use crate::util::linker::link;
 use crate::util::logger::{log_progress, log_verbose, PROGRESS_BAR};
+
+async fn clean_deps(
+    groups: &HashMap<usize, Vec<(String, Package)>>,
+    cwd: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut valid_packages = std::collections::HashSet::new();
+    for (_, packages) in groups {
+        for (path, _) in packages {
+            valid_packages.insert(path.clone());
+        }
+    }
+
+    log_verbose(&format!("Valid packages: {:?}", valid_packages));
+
+    let mut node_modules_dirs = vec![cwd.join("node_modules")];
+
+    let workspaces = workspace::find_workspaces(&cwd.to_path_buf()).await?;
+    for (_, path, _) in workspaces {
+        let workspace_node_modules = path.join("node_modules");
+        if workspace_node_modules.exists() {
+            node_modules_dirs.push(workspace_node_modules);
+        }
+    }
+
+    // cleanup unused packages in all workspace_members
+    for node_modules in node_modules_dirs {
+        let pattern = node_modules
+            .join("**/package.json")
+            .to_string_lossy()
+            .to_string();
+        for entry in glob(&pattern)? {
+            if let Ok(path) = entry {
+                let pkg_dir = path.parent().unwrap();
+                let relative_path = pkg_dir.strip_prefix(&node_modules)?;
+                let pkg_name = relative_path.to_string_lossy().to_string();
+
+                // ignore package.json in dist directory
+                // exp: node_modules/react/dist/package.json
+                let parts: Vec<&str> = pkg_name.split('/').collect();
+                if parts.len() > 2 || (parts.len() == 2 && !parts[0].starts_with('@')) {
+                    continue;
+                }
+
+                let node_modules_prefix = node_modules
+                    .strip_prefix(cwd)?
+                    .to_string_lossy()
+                    .to_string();
+                let full_pkg_name = format!("{}/{}", node_modules_prefix, pkg_name);
+
+                if !valid_packages.contains(&full_pkg_name) {
+                    log_verbose(&format!("Cleaning unused package: {}", full_pkg_name));
+                    if let Err(e) = tokio::fs::remove_dir_all(pkg_dir).await {
+                        log_verbose(&format!("Failed to remove {}: {}", full_pkg_name, e));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
 
 pub async fn install_packages(
     groups: &HashMap<usize, Vec<(std::string::String, Package)>>,
@@ -16,6 +79,9 @@ pub async fn install_packages(
     cwd: &Path,
     semaphore: Arc<Semaphore>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // clean unused deps
+    clean_deps(groups, cwd).await?;
+
     let mut depths: Vec<_> = groups.keys().cloned().collect();
     depths.sort_unstable();
 

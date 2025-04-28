@@ -12,4 +12,6 @@ pub mod cmd {
     pub const INSTALL_ABOUT: &str = "Install project dependencies";
     pub const REBUILD_NAME: &str = "rebuild";
     pub const REBUILD_ABOUT: &str = "Rebuild native modules";
+    pub const UNINSTALL_NAME: &str = "uninstall";
+    pub const UNINSTALL_ABOUT: &str = "Uninstall spec dependencies";
 }

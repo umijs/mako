@@ -83,7 +83,7 @@ impl ScriptService {
             .map_err(|e| format!("Failed to create .bin directory: {}", e))?;
 
         for (bin_name, relative_path) in &package.bin_files {
-            Self::process_bin_file(package, bin_dir.as_path(), bin_name, relative_path).await?;
+            Self::process_bin_file(package, bin_dir.as_path(), bin_name, &relative_path).await?;
         }
 
         Ok(())
@@ -150,26 +150,32 @@ impl ScriptService {
         bin_path: &Path,
         relative_path: &str,
     ) -> Result<(), String> {
-        let relative_target = format!("../{}/{}", package.fullname, relative_path);
+        let node_modules_count = bin_path
+            .components()
+            .filter(|c| c.as_os_str() == "node_modules")
+            .count();
+
+        let prefix = "../".repeat(node_modules_count);
+        let relative_target = format!("../{}{}/{}", prefix, package.path.display(), relative_path);
 
         if let Err(e) = unix_symlink(&relative_target, bin_path) {
             if e.raw_os_error() != Some(17) {
                 // EEXIST = 17
                 return Err(format!(
-                    "Failed to create symlink {} -> {}: {}",
+                    "Failed to create symlink {} -> {:?}: {}",
                     bin_path.display(),
                     relative_target,
                     e
                 ));
             }
             log_verbose(&format!(
-                "Link already exists, skipping: {} -> {}",
+                "Link already exists, skipping: {} -> {:?}",
                 bin_path.display(),
                 relative_target
             ));
         } else {
             log_verbose(&format!(
-                "Successfully created link: {} -> {}",
+                "Successfully created link: {} -> {:?}",
                 bin_path.display(),
                 relative_target
             ));
