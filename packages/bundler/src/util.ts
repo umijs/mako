@@ -150,3 +150,25 @@ export function renderStyledStringToErrorAnsi(string: StyledString): string {
       throw new Error("Unknown StyledString type", string);
   }
 }
+
+export function isRelevantWarning(issue: NapiIssue): boolean {
+  return issue.severity === "warning" && !isNodeModulesIssue(issue);
+}
+
+function isNodeModulesIssue(issue: NapiIssue): boolean {
+  if (issue.severity === "warning" && issue.stage === "config") {
+    // Override for the externalize issue
+    // `Package foo (serverExternalPackages or default list) can't be external`
+    if (
+      renderStyledStringToErrorAnsi(issue.title).includes("can't be external")
+    ) {
+      return false;
+    }
+  }
+
+  return (
+    issue.severity === "warning" &&
+    (issue.filePath.match(/^(?:.*[\\/])?node_modules(?:[\\/].*)?$/) !== null ||
+      issue.filePath.includes("@utoo/bundler"))
+  );
+}

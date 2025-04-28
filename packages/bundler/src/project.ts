@@ -15,6 +15,7 @@ import {
   Endpoint,
   Project,
   ProjectOptions,
+  RawEntrypoints,
   RustifiedEnv,
   TurbopackLoaderItem,
   TurbopackRuleConfigItem,
@@ -80,36 +81,37 @@ function ensureLoadersHaveSerializableOptions(
 }
 
 async function serializeConfig(config: ConfigComplete): Promise<string> {
-  // Avoid mutating the existing `nextConfig` object.
-  let configSerializable = { ...(config as any) };
+  let configSerializable = { ...config };
 
-  configSerializable.generateBuildId = nanoid();
+  (configSerializable as any).generateBuildId = () => nanoid();
 
-  if (configSerializable.experimental?.turbo?.rules) {
-    ensureLoadersHaveSerializableOptions(
-      configSerializable.experimental.turbo?.rules,
-    );
+  if (configSerializable.module?.rules) {
+    ensureLoadersHaveSerializableOptions(configSerializable.module.rules);
   }
 
-  configSerializable.modularizeImports = configSerializable.modularizeImports
-    ? Object.fromEntries(
-        Object.entries<any>(configSerializable.modularizeImports).map(
-          ([mod, config]) => [
-            mod,
-            {
-              ...config,
-              transform:
-                typeof config.transform === "string"
-                  ? config.transform
-                  : Object.entries(config.transform).map(([key, value]) => [
-                      key,
-                      value,
-                    ]),
-            },
-          ],
-        ),
-      )
-    : undefined;
+  if (configSerializable.optimization) {
+    configSerializable.optimization.modularizeImports =
+      configSerializable.optimization &&
+      configSerializable.optimization?.modularizeImports
+        ? Object.fromEntries(
+            Object.entries<any>(
+              configSerializable.optimization.modularizeImports,
+            ).map(([mod, config]) => [
+              mod,
+              {
+                ...config,
+                transform:
+                  typeof config.transform === "string"
+                    ? config.transform
+                    : Object.entries(config.transform).map(([key, value]) => [
+                        key,
+                        value,
+                      ]),
+              },
+            ]),
+          )
+        : undefined;
+  }
 
   return JSON.stringify(configSerializable, null, 2);
 }
@@ -143,7 +145,7 @@ async function rustifyProjectOptions(
   return {
     ...options,
     config: await serializeConfig(options.config),
-    processEnv: rustifyEnv(options.processEnv),
+    processEnv: rustifyEnv(options.processEnv ?? {}),
   };
 }
 
@@ -243,6 +245,18 @@ export function projectFactory() {
       );
     }
 
+    async writeAllEntrypointsToDisk(): Promise<
+      TurbopackResult<RawEntrypoints>
+    > {
+      return await withErrorCause(async () => {
+        const napiEndpoints = (await binding.projectWriteAllEntrypointsToDisk(
+          this._nativeProject,
+        )) as TurbopackResult<{ __napiType: "Endpoint" }>;
+
+        return napiEntrypointsToRawEntrypoints(napiEndpoints);
+      });
+    }
+
     entrypointsSubscribe() {
       type NapiEndpoint = { __napiType: "Endpoint" };
 
@@ -257,15 +271,7 @@ export function projectFactory() {
       );
       return (async function* () {
         for await (const entrypoints of subscription) {
-          const libraries = [];
-          for (const library of entrypoints.libraries || []) {
-            libraries.push(new EndpointImpl(library));
-          }
-          yield {
-            libraries,
-            issues: entrypoints.issues,
-            diagnostics: entrypoints.diagnostics,
-          };
+          yield napiEntrypointsToRawEntrypoints(entrypoints);
         }
       })();
     }
@@ -372,6 +378,20 @@ export function projectFactory() {
       await serverSubscription.next();
       return serverSubscription;
     }
+  }
+
+  function napiEntrypointsToRawEntrypoints(
+    entrypoints: TurbopackResult<{ libraries?: { __napiType: "Endpoint" }[] }>,
+  ) {
+    const libraries = [];
+    for (const library of entrypoints.libraries || []) {
+      libraries.push(new EndpointImpl(library));
+    }
+    return {
+      libraries,
+      issues: entrypoints.issues,
+      diagnostics: entrypoints.diagnostics,
+    };
   }
 
   return async function createProject(
