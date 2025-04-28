@@ -38,7 +38,7 @@ pub async fn clean_node_modules() -> Result<(), String> {
     for (name, path, _) in workspaces {
         let workspace_node_modules = path.join("node_modules");
         if workspace_node_modules.exists() {
-            log_verbose(&format!(
+            log_info(&format!(
                 "Removing node_modules directory for workspace {}...",
                 name
             ));
