@@ -221,4 +221,55 @@ impl ScriptService {
             original_path
         )
     }
+
+    pub async fn execute_custom_script(
+        package: &PackageInfo,
+        script_name: &str,
+        script_content: &str,
+        show_output: bool,
+    ) -> Result<(), String> {
+        log_verbose(&format!(
+            "Executing custom script for {}: {}",
+            package.path.display(),
+            script_name
+        ));
+
+        let bin_paths = Self::collect_bin_paths(package);
+        let env_path = Self::build_path_env(&bin_paths);
+
+        let mut cmd = Command::new("sh");
+        cmd.arg("-c")
+            .arg(script_content)
+            .current_dir(&package.path)
+            .env("PATH", env_path)
+            .env("npm_lifecycle_event", script_name)
+            .env(
+                "INIT_CWD",
+                env::current_dir()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string(),
+            )
+            .env(
+                "npm_package_json",
+                package.path.join("package.json").display().to_string(),
+            )
+            .env("npm_config_prefix", "")
+            .env("npm_config_global", "false");
+
+        log_verbose(&format!("Executing command: {:?}", cmd));
+
+        let status = tokio::process::Command::from(cmd)
+            .stdout(std::process::Stdio::inherit())
+            .stderr(std::process::Stdio::inherit())
+            .status()
+            .await
+            .map_err(|e| format!("Failed to execute script: {}", e))?;
+
+        if !status.success() {
+            return Err(format!("Script execution failed"));
+        }
+
+        Ok(())
+    }
 }

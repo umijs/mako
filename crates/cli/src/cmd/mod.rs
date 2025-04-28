@@ -4,3 +4,4 @@ pub mod install;
 pub mod pkg;
 pub mod rebuild;
 pub mod update;
+pub mod run;

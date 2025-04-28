@@ -108,6 +108,13 @@ enum Commands {
 
     #[command(name = "update", alias = "u", about = UPDATE_ABOUT)]
     Update,
+
+    /// Run scripts defined in package.json
+    #[command(name = "run", alias = "r")]
+    Run {
+        /// Script name to run
+        script: String,
+    },
 }
 
 #[tokio::main]
@@ -227,6 +234,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Commands::Update) => {
             if let Err(e) = update(false).await {
+                log_error(&e.to_string());
+                let _ = write_verbose_logs_to_file();
+                process::exit(1);
+            }
+        }
+        Some(Commands::Run { script }) => {
+            if let Err(e) = cmd::run::run_script(&script).await {
                 log_error(&e.to_string());
                 let _ = write_verbose_logs_to_file();
                 process::exit(1);
