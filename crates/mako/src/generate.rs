@@ -503,26 +503,36 @@ fn write_dev_chunk_file(context: &Arc<Context>, chunk: &ChunkFile) -> Result<()>
     crate::mako_profile_function!();
 
     if let Some(source_map) = &chunk.source_map {
-        context.write_static_content(
-            chunk.source_map_disk_name(),
-            source_map.clone(),
-            chunk.raw_hash,
-        )?;
-
-        let source_map_url_line = match chunk.file_type {
-            ChunkFileType::JS => {
-                format!("\n//# sourceMappingURL={}", chunk.source_map_disk_name())
-            }
-            ChunkFileType::Css => {
-                format!("\n/*# sourceMappingURL={}*/", chunk.source_map_disk_name())
-            }
-        };
-
         let mut code = Vec::new();
-
         code.extend_from_slice(&chunk.content);
-        code.extend_from_slice(source_map_url_line.as_bytes());
-
+        match context.config.devtool {
+            Some(DevtoolConfig::SourceMap) => {
+                context.write_static_content(
+                    chunk.source_map_disk_name(),
+                    source_map.clone(),
+                    chunk.raw_hash,
+                )?;
+                let source_map_url_line = match chunk.file_type {
+                    ChunkFileType::JS => {
+                        format!("\n//# sourceMappingURL={}", chunk.source_map_disk_name())
+                    }
+                    ChunkFileType::Css => {
+                        format!("\n/*# sourceMappingURL={}*/", chunk.source_map_disk_name())
+                    }
+                };
+                code.extend_from_slice(source_map_url_line.as_bytes());
+            }
+            Some(DevtoolConfig::InlineSourceMap) => {
+                code.extend_from_slice(
+                    format!(
+                        "\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,{}",
+                        base64_encode(source_map)
+                    )
+                    .as_bytes(),
+                );
+            }
+            None => {}
+        }
         // why add chunk info in dev mode?
         // ref: https://github.com/umijs/mako/issues/1094
         let size = code.len() as u64;
@@ -534,7 +544,6 @@ fn write_dev_chunk_file(context: &Arc<Context>, chunk: &ChunkFile) -> Result<()>
             dist_name.clone(),
             dist_name,
         );
-
         context.write_static_content(chunk.disk_name(), code, chunk.raw_hash)?;
     } else {
         context.write_static_content(chunk.disk_name(), chunk.content.clone(), chunk.raw_hash)?;
