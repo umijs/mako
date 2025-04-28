@@ -12,7 +12,7 @@ use crate::util::cache::get_cache_dir;
 use crate::util::logger::finish_progress_bar;
 use crate::util::logger::log_verbose;
 use crate::util::logger::start_progress_bar;
-use crate::util::logger::{log_info, log_error, PROGRESS_BAR};
+use crate::util::logger::{log_info, PROGRESS_BAR};
 
 use super::deps::build_deps;
 
@@ -30,12 +30,7 @@ pub async fn update_package(
     // 2. Rebuild Deps
     let _ = build_deps().await;
 
-    install(false).await?;
-    // TODO: implement package update logic
-    // 1. Find target workspace if specified
-    // 2. Parse package name and version
-    // 3. Update package.json based on action (add/rm)
-    // 4. Run install to update dependencies
+    install(ignore_scripts).await?;
 
     Ok(())
 }

@@ -4,6 +4,7 @@ use std::{collections::HashMap, fs};
 use std::path::PathBuf;
 
 use crate::{cmd::deps::build_deps, util::logger::log_info};
+use crate::util::registry::resolve;
 
 #[derive(Deserialize)]
 pub struct PackageLock {
@@ -66,7 +67,7 @@ pub async fn update_package_json(
     save_type: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Parse package spec
-    let (name, version) = parse_package_spec(spec)?;
+    let (name, version) = parse_package_spec(spec).await?;
 
     // 2. Find target workspace if specified
     let target_dir = if let Some(ws) = workspace {
@@ -113,13 +114,12 @@ pub async fn update_package_json(
     Ok(())
 }
 
-fn parse_package_spec(spec: &str) -> Result<(String, String), Box<dyn std::error::Error>> {
+async fn parse_package_spec(spec: &str) -> Result<(String, String), Box<dyn std::error::Error>> {
     let parts: Vec<&str> = spec.split('@').collect();
-    match parts.len() {
-        1 => Ok((parts[0].to_string(), "latest".to_string())),
-        2 => Ok((parts[0].to_string(), parts[1].to_string())),
-        _ => Err("Invalid package specification".into()),
-    }
+    let name = parts[0].to_string();
+    let version_spec = parts.get(1).map(|s| s.to_string()).unwrap_or("*".to_string());
+    let resolved = resolve(&name, &version_spec).await?;
+    Ok((name, resolved.version))
 }
 
 fn find_workspace_path(cwd: &PathBuf, workspace: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
