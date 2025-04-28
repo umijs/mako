@@ -13,6 +13,23 @@ use crate::util::logger::log_verbose;
 use crate::util::logger::start_progress_bar;
 use crate::util::logger::{log_info, PROGRESS_BAR};
 
+pub async fn update_package(
+    action: &str,
+    spec: &str,
+    workspace: Option<String>,
+    ignore_scripts: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // TODO: implement package update logic
+    // 1. Find target workspace if specified
+    // 2. Parse package name and version
+    // 3. Update package.json based on action (add/rm)
+    // 4. Run install to update dependencies
+    log_verbose(&format!("update package: {} {} {} {}", action, spec, workspace.unwrap_or("".to_string()), ignore_scripts));
+
+    // 1. Try to update the package-lock.json
+    Ok(())
+}
+
 pub async fn install(ignore_scripts: bool) -> Result<(), Box<dyn std::error::Error>> {
     // Package lock prerequisite check
     ensure_package_lock().await?;

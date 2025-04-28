@@ -2,7 +2,7 @@ use std::process;
 
 use clap::{Parser, Subcommand};
 use cmd::deps::build_deps;
-use cmd::install::install;
+use cmd::install::{install, update_package};
 use cmd::rebuild::rebuild;
 use cmd::{clean::clean, deps::build_workspace};
 use helper::auto_update::init_auto_update;
@@ -52,6 +52,21 @@ enum Commands {
     Install {
         #[arg(long)]
         ignore_scripts: bool,
+
+        #[arg(help = "Package name with optional version (e.g. lodash@4)")]
+        spec: Option<String>,
+
+        #[arg(short = 'w', long = "workspace", alias = "ws", help = "Install package in the specified workspace")]
+        workspace: Option<String>,
+    },
+
+    #[command(name = "uninstall", alias = "un", about = "Uninstall a package")]
+    Uninstall {
+        #[arg(help = "Package name to uninstall")]
+        spec: String,
+
+        #[arg(short = 'w', long = "workspace", alias = "ws", help = "Uninstall package from the specified workspace")]
+        workspace: Option<String>,
     },
 
     #[command(name = REBUILD_NAME, alias = "rb", about = REBUILD_ABOUT)]
@@ -110,8 +125,23 @@ async fn main() {
                 process::exit(1);
             }
         }
-        Some(Commands::Install { ignore_scripts }) => {
-            if let Err(e) = install(ignore_scripts).await {
+        Some(Commands::Install { ignore_scripts, spec, workspace }) => {
+            if let Some(spec) = spec {
+                if let Err(e) = update_package("add", &spec, workspace, ignore_scripts).await {
+                    log_error(&e.to_string());
+                    let _ = write_verbose_logs_to_file();
+                    process::exit(1);
+                }
+            } else {
+                if let Err(e) = install(ignore_scripts).await {
+                    log_error(&e.to_string());
+                    let _ = write_verbose_logs_to_file();
+                    process::exit(1);
+                }
+            }
+        }
+        Some(Commands::Uninstall { spec, workspace }) => {
+            if let Err(e) = update_package("rm", &spec, workspace, false).await {
                 log_error(&e.to_string());
                 let _ = write_verbose_logs_to_file();
                 process::exit(1);
