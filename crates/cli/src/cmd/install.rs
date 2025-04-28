@@ -5,28 +5,38 @@ use std::thread;
 use tokio::sync::Semaphore;
 
 use crate::cmd::rebuild::rebuild;
+use crate::helper::lock::update_package_json;
 use crate::helper::lock::{ensure_package_lock, group_by_depth, PackageLock};
 use crate::service::install::install_packages;
 use crate::util::cache::get_cache_dir;
 use crate::util::logger::finish_progress_bar;
 use crate::util::logger::log_verbose;
 use crate::util::logger::start_progress_bar;
-use crate::util::logger::{log_info, PROGRESS_BAR};
+use crate::util::logger::{log_info, log_error, PROGRESS_BAR};
+
+use super::deps::build_deps;
 
 pub async fn update_package(
     action: &str,
     spec: &str,
     workspace: Option<String>,
     ignore_scripts: bool,
+    save_type: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    log_verbose(&format!("update package: {} {} {:?} {}", action, spec, &workspace, ignore_scripts));
+    // 1. Update package.json and package-lock.json
+    update_package_json(action, spec, &workspace, save_type).await?;
+
+    // 2. Rebuild Deps
+    let _ = build_deps().await;
+
+    install(false).await?;
     // TODO: implement package update logic
     // 1. Find target workspace if specified
     // 2. Parse package name and version
     // 3. Update package.json based on action (add/rm)
     // 4. Run install to update dependencies
-    log_verbose(&format!("update package: {} {} {} {}", action, spec, workspace.unwrap_or("".to_string()), ignore_scripts));
 
-    // 1. Try to update the package-lock.json
     Ok(())
 }
 

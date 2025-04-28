@@ -17,7 +17,7 @@ mod service;
 mod util;
 
 use crate::constants::cmd::{
-    CLEAN_ABOUT, CLEAN_NAME, DEPS_ABOUT, DEPS_NAME, INSTALL_ABOUT, INSTALL_NAME, REBUILD_ABOUT,
+    CLEAN_ABOUT, CLEAN_NAME, DEPS_ABOUT, DEPS_NAME, REBUILD_ABOUT,
     REBUILD_NAME,
 };
 use crate::constants::{APP_ABOUT, APP_NAME, APP_VERSION};
@@ -43,30 +43,48 @@ struct Cli {
     legacy_peer_deps: Option<bool>,
 
     #[command(subcommand)]
-    command: Option<Commands>,
+    command: Commands,
 }
 
 #[derive(Subcommand)]
 enum Commands {
-    #[command(name = INSTALL_NAME, alias = "i", about = INSTALL_ABOUT)]
+    /// Install dependencies
     Install {
+        /// Package specification (e.g. "lodash@4.17.21")
+        spec: Option<String>,
+
+        /// Workspace to install in
+        #[arg(short, long)]
+        workspace: Option<String>,
+
+        /// Skip running dependency scripts
         #[arg(long)]
         ignore_scripts: bool,
 
-        #[arg(help = "Package name with optional version (e.g. lodash@4)")]
+        /// Save as dev dependency
+        #[arg(long)]
+        save_dev: bool,
+
+        /// Save as peer dependency
+        #[arg(long)]
+        save_peer: bool,
+
+        /// Save as optional dependency
+        #[arg(long)]
+        save_optional: bool,
+    },
+    /// Uninstall dependencies
+    Uninstall {
+        /// Package specification (e.g. "lodash@4.17.21")
         spec: Option<String>,
 
-        #[arg(short = 'w', long = "workspace", alias = "ws", help = "Install package in the specified workspace")]
+        /// Workspace to uninstall from
+        #[arg(short, long)]
         workspace: Option<String>,
-    },
 
-    #[command(name = "uninstall", alias = "un", about = "Uninstall a package")]
-    Uninstall {
-        #[arg(help = "Package name to uninstall")]
-        spec: String,
-
-        #[arg(short = 'w', long = "workspace", alias = "ws", help = "Uninstall package from the specified workspace")]
-        workspace: Option<String>,
+        /// Skip running dependency scripts
+        #[arg(long)]
+        ignore_scripts: bool,
     },
 
     #[command(name = REBUILD_NAME, alias = "rb", about = REBUILD_ABOUT)]
@@ -86,7 +104,7 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     unsafe {
         libc::umask(0o00);
     }
@@ -117,37 +135,61 @@ async fn main() {
     //     return;
     // }
 
-    match cli.command {
-        Some(Commands::Clean { pattern }) => {
+    match &cli.command {
+        Commands::Clean { pattern } => {
             if let Err(e) = clean(&pattern).await {
                 log_error(&e.to_string());
                 let _ = write_verbose_logs_to_file();
                 process::exit(1);
             }
         }
-        Some(Commands::Install { ignore_scripts, spec, workspace }) => {
+        Commands::Install {
+            spec,
+            workspace,
+            ignore_scripts,
+            save_dev,
+            save_peer,
+            save_optional,
+        } => {
             if let Some(spec) = spec {
-                if let Err(e) = update_package("add", &spec, workspace, ignore_scripts).await {
+                let save_type = if *save_dev {
+                    "dev"
+                } else if *save_peer {
+                    "peer"
+                } else if *save_optional {
+                    "optional"
+                } else {
+                    "prod"
+                };
+                if let Err(e) = update_package("add", spec, workspace.clone(), *ignore_scripts, save_type).await {
                     log_error(&e.to_string());
                     let _ = write_verbose_logs_to_file();
                     process::exit(1);
                 }
             } else {
-                if let Err(e) = install(ignore_scripts).await {
+                if let Err(e) = install(*ignore_scripts).await {
                     log_error(&e.to_string());
                     let _ = write_verbose_logs_to_file();
                     process::exit(1);
                 }
             }
         }
-        Some(Commands::Uninstall { spec, workspace }) => {
-            if let Err(e) = update_package("rm", &spec, workspace, false).await {
-                log_error(&e.to_string());
-                let _ = write_verbose_logs_to_file();
-                process::exit(1);
+        Commands::Uninstall {
+            spec,
+            workspace,
+            ignore_scripts,
+        } => {
+            if let Some(spec) = spec {
+                if let Err(e) = update_package("rm", spec, workspace.clone(), *ignore_scripts, "prod").await {
+                    log_error(&e.to_string());
+                    let _ = write_verbose_logs_to_file();
+                    process::exit(1);
+                }
+            } else {
+                return Err("Package specification is required for uninstall".into());
             }
         }
-        Some(Commands::Rebuild) => {
+        Commands::Rebuild => {
             log_info("Executing dependency hook scripts and creating node_modules/.bin links");
             if let Err(e) = rebuild().await {
                 log_error(&e);
@@ -155,8 +197,8 @@ async fn main() {
             }
             log_info("💫 All dependencies rebuild completed");
         }
-        Some(Commands::Deps { workspace_only }) => {
-            let result = if workspace_only {
+        Commands::Deps { workspace_only } => {
+            let result = if *workspace_only {
                 build_workspace().await
             } else {
                 build_deps().await
@@ -168,13 +210,7 @@ async fn main() {
                 process::exit(1);
             }
         }
-        None => {
-            // install by default
-            if let Err(e) = install(cli.ignore_scripts).await {
-                log_error(&e.to_string());
-                let _ = write_verbose_logs_to_file();
-                process::exit(1);
-            }
-        }
     }
+
+    Ok(())
 }
