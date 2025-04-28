@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
+use glob::glob;
 
 use crate::helper::lock::{extract_package_name, Package};
 use crate::helper::{is_cpu_compatible, is_os_compatible};
@@ -10,12 +11,50 @@ use crate::util::downloader::download;
 use crate::util::linker::link;
 use crate::util::logger::{log_progress, log_verbose, PROGRESS_BAR};
 
+async fn clean_deps(
+    groups: &HashMap<usize, Vec<(String, Package)>>,
+    cwd: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let node_modules = cwd.join("node_modules");
+    if !node_modules.exists() {
+        return Ok(());
+    }
+
+    let mut valid_packages = std::collections::HashSet::new();
+    for (_, packages) in groups {
+        for (path, _) in packages {
+            valid_packages.insert(path.clone());
+        }
+    }
+
+    let pattern = node_modules.join("**/package.json").to_string_lossy().to_string();
+    for entry in glob(&pattern)? {
+        if let Ok(path) = entry {
+            let pkg_dir = path.parent().unwrap();
+            let relative_path = pkg_dir.strip_prefix(&node_modules)?;
+            let pkg_name = relative_path.to_string_lossy().to_string();
+
+            if !valid_packages.contains(&pkg_name) {
+                log_verbose(&format!("Cleaning unused package: {}", pkg_name));
+                if let Err(e) = tokio::fs::remove_dir_all(pkg_dir).await {
+                    log_verbose(&format!("Failed to remove {}: {}", pkg_name, e));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 pub async fn install_packages(
     groups: &HashMap<usize, Vec<(std::string::String, Package)>>,
     cache_dir: &Path,
     cwd: &Path,
     semaphore: Arc<Semaphore>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // clean unused deps
+    clean_deps(groups, cwd).await?;
+
     let mut depths: Vec<_> = groups.keys().cloned().collect();
     depths.sort_unstable();
 
