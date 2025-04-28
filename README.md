@@ -3,6 +3,7 @@
 ## Quickly Start
 
 ## Build from source
+
 ```bash
 cargo build --release
 export PATH=$PATH:$(pwd)/target/release
@@ -14,7 +15,11 @@ export PATH=$PATH:$(pwd)/target/release
 utoo
 ```
 
-### Run Dev Server
+### Run Bundle
+
 ```bash
-utoo-bundler-cli dev --dir examples/with-antd --root . --target browser
+cd packages/bundler
+npm run build:local
+cd ../examples/with-antd
+npm run build
 ```
