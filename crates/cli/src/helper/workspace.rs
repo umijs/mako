@@ -20,11 +20,18 @@ pub async fn find_workspaces(root_path: &PathBuf) -> io::Result<Vec<(String, Pat
                 for pattern in patterns {
                     if let Some(pattern_str) = pattern.as_str() {
                         // prepare glob pattern
-                        let full_pattern = root_path.join(pattern_str).join("package.json");
-                        let full_pattern = full_pattern.to_str().unwrap();
+                        let package_json_path = root_path.join(pattern_str).join("package.json");
+                        let glob_pattern = package_json_path.to_str().ok_or_else(|| {
+                            io::Error::new(io::ErrorKind::InvalidData, "Invalid path encoding")
+                        })?;
 
                         // glob match
-                        for entry in glob(full_pattern).expect("Failed to read glob pattern") {
+                        for entry in glob(glob_pattern).map_err(|e| {
+                            io::Error::new(
+                                io::ErrorKind::InvalidData,
+                                format!("Invalid glob pattern: {}", e),
+                            )
+                        })? {
                             match entry {
                                 Ok(path) => {
                                     // load package.json in workspace
@@ -37,7 +44,15 @@ pub async fn find_workspaces(root_path: &PathBuf) -> io::Result<Vec<(String, Pat
                                         workspace_pkg["name"].as_str().unwrap_or("").to_string();
 
                                     // get workspace path
-                                    let workspace_path = path.parent().unwrap().to_path_buf();
+                                    let workspace_path = path
+                                        .parent()
+                                        .ok_or_else(|| {
+                                            io::Error::new(
+                                                io::ErrorKind::InvalidData,
+                                                "Invalid workspace path",
+                                            )
+                                        })?
+                                        .to_path_buf();
 
                                     log_verbose(&format!("Found workspace: {} {:?}", name, path));
                                     workspaces.push((name, workspace_path, workspace_pkg));
