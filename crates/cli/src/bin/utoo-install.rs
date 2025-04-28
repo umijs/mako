@@ -1,9 +1,11 @@
 use clap::Parser;
 use std::process;
 use utoo_cli::{
-    cmd::install::install,
+    cmd::install::{install, update_package},
     constants::{cmd::INSTALL_ABOUT, APP_VERSION},
     util::logger::{log_error, write_verbose_logs_to_file},
+    util::config::{set_legacy_peer_deps, set_registry},
+    util::save_type::{parse_save_type, PackageAction },
 };
 
 #[derive(Parser)]
@@ -13,6 +15,13 @@ use utoo_cli::{
     about = INSTALL_ABOUT
 )]
 struct Cli {
+    /// Package specification (e.g. "lodash@4.17.21")
+    spec: Option<String>,
+
+    /// Workspace to install in
+    #[arg(short, long)]
+    workspace: Option<String>,
+
     /// Skip running scripts during installation
     #[arg(long = "ignore-scripts")]
     ignore_scripts: bool,
@@ -20,15 +29,56 @@ struct Cli {
     /// Show verbose output
     #[arg(short, long)]
     verbose: bool,
+
+    /// Show version information
+    #[arg(short, long)]
+    version: bool,
+
+    /// Set registry URL
+    #[arg(long, global = true)]
+    registry: Option<String>,
+
+    /// Set legacy peer dependencies
+    #[arg(long, global = true, action = clap::ArgAction::SetTrue)]
+    legacy_peer_deps: Option<bool>,
+
+    /// Save as dev dependency
+    #[arg(long)]
+    save_dev: bool,
+
+    /// Save as peer dependency
+    #[arg(long)]
+    save_peer: bool,
+
+    /// Save as optional dependency
+    #[arg(long)]
+    save_optional: bool,
 }
 
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
 
-    if let Err(e) = install(cli.ignore_scripts).await {
-        log_error(&e.to_string());
-        let _ = write_verbose_logs_to_file();
-        process::exit(1);
+    // Set global registry
+    set_registry(cli.registry);
+
+    // Set legacy peer deps when set --legacy
+    if cli.legacy_peer_deps == Some(true) {
+        set_legacy_peer_deps(cli.legacy_peer_deps);
+    }
+
+    if let Some(spec) = cli.spec {
+        let save_type = parse_save_type(cli.save_dev, cli.save_peer, cli.save_optional);
+        if let Err(e) = update_package(PackageAction::Add, &spec, cli.workspace.clone(), cli.ignore_scripts, save_type).await {
+            log_error(&e.to_string());
+            let _ = write_verbose_logs_to_file();
+            process::exit(1);
+        }
+    } else {
+        if let Err(e) = install(cli.ignore_scripts).await {
+            log_error(&e.to_string());
+            let _ = write_verbose_logs_to_file();
+            process::exit(1);
+        }
     }
 }
