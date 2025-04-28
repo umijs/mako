@@ -340,7 +340,7 @@ impl Ruborist {
     pub async fn init_workspaces(&mut self, root: Arc<Node>) -> io::Result<()> {
         let workspaces = find_workspaces(&self.path).await?;
 
-        // Process each workspace
+        // Process each workspace member
         for (name, path, pkg) in workspaces {
             let version = pkg["version"].as_str().unwrap_or("").to_string();
 
