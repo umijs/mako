@@ -90,6 +90,7 @@ mod tests {
 
         link(&src1_path, &dst_path).unwrap();
         let result = link(&src2_path, &dst_path);
-        assert!(result.is_err());
+        assert!(result.is_ok());
+        assert_eq!(fs::read_to_string(&dst_path).unwrap(), "test2");
     }
 }
