@@ -9,7 +9,7 @@
           "name": "MyLibrary",
           "export": ["default", "value"]
         },
-        "filename": "index.[contenthash:8].js"
+        "filename": "[name].[contenthash:8].js"
       }
     ],
     "output": {
