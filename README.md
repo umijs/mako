@@ -15,7 +15,7 @@ export PATH=$PATH:$(pwd)/target/release
 utoo
 ```
 
-### Run Bundle
+### Run Utoo Bundler
 
 ```bash
 cd packages/bundler
