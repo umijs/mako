@@ -13,13 +13,8 @@ pub fn link(src: &Path, dst: &Path) -> Result<(), std::io::Error> {
     let abs_src = cwd.join(src);
     let abs_dst = cwd.join(dst);
 
-    // check if the destination already exists and is a symlink
     if dst.exists() {
-        if let Ok(target) = fs::read_link(dst) {
-            if target == abs_src {
-                return Ok(());
-            }
-        }
+        fs::remove_file(dst)?;
     }
 
     symlink(abs_src, abs_dst)

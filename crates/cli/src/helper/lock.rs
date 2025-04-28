@@ -6,6 +6,8 @@ use std::path::PathBuf;
 use crate::{cmd::deps::build_deps, util::logger::log_info};
 use crate::util::registry::resolve;
 
+use super::workspace::find_workspaces;
+
 #[derive(Deserialize)]
 pub struct PackageLock {
     pub packages: HashMap<String, Package>,
@@ -71,7 +73,7 @@ pub async fn update_package_json(
 
     // 2. Find target workspace if specified
     let target_dir = if let Some(ws) = workspace {
-        find_workspace_path(&PathBuf::from("."), &ws)?
+        find_workspace_path(&PathBuf::from("."), &ws).await?
     } else {
         PathBuf::from(".")
     };
@@ -122,24 +124,12 @@ async fn parse_package_spec(spec: &str) -> Result<(String, String), Box<dyn std:
     Ok((name, resolved.version))
 }
 
-fn find_workspace_path(cwd: &PathBuf, workspace: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let workspace_json = cwd.join("workspace.json");
-    if !workspace_json.exists() {
-        return Err("No workspace.json found in current directory".into());
-    }
-
-    let workspace_content: Value = serde_json::from_reader(fs::File::open(workspace_json)?)?;
-    if let Some(node_list) = workspace_content.get("nodeList").and_then(|n| n.as_array()) {
-        for node in node_list {
-            if let Some(name) = node.get("name").and_then(|n| n.as_str()) {
-                if name == workspace {
-                    if let Some(path) = node.get("path").and_then(|p| p.as_str()) {
-                        return Ok(cwd.join(path));
-                    }
-                }
-            }
+async fn find_workspace_path(cwd: &PathBuf, workspace: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let workspaces = find_workspaces(cwd).await?;
+    for (name, path, _) in workspaces {
+        if name == workspace || path.to_string_lossy() == workspace {
+            return Ok(path);
         }
     }
-
     Err(format!("Workspace '{}' not found", workspace).into())
 }
