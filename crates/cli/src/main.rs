@@ -4,7 +4,9 @@ use clap::{Parser, Subcommand};
 use cmd::deps::build_deps;
 use cmd::install::install;
 use cmd::rebuild::rebuild;
+use cmd::update::update;
 use cmd::{clean::clean, deps::build_workspace};
+use constants::cmd::UPDATE_ABOUT;
 use helper::auto_update::init_auto_update;
 use util::config::{set_legacy_peer_deps, set_registry};
 use util::logger::{log_error, log_info, log_warning, set_verbose, write_verbose_logs_to_file};
@@ -68,6 +70,9 @@ enum Commands {
         #[arg(long)]
         workspace_only: bool,
     },
+
+    #[command(name = "update", alias = "u", about = UPDATE_ABOUT)]
+    Update,
 }
 
 #[tokio::main]
@@ -133,6 +138,13 @@ async fn main() {
             };
 
             if let Err(e) = result {
+                log_error(&e.to_string());
+                let _ = write_verbose_logs_to_file();
+                process::exit(1);
+            }
+        }
+        Some(Commands::Update) => {
+            if let Err(e) = update(false).await {
                 log_error(&e.to_string());
                 let _ = write_verbose_logs_to_file();
                 process::exit(1);
