@@ -3,4 +3,5 @@ pub mod deps;
 pub mod install;
 pub mod pkg;
 pub mod rebuild;
+pub mod run;
 pub mod update;

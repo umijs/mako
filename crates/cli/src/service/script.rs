@@ -221,4 +221,120 @@ impl ScriptService {
             original_path
         )
     }
+
+    pub async fn execute_custom_script(
+        package: &PackageInfo,
+        script_name: &str,
+        script_content: &str,
+    ) -> Result<(), String> {
+        log_verbose(&format!(
+            "Executing custom script for {}: {}",
+            package.path.display(),
+            script_name
+        ));
+
+        let bin_paths = Self::collect_bin_paths(package);
+        let env_path = Self::build_path_env(&bin_paths);
+
+        let mut cmd = Command::new("sh");
+        cmd.arg("-c")
+            .arg(script_content)
+            .current_dir(&package.path)
+            .env("PATH", env_path)
+            .env("npm_lifecycle_event", script_name)
+            .env(
+                "INIT_CWD",
+                env::current_dir()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string(),
+            )
+            .env(
+                "npm_package_json",
+                package.path.join("package.json").display().to_string(),
+            )
+            .env("npm_config_prefix", "")
+            .env("npm_config_global", "false");
+
+        log_verbose(&format!("Executing command: {:?}", cmd));
+
+        let status = tokio::process::Command::from(cmd)
+            .stdout(std::process::Stdio::inherit())
+            .stderr(std::process::Stdio::inherit())
+            .status()
+            .await
+            .map_err(|e| format!("Failed to execute script: {}", e))?;
+
+        if !status.success() {
+            return Err(format!("Script execution failed"));
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::model::package::Scripts;
+
+    use super::*;
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn test_execute_custom_script_success() {
+        let temp_dir = tempdir().unwrap();
+        let package = PackageInfo {
+            path: temp_dir.path().to_path_buf(),
+            bin_files: Default::default(),
+            scripts: Scripts::default(),
+            scope: None,
+            fullname: "test-package".to_string(),
+            name: "test-package".to_string(),
+            version: "1.0.0".to_string(),
+        };
+
+        let result =
+            ScriptService::execute_custom_script(&package, "test", "echo 'test script'").await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_execute_custom_script_failure() {
+        let temp_dir = tempdir().unwrap();
+        let package = PackageInfo {
+            path: temp_dir.path().to_path_buf(),
+            bin_files: Default::default(),
+            scripts: Scripts::default(),
+            scope: None,
+            fullname: "test-package".to_string(),
+            name: "test-package".to_string(),
+            version: "1.0.0".to_string(),
+        };
+
+        let result = ScriptService::execute_custom_script(&package, "test", "exit 1").await;
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Script execution failed"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_custom_script_with_env_vars() {
+        let temp_dir = tempdir().unwrap();
+        let package = PackageInfo {
+            path: temp_dir.path().to_path_buf(),
+            bin_files: Default::default(),
+            scripts: Scripts::default(),
+            scope: None,
+            fullname: "test-package".to_string(),
+            name: "test-package".to_string(),
+            version: "1.0.0".to_string(),
+        };
+
+        let result =
+            ScriptService::execute_custom_script(&package, "test", "echo $npm_lifecycle_event")
+                .await;
+
+        assert!(result.is_ok());
+    }
 }
