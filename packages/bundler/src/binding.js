@@ -310,7 +310,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { endpointWriteToDisk, endpointServerChangedSubscribe, endpointClientChangedSubscribe, projectNew, projectUpdate, projectOnExit, projectShutdown, projectEntrypointsSubscribe, projectHmrEvents, projectHmrIdentifiersSubscribe, projectUpdateInfoSubscribe, projectTraceSource, projectGetSourceForAsset, projectGetSourceMap, projectGetSourceMapSync, rootTaskDispose, initCustomTraceSubscriber, teardownTraceSubscriber } = nativeBinding
+const { endpointWriteToDisk, endpointServerChangedSubscribe, endpointClientChangedSubscribe, projectNew, projectUpdate, projectOnExit, projectShutdown, projectWriteAllEntrypointsToDisk, projectEntrypointsSubscribe, projectHmrEvents, projectHmrIdentifiersSubscribe, projectUpdateInfoSubscribe, projectTraceSource, projectGetSourceForAsset, projectGetSourceMap, projectGetSourceMapSync, rootTaskDispose, initCustomTraceSubscriber, teardownTraceSubscriber } = nativeBinding
 
 module.exports.endpointWriteToDisk = endpointWriteToDisk
 module.exports.endpointServerChangedSubscribe = endpointServerChangedSubscribe
@@ -319,6 +319,7 @@ module.exports.projectNew = projectNew
 module.exports.projectUpdate = projectUpdate
 module.exports.projectOnExit = projectOnExit
 module.exports.projectShutdown = projectShutdown
+module.exports.projectWriteAllEntrypointsToDisk = projectWriteAllEntrypointsToDisk
 module.exports.projectEntrypointsSubscribe = projectEntrypointsSubscribe
 module.exports.projectHmrEvents = projectHmrEvents
 module.exports.projectHmrIdentifiersSubscribe = projectHmrIdentifiersSubscribe

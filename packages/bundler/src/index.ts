@@ -2,7 +2,7 @@ import { nanoid } from "nanoid";
 import { projectFactory } from "./project";
 import fs from "fs";
 import path from "path";
-import { formatIssue, processIssues } from "./util";
+import { formatIssue, isRelevantWarning, processIssues } from "./util";
 import { ProjectOptions } from "./types";
 
 // ref:
@@ -52,42 +52,36 @@ export async function build(dir?: string) {
       persistentCaching: false,
     },
   );
-  const entrypointsSubscription = project.entrypointsSubscribe();
-  const entrypointsResult = await entrypointsSubscription.next();
-  if (entrypointsResult.done) {
-    throw new Error("Turbopack did not return any entrypoints");
-  }
-  entrypointsSubscription.return?.().catch(() => {});
 
-  const entrypoints = entrypointsResult.value;
+  const entrypoints = await project.writeAllEntrypointsToDisk();
 
-  const topLevelErrors: {
-    message: string;
-  }[] = [];
-
+  const topLevelErrors = [];
+  const topLevelWarnings = [];
   for (const issue of entrypoints.issues) {
-    topLevelErrors.push({
-      message: formatIssue(issue),
-    });
+    if (issue.severity === "error" || issue.severity === "fatal") {
+      topLevelErrors.push(formatIssue(issue));
+    } else if (isRelevantWarning(issue)) {
+      topLevelWarnings.push(formatIssue(issue));
+    }
+  }
+
+  if (topLevelWarnings.length > 0) {
+    console.warn(
+      `Turbopack build encountered ${
+        topLevelWarnings.length
+      } warnings:\n${topLevelWarnings.join("\n")}`,
+    );
   }
 
   if (topLevelErrors.length > 0) {
     throw new Error(
       `Turbopack build failed with ${
         topLevelErrors.length
-      } issues:\n${topLevelErrors.map((e) => e.message).join("\n")}`,
+      } errors:\n${topLevelErrors.join("\n")}`,
     );
   }
 
-  await Promise.all(
-    entrypointsResult.value.libraries.map((l) =>
-      l.writeToDisk().then((res) => processIssues(res, true, true)),
-    ),
-  );
-
   await project.shutdown();
-
-  console.log(`${new Date().toISOString()} ****** finished ******`);
 
   // TODO: Need to exit manually now. May run tasks in worker is a better way, see
   // https://github.com/vercel/next.js/blob/512d8283054407ab92b2583ecce3b253c3be7b85/packages/next/src/lib/worker.ts

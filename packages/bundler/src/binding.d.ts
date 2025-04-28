@@ -127,6 +127,7 @@ export declare function projectShutdown(project: { __napiType: "Project" }): Pro
 export interface NapiEntrypoints {
   libraries?: Array<ExternalObject<ExternalEndpoint>>
 }
+export declare function projectWriteAllEntrypointsToDisk(project: { __napiType: "Project" }): Promise<TurbopackResult>
 export declare function projectEntrypointsSubscribe(project: { __napiType: "Project" }, func: (...args: any[]) => any): { __napiType: "RootTask" }
 export declare function projectHmrEvents(project: { __napiType: "Project" }, identifier: string, func: (...args: any[]) => any): { __napiType: "RootTask" }
 export interface HmrIdentifiers {
