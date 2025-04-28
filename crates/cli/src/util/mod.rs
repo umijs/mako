@@ -9,3 +9,4 @@ pub mod registry;
 pub mod retry;
 pub mod semver;
 pub mod timer;
+pub mod save_type;

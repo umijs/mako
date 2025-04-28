@@ -11,6 +11,7 @@ either = { workspace = true }
 futures = { workspace = true }
 indexmap = { workspace = true }
 bundler-core = { workspace = true }
+qstring = { workspace = true }
 regex = { workspace = true }
 rustc-hash = { workspace = true }
 serde = { workspace = true }

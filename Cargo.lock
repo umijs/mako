@@ -526,6 +526,7 @@ dependencies = [
  "either",
  "futures",
  "indexmap 2.9.0",
+ "qstring",
  "regex",
  "rustc-hash 2.1.1",
  "serde",

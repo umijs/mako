@@ -6,6 +6,7 @@ use bundler_core::{
     },
     library::contexts::get_library_chunking_context,
 };
+use qstring::QString;
 use tracing::{info_span, Instrument};
 use turbo_rcstr::RcStr;
 use turbo_tasks::{Completion, JoinIterExt, ResolvedVc, Value, Vc};
@@ -39,7 +40,7 @@ use crate::{
 
 #[turbo_tasks::value]
 pub struct Library {
-    pub name: Option<RcStr>,
+    pub name: RcStr,
     pub import: RcStr,
     // TODO: support filename template like webpack to handle hash
     pub filename: Option<RcStr>,
@@ -102,7 +103,7 @@ impl LibraryProject {
 #[turbo_tasks::value]
 pub struct LibraryEndpoint {
     project: ResolvedVc<Project>,
-    name: Option<RcStr>,
+    name: RcStr,
     import: RcStr,
     filename: Option<RcStr>,
     runtime_root: RcStr,
@@ -268,20 +269,20 @@ impl LibraryEndpoint {
 
             let module_graph = self.library_module_graph();
 
-            let filename = this
-                .filename
-                .clone()
-                .or(this.name.clone())
-                .unwrap_or(this.import.clone());
-
-            let filename = if filename.ends_with(".js") {
-                filename
-            } else {
-                format!("{filename}.js").into()
-            };
+            let query = QString::new(
+                [
+                    ("name", Some(this.name.clone()).as_ref()),
+                    ("filename", this.filename.as_ref()),
+                ]
+                .into_iter()
+                .filter_map(|s| s.1.map(|v| (s.0, v.as_str())))
+                .collect(),
+            )
+            .to_string();
 
             let library_chunk_group = library_chunking_context.evaluated_chunk_group(
-                AssetIdent::from_path(project.project_root().join(filename)),
+                AssetIdent::from_path(project.project_root().join(this.import.clone()))
+                    .with_query(Vc::cell(query.into())),
                 ChunkGroup::Entry(
                     [self.library_main_module().to_resolved().await?]
                         .into_iter()

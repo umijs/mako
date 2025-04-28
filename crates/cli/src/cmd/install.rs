@@ -13,19 +13,21 @@ use crate::util::logger::finish_progress_bar;
 use crate::util::logger::log_verbose;
 use crate::util::logger::start_progress_bar;
 use crate::util::logger::{log_info, PROGRESS_BAR};
+use crate::util::save_type::PackageAction;
+use crate::util::save_type::SaveType;
 
 use super::deps::build_deps;
 
 pub async fn update_package(
-    action: &str,
+    action: PackageAction,
     spec: &str,
     workspace: Option<String>,
     ignore_scripts: bool,
-    save_type: &str,
+    save_type: SaveType,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    log_verbose(&format!("update package: {} {} {:?} {}", action, spec, &workspace, ignore_scripts));
+    log_verbose(&format!("update package: {:?} {:?} {:?} {:?}", action, spec, &workspace, ignore_scripts));
     // 1. Update package.json and package-lock.json
-    update_package_json(action, spec, &workspace, save_type).await?;
+    update_package_json(&action, spec, &workspace, &save_type).await?;
 
     // 2. Rebuild Deps
     let _ = build_deps().await;

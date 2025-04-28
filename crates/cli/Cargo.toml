@@ -26,6 +26,10 @@ name = "utoo-deps"
 path = "src/bin/utoo-deps.rs"
 
 [[bin]]
+name = "utoo-update"
+path = "src/bin/utoo-update.rs"
+
+[[bin]]
 name = "utoo"
 path = "src/main.rs"
 

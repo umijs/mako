@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::{collections::HashMap, fs};
 use std::path::PathBuf;
 
+use crate::util::save_type::{PackageAction, SaveType};
 use crate::{cmd::deps::build_deps, util::logger::log_info};
 use crate::util::registry::resolve;
 
@@ -63,10 +64,10 @@ pub async fn ensure_package_lock() -> Result<(), String> {
 }
 
 pub async fn update_package_json(
-    action: &str,
+    action: &PackageAction,
     spec: &str,
     workspace: &Option<String>,
-    save_type: &str,
+    save_type: &SaveType,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Parse package spec
     let (name, version) = parse_package_spec(spec).await?;
@@ -83,25 +84,24 @@ pub async fn update_package_json(
     let mut package_json: Value = serde_json::from_reader(fs::File::open(&package_json_path)?)?;
 
     let dep_field = match save_type {
-        "dev" => "devDependencies",
-        "peer" => "peerDependencies",
-        "optional" => "optionalDependencies",
-        _ => "dependencies",
+        SaveType::Dev => "devDependencies",
+        SaveType::Peer => "peerDependencies",
+        SaveType::Optional => "optionalDependencies",
+        SaveType::Prod => "dependencies",
     };
 
     if let Some(deps) = package_json.get_mut(dep_field) {
         if let Some(deps_obj) = deps.as_object_mut() {
             match action {
-                "add" => {
+                PackageAction::Add => {
                     deps_obj.insert(name.clone(), Value::String(version.clone()));
                 }
-                "rm" => {
+                PackageAction::Remove => {
                     deps_obj.remove(&name);
                 }
-                _ => return Err("Invalid action".into()),
             }
         }
-    } else if action == "add" {
+    } else if PackageAction::Add == *action {
         let mut deps = serde_json::Map::new();
         deps.insert(name.clone(), Value::String(version.clone()));
         package_json[dep_field] = Value::Object(deps);

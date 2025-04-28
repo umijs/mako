@@ -1,5 +1,3 @@
-use glob::glob;
-
 use serde_json::Value;
 use std::collections::HashMap;
 use std::io;
@@ -9,6 +7,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::sync::Semaphore;
 
+use crate::helper::workspace::find_workspaces;
 use crate::util::config::get_legacy_peer_deps;
 use crate::util::logger::{
     finish_progress_bar, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
@@ -339,131 +338,89 @@ impl Ruborist {
     }
 
     pub async fn init_workspaces(&mut self, root: Arc<Node>) -> io::Result<()> {
-        let pkg: Value = root.package.clone();
-        // load workspaces config
-        if let Some(workspaces) = pkg.get("workspaces") {
-            match workspaces {
-                Value::Array(patterns) => {
-                    for pattern in patterns {
-                        if let Some(pattern_str) = pattern.as_str() {
-                            // prepare glob pattern
-                            let full_pattern = self.path.join(pattern_str).join("package.json");
-                            let full_pattern = full_pattern.to_str().unwrap();
+        let workspaces = find_workspaces(&self.path).await?;
 
-                            // glob match
-                            for entry in glob(full_pattern).expect("Failed to read glob pattern") {
-                                match entry {
-                                    Ok(path) => {
-                                        // load package.json in workspace
-                                        let workspace_content = std::fs::read_to_string(&path)?;
-                                        let workspace_pkg: Value =
-                                            serde_json::from_str(&workspace_content)?;
+        // Process each workspace member
+        for (name, path, pkg) in workspaces {
+            let version = pkg["version"].as_str().unwrap_or("").to_string();
 
-                                        // load workspace name & version
-                                        let name = workspace_pkg["name"]
-                                            .as_str()
-                                            .unwrap_or("")
-                                            .to_string();
-                                        let version = workspace_pkg["version"]
-                                            .as_str()
-                                            .unwrap_or("")
-                                            .to_string();
+            // Create workspace node
+            let workspace_node = Node::new_workspace(name.clone(), path, pkg.clone());
 
-                                        // create workspace node (link node)
-                                        let workspace_path = path.parent().unwrap().to_path_buf();
-                                        let workspace_node = Node::new_workspace(
-                                            name.clone(),
-                                            workspace_path,
-                                            workspace_pkg,
-                                        );
+            // Create link node
+            let link_node = Node::new_link(name.clone(), workspace_node.clone());
 
-                                        let link_node =
-                                            Node::new_link(name.clone(), workspace_node.clone());
-                                        let dep_edge = Edge::new(
-                                            root.clone(),
-                                            EdgeType::Prod,
-                                            name.clone(),
-                                            version,
-                                        );
-                                        {
-                                            let mut valid = dep_edge.valid.write().unwrap();
-                                            *valid = true;
+            // Create dependency edge
+            let dep_edge = Edge::new(root.clone(), EdgeType::Prod, name.clone(), version);
 
-                                            let mut to = dep_edge.to.write().unwrap();
-                                            *to = Some(workspace_node.clone());
-                                        }
+            // Set target node and validity for dependency edge
+            {
+                let mut valid = dep_edge.valid.write().unwrap();
+                *valid = true;
 
-                                        // update parent
-                                        {
-                                            let mut parent = workspace_node.parent.write().unwrap();
-                                            *parent = Some(root.clone());
-                                        }
-                                        {
-                                            let mut parent = link_node.parent.write().unwrap();
-                                            *parent = Some(root.clone());
-                                        }
-                                        {
-                                            let mut children = root.children.write().unwrap();
-                                            children.push(workspace_node.clone());
-                                            children.push(link_node);
-                                        }
+                let mut to = dep_edge.to.write().unwrap();
+                *to = Some(workspace_node.clone());
+            }
 
-                                        root.add_edge(dep_edge).await;
+            // Update parent relationships
+            {
+                let mut parent = workspace_node.parent.write().unwrap();
+                *parent = Some(root.clone());
+            }
+            {
+                let mut parent = link_node.parent.write().unwrap();
+                *parent = Some(root.clone());
+            }
+            {
+                let mut children = root.children.write().unwrap();
+                children.push(workspace_node.clone());
+                children.push(link_node);
+            }
 
-                                        log_verbose(&format!(
-                                            "Added workspace: {} {:?}",
-                                            name, path
-                                        ));
+            // Add dependency edge
+            root.add_edge(dep_edge).await;
 
-                                        let legacy_peer_deps = get_legacy_peer_deps();
-                                        let dep_types = if legacy_peer_deps {
-                                            vec![
-                                                ("devDependencies", EdgeType::Dev),
-                                                ("dependencies", EdgeType::Prod),
-                                                ("optionalDependencies", EdgeType::Optional),
-                                            ]
-                                        } else {
-                                            vec![
-                                                ("devDependencies", EdgeType::Dev),
-                                                ("dependencies", EdgeType::Prod),
-                                                ("peerDependencies", EdgeType::Peer),
-                                                ("optionalDependencies", EdgeType::Optional),
-                                            ]
-                                        };
+            log_verbose(&format!(
+                "Added workspace: {} {:?}",
+                name, workspace_node.path
+            ));
 
-                                        for (field, edge_type) in dep_types {
-                                            if let Some(deps) = workspace_node.package.get(field) {
-                                                if let Some(deps) = deps.as_object() {
-                                                    for (name, version) in deps {
-                                                        let version_spec = version
-                                                            .as_str()
-                                                            .unwrap_or("")
-                                                            .to_string();
-                                                        let dep_edge = Edge::new(
-                                                            workspace_node.clone(),
-                                                            edge_type.clone(),
-                                                            name.clone(),
-                                                            version_spec,
-                                                        );
-                                                        log_verbose(&format!(
-                                                            "add edge {}@{} for {}",
-                                                            name, version, workspace_node.name
-                                                        ));
-                                                        workspace_node.add_edge(dep_edge).await;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    Err(e) => {
-                                        log_verbose(&format!("Error processing workspace: {}", e))
-                                    }
-                                }
-                            }
+            // Process workspace dependencies
+            let legacy_peer_deps = get_legacy_peer_deps();
+            let dep_types = if legacy_peer_deps {
+                vec![
+                    ("devDependencies", EdgeType::Dev),
+                    ("dependencies", EdgeType::Prod),
+                    ("optionalDependencies", EdgeType::Optional),
+                ]
+            } else {
+                vec![
+                    ("devDependencies", EdgeType::Dev),
+                    ("dependencies", EdgeType::Prod),
+                    ("peerDependencies", EdgeType::Peer),
+                    ("optionalDependencies", EdgeType::Optional),
+                ]
+            };
+
+            for (field, edge_type) in dep_types {
+                if let Some(deps) = workspace_node.package.get(field) {
+                    if let Some(deps) = deps.as_object() {
+                        for (name, version) in deps {
+                            let version_spec = version.as_str().unwrap_or("").to_string();
+                            let dep_edge = Edge::new(
+                                workspace_node.clone(),
+                                edge_type.clone(),
+                                name.clone(),
+                                version_spec,
+                            );
+                            log_verbose(&format!(
+                                "add edge {}@{} for {}",
+                                name, version, workspace_node.name
+                            ));
+                            workspace_node.add_edge(dep_edge).await;
                         }
                     }
                 }
-                _ => log_verbose("Workspaces field is not an array"),
             }
         }
 
