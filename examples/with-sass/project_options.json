@@ -5,7 +5,9 @@
     "entry": [
       {
         "import": "./src/index.tsx",
-        "library": {}
+        "library": {
+          "name": "with-sass"
+        }
       }
     ],
     "output": {

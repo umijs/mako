@@ -1,6 +1,8 @@
 use anyhow::{bail, Context, Result};
+use regex::Regex;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
+use std::{cmp::min, sync::LazyLock};
 use tracing::Instrument;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{
@@ -8,9 +10,9 @@ use turbo_tasks::{
     Vc,
 };
 use turbo_tasks_fs::FileSystemPath;
-use turbo_tasks_hash::{hash_xxh3_hash64, DeterministicHash};
+use turbo_tasks_hash::{encode_hex, DeterministicHash, Xxh3Hash64Hasher};
 use turbopack_core::{
-    asset::{Asset, AssetContent},
+    asset::Asset,
     chunk::{
         availability_info::AvailabilityInfo,
         chunk_group::{make_chunk_group, MakeChunkGroupResult},
@@ -28,7 +30,7 @@ use turbopack_core::{
 use turbopack_ecmascript::chunk::{EcmascriptChunk, EcmascriptChunkType};
 use turbopack_ecmascript_runtime::RuntimeType;
 
-use crate::library::ecmascript::chunk::EcmascriptLibraryChunk;
+use crate::library::ecmascript::chunk::EcmascriptLibraryEvaluateChunk;
 
 #[derive(
     Debug,
@@ -136,8 +138,6 @@ pub struct LibraryChunkingContext {
     runtime_type: RuntimeType,
     /// Whether to minify resulting chunks
     minify_type: MinifyType,
-    /// Whether content hashing is enabled.
-    content_hashing: Option<ContentHashing>,
     /// Whether to generate source maps
     source_maps_type: SourceMapsType,
     /// The module id strategy to use
@@ -164,7 +164,6 @@ impl LibraryChunkingContext {
                 environment,
                 runtime_type,
                 minify_type: MinifyType::NoMinify,
-                content_hashing: None,
                 source_maps_type: SourceMapsType::Full,
                 module_id_strategy: ResolvedVc::upcast(DevModuleIdStrategy::new_resolved()),
                 runtime_root,
@@ -212,9 +211,23 @@ impl LibraryChunkingContext {
             if let Some(ecmascript_chunk) =
                 Vc::try_resolve_downcast_type::<EcmascriptChunk>(chunk).await?
             {
-                Vc::upcast(EcmascriptLibraryChunk::new(
+                let path_vc = ident.path();
+                let path_str = &path_vc.await?.path;
+                let path = if CONTENT_HASH_PLACEHOLDER_REGEX.is_match(path_str) {
+                    let content_hash = self.ecmascript_chunk_content_hash(ecmascript_chunk).await?;
+                    let path_with_hash = replace_content_hash_placeholder(path_str, &content_hash);
+                    path_vc
+                        .to_resolved()
+                        .await?
+                        .root()
+                        .join(path_with_hash.into())
+                } else {
+                    path_vc
+                };
+
+                Vc::upcast(EcmascriptLibraryEvaluateChunk::new(
                     self,
-                    ident,
+                    AssetIdent::from_path(path),
                     ecmascript_chunk,
                     evaluatable_assets,
                 ))
@@ -236,6 +249,34 @@ impl LibraryChunkingContext {
     #[turbo_tasks::function]
     pub(crate) fn runtime_export(&self) -> Vc<Vec<RcStr>> {
         Vc::cell(self.runtime_export.clone())
+    }
+
+    #[turbo_tasks::function]
+    pub(crate) async fn ecmascript_chunk_content_hash(
+        self: Vc<Self>,
+        ecmascript_chunk: Vc<EcmascriptChunk>,
+    ) -> Result<Vc<RcStr>> {
+        let minify_type = self.minify_type().await?;
+        let chunk_items = ecmascript_chunk
+            .chunk_content()
+            .await?
+            .chunk_item_code_and_ids()
+            .await?;
+
+        let mut hasher = Xxh3Hash64Hasher::new();
+        hasher.write_ref(&minify_type);
+        hasher.write_value(chunk_items.len());
+
+        for item in &chunk_items {
+            for (module_id, code) in item {
+                hasher.write_value((module_id, code.source_code()));
+            }
+        }
+
+        let hash = hasher.finish();
+        let hex_hash = encode_hex(hash);
+
+        Ok(Vc::cell(hex_hash.into()))
     }
 }
 
@@ -278,35 +319,15 @@ impl ChunkingContext for LibraryChunkingContext {
     #[turbo_tasks::function]
     async fn chunk_path(
         &self,
-        asset: Option<Vc<Box<dyn Asset>>>,
+        _asset: Option<Vc<Box<dyn Asset>>>,
         ident: Vc<AssetIdent>,
         extension: RcStr,
     ) -> Result<Vc<FileSystemPath>> {
         let root_path = self.output_root;
-        let name = match self.content_hashing {
-            None => {
-                ident
-                    .output_name(*self.root_path, extension)
-                    .owned()
-                    .await?
-            }
-            Some(ContentHashing::Direct { length }) => {
-                let Some(asset) = asset else {
-                    bail!("chunk_path requires an asset when content hashing is enabled");
-                };
-                let content = asset.content().await?;
-                if let AssetContent::File(file) = &*content {
-                    let hash = hash_xxh3_hash64(&file.await?);
-                    let length = length as usize;
-                    format!("{hash:0length$x}{extension}").into()
-                } else {
-                    bail!(
-                        "chunk_path requires an asset with file content when content hashing is \
-                         enabled"
-                    );
-                }
-            }
-        };
+        let name = output_name(ident, *self.root_path, extension.clone())
+            .owned()
+            .await?;
+
         Ok(root_path.join(name))
     }
 
@@ -482,4 +503,48 @@ impl ChunkingContext for LibraryChunkingContext {
     ) -> Result<Vc<ModuleId>> {
         bail!("Library chunking context does not support async loader chunk item id")
     }
+}
+
+#[turbo_tasks::function]
+pub async fn output_name(
+    ident: Vc<AssetIdent>,
+    context_path: Vc<FileSystemPath>,
+    expected_extension: RcStr,
+) -> Result<Vc<RcStr>> {
+    let ident = &*ident.await?;
+    let path = &*ident.path.await?;
+    let mut name = if let Some(inner) = context_path.await?.get_path_to(path) {
+        clean_separators(inner)
+    } else {
+        clean_separators(&ident.path.to_string().await?)
+    };
+    let removed_extension = name.ends_with(&*expected_extension);
+    if removed_extension {
+        name.truncate(name.len() - expected_extension.len());
+    }
+    name += &expected_extension;
+    Ok(Vc::cell(name.into()))
+}
+
+fn clean_separators(s: &str) -> String {
+    static SEPARATOR_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r".*[/#?]").unwrap());
+    SEPARATOR_REGEX.replace_all(s, "").to_string()
+}
+
+static CONTENT_HASH_PLACEHOLDER_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[contenthash(?::(?P<len>\d+))?\]").unwrap());
+
+fn replace_content_hash_placeholder(s: &str, hash: &str) -> String {
+    CONTENT_HASH_PLACEHOLDER_REGEX
+        .replace_all(s, |caps: &regex::Captures| {
+            let len = caps.name("len").map(|m| m.as_str()).unwrap_or("");
+            let len = if len.is_empty() {
+                hash.len()
+            } else {
+                len.parse().unwrap_or(hash.len())
+            };
+            let len = min(len, hash.len());
+            hash[..len].to_string()
+        })
+        .to_string()
 }
