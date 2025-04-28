@@ -226,7 +226,6 @@ impl ScriptService {
         package: &PackageInfo,
         script_name: &str,
         script_content: &str,
-        show_output: bool,
     ) -> Result<(), String> {
         log_verbose(&format!(
             "Executing custom script for {}: {}",
@@ -271,5 +270,71 @@ impl ScriptService {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::model::package::Scripts;
+
+    use super::*;
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn test_execute_custom_script_success() {
+        let temp_dir = tempdir().unwrap();
+        let package = PackageInfo {
+            path: temp_dir.path().to_path_buf(),
+            bin_files: Default::default(),
+            scripts: Scripts::default(),
+            scope: None,
+            fullname: "test-package".to_string(),
+            name: "test-package".to_string(),
+            version: "1.0.0".to_string(),
+        };
+
+        let result =
+            ScriptService::execute_custom_script(&package, "test", "echo 'test script'").await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_execute_custom_script_failure() {
+        let temp_dir = tempdir().unwrap();
+        let package = PackageInfo {
+            path: temp_dir.path().to_path_buf(),
+            bin_files: Default::default(),
+            scripts: Scripts::default(),
+            scope: None,
+            fullname: "test-package".to_string(),
+            name: "test-package".to_string(),
+            version: "1.0.0".to_string(),
+        };
+
+        let result = ScriptService::execute_custom_script(&package, "test", "exit 1").await;
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Script execution failed"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_custom_script_with_env_vars() {
+        let temp_dir = tempdir().unwrap();
+        let package = PackageInfo {
+            path: temp_dir.path().to_path_buf(),
+            bin_files: Default::default(),
+            scripts: Scripts::default(),
+            scope: None,
+            fullname: "test-package".to_string(),
+            name: "test-package".to_string(),
+            version: "1.0.0".to_string(),
+        };
+
+        let result =
+            ScriptService::execute_custom_script(&package, "test", "echo $npm_lifecycle_event")
+                .await;
+
+        assert!(result.is_ok());
     }
 }
