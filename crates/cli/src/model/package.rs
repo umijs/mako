@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 use serde_json::Value;
 use std::fs;
-use std::process::Command;
 use std::env;
 
 use crate::{service::script::ScriptService, util::{linker::link, logger::log_verbose}};
@@ -172,4 +171,88 @@ impl PackageInfo {
         Ok(())
     }
 
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_package_info_from_path() {
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let package_dir = temp_dir.path().join("test-package");
+        fs::create_dir(&package_dir).unwrap();
+
+        // Create a sample package.json
+        let package_json = r#"
+        {
+            "name": "test-package",
+            "version": "1.0.0",
+            "bin": {
+                "test-cli": "./bin/cli.js"
+            },
+            "scripts": {
+                "preinstall": "echo preinstall",
+                "install": "echo install",
+                "postinstall": "echo postinstall"
+            }
+        }"#;
+        fs::write(package_dir.join("package.json"), package_json).unwrap();
+
+        // Create bin directory and file
+        fs::create_dir(package_dir.join("bin")).unwrap();
+        fs::write(package_dir.join("bin/cli.js"), "#!/usr/bin/env node\nconsole.log('test')").unwrap();
+
+        // Test PackageInfo::from_path
+        let package_info = PackageInfo::from_path(&package_dir).unwrap();
+
+        assert_eq!(package_info.name, "test-package");
+        assert_eq!(package_info.version, "1.0.0");
+        assert_eq!(package_info.bin_files.len(), 1);
+        assert_eq!(package_info.bin_files[0].0, "test-cli");
+        assert_eq!(package_info.bin_files[0].1, "./bin/cli.js");
+        assert!(package_info.scripts.preinstall.is_some());
+        assert!(package_info.scripts.install.is_some());
+        assert!(package_info.scripts.postinstall.is_some());
+    }
+
+    #[test]
+    fn test_package_info_from_path_with_scope() {
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let package_dir = temp_dir.path().join("@scope/test-package");
+        fs::create_dir_all(&package_dir).unwrap();
+
+        // Create a sample package.json
+        let package_json = r#"
+        {
+            "name": "@scope/test-package",
+            "version": "1.0.0"
+        }"#;
+        fs::write(package_dir.join("package.json"), package_json).unwrap();
+
+        // Test PackageInfo::from_path
+        let package_info = PackageInfo::from_path(&package_dir).unwrap();
+
+        assert_eq!(package_info.name, "@scope/test-package");
+        assert_eq!(package_info.scope, Some("@scope".to_string()));
+    }
+
+    #[test]
+    fn test_package_info_from_path_invalid_json() {
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let package_dir = temp_dir.path().join("test-package");
+        fs::create_dir(&package_dir).unwrap();
+
+        // Create an invalid package.json
+        fs::write(package_dir.join("package.json"), "invalid json").unwrap();
+
+        // Test PackageInfo::from_path with invalid JSON
+        let result = PackageInfo::from_path(&package_dir);
+        assert!(result.is_err());
+    }
 }

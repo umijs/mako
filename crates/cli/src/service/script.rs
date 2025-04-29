@@ -112,8 +112,25 @@ impl ScriptService {
             bin_name, relative_path
         ));
 
-        Self::ensure_executable(&target_path).await?;
-        Self::create_symlink(package, &bin_path, relative_path)?;
+        // Ensure target file exists
+        if !target_path.exists() {
+            return Err(format!("Target file not found: {}", target_path.display()));
+        }
+
+        // Ensure bin directory exists
+        if let Some(parent) = bin_path.parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|e| format!("Failed to create bin directory: {}", e))?;
+        }
+
+        // Copy file to target location
+        tokio::fs::copy(&target_path, &bin_path)
+            .await
+            .map_err(|e| format!("Failed to copy file: {}", e))?;
+
+        // Make file executable
+        Self::ensure_executable(&bin_path).await?;
 
         Ok(())
     }
@@ -296,6 +313,7 @@ mod tests {
     use super::*;
     use std::fs;
     use tempfile::tempdir;
+    use tempfile::TempDir;
 
     #[tokio::test]
     async fn test_execute_custom_script_success() {
@@ -386,5 +404,31 @@ mod tests {
         let bin_paths = ScriptService::collect_bin_paths(&package);
         assert!(!bin_paths.is_empty());
         assert!(bin_paths[0].ends_with("node_modules/.bin"));
+    }
+
+    #[tokio::test]
+    async fn test_ensure_executable() {
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.sh");
+        fs::write(&test_file, "#!/bin/sh\necho test").unwrap();
+
+        // Test ensure_executable
+        let result = ScriptService::ensure_executable(&test_file).await;
+        assert!(result.is_ok(), "Failed to ensure file is executable");
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let permissions = fs::metadata(&test_file).unwrap().permissions();
+            assert!(permissions.mode() & 0o111 != 0, "File not made executable");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_ensure_executable_nonexistent_file() {
+        // Test with non-existent file
+        let result = ScriptService::ensure_executable(Path::new("nonexistent-file")).await;
+        assert!(result.is_err(), "Should fail with non-existent file");
     }
 }

@@ -12,8 +12,6 @@ use crate::util::{
     cloner::clone,
     downloader::download,
 };
-use crate::service::script::ScriptService;
-use crate::model::package::{PackageInfo, Scripts};
 
 use super::workspace::find_workspaces;
 

@@ -6,10 +6,9 @@ use tokio::sync::Semaphore;
 
 use crate::cmd::rebuild::rebuild;
 use crate::helper::lock::update_package_json;
-use crate::helper::lock::{ensure_package_lock, group_by_depth, PackageLock, parse_package_spec, prepare_global_package_json};
+use crate::helper::lock::{ensure_package_lock, group_by_depth, PackageLock, prepare_global_package_json};
 use crate::service::install::install_packages;
-use crate::service::script::ScriptService;
-use crate::model::package::{PackageInfo, Scripts};
+use crate::model::package::PackageInfo;
 use crate::util::cache::get_cache_dir;
 use crate::util::logger::finish_progress_bar;
 use crate::util::logger::log_verbose;
@@ -109,4 +108,16 @@ pub async fn install_global_package(npm_spec: &str) -> Result<(), Box<dyn std::e
     env::set_current_dir(original_dir)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_install_global_package_invalid_spec() {
+        // Test installing with invalid package spec
+        let result = install_global_package("invalid-package-that-does-not-exist").await;
+        assert!(result.is_err(), "Should fail with invalid package spec");
+    }
 }

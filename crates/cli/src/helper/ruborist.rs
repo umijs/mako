@@ -23,8 +23,6 @@ pub struct Ruborist {
 
 use once_cell::sync::Lazy;
 
-use super::package::parse_package_name;
-
 // concurrency limit default to 100
 static CONCURRENCY_LIMITER: Lazy<Arc<Semaphore>> = Lazy::new(|| Arc::new(Semaphore::new(100)));
 
