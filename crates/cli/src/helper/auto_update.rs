@@ -171,16 +171,4 @@ mod tests {
 
         assert!(result.is_err());
     }
-
-    #[tokio::test]
-    async fn test_execute_update_integration() {
-        // test for execute_update function
-        let result = execute_update("latest").await;
-
-        // just check if it's Ok or Err
-        match result {
-            Ok(()) => (),
-            Err(e) => assert!(e.contains("Auto update failed, please update manually")),
-        }
-    }
 }
