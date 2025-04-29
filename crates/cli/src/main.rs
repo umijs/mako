@@ -28,15 +28,16 @@ use crate::constants::{APP_ABOUT, APP_NAME, APP_VERSION};
 #[command(name = APP_NAME)]
 #[command(version = APP_VERSION)]
 #[command(about = APP_ABOUT)]
+#[command(version = None)]
 struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+
     #[arg(long)]
     ignore_scripts: bool,
 
     #[arg(long, global = true)]
     verbose: bool,
-
-    #[arg(short, long)]
-    version: bool,
 
     #[arg(long, global = true)]
     registry: Option<String>,
@@ -44,8 +45,8 @@ struct Cli {
     #[arg(long, global = true, action = clap::ArgAction::SetTrue)]
     legacy_peer_deps: Option<bool>,
 
-    #[command(subcommand)]
-    command: Option<Commands>,
+    #[arg(short = 'v', long)]
+    version: bool,
 }
 
 #[derive(Subcommand)]
@@ -136,18 +137,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         set_legacy_peer_deps(cli.legacy_peer_deps);
     }
 
+    // Handle --version flag
+    if cli.version {
+        println!("{}", APP_VERSION);
+        return Ok(());
+    }
+
     // Ensure the version is up to date, weak dependency
     if let Err(_e) = init_auto_update().await {
         log_warning(&format!("Auto update cancelled"));
     }
-
-    // load package.json
-    // if let Some(result) = cmd::pkg::handle_command_v4(&cli) {
-    //     if let Err(e) = result {
-    //         log_error(&e);
-    //     }
-    //     return;
-    // }
 
     match cli.command {
         Some(Commands::Clean { pattern }) => {
