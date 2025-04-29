@@ -1,4 +1,10 @@
-use std::{io::Write, path::PathBuf, sync::Arc, sync::LazyLock, thread, time::Duration};
+use std::{
+    io::Write,
+    path::PathBuf,
+    sync::{Arc, LazyLock},
+    thread::{self, JoinHandle},
+    time::Duration,
+};
 
 use anyhow::{anyhow, bail, Context, Result};
 use bundler_api::{
@@ -10,8 +16,8 @@ use bundler_api::{
     },
 };
 use bundler_core::tracing_presets::{
-    TRACING_BUNDLER_OVERVIEW_TARGETS, TRACING_BUNDLER_TARGETS, TRACING_BUNDLER_TURBOPACK_TARGETS,
-    TRACING_BUNDLER_TURBO_TASKS_TARGETS,
+    TRACING_OVERVIEW_TARGETS, TRACING_TARGETS, TRACING_TURBOPACK_TARGETS,
+    TRACING_TURBO_TASKS_TARGETS,
 };
 use napi::{
     bindgen_prelude::{within_runtime_if_available, External},
@@ -49,8 +55,8 @@ use url::Url;
 use super::{
     endpoint::ExternalEndpoint,
     utils::{
-        create_turbo_tasks, get_diagnostics, get_issues, subscribe, NapiDiagnostic, NapiIssue,
-        NextTurboTasks, RootTask, TurbopackResult, VcArc,
+        create_turbo_tasks, get_diagnostics, get_issues, subscribe, BundlerTurboTasks,
+        NapiDiagnostic, NapiIssue, RootTask, TurbopackResult, VcArc,
     },
 };
 use crate::{register, util::DhatProfilerGuard};
@@ -231,7 +237,7 @@ impl From<NapiDefineEnv> for DefineEnv {
 }
 
 pub struct ProjectInstance {
-    turbo_tasks: NextTurboTasks,
+    turbo_tasks: BundlerTurboTasks,
     container: Vc<ProjectContainer>,
     exit_receiver: tokio::sync::Mutex<Option<ExitReceiver>>,
 }
@@ -252,7 +258,7 @@ pub async fn project_new(
         });
     }
 
-    let mut trace = std::env::var("BUNDLER_TURBOPACK_TRACING")
+    let mut trace = std::env::var("TURBOPACK_TRACING")
         .ok()
         .filter(|v| !v.is_empty());
 
@@ -266,16 +272,16 @@ pub async fn project_new(
         // Trace presets
         match trace.as_str() {
             "overview" | "1" => {
-                trace = TRACING_BUNDLER_OVERVIEW_TARGETS.join(",");
+                trace = TRACING_OVERVIEW_TARGETS.join(",");
             }
             "bundler" => {
-                trace = TRACING_BUNDLER_TARGETS.join(",");
+                trace = TRACING_TARGETS.join(",");
             }
             "turbopack" => {
-                trace = TRACING_BUNDLER_TURBOPACK_TARGETS.join(",");
+                trace = TRACING_TURBOPACK_TARGETS.join(",");
             }
             "turbo-tasks" => {
-                trace = TRACING_BUNDLER_TURBO_TASKS_TARGETS.join(",");
+                trace = TRACING_TURBO_TASKS_TARGETS.join(",");
             }
             _ => {}
         }
@@ -299,17 +305,25 @@ pub async fn project_new(
         let (trace_writer, trace_writer_guard) = TraceWriter::new(trace_writer);
         let subscriber = subscriber.with(RawTraceLayer::new(trace_writer));
 
-        exit.on_exit(async move {
-            tokio::task::spawn_blocking(move || drop(trace_writer_guard));
-        });
-
-        let trace_server = std::env::var("BUNDLER_TURBOPACK_TRACE_SERVER").ok();
+        let mut tracing_server_handle: Option<JoinHandle<()>> = None;
+        let trace_server = std::env::var("TURBOPACK_TRACE_SERVER").ok();
         if trace_server.is_some() {
-            thread::spawn(move || {
+            tracing_server_handle = Some(thread::spawn(move || {
                 turbopack_trace_server::start_turbopack_trace_server(trace_file);
-            });
+            }));
             println!("Turbopack trace server started. View trace at https://turbo-trace-viewer.vercel.app/");
         }
+
+        exit.on_exit(async move {
+            tokio::task::spawn_blocking(move || {
+                drop(trace_writer_guard);
+                if let Some(tracing_server_handle) = tracing_server_handle {
+                    tracing_server_handle.join().unwrap();
+                }
+            })
+            .await
+            .unwrap();
+        });
 
         subscriber.init();
     } else {
@@ -334,7 +348,7 @@ pub async fn project_new(
         memory_limit,
         dependency_tracking,
     )?;
-    let stats_path = std::env::var_os("BUNDLER_TURBOPACK_TASK_STATISTICS");
+    let stats_path = std::env::var_os("TURBOPACK_TASK_STATISTICS");
     if let Some(stats_path) = stats_path {
         let task_stats = turbo_tasks.task_statistics().enable().clone();
         exit.on_exit(async move {
@@ -353,7 +367,7 @@ pub async fn project_new(
     let options: ProjectOptions = options.into();
     let container = turbo_tasks
         .run_once(async move {
-            let project = ProjectContainer::new("next.js".into(), options.dev);
+            let project = ProjectContainer::new("utoo-bundler".into(), options.dev);
             let project = project.to_resolved().await?;
             project.initialize(options).await?;
             Ok(project)
@@ -429,7 +443,7 @@ pub struct NapiEntrypoints {
 impl NapiEntrypoints {
     fn from_entrypoints_op(
         entrypoints: &EntrypointsOperation,
-        turbo_tasks: &NextTurboTasks,
+        turbo_tasks: &BundlerTurboTasks,
     ) -> Result<Self> {
         let libraries = entrypoints.libraries.as_ref().map(|libraries| {
             libraries

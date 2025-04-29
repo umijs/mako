@@ -8,8 +8,8 @@ use std::{env::current_dir, fs::File, io::Read, path::PathBuf, time::Instant};
 use turbo_rcstr::RcStr;
 
 use bundler_core::tracing_presets::{
-    TRACING_BUNDLER_OVERVIEW_TARGETS, TRACING_BUNDLER_TARGETS, TRACING_BUNDLER_TURBOPACK_TARGETS,
-    TRACING_BUNDLER_TURBO_TASKS_TARGETS,
+    TRACING_OVERVIEW_TARGETS, TRACING_TARGETS, TRACING_TURBOPACK_TARGETS,
+    TRACING_TURBO_TASKS_TARGETS,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
 use turbo_tasks::TurboTasks;
@@ -50,22 +50,22 @@ fn main() {
         .build()
         .unwrap()
         .block_on(async move {
-            let trace = std::env::var("BUNDLER_TURBOPACK_TRACING").ok();
+            let trace = std::env::var("TURBOPACK_TRACING").ok();
 
             let _guard = if let Some(mut trace) = trace.filter(|v| !v.is_empty()) {
                 // Trace presets
                 match trace.as_str() {
                     "overview" | "1" => {
-                        trace = TRACING_BUNDLER_OVERVIEW_TARGETS.join(",");
+                        trace = TRACING_OVERVIEW_TARGETS.join(",");
                     }
                     "bundler" => {
-                        trace = TRACING_BUNDLER_TARGETS.join(",");
+                        trace = TRACING_TARGETS.join(",");
                     }
                     "turbopack" => {
-                        trace = TRACING_BUNDLER_TURBOPACK_TARGETS.join(",");
+                        trace = TRACING_TURBOPACK_TARGETS.join(",");
                     }
                     "turbo-tasks" => {
-                        trace = TRACING_BUNDLER_TURBO_TASKS_TARGETS.join(",");
+                        trace = TRACING_TURBO_TASKS_TARGETS.join(",");
                     }
                     _ => {}
                 }
