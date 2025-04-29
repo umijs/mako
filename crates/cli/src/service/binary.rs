@@ -1,11 +1,11 @@
-use std::path::Path;
-use serde_json::{Value, Map};
-use tokio::fs;
-use regex::Regex;
-use semver::Version;
-use tokio::sync::OnceCell;
 use crate::util::config::get_registry;
 use crate::util::logger::log_info;
+use regex::Regex;
+use semver::Version;
+use serde_json::{Map, Value};
+use std::path::Path;
+use tokio::fs;
+use tokio::sync::OnceCell;
 
 #[derive(Debug)]
 pub enum BinaryError {
@@ -31,21 +31,27 @@ impl std::error::Error for BinaryError {}
 static CONFIG: OnceCell<Value> = OnceCell::const_new();
 
 async fn load_config() -> Result<&'static Value, BinaryError> {
-    CONFIG.get_or_try_init(|| async {
-        let registry = get_registry();
-        let url = format!("{}/binary-mirror-config/latest", registry);
-        let response = reqwest::get(&url)
-            .await
-            .map_err(|e| BinaryError::NetworkError(e.to_string()))?;
+    CONFIG
+        .get_or_try_init(|| async {
+            let registry = get_registry();
+            let url = format!("{}/binary-mirror-config/latest", registry);
+            let response = reqwest::get(&url)
+                .await
+                .map_err(|e| BinaryError::NetworkError(e.to_string()))?;
 
-        if !response.status().is_success() {
-            return Err(BinaryError::NetworkError(format!("HTTP status: {}", response.status())));
-        }
+            if !response.status().is_success() {
+                return Err(BinaryError::NetworkError(format!(
+                    "HTTP status: {}",
+                    response.status()
+                )));
+            }
 
-        response.json()
-            .await
-            .map_err(|e| BinaryError::ParseError(e.to_string()))
-    }).await
+            response
+                .json()
+                .await
+                .map_err(|e| BinaryError::ParseError(e.to_string()))
+        })
+        .await
 }
 
 fn update_binary_config(pkg: &mut Value, binary_mirror: &Map<String, Value>) {
@@ -71,13 +77,18 @@ fn update_binary_config(pkg: &mut Value, binary_mirror: &Map<String, Value>) {
     pkg["binary"] = Value::Object(new_binary.clone());
 
     // Safely get package name and version
-    let name = pkg.get("name").and_then(|n| n.as_str()).unwrap_or("unknown");
-    let version = pkg.get("version").and_then(|v| v.as_str()).unwrap_or("unknown");
+    let name = pkg
+        .get("name")
+        .and_then(|n| n.as_str())
+        .unwrap_or("unknown");
+    let version = pkg
+        .get("version")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
 
-    log_info(&format!("{}@{} download from binary mirror: {:?}",
-        name,
-        version,
-        new_binary
+    log_info(&format!(
+        "{}@{} download from binary mirror: {:?}",
+        name, version, new_binary
     ));
 }
 
@@ -90,7 +101,7 @@ async fn handle_node_pre_gyp_versioning(dir: &Path) -> Result<(), BinaryError> {
 
         let new_content = content.replace(
             "if (protocol === 'http:') {",
-            "if (false && protocol === 'http:') { // hack by npminstall"
+            "if (false && protocol === 'http:') { // hack by npminstall",
         );
 
         fs::write(&versioning_file, new_content)
@@ -101,13 +112,14 @@ async fn handle_node_pre_gyp_versioning(dir: &Path) -> Result<(), BinaryError> {
 }
 
 fn should_handle_replace_host(binary_mirror: &Map<String, Value>) -> bool {
-    (binary_mirror.contains_key("replaceHost") && binary_mirror.contains_key("host")) ||
-    binary_mirror.contains_key("replaceHostMap") ||
-    binary_mirror.contains_key("replaceHostRegExpMap")
+    (binary_mirror.contains_key("replaceHost") && binary_mirror.contains_key("host"))
+        || binary_mirror.contains_key("replaceHostMap")
+        || binary_mirror.contains_key("replaceHostRegExpMap")
 }
 
 fn get_replace_host_files(binary_mirror: &Map<String, Value>) -> Vec<&str> {
-    binary_mirror.get("replaceHostFiles")
+    binary_mirror
+        .get("replaceHostFiles")
         .and_then(|f| f.as_array())
         .map(|f| f.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
         .unwrap_or_else(|| vec!["lib/index.js", "lib/install.js"])
@@ -116,25 +128,35 @@ fn get_replace_host_files(binary_mirror: &Map<String, Value>) -> Vec<&str> {
 fn replace_with_regex(content: &str, replace_map: &Value) -> Result<String, BinaryError> {
     let mut result = content.to_string();
     for (pattern, replacement) in replace_map.as_object().unwrap() {
-        let re = Regex::new(pattern)
-            .map_err(|e| BinaryError::ParseError(format!("Invalid regex pattern {}: {}", pattern, e)))?;
-        result = re.replace_all(&result, replacement.as_str().unwrap()).to_string();
+        let re = Regex::new(pattern).map_err(|e| {
+            BinaryError::ParseError(format!("Invalid regex pattern {}: {}", pattern, e))
+        })?;
+        result = re
+            .replace_all(&result, replacement.as_str().unwrap())
+            .to_string();
     }
     Ok(result)
 }
 
-fn replace_with_map(content: &str, binary_mirror: &Map<String, Value>) -> Result<String, BinaryError> {
+fn replace_with_map(
+    content: &str,
+    binary_mirror: &Map<String, Value>,
+) -> Result<String, BinaryError> {
     let replace_map = if let Some(map) = binary_mirror.get("replaceHostMap") {
         map.as_object().unwrap().clone()
     } else {
         let mut map = Map::new();
-        let hosts = binary_mirror.get("replaceHost")
+        let hosts = binary_mirror
+            .get("replaceHost")
             .and_then(|h| h.as_array())
             .map(|h| h.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
             .unwrap_or_else(|| vec![binary_mirror["host"].as_str().unwrap()]);
 
         for host in hosts {
-            map.insert(host.to_string(), Value::String(binary_mirror["host"].as_str().unwrap().to_string()));
+            map.insert(
+                host.to_string(),
+                Value::String(binary_mirror["host"].as_str().unwrap().to_string()),
+            );
         }
         map
     };
@@ -146,7 +168,10 @@ fn replace_with_map(content: &str, binary_mirror: &Map<String, Value>) -> Result
     Ok(result)
 }
 
-async fn handle_replace_host(dir: &Path, binary_mirror: &Map<String, Value>) -> Result<(), BinaryError> {
+async fn handle_replace_host(
+    dir: &Path,
+    binary_mirror: &Map<String, Value>,
+) -> Result<(), BinaryError> {
     if !should_handle_replace_host(binary_mirror) {
         return Ok(());
     }
@@ -173,7 +198,12 @@ async fn handle_replace_host(dir: &Path, binary_mirror: &Map<String, Value>) -> 
     Ok(())
 }
 
-async fn handle_cypress(dir: &Path, pkg: &Value, binary_mirror: &Map<String, Value>, target_os: Option<&str>) -> Result<(), BinaryError> {
+async fn handle_cypress(
+    dir: &Path,
+    pkg: &Value,
+    binary_mirror: &Map<String, Value>,
+    target_os: Option<&str>,
+) -> Result<(), BinaryError> {
     if pkg["name"].as_str().unwrap() != "cypress" {
         return Ok(());
     }
@@ -208,13 +238,19 @@ async fn handle_cypress(dir: &Path, pkg: &Value, binary_mirror: &Map<String, Val
             let new_content = content
                 .replace(
                     "return version ? prepend(`desktop/${version}`) : prepend('desktop')",
-                    &format!("return \"{}\" + version + \"/{}/cypress.zip\"; // hack by npminstall",
-                        binary_mirror["host"].as_str().unwrap(), target_platform)
+                    &format!(
+                        "return \"{}\" + version + \"/{}/cypress.zip\"; // hack by npminstall",
+                        binary_mirror["host"].as_str().unwrap(),
+                        target_platform
+                    ),
                 )
                 .replace(
                     "return version ? prepend('desktop/' + version) : prepend('desktop');",
-                    &format!("return \"{}\" + version + \"/{}/cypress.zip\"; // hack by npminstall",
-                        binary_mirror["host"].as_str().unwrap(), target_platform)
+                    &format!(
+                        "return \"{}\" + version + \"/{}/cypress.zip\"; // hack by npminstall",
+                        binary_mirror["host"].as_str().unwrap(),
+                        target_platform
+                    ),
                 );
 
             fs::write(&download_file, new_content)
@@ -229,12 +265,14 @@ async fn handle_cypress(dir: &Path, pkg: &Value, binary_mirror: &Map<String, Val
 pub async fn update_package_binary(dir: &Path, name: &str) -> Result<(), BinaryError> {
     let config = load_config().await?;
 
-    let mirrors = config["mirrors"]["china"].as_object()
-        .ok_or_else(|| BinaryError::InvalidConfig("Invalid binary mirror config format".to_string()))?;
+    let mirrors = config["mirrors"]["china"].as_object().ok_or_else(|| {
+        BinaryError::InvalidConfig("Invalid binary mirror config format".to_string())
+    })?;
 
     if let Some(binary_mirror) = mirrors.get(name) {
-        let binary_mirror = binary_mirror.as_object()
-            .ok_or_else(|| BinaryError::InvalidConfig("Invalid binary mirror format".to_string()))?;
+        let binary_mirror = binary_mirror.as_object().ok_or_else(|| {
+            BinaryError::InvalidConfig("Invalid binary mirror format".to_string())
+        })?;
 
         // Read package.json
         let pkg_path = dir.join("package.json");
@@ -242,8 +280,8 @@ pub async fn update_package_binary(dir: &Path, name: &str) -> Result<(), BinaryE
             .await
             .map_err(|e| BinaryError::FileOperation(e.to_string()))?;
 
-        let mut pkg: Value = serde_json::from_str(&content)
-            .map_err(|e| BinaryError::ParseError(e.to_string()))?;
+        let mut pkg: Value =
+            serde_json::from_str(&content).map_err(|e| BinaryError::ParseError(e.to_string()))?;
 
         // has install script and not replaceHostFiles
         let should_update_binary = if let Some(scripts) = pkg["scripts"].as_object() {
@@ -254,7 +292,8 @@ pub async fn update_package_binary(dir: &Path, name: &str) -> Result<(), BinaryE
 
         // detect node-pre-gyp
         let should_handle_node_pre_gyp = if let Some(scripts) = pkg["scripts"].as_object() {
-            scripts.get("install")
+            scripts
+                .get("install")
                 .and_then(|s| s.as_str())
                 .map(|s| s.contains("node-pre-gyp install"))
                 .unwrap_or(false)
@@ -286,7 +325,8 @@ pub async fn update_package_binary(dir: &Path, name: &str) -> Result<(), BinaryE
 
 pub async fn get_envs() -> Option<&'static Map<String, Value>> {
     match load_config().await {
-        Ok(_) => CONFIG.get()
+        Ok(_) => CONFIG
+            .get()
             .and_then(|config| config["mirrors"]["china"]["ENVS"].as_object()),
         Err(_) => None,
     }
@@ -295,8 +335,8 @@ pub async fn get_envs() -> Option<&'static Map<String, Value>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
     use serde_json::json;
+    use tempfile::tempdir;
 
     #[tokio::test]
     async fn test_update_binary_config() {
@@ -312,14 +352,18 @@ mod tests {
             "host": "https://example.com",
             "replaceHostFiles": ["test.js"],
             "newKey": "newValue"
-        })).unwrap();
+        }))
+        .unwrap();
 
         update_binary_config(&mut pkg, &binary_mirror);
 
         assert_eq!(pkg["binary"]["existing"].as_str(), Some("value"));
         assert_eq!(pkg["binary"]["host"].as_str(), Some("https://example.com"));
         assert_eq!(pkg["binary"]["newKey"].as_str(), Some("newValue"));
-        assert!(!pkg["binary"].as_object().unwrap().contains_key("replaceHostFiles"));
+        assert!(!pkg["binary"]
+            .as_object()
+            .unwrap()
+            .contains_key("replaceHostFiles"));
     }
 
     #[tokio::test]
@@ -327,26 +371,30 @@ mod tests {
         let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({
             "replaceHost": ["old.com"],
             "host": "new.com"
-        })).unwrap();
+        }))
+        .unwrap();
         assert!(should_handle_replace_host(&binary_mirror));
 
         let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({
             "replaceHostMap": {
                 "old.com": "new.com"
             }
-        })).unwrap();
+        }))
+        .unwrap();
         assert!(should_handle_replace_host(&binary_mirror));
 
         let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({
             "replaceHostRegExpMap": {
                 "old\\.com": "new.com"
             }
-        })).unwrap();
+        }))
+        .unwrap();
         assert!(should_handle_replace_host(&binary_mirror));
 
         let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({
             "host": "new.com"
-        })).unwrap();
+        }))
+        .unwrap();
         assert!(!should_handle_replace_host(&binary_mirror));
     }
 
@@ -354,11 +402,15 @@ mod tests {
     async fn test_get_replace_host_files() {
         let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({
             "replaceHostFiles": ["custom.js"]
-        })).unwrap();
+        }))
+        .unwrap();
         assert_eq!(get_replace_host_files(&binary_mirror), vec!["custom.js"]);
 
         let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({})).unwrap();
-        assert_eq!(get_replace_host_files(&binary_mirror), vec!["lib/index.js", "lib/install.js"]);
+        assert_eq!(
+            get_replace_host_files(&binary_mirror),
+            vec!["lib/index.js", "lib/install.js"]
+        );
     }
 
     #[tokio::test]
@@ -379,7 +431,8 @@ mod tests {
             "replaceHostMap": {
                 "old.com": "new.com"
             }
-        })).unwrap();
+        }))
+        .unwrap();
 
         let result = replace_with_map(content, &binary_mirror).unwrap();
         assert_eq!(result, "Visit new.com and new.com");
@@ -417,15 +470,24 @@ mod tests {
                 "linux": "linux64",
                 "win32": "win64"
             }
-        })).unwrap();
+        }))
+        .unwrap();
 
-        handle_cypress(dir, &pkg, &binary_mirror, Some("darwin")).await.unwrap();
+        handle_cypress(dir, &pkg, &binary_mirror, Some("darwin"))
+            .await
+            .unwrap();
 
         let content = std::fs::read_to_string(&download_file).unwrap();
         println!("File content after modification:\n{}", content);
 
-        assert!(content.contains("https://example.com"), "Content should contain host URL");
+        assert!(
+            content.contains("https://example.com"),
+            "Content should contain host URL"
+        );
         assert!(content.contains("osx64"), "Content should contain platform");
-        assert!(!content.contains("prepend"), "Content should not contain original prepend calls");
+        assert!(
+            !content.contains("prepend"),
+            "Content should not contain original prepend calls"
+        );
     }
 }
