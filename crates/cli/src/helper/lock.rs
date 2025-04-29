@@ -6,12 +6,8 @@ use std::{collections::HashMap, fs};
 use crate::util::logger::log_verbose;
 use crate::util::registry::resolve;
 use crate::util::save_type::{PackageAction, SaveType};
+use crate::util::{cache::parse_pattern, cloner::clone, downloader::download};
 use crate::{cmd::deps::build_deps, util::logger::log_info};
-use crate::util::{
-    cache::parse_pattern,
-    cloner::clone,
-    downloader::download,
-};
 
 use super::workspace::find_workspaces;
 
@@ -125,7 +121,9 @@ pub async fn update_package_json(
     Ok(())
 }
 
-pub async fn parse_package_spec(spec: &str) -> Result<(String, String), Box<dyn std::error::Error>> {
+pub async fn parse_package_spec(
+    spec: &str,
+) -> Result<(String, String), Box<dyn std::error::Error>> {
     let (name, version_spec) = parse_pattern(spec);
     let resolved = resolve(&name, &version_spec).await?;
     Ok((name, resolved.version))
@@ -144,13 +142,20 @@ async fn find_workspace_path(
     Err(format!("Workspace '{}' not found", workspace).into())
 }
 
-pub async fn prepare_global_package_json(npm_spec: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+pub async fn prepare_global_package_json(
+    npm_spec: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
     // Parse package name and version
     let (name, spec) = parse_package_spec(npm_spec).await?;
 
     // Get current executable path
     let current_exe = std::env::current_exe()?;
-    let lib_path = current_exe.parent().unwrap().parent().unwrap().join("lib/node_modules");
+    let lib_path = current_exe
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("lib/node_modules");
     log_verbose(&format!("lib_path: {}", lib_path.to_string_lossy()));
 
     // Create global package directory
@@ -161,7 +166,8 @@ pub async fn prepare_global_package_json(npm_spec: &str) -> Result<PathBuf, Box<
     let resolved = resolve(&name, &spec).await?;
 
     // Get tarball URL from manifest
-    let tarball_url = resolved.manifest["dist"]["tarball"].as_str()
+    let tarball_url = resolved.manifest["dist"]["tarball"]
+        .as_str()
         .ok_or_else(|| "Failed to get tarball URL from manifest")?;
 
     // Download and extract package
@@ -171,12 +177,20 @@ pub async fn prepare_global_package_json(npm_spec: &str) -> Result<PathBuf, Box<
 
     // Download if not cached
     if !cache_flag_path.exists() {
-        log_verbose(&format!("Downloading {} to {}", tarball_url, cache_path.display()));
+        log_verbose(&format!(
+            "Downloading {} to {}",
+            tarball_url,
+            cache_path.display()
+        ));
         download(tarball_url, &cache_path).await?;
     }
 
     // Clone to package directory
-    log_verbose(&format!("Cloning {} to {}", cache_path.display(), package_path.display()));
+    log_verbose(&format!(
+        "Cloning {} to {}",
+        cache_path.display(),
+        package_path.display()
+    ));
     clone(&cache_path, &package_path, true).await?;
 
     log_verbose(&format!("package_path: {}", package_path.to_string_lossy()));

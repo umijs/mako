@@ -1,9 +1,12 @@
-use std::path::{Path, PathBuf};
 use serde_json::Value;
-use std::fs;
 use std::env;
+use std::fs;
+use std::path::{Path, PathBuf};
 
-use crate::{service::script::ScriptService, util::{linker::link, logger::log_verbose}};
+use crate::{
+    service::script::ScriptService,
+    util::{linker::link, logger::log_verbose},
+};
 
 #[derive(Debug, Default, Clone)]
 pub struct Scripts {
@@ -82,12 +85,14 @@ impl PackageInfo {
         let data: Value = serde_json::from_str(&content)?;
 
         // Parse package name
-        let name = data["name"].as_str()
+        let name = data["name"]
+            .as_str()
             .ok_or_else(|| "Failed to get package name from package.json")?
             .to_string();
 
         // Parse version
-        let version = data["version"].as_str()
+        let version = data["version"]
+            .as_str()
             .ok_or_else(|| "Failed to get package version from package.json")?
             .to_string();
 
@@ -140,7 +145,10 @@ impl PackageInfo {
         })
     }
 
-    pub async fn link_to_global(&self, global_bin_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn link_to_global(
+        &self,
+        global_bin_dir: &Path,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // Ensure bin directory exists
         tokio::fs::create_dir_all(&global_bin_dir).await?;
 
@@ -149,7 +157,10 @@ impl PackageInfo {
             let target_path = self.path.join(relative_path);
             let link_path = global_bin_dir.join(bin_name);
 
-            log_verbose(&format!("Linking global binary: {} -> {}", bin_name, relative_path));
+            log_verbose(&format!(
+                "Linking global binary: {} -> {}",
+                bin_name, relative_path
+            ));
 
             // Ensure target file is executable
             ScriptService::ensure_executable(&target_path).await?;
@@ -170,7 +181,6 @@ impl PackageInfo {
 
         Ok(())
     }
-
 }
 
 #[cfg(test)]
@@ -204,7 +214,11 @@ mod tests {
 
         // Create bin directory and file
         fs::create_dir(package_dir.join("bin")).unwrap();
-        fs::write(package_dir.join("bin/cli.js"), "#!/usr/bin/env node\nconsole.log('test')").unwrap();
+        fs::write(
+            package_dir.join("bin/cli.js"),
+            "#!/usr/bin/env node\nconsole.log('test')",
+        )
+        .unwrap();
 
         // Test PackageInfo::from_path
         let package_info = PackageInfo::from_path(&package_dir).unwrap();

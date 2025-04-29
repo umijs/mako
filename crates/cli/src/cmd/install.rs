@@ -6,9 +6,11 @@ use tokio::sync::Semaphore;
 
 use crate::cmd::rebuild::rebuild;
 use crate::helper::lock::update_package_json;
-use crate::helper::lock::{ensure_package_lock, group_by_depth, PackageLock, prepare_global_package_json};
-use crate::service::install::install_packages;
+use crate::helper::lock::{
+    ensure_package_lock, group_by_depth, prepare_global_package_json, PackageLock,
+};
 use crate::model::package::PackageInfo;
+use crate::service::install::install_packages;
 use crate::util::cache::get_cache_dir;
 use crate::util::logger::finish_progress_bar;
 use crate::util::logger::log_verbose;
@@ -102,7 +104,9 @@ pub async fn install_global_package(npm_spec: &str) -> Result<(), Box<dyn std::e
     // Link binary files to global
     log_verbose("Linking binary files to global...");
     let current_exe = std::env::current_exe()?;
-    package_info.link_to_global(&current_exe.parent().unwrap()).await?;
+    package_info
+        .link_to_global(&current_exe.parent().unwrap())
+        .await?;
 
     // Change back to original directory
     env::set_current_dir(original_dir)?;
