@@ -1,7 +1,7 @@
 use crate::util::config::get_registry;
 use crate::util::logger::log_info;
+use crate::util::semver::matches;
 use regex::Regex;
-use semver::Version;
 use serde_json::{Map, Value};
 use std::path::Path;
 use tokio::fs;
@@ -215,10 +215,7 @@ async fn handle_cypress(
     });
 
     let platforms = if let Some(new_platforms) = binary_mirror.get("newPlatforms") {
-        if Version::parse(pkg["version"].as_str().unwrap())
-            .map(|v| v >= Version::parse("3.3.0").unwrap())
-            .unwrap_or(false)
-        {
+        if matches(">=3.3.0", pkg["version"].as_str().unwrap()) {
             new_platforms
         } else {
             &default_platforms

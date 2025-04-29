@@ -57,13 +57,8 @@ glob = "0.3.1"
 criterion = { workspace = true }
 utoo-core = { path = "../core/" }
 regex = "1.10"
-semver = "1.0"
 
 [[bench]]
 name = "install_benchmark"
 harness = false
 path = "benches/deps_benchmark.rs"
-
-[dev-dependencies]
-tempfile = "3.8"
-tokio-test = "0.4"
