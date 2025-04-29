@@ -2,7 +2,7 @@ use std::process;
 
 use clap::{Parser, Subcommand};
 use cmd::deps::build_deps;
-use cmd::install::{install, update_package};
+use cmd::install::{install, install_global_package, update_package};
 use cmd::rebuild::rebuild;
 use cmd::update::update;
 use cmd::{clean::clean, deps::build_workspace};
@@ -76,6 +76,10 @@ enum Commands {
         /// Save as optional dependency
         #[arg(long)]
         save_optional: bool,
+
+        /// Install package globally
+        #[arg(short, long)]
+        global: bool,
     },
     /// Uninstall dependencies
     #[command(name = UNINSTALL_NAME, alias = "un", about = UNINSTALL_ABOUT)]
@@ -163,21 +167,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             save_dev,
             save_peer,
             save_optional,
+            global,
         }) => {
             if let Some(spec) = spec {
-                let save_type = parse_save_type(save_dev, save_peer, save_optional);
-                if let Err(e) = update_package(
-                    PackageAction::Add,
-                    &spec,
-                    workspace.clone(),
-                    ignore_scripts,
-                    save_type,
-                )
-                .await
-                {
-                    log_error(&e.to_string());
-                    let _ = write_verbose_logs_to_file();
-                    process::exit(1);
+                if global {
+                    if let Err(e) = install_global_package(&spec).await {
+                        log_error(&e.to_string());
+                        let _ = write_verbose_logs_to_file();
+                        process::exit(1);
+                    }
+                } else {
+                    let save_type = parse_save_type(save_dev, save_peer, save_optional);
+                    if let Err(e) = update_package(
+                        PackageAction::Add,
+                        &spec,
+                        workspace.clone(),
+                        ignore_scripts,
+                        save_type,
+                    )
+                    .await
+                    {
+                        log_error(&e.to_string());
+                        let _ = write_verbose_logs_to_file();
+                        process::exit(1);
+                    }
                 }
             } else {
                 if let Err(e) = install(ignore_scripts).await {

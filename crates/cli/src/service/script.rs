@@ -98,7 +98,7 @@ impl ScriptService {
         Ok(())
     }
 
-    async fn process_bin_file(
+    pub async fn process_bin_file(
         package: &PackageInfo,
         bin_dir: &Path,
         bin_name: &str,
@@ -118,7 +118,7 @@ impl ScriptService {
         Ok(())
     }
 
-    async fn ensure_executable(target_path: &Path) -> Result<(), String> {
+    pub async fn ensure_executable(target_path: &Path) -> Result<(), String> {
         let permissions = tokio::fs::metadata(&target_path)
             .await
             .map_err(|e| {
