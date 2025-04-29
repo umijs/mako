@@ -3,8 +3,10 @@ use serde_json::Value;
 use std::path::PathBuf;
 use std::{collections::HashMap, fs};
 
+use crate::util::logger::log_verbose;
 use crate::util::registry::resolve;
 use crate::util::save_type::{PackageAction, SaveType};
+use crate::util::{cache::parse_pattern, cloner::clone, downloader::download};
 use crate::{cmd::deps::build_deps, util::logger::log_info};
 
 use super::workspace::find_workspaces;
@@ -119,13 +121,10 @@ pub async fn update_package_json(
     Ok(())
 }
 
-async fn parse_package_spec(spec: &str) -> Result<(String, String), Box<dyn std::error::Error>> {
-    let parts: Vec<&str> = spec.split('@').collect();
-    let name = parts[0].to_string();
-    let version_spec = parts
-        .get(1)
-        .map(|s| s.to_string())
-        .unwrap_or("*".to_string());
+pub async fn parse_package_spec(
+    spec: &str,
+) -> Result<(String, String), Box<dyn std::error::Error>> {
+    let (name, version_spec) = parse_pattern(spec);
     let resolved = resolve(&name, &version_spec).await?;
     Ok((name, resolved.version))
 }
@@ -141,4 +140,75 @@ async fn find_workspace_path(
         }
     }
     Err(format!("Workspace '{}' not found", workspace).into())
+}
+
+pub async fn prepare_global_package_json(
+    npm_spec: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    // Parse package name and version
+    let (name, spec) = parse_package_spec(npm_spec).await?;
+
+    // Get current executable path
+    let current_exe = std::env::current_exe()?;
+    let lib_path = current_exe
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("lib/node_modules");
+    log_verbose(&format!("lib_path: {}", lib_path.to_string_lossy()));
+
+    // Create global package directory
+    let package_path = lib_path.join(&name);
+    tokio::fs::create_dir_all(&package_path).await?;
+
+    // Get package info from registry
+    let resolved = resolve(&name, &spec).await?;
+
+    // Get tarball URL from manifest
+    let tarball_url = resolved.manifest["dist"]["tarball"]
+        .as_str()
+        .ok_or_else(|| "Failed to get tarball URL from manifest")?;
+
+    // Download and extract package
+    let cache_dir = crate::util::cache::get_cache_dir();
+    let cache_path = cache_dir.join(format!("{}/{}", name, resolved.version));
+    let cache_flag_path = cache_dir.join(format!("{}/{}/_resolved", name, resolved.version));
+
+    // Download if not cached
+    if !cache_flag_path.exists() {
+        log_verbose(&format!(
+            "Downloading {} to {}",
+            tarball_url,
+            cache_path.display()
+        ));
+        download(tarball_url, &cache_path).await?;
+    }
+
+    // Clone to package directory
+    log_verbose(&format!(
+        "Cloning {} to {}",
+        cache_path.display(),
+        package_path.display()
+    ));
+    clone(&cache_path, &package_path, true).await?;
+
+    // Remove devDependencies, peerDependencies and optionalDependencies from package.json
+    let package_json_path = package_path.join("package.json");
+    let mut package_json: Value = serde_json::from_reader(fs::File::open(&package_json_path)?)?;
+
+    // Remove specified dependency fields
+    package_json
+        .as_object_mut()
+        .unwrap()
+        .remove("devDependencies");
+
+    // Write back the modified package.json
+    fs::write(
+        &package_json_path,
+        serde_json::to_string_pretty(&package_json)?,
+    )?;
+
+    log_verbose(&format!("package_path: {}", package_path.to_string_lossy()));
+    Ok(package_path)
 }

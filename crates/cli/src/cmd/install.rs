@@ -6,7 +6,10 @@ use tokio::sync::Semaphore;
 
 use crate::cmd::rebuild::rebuild;
 use crate::helper::lock::update_package_json;
-use crate::helper::lock::{ensure_package_lock, group_by_depth, PackageLock};
+use crate::helper::lock::{
+    ensure_package_lock, group_by_depth, prepare_global_package_json, PackageLock,
+};
+use crate::model::package::PackageInfo;
 use crate::service::install::install_packages;
 use crate::util::cache::get_cache_dir;
 use crate::util::logger::finish_progress_bar;
@@ -79,5 +82,46 @@ pub async fn install(ignore_scripts: bool) -> Result<(), Box<dyn std::error::Err
     } else {
         log_info("💫 All dependencies installed successfully (you can run 'utoo rebuild' to trigger dependency hooks)");
         return Ok(());
+    }
+}
+
+pub async fn install_global_package(npm_spec: &str) -> Result<(), Box<dyn std::error::Error>> {
+    // Prepare global package directory and package.json
+    let package_path = prepare_global_package_json(npm_spec).await?;
+
+    log_verbose(&format!("Installing global package: {}", npm_spec));
+
+    // Change to package directory
+    let original_dir = env::current_dir()?;
+    env::set_current_dir(&package_path)?;
+
+    // Install dependencies
+    install(false).await?;
+
+    // Create package info from path
+    let package_info = PackageInfo::from_path(&package_path)?;
+
+    // Link binary files to global
+    log_verbose("Linking binary files to global...");
+    let current_exe = std::env::current_exe()?;
+    package_info
+        .link_to_global(&current_exe.parent().unwrap())
+        .await?;
+
+    // Change back to original directory
+    env::set_current_dir(original_dir)?;
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_install_global_package_invalid_spec() {
+        // Test installing with invalid package spec
+        let result = install_global_package("invalid-package-that-does-not-exist").await;
+        assert!(result.is_err(), "Should fail with invalid package spec");
     }
 }

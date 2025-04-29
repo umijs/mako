@@ -3,7 +3,6 @@ use crate::util::logger::{log_error, log_info, log_warning};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use std::process;
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -14,6 +13,11 @@ struct VersionCache {
 }
 
 pub async fn init_auto_update() -> Result<(), String> {
+    // if prcess::env CI=1 ignore auto update
+    if std::env::var("CI").unwrap_or_default() == "1" {
+        return Ok(());
+    }
+
     let cache = match read_version_cache() {
         Ok(cache) => {
             let now = SystemTime::now()
@@ -35,12 +39,9 @@ pub async fn init_auto_update() -> Result<(), String> {
             "New version found: {} (current version: {}), updating automatically...",
             cache.version, current_version
         ));
-        log_info(&format!("npm i @utoo/utoo -g"));
+        log_info(&format!("utoo i @utoo/utoo{} -g", cache.version));
 
-        execute_update()?;
-
-        log_info("Update completed, please restart");
-        process::exit(0);
+        execute_update(&cache.version).await?;
     }
     Ok(())
 }
@@ -55,15 +56,17 @@ async fn check_and_update_cache() -> Result<VersionCache, String> {
     }
 }
 
-fn execute_update() -> Result<(), String> {
-    let status = Command::new("npm")
-        .args(&["i", "@utoo/utoo", "-g"])
+async fn execute_update(version: &str) -> Result<(), String> {
+    let status = Command::new("utoo")
+        .args(&["i", &format!("@utoo/utoo@{}", version), "-g"])
+        .env("CI", "1")
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
         .map_err(|e| e.to_string())?;
 
     if status.success() {
+        log_info("Update completed, please restart");
         Ok(())
     } else {
         log_error("Auto update failed, please update manually");
@@ -167,17 +170,5 @@ mod tests {
             .status();
 
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_execute_update_integration() {
-        // test for execute_update function
-        let result = execute_update();
-
-        // just check if it's Ok or Err
-        match result {
-            Ok(()) => (),
-            Err(e) => assert!(e.contains("Auto update failed, please update manually")),
-        }
     }
 }

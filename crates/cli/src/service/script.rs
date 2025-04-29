@@ -98,7 +98,7 @@ impl ScriptService {
         Ok(())
     }
 
-    async fn process_bin_file(
+    pub async fn process_bin_file(
         package: &PackageInfo,
         bin_dir: &Path,
         bin_name: &str,
@@ -118,7 +118,7 @@ impl ScriptService {
         Ok(())
     }
 
-    async fn ensure_executable(target_path: &Path) -> Result<(), String> {
+    pub async fn ensure_executable(target_path: &Path) -> Result<(), String> {
         let permissions = tokio::fs::metadata(&target_path)
             .await
             .map_err(|e| {
@@ -296,6 +296,7 @@ mod tests {
     use super::*;
     use std::fs;
     use tempfile::tempdir;
+    use tempfile::TempDir;
 
     #[tokio::test]
     async fn test_execute_custom_script_success() {
@@ -386,5 +387,31 @@ mod tests {
         let bin_paths = ScriptService::collect_bin_paths(&package);
         assert!(!bin_paths.is_empty());
         assert!(bin_paths[0].ends_with("node_modules/.bin"));
+    }
+
+    #[tokio::test]
+    async fn test_ensure_executable() {
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.sh");
+        fs::write(&test_file, "#!/bin/sh\necho test").unwrap();
+
+        // Test ensure_executable
+        let result = ScriptService::ensure_executable(&test_file).await;
+        assert!(result.is_ok(), "Failed to ensure file is executable");
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let permissions = fs::metadata(&test_file).unwrap().permissions();
+            assert!(permissions.mode() & 0o111 != 0, "File not made executable");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_ensure_executable_nonexistent_file() {
+        // Test with non-existent file
+        let result = ScriptService::ensure_executable(Path::new("nonexistent-file")).await;
+        assert!(result.is_err(), "Should fail with non-existent file");
     }
 }

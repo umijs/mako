@@ -1,4 +1,12 @@
-use std::path::PathBuf;
+use serde_json::Value;
+use std::env;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use crate::{
+    service::script::ScriptService,
+    util::{linker::link, logger::log_verbose},
+};
 
 #[derive(Debug, Default, Clone)]
 pub struct Scripts {
@@ -68,5 +76,197 @@ impl PackageInfo {
 
     pub fn has_script(&self) -> bool {
         self.scripts.has_any_script()
+    }
+
+    pub fn from_path(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+        // Read package.json
+        let package_json_path = path.join("package.json");
+        let content = fs::read_to_string(&package_json_path)?;
+        let data: Value = serde_json::from_str(&content)?;
+
+        // Parse package name
+        let name = data["name"]
+            .as_str()
+            .ok_or_else(|| "Failed to get package name from package.json")?
+            .to_string();
+
+        // Parse version
+        let version = data["version"]
+            .as_str()
+            .ok_or_else(|| "Failed to get package version from package.json")?
+            .to_string();
+
+        // Parse scope
+        let scope = if name.starts_with('@') {
+            name.split('/').next().map(|s| s.to_string())
+        } else {
+            None
+        };
+
+        // Parse binary files
+        let bin_files = if let Some(bin) = data.get("bin") {
+            if bin.is_object() {
+                bin.as_object()
+                    .map(|obj| {
+                        obj.iter()
+                            .map(|(k, v)| (k.clone(), v.as_str().unwrap_or_default().to_string()))
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            } else if bin.is_string() {
+                let bin_path = bin.as_str().unwrap_or_default().to_string();
+                vec![(name.clone(), bin_path)]
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        };
+
+        // Parse scripts
+        let scripts = Scripts {
+            preinstall: data["scripts"]["preinstall"].as_str().map(String::from),
+            install: data["scripts"]["install"].as_str().map(String::from),
+            postinstall: data["scripts"]["postinstall"].as_str().map(String::from),
+            prepare: data["scripts"]["prepare"].as_str().map(String::from),
+            preprepare: data["scripts"]["preprepare"].as_str().map(String::from),
+            postprepare: data["scripts"]["postprepare"].as_str().map(String::from),
+            prepublish: data["scripts"]["prepublish"].as_str().map(String::from),
+        };
+
+        Ok(PackageInfo {
+            path: path.to_path_buf(),
+            bin_files,
+            scripts,
+            name: name.clone(),
+            fullname: name,
+            version,
+            scope,
+        })
+    }
+
+    pub async fn link_to_global(
+        &self,
+        global_bin_dir: &Path,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        // Ensure bin directory exists
+        tokio::fs::create_dir_all(&global_bin_dir).await?;
+
+        // Link each binary file
+        for (bin_name, relative_path) in &self.bin_files {
+            let target_path = self.path.join(relative_path);
+            let link_path = global_bin_dir.join(bin_name);
+
+            log_verbose(&format!(
+                "Linking global binary: {} -> {}",
+                bin_name, relative_path
+            ));
+
+            // Ensure target file is executable
+            ScriptService::ensure_executable(&target_path).await?;
+
+            // Create symbolic link
+            link(&target_path, &link_path)?;
+        }
+
+        // Update PATH environment variable for current process
+        if let Ok(current_path) = env::var("PATH") {
+            let global_bin_str = global_bin_dir.to_string_lossy().to_string();
+            if !current_path.contains(&global_bin_str) {
+                let new_path = format!("{}:{}", global_bin_str, current_path);
+                env::set_var("PATH", new_path);
+                log_verbose("Updated PATH environment variable");
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_package_info_from_path() {
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let package_dir = temp_dir.path().join("test-package");
+        fs::create_dir(&package_dir).unwrap();
+
+        // Create a sample package.json
+        let package_json = r#"
+        {
+            "name": "test-package",
+            "version": "1.0.0",
+            "bin": {
+                "test-cli": "./bin/cli.js"
+            },
+            "scripts": {
+                "preinstall": "echo preinstall",
+                "install": "echo install",
+                "postinstall": "echo postinstall"
+            }
+        }"#;
+        fs::write(package_dir.join("package.json"), package_json).unwrap();
+
+        // Create bin directory and file
+        fs::create_dir(package_dir.join("bin")).unwrap();
+        fs::write(
+            package_dir.join("bin/cli.js"),
+            "#!/usr/bin/env node\nconsole.log('test')",
+        )
+        .unwrap();
+
+        // Test PackageInfo::from_path
+        let package_info = PackageInfo::from_path(&package_dir).unwrap();
+
+        assert_eq!(package_info.name, "test-package");
+        assert_eq!(package_info.version, "1.0.0");
+        assert_eq!(package_info.bin_files.len(), 1);
+        assert_eq!(package_info.bin_files[0].0, "test-cli");
+        assert_eq!(package_info.bin_files[0].1, "./bin/cli.js");
+        assert!(package_info.scripts.preinstall.is_some());
+        assert!(package_info.scripts.install.is_some());
+        assert!(package_info.scripts.postinstall.is_some());
+    }
+
+    #[test]
+    fn test_package_info_from_path_with_scope() {
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let package_dir = temp_dir.path().join("@scope/test-package");
+        fs::create_dir_all(&package_dir).unwrap();
+
+        // Create a sample package.json
+        let package_json = r#"
+        {
+            "name": "@scope/test-package",
+            "version": "1.0.0"
+        }"#;
+        fs::write(package_dir.join("package.json"), package_json).unwrap();
+
+        // Test PackageInfo::from_path
+        let package_info = PackageInfo::from_path(&package_dir).unwrap();
+
+        assert_eq!(package_info.name, "@scope/test-package");
+        assert_eq!(package_info.scope, Some("@scope".to_string()));
+    }
+
+    #[test]
+    fn test_package_info_from_path_invalid_json() {
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let package_dir = temp_dir.path().join("test-package");
+        fs::create_dir(&package_dir).unwrap();
+
+        // Create an invalid package.json
+        fs::write(package_dir.join("package.json"), "invalid json").unwrap();
+
+        // Test PackageInfo::from_path with invalid JSON
+        let result = PackageInfo::from_path(&package_dir);
+        assert!(result.is_err());
     }
 }
