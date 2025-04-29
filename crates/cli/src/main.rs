@@ -29,6 +29,8 @@ use crate::constants::{APP_ABOUT, APP_NAME, APP_VERSION};
 #[command(version = APP_VERSION)]
 #[command(about = APP_ABOUT)]
 #[command(version = None)]
+#[command(allow_external_subcommands(true))]
+#[command(disable_help_subcommand(true))]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -47,6 +49,8 @@ struct Cli {
 
     #[arg(short = 'v', long)]
     version: bool,
+
+    script_name: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -246,11 +250,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         None => {
-            // install by default
-            if let Err(e) = install(cli.ignore_scripts).await {
-                log_error(&e.to_string());
-                let _ = write_verbose_logs_to_file();
-                process::exit(1);
+            // Check if the first argument is a script name
+            if let Some(script_name) = std::env::args().nth(1) {
+                if let Err(e) = cmd::run::run_script(&script_name).await {
+                    log_error(&e.to_string());
+                    let _ = write_verbose_logs_to_file();
+                    process::exit(1);
+                }
+            } else {
+                // Default to install if no arguments
+                if let Err(e) = install(cli.ignore_scripts).await {
+                    log_error(&e.to_string());
+                    let _ = write_verbose_logs_to_file();
+                    process::exit(1);
+                }
             }
         }
     }
