@@ -1,6 +1,6 @@
-pub const APP_NAME: &str = "🌖 utoo";
+pub const APP_NAME: &str = "utoo";
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const APP_ABOUT: &str = "/juːtuː/ Unified Toolchain: Open & Optimized";
+pub const APP_ABOUT: &str = "🌖 /juːtuː/ Unified Toolchain: Open & Optimized";
 
 pub mod cmd {
     pub const CLEAN_NAME: &str = "clean";

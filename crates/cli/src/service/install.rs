@@ -12,6 +12,8 @@ use crate::util::downloader::download;
 use crate::util::linker::link;
 use crate::util::logger::{log_progress, log_verbose, PROGRESS_BAR};
 
+use super::binary::update_package_binary;
+
 async fn clean_deps(
     groups: &HashMap<usize, Vec<(String, Package)>>,
     cwd: &Path,
@@ -177,6 +179,7 @@ pub async fn install_packages(
                                 log_verbose(&format!("{} resolved", name));
                                 PROGRESS_BAR.inc(1);
                                 log_progress(&format!("{} resolved", name));
+                                update_package_binary(&cwd_clone.join(&path), &name).await?;
                                 Ok(())
                             }
                             Err(e) => Err(format!(
