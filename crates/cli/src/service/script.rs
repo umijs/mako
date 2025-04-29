@@ -250,7 +250,6 @@ impl ScriptService {
             .arg(script_content)
             .current_dir(&package.path)
             .env("PATH", env_path)
-            .env("npm_lifecycle_event", script_name)
             .env(
                 "INIT_CWD",
                 env::current_dir()
