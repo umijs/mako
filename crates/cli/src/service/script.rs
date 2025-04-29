@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use tokio::fs;
 
+use super::binary::get_envs;
+
 pub struct ScriptService;
 
 impl ScriptService {
@@ -47,6 +49,13 @@ impl ScriptService {
                 .env("npm_config_prefix", "")
                 .env("npm_config_global", "false");
 
+            if let Some(envs) = get_envs().await {
+                for (key, value) in envs {
+                    if let Some(value_str) = value.as_str() {
+                        cmd.env(key, value_str);
+                    }
+                }
+            }
             log_verbose(&format!("Executing command: {:?}", cmd));
 
             let output = tokio::process::Command::from(cmd)
@@ -255,6 +264,14 @@ impl ScriptService {
             )
             .env("npm_config_prefix", "")
             .env("npm_config_global", "false");
+
+        if let Some(envs) = get_envs().await {
+            for (key, value) in envs {
+                if let Some(value_str) = value.as_str() {
+                    cmd.env(key, value_str);
+                }
+            }
+        }
 
         log_verbose(&format!("Executing command: {:?}", cmd));
 
