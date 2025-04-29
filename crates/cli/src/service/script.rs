@@ -112,25 +112,8 @@ impl ScriptService {
             bin_name, relative_path
         ));
 
-        // Ensure target file exists
-        if !target_path.exists() {
-            return Err(format!("Target file not found: {}", target_path.display()));
-        }
-
-        // Ensure bin directory exists
-        if let Some(parent) = bin_path.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .map_err(|e| format!("Failed to create bin directory: {}", e))?;
-        }
-
-        // Copy file to target location
-        tokio::fs::copy(&target_path, &bin_path)
-            .await
-            .map_err(|e| format!("Failed to copy file: {}", e))?;
-
-        // Make file executable
-        Self::ensure_executable(&bin_path).await?;
+        Self::ensure_executable(&target_path).await?;
+        Self::create_symlink(package, &bin_path, relative_path)?;
 
         Ok(())
     }

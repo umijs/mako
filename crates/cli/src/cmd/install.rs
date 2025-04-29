@@ -94,7 +94,7 @@ pub async fn install_global_package(npm_spec: &str) -> Result<(), Box<dyn std::e
     env::set_current_dir(&package_path)?;
 
     // Install dependencies
-    install(true).await?;
+    install(false).await?;
 
     // Create package info from path
     let package_info = PackageInfo::from_path(&package_path)?;
