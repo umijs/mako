@@ -67,7 +67,7 @@ static REGISTRY: LazyLock<ConfigValue<String>> =
     LazyLock::new(|| ConfigValue::new("registry", "https://registry.npmmirror.com".to_string()));
 
 static LEGACY_PEER_DEPS: LazyLock<ConfigValue<bool>> =
-    LazyLock::new(|| ConfigValue::new("legacy-peer-deps", false));
+    LazyLock::new(|| ConfigValue::new("legacy-peer-deps", true));
 
 pub fn set_registry(registry: Option<String>) {
     REGISTRY.set(registry);
