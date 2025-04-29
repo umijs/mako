@@ -175,7 +175,7 @@ mod tests {
     #[test]
     fn test_execute_update_integration() {
         // test for execute_update function
-        let result = execute_update();
+        let result = execute_update("latest");
 
         // just check if it's Ok or Err
         match result {
