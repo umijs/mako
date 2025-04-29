@@ -193,6 +193,22 @@ pub async fn prepare_global_package_json(
     ));
     clone(&cache_path, &package_path, true).await?;
 
+    // Remove devDependencies, peerDependencies and optionalDependencies from package.json
+    let package_json_path = package_path.join("package.json");
+    let mut package_json: Value = serde_json::from_reader(fs::File::open(&package_json_path)?)?;
+
+    // Remove specified dependency fields
+    package_json
+        .as_object_mut()
+        .unwrap()
+        .remove("devDependencies");
+
+    // Write back the modified package.json
+    fs::write(
+        &package_json_path,
+        serde_json::to_string_pretty(&package_json)?,
+    )?;
+
     log_verbose(&format!("package_path: {}", package_path.to_string_lossy()));
     Ok(package_path)
 }
