@@ -173,7 +173,7 @@ async fn handle_replace_host(dir: &Path, binary_mirror: &Map<String, Value>) -> 
     Ok(())
 }
 
-async fn handle_cypress(dir: &Path, pkg: &Value, binary_mirror: &Map<String, Value>) -> Result<(), BinaryError> {
+async fn handle_cypress(dir: &Path, pkg: &Value, binary_mirror: &Map<String, Value>, target_os: Option<&str>) -> Result<(), BinaryError> {
     if pkg["name"].as_str().unwrap() != "cypress" {
         return Ok(());
     }
@@ -197,7 +197,8 @@ async fn handle_cypress(dir: &Path, pkg: &Value, binary_mirror: &Map<String, Val
         &default_platforms
     };
 
-    if let Some(target_platform) = platforms[std::env::consts::OS].as_str() {
+    let os = target_os.unwrap_or_else(|| std::env::consts::OS);
+    if let Some(target_platform) = platforms[os].as_str() {
         let download_file = dir.join("lib/tasks/download.js");
         if download_file.exists() {
             let content = fs::read_to_string(&download_file)
@@ -272,7 +273,7 @@ pub async fn update_package_binary(dir: &Path, name: &str) -> Result<(), BinaryE
         }
 
         handle_replace_host(dir, binary_mirror).await?;
-        handle_cypress(dir, &pkg, binary_mirror).await?;
+        handle_cypress(dir, &pkg, binary_mirror, None).await?;
 
         // Write updated package.json
         fs::write(pkg_path, serde_json::to_string_pretty(&pkg).unwrap())
@@ -282,10 +283,149 @@ pub async fn update_package_binary(dir: &Path, name: &str) -> Result<(), BinaryE
 
     Ok(())
 }
+
 pub async fn get_envs() -> Option<&'static Map<String, Value>> {
     match load_config().await {
         Ok(_) => CONFIG.get()
             .and_then(|config| config["mirrors"]["china"]["ENVS"].as_object()),
         Err(_) => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+    use serde_json::json;
+
+    #[tokio::test]
+    async fn test_update_binary_config() {
+        let mut pkg = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "binary": {
+                "existing": "value"
+            }
+        });
+
+        let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({
+            "host": "https://example.com",
+            "replaceHostFiles": ["test.js"],
+            "newKey": "newValue"
+        })).unwrap();
+
+        update_binary_config(&mut pkg, &binary_mirror);
+
+        assert_eq!(pkg["binary"]["existing"].as_str(), Some("value"));
+        assert_eq!(pkg["binary"]["host"].as_str(), Some("https://example.com"));
+        assert_eq!(pkg["binary"]["newKey"].as_str(), Some("newValue"));
+        assert!(!pkg["binary"].as_object().unwrap().contains_key("replaceHostFiles"));
+    }
+
+    #[tokio::test]
+    async fn test_should_handle_replace_host() {
+        let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({
+            "replaceHost": ["old.com"],
+            "host": "new.com"
+        })).unwrap();
+        assert!(should_handle_replace_host(&binary_mirror));
+
+        let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({
+            "replaceHostMap": {
+                "old.com": "new.com"
+            }
+        })).unwrap();
+        assert!(should_handle_replace_host(&binary_mirror));
+
+        let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({
+            "replaceHostRegExpMap": {
+                "old\\.com": "new.com"
+            }
+        })).unwrap();
+        assert!(should_handle_replace_host(&binary_mirror));
+
+        let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({
+            "host": "new.com"
+        })).unwrap();
+        assert!(!should_handle_replace_host(&binary_mirror));
+    }
+
+    #[tokio::test]
+    async fn test_get_replace_host_files() {
+        let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({
+            "replaceHostFiles": ["custom.js"]
+        })).unwrap();
+        assert_eq!(get_replace_host_files(&binary_mirror), vec!["custom.js"]);
+
+        let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({})).unwrap();
+        assert_eq!(get_replace_host_files(&binary_mirror), vec!["lib/index.js", "lib/install.js"]);
+    }
+
+    #[tokio::test]
+    async fn test_replace_with_regex() {
+        let content = "Visit old.com and old.com";
+        let replace_map = json!({
+            "old\\.com": "new.com"
+        });
+
+        let result = replace_with_regex(content, &replace_map).unwrap();
+        assert_eq!(result, "Visit new.com and new.com");
+    }
+
+    #[tokio::test]
+    async fn test_replace_with_map() {
+        let content = "Visit old.com and old.com";
+        let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({
+            "replaceHostMap": {
+                "old.com": "new.com"
+            }
+        })).unwrap();
+
+        let result = replace_with_map(content, &binary_mirror).unwrap();
+        assert_eq!(result, "Visit new.com and new.com");
+    }
+
+    #[tokio::test]
+    async fn test_handle_cypress() {
+        let temp_dir = tempdir().unwrap();
+        let dir = temp_dir.path();
+        println!("Test directory: {:?}", dir);
+
+        // Create necessary directory structure
+        let lib_tasks_dir = dir.join("lib/tasks");
+        std::fs::create_dir_all(&lib_tasks_dir).unwrap();
+        println!("Created directory: {:?}", lib_tasks_dir);
+
+        // Create test download.js file
+        let download_file = lib_tasks_dir.join("download.js");
+        let original_content = r#"
+            return version ? prepend(`desktop/${version}`) : prepend('desktop');
+            return version ? prepend('desktop/' + version) : prepend('desktop');
+        "#;
+        std::fs::write(&download_file, original_content).unwrap();
+        println!("Created file: {:?}", download_file);
+
+        let pkg = json!({
+            "name": "cypress",
+            "version": "3.3.0"
+        });
+
+        let binary_mirror = serde_json::from_value::<Map<String, Value>>(json!({
+            "host": "https://example.com",
+            "newPlatforms": {
+                "darwin": "osx64",
+                "linux": "linux64",
+                "win32": "win64"
+            }
+        })).unwrap();
+
+        handle_cypress(dir, &pkg, &binary_mirror, Some("darwin")).await.unwrap();
+
+        let content = std::fs::read_to_string(&download_file).unwrap();
+        println!("File content after modification:\n{}", content);
+
+        assert!(content.contains("https://example.com"), "Content should contain host URL");
+        assert!(content.contains("osx64"), "Content should contain platform");
+        assert!(!content.contains("prepend"), "Content should not contain original prepend calls");
     }
 }

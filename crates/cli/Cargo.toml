@@ -63,3 +63,7 @@ semver = "1.0"
 name = "install_benchmark"
 harness = false
 path = "benches/deps_benchmark.rs"
+
+[dev-dependencies]
+tempfile = "3.8"
+tokio-test = "0.4"
