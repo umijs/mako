@@ -51,20 +51,6 @@ static PANIC_LOG: LazyLock<PathBuf> = LazyLock::new(|| {
 });
 
 pub fn log_internal_error_and_inform(err_info: &str) {
-    if cfg!(debug_assertions)
-        || env::var("SWC_DEBUG") == Ok("1".to_string())
-        || env::var("CI").is_ok_and(|v| !v.is_empty())
-        // Next's run-tests unsets CI and sets NEXT_TEST_CI
-        || env::var("NEXT_TEST_CI").is_ok_and(|v| !v.is_empty())
-    {
-        eprintln!(
-            "{}: An unexpected Turbopack error occurred:\n{}",
-            "FATAL".red().bold(),
-            err_info
-        );
-        return;
-    }
-
     // hold open this mutex guard to prevent concurrent writes to the file!
     let mut last_error_time = LOG_THROTTLE.lock().unwrap();
     if let Some(last_error_time) = last_error_time.as_ref() {
@@ -122,7 +108,7 @@ pub fn log_internal_error_and_inform(err_info: &str) {
         .unwrap_or_else(|_| panic!("Failed to open {}", PANIC_LOG.to_string_lossy()));
 
     writeln!(log_file, "{}\n{}", LOG_DIVIDER, err_info).unwrap();
-    eprintln!("{}: An unexpected Turbopack error occurred. Please report the content of {}, along with a description of what you were doing when the error occurred, to https://github.com/vercel/next.js/issues/new?template=1.bug_report.yml", "FATAL".red().bold(), PANIC_LOG.to_string_lossy());
+    eprintln!("{}: An unexpected Turbopack error occurred. Please report the content of {}, along with a description of what you were doing when the error occurred, to https://github.com/umijs/mako/issues/new?template=1.bug_report.yml", "FATAL".red().bold(), PANIC_LOG.to_string_lossy());
 }
 
 pub trait MapErr<T>: Into<Result<T, anyhow::Error>> {

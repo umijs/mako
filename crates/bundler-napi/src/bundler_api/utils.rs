@@ -29,18 +29,20 @@ use turbopack_core::{
 use crate::util::log_internal_error_and_inform;
 
 #[derive(Clone)]
-pub enum NextTurboTasks {
+pub enum BundlerTurboTasks {
     Memory(Arc<TurboTasks<turbo_tasks_backend::TurboTasksBackend<NoopBackingStorage>>>),
     PersistentCaching(
         Arc<TurboTasks<turbo_tasks_backend::TurboTasksBackend<DefaultBackingStorage>>>,
     ),
 }
 
-impl NextTurboTasks {
+impl BundlerTurboTasks {
     pub fn dispose_root_task(&self, task: TaskId) {
         match self {
-            NextTurboTasks::Memory(turbo_tasks) => turbo_tasks.dispose_root_task(task),
-            NextTurboTasks::PersistentCaching(turbo_tasks) => turbo_tasks.dispose_root_task(task),
+            BundlerTurboTasks::Memory(turbo_tasks) => turbo_tasks.dispose_root_task(task),
+            BundlerTurboTasks::PersistentCaching(turbo_tasks) => {
+                turbo_tasks.dispose_root_task(task)
+            }
         }
     }
 
@@ -51,8 +53,10 @@ impl NextTurboTasks {
         Fut: Future<Output = Result<Vc<T>>> + Send,
     {
         match self {
-            NextTurboTasks::Memory(turbo_tasks) => turbo_tasks.spawn_root_task(functor),
-            NextTurboTasks::PersistentCaching(turbo_tasks) => turbo_tasks.spawn_root_task(functor),
+            BundlerTurboTasks::Memory(turbo_tasks) => turbo_tasks.spawn_root_task(functor),
+            BundlerTurboTasks::PersistentCaching(turbo_tasks) => {
+                turbo_tasks.spawn_root_task(functor)
+            }
         }
     }
 
@@ -61,8 +65,8 @@ impl NextTurboTasks {
         future: impl Future<Output = Result<T>> + Send + 'static,
     ) -> Result<T> {
         match self {
-            NextTurboTasks::Memory(turbo_tasks) => turbo_tasks.run_once(future).await,
-            NextTurboTasks::PersistentCaching(turbo_tasks) => turbo_tasks.run_once(future).await,
+            BundlerTurboTasks::Memory(turbo_tasks) => turbo_tasks.run_once(future).await,
+            BundlerTurboTasks::PersistentCaching(turbo_tasks) => turbo_tasks.run_once(future).await,
         }
     }
 
@@ -72,8 +76,10 @@ impl NextTurboTasks {
         Fut: Future<Output = Result<Vc<T>>> + Send + 'static,
     {
         match self {
-            NextTurboTasks::Memory(turbo_tasks) => turbo_tasks.spawn_once_task(future),
-            NextTurboTasks::PersistentCaching(turbo_tasks) => turbo_tasks.spawn_once_task(future),
+            BundlerTurboTasks::Memory(turbo_tasks) => turbo_tasks.spawn_once_task(future),
+            BundlerTurboTasks::PersistentCaching(turbo_tasks) => {
+                turbo_tasks.spawn_once_task(future)
+            }
         }
     }
 
@@ -83,12 +89,12 @@ impl NextTurboTasks {
         timeout: Duration,
     ) -> Option<UpdateInfo> {
         match self {
-            NextTurboTasks::Memory(turbo_tasks) => {
+            BundlerTurboTasks::Memory(turbo_tasks) => {
                 turbo_tasks
                     .aggregated_update_info(aggregation, timeout)
                     .await
             }
-            NextTurboTasks::PersistentCaching(turbo_tasks) => {
+            BundlerTurboTasks::PersistentCaching(turbo_tasks) => {
                 turbo_tasks
                     .aggregated_update_info(aggregation, timeout)
                     .await
@@ -98,12 +104,12 @@ impl NextTurboTasks {
 
     pub async fn get_or_wait_aggregated_update_info(&self, aggregation: Duration) -> UpdateInfo {
         match self {
-            NextTurboTasks::Memory(turbo_tasks) => {
+            BundlerTurboTasks::Memory(turbo_tasks) => {
                 turbo_tasks
                     .get_or_wait_aggregated_update_info(aggregation)
                     .await
             }
-            NextTurboTasks::PersistentCaching(turbo_tasks) => {
+            BundlerTurboTasks::PersistentCaching(turbo_tasks) => {
                 turbo_tasks
                     .get_or_wait_aggregated_update_info(aggregation)
                     .await
@@ -113,15 +119,15 @@ impl NextTurboTasks {
 
     pub async fn stop_and_wait(&self) {
         match self {
-            NextTurboTasks::Memory(turbo_tasks) => turbo_tasks.stop_and_wait().await,
-            NextTurboTasks::PersistentCaching(turbo_tasks) => turbo_tasks.stop_and_wait().await,
+            BundlerTurboTasks::Memory(turbo_tasks) => turbo_tasks.stop_and_wait().await,
+            BundlerTurboTasks::PersistentCaching(turbo_tasks) => turbo_tasks.stop_and_wait().await,
         }
     }
 
     pub fn task_statistics(&self) -> &TaskStatisticsApi {
         match self {
-            NextTurboTasks::Memory(turbo_tasks) => turbo_tasks.task_statistics(),
-            NextTurboTasks::PersistentCaching(turbo_tasks) => turbo_tasks.task_statistics(),
+            BundlerTurboTasks::Memory(turbo_tasks) => turbo_tasks.task_statistics(),
+            BundlerTurboTasks::PersistentCaching(turbo_tasks) => turbo_tasks.task_statistics(),
         }
     }
 }
@@ -131,14 +137,14 @@ pub fn create_turbo_tasks(
     persistent_caching: bool,
     _memory_limit: usize,
     dependency_tracking: bool,
-) -> Result<NextTurboTasks> {
+) -> Result<BundlerTurboTasks> {
     Ok(if persistent_caching {
         let version_info = GitVersionInfo {
             describe: env!("VERGEN_GIT_DESCRIBE"),
             dirty: option_env!("CI").is_none_or(|value| value.is_empty())
                 && env!("VERGEN_GIT_DIRTY") == "true",
         };
-        NextTurboTasks::PersistentCaching(TurboTasks::new(
+        BundlerTurboTasks::PersistentCaching(TurboTasks::new(
             turbo_tasks_backend::TurboTasksBackend::new(
                 turbo_tasks_backend::BackendOptions {
                     storage_mode: Some(if std::env::var("TURBO_ENGINE_READ_ONLY").is_ok() {
@@ -153,7 +159,7 @@ pub fn create_turbo_tasks(
             ),
         ))
     } else {
-        NextTurboTasks::Memory(TurboTasks::new(
+        BundlerTurboTasks::Memory(TurboTasks::new(
             turbo_tasks_backend::TurboTasksBackend::new(
                 turbo_tasks_backend::BackendOptions {
                     storage_mode: None,
@@ -170,17 +176,17 @@ pub fn create_turbo_tasks(
 /// Without this, we'd need to pass both individually all over the place
 #[derive(Clone)]
 pub struct VcArc<T> {
-    turbo_tasks: NextTurboTasks,
+    turbo_tasks: BundlerTurboTasks,
     /// The Vc. Must be unresolved, otherwise you are referencing an inactive operation.
     vc: OperationVc<T>,
 }
 
 impl<T> VcArc<T> {
-    pub fn new(turbo_tasks: NextTurboTasks, vc: OperationVc<T>) -> Self {
+    pub fn new(turbo_tasks: BundlerTurboTasks, vc: OperationVc<T>) -> Self {
         Self { turbo_tasks, vc }
     }
 
-    pub fn turbo_tasks(&self) -> &NextTurboTasks {
+    pub fn turbo_tasks(&self) -> &BundlerTurboTasks {
         &self.turbo_tasks
     }
 }
@@ -203,7 +209,7 @@ pub fn serde_enum_to_string<T: Serialize>(value: &T) -> Result<String> {
 /// The root of our turbopack computation.
 pub struct RootTask {
     #[allow(dead_code)]
-    turbo_tasks: NextTurboTasks,
+    turbo_tasks: BundlerTurboTasks,
     #[allow(dead_code)]
     task_id: Option<TaskId>,
 }
@@ -450,7 +456,7 @@ impl<T: ToNapiValue> ToNapiValue for TurbopackResult<T> {
 }
 
 pub fn subscribe<T: 'static + Send + Sync, F: Future<Output = Result<T>> + Send, V: ToNapiValue>(
-    turbo_tasks: NextTurboTasks,
+    turbo_tasks: BundlerTurboTasks,
     func: JsFunction,
     handler: impl 'static + Sync + Send + Clone + Fn() -> F,
     mapper: impl 'static + Sync + Send + FnMut(ThreadSafeCallContext<T>) -> napi::Result<Vec<V>>,
