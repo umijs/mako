@@ -35,7 +35,7 @@ pub async fn init_auto_update() -> Result<(), String> {
             "New version found: {} (current version: {}), updating automatically...",
             cache.version, current_version
         ));
-        log_info(&format!("npm i @utoo/utoo -g"));
+        log_info(&format!("utoo i @utoo/utoo -g"));
 
         execute_update()?;
 
