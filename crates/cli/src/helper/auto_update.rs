@@ -172,10 +172,10 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn test_execute_update_integration() {
+    #[tokio::test]
+    async fn test_execute_update_integration() {
         // test for execute_update function
-        let result = execute_update("latest");
+        let result = execute_update("latest").await;
 
         // just check if it's Ok or Err
         match result {
