@@ -195,16 +195,16 @@ impl ScriptService {
 
     fn collect_bin_paths(package: &PackageInfo) -> Vec<PathBuf> {
         let mut bin_paths = Vec::new();
-        let mut current_path = package.path.clone();
+        let mut current_path = Some(package.path.as_path());
 
-        while let Some(parent) = current_path.parent() {
-            let bin_path = parent.join("node_modules/.bin");
+        while let Some(path) = current_path {
+            let bin_path = path.join("node_modules/.bin");
             if bin_path.exists() {
                 if let Ok(absolute_path) = std::fs::canonicalize(&bin_path) {
                     bin_paths.push(absolute_path);
                 }
             }
-            current_path = parent.to_path_buf();
+            current_path = path.parent();
         }
 
         bin_paths
@@ -294,6 +294,7 @@ mod tests {
     use crate::model::package::Scripts;
 
     use super::*;
+    use std::fs;
     use tempfile::tempdir;
 
     #[tokio::test]
@@ -352,5 +353,38 @@ mod tests {
                 .await;
 
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_collect_bin_paths_with_local_node_modules() {
+        let temp_dir = tempdir().unwrap();
+        let package_path = temp_dir.path();
+
+        // Create package.json
+        let package_json = package_path.join("package.json");
+        fs::write(&package_json, "{}").unwrap();
+
+        // Create local node_modules/.bin directory
+        let local_bin_dir = package_path.join("node_modules/.bin");
+        fs::create_dir_all(&local_bin_dir).unwrap();
+
+        // Create a dummy executable
+        let dummy_bin = local_bin_dir.join("test-bin");
+        fs::write(&dummy_bin, "#!/bin/sh\necho 'test'").unwrap();
+        fs::set_permissions(&dummy_bin, fs::Permissions::from_mode(0o755)).unwrap();
+
+        let package = PackageInfo {
+            path: package_path.to_path_buf(),
+            bin_files: Default::default(),
+            scripts: Scripts::default(),
+            scope: None,
+            fullname: "test-package".to_string(),
+            name: "test-package".to_string(),
+            version: "1.0.0".to_string(),
+        };
+
+        let bin_paths = ScriptService::collect_bin_paths(&package);
+        assert!(!bin_paths.is_empty());
+        assert!(bin_paths[0].ends_with("node_modules/.bin"));
     }
 }
