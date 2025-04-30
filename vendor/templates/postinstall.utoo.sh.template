@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Get CPU & OS info
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+
+if [ "$ARCH" = "x86_64" ]; then
+    ARCH="x64"
+elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+    ARCH="arm64"
+fi
+
+# Function to install binary
+install_binary() {
+    local name=$1
+    local package_name="@utoo/${name}-${OS}-${ARCH}"
+
+    # Check if the binary node_modules exist
+    if [ ! -d "node_modules/${package_name}" ]; then
+        echo "Binary package ${package_name} not found"
+        exit 1
+    fi
+
+    # Create binary config
+    mkdir -p bin
+
+    # Copy file
+    cp -f "node_modules/${package_name}/bin/${name}" "bin/${name}"
+    chmod +x "bin/${name}"
+}
+
+# Install both binaries
+install_binary "ut"
+install_binary "utoo"

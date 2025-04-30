@@ -8,6 +8,10 @@ license = "MIT"
 name = "ut"
 path = "src/main.rs"
 
+[[bin]]
+name = "utoo-core"
+path = "src/main.rs"
+
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 clap = { version = "4.4", features = ["derive", "help"] }
