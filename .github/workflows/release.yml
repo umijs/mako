@@ -90,13 +90,13 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --bin utoo --bin utoo-install --bin utoo-rebuild --bin utoo-deps --bin utoo-clean --bin utoo-core --bin utoo-update
+          args: --release --bin utoo --bin utoo-install --bin utoo-rebuild --bin utoo-deps --bin utoo-clean --bin ut --bin utoo-update
 
       - name: Package Binaries
         run: |
           cd target/release
           tar -czf ../../utoo-${{ matrix.platform_os }}-${{ matrix.platform_cpu }}.tar.gz \
-            utoo utoo-install utoo-rebuild utoo-deps utoo-clean utoo-update
+            utoo utoo-install utoo-rebuild utoo-deps utoo-clean utoo-update ut
 
       - name: Upload Release Asset
         if: ${{ matrix.platform_os == 'linux' }}
