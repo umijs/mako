@@ -121,7 +121,7 @@ jobs:
         run: |
           set -e
           cd vendor/scripts
-          BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean" "utoo-core" "utoo-update")
+          BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean" "ut" "utoo-update")
           for BIN in "${BINS[@]}"; do
             PACKAGE_NAME=$(echo "$BIN")
             ./npm-binary.sh "$PACKAGE_NAME" "$VERSION" \
@@ -161,8 +161,16 @@ jobs:
         run: |
           set -e
           cd vendor/scripts
-          BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean" "utoo-core" "utoo-update")
+          BINS=("utoo" "utoo-install" "utoo-rebuild" "utoo-deps" "utoo-clean" "ut" "utoo-update")
           for BIN in "${BINS[@]}"; do
             PACKAGE_NAME=$(echo "$BIN")
             ./npm-main.sh "$PACKAGE_NAME" "$VERSION"
           done
+      - name: Publish Main utoo Package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          set -e
+          cd vendor/scripts
+          ./npm-utoo.sh "$VERSION"

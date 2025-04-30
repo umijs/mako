@@ -1,0 +1,22 @@
+{
+  "name": "utoo",
+  "version": "{{version}}",
+  "description": "Utoo CLI tool",
+  "bin": {
+    "utoo": "bin/utoo"
+    "ut": "bin/ut"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/umijs/mako.git"
+  },
+  "dependencies": {
+    "@utoo/utoo": "{{version}}",
+    "@utoo/ut": "{{version}}"
+  },
+  "os": ["darwin", "linux"],
+  "cpu": ["x64", "arm64"],
+  "scripts": {
+    "postinstall": "bash ./postinstall.sh"
+  }
+}

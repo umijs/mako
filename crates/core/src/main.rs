@@ -4,14 +4,19 @@ use std::collections::HashMap;
 
 mod config;
 mod error;
+mod service;
 
 use config::Config;
+use service::cmd::CommandService;
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None, disable_help_subcommand = true)]
 struct Cli {
+    #[arg(short = 'v', long = "version")]
+    version: bool,
+
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -20,16 +25,20 @@ enum Commands {
         #[command(subcommand)]
         command: ConfigCommands,
     },
+    #[command(external_subcommand)]
+    Execute(Vec<String>),
 }
 
 #[derive(Subcommand)]
 enum ConfigCommands {
+    #[command(about = "Set a configuration value with the specified key")]
     Set {
         key: String,
         value: String,
         #[arg(long)]
         global: bool,
     },
+    #[command(about = "Retrieve a configuration value by its key")]
     Get {
         key: String,
         #[arg(long)]
@@ -38,6 +47,7 @@ enum ConfigCommands {
         #[arg(trailing_var_arg = true)]
         override_values: Vec<String>,
     },
+    #[command(about = "Display all configuration key-value pairs")]
     List {
         #[arg(long)]
         global: bool,
@@ -53,10 +63,20 @@ fn parse_key_val(s: &str) -> Result<(String, String)> {
 }
 
 fn main() -> Result<()> {
+    let args: Vec<String> = std::env::args().collect();
+
+    // Check for help flag
+    if args.len() > 1 && (args[1] == "-h" || args[1] == "--help") {
+        let config = Config::load(false)?;
+        let cmd_service = CommandService::new(config);
+        cmd_service.print_help()?;
+        return Ok(());
+    }
+
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Config { command } => match command {
+        Some(Commands::Config { command }) => match command {
             ConfigCommands::Set { key, value, global } => {
                 let mut config = Config::load(global)?;
                 config.set(&key, value, global)?;
@@ -96,6 +116,25 @@ fn main() -> Result<()> {
                 }
             }
         },
+        Some(Commands::Execute(args)) => {
+            if args.is_empty() {
+                // Show help when no command is provided
+                let config = Config::load(false)?;
+                let cmd_service = CommandService::new(config);
+                cmd_service.print_help()?;
+                return Ok(());
+            }
+
+            let config = Config::load(false)?;
+            let cmd_service = CommandService::new(config);
+            cmd_service.execute(&args)?;
+        }
+        None => {
+            // Use Execute command logic when no subcommand is provided
+            let config = Config::load(false)?;
+            let cmd_service = CommandService::new(config);
+            cmd_service.execute(&std::env::args().skip(1).collect::<Vec<_>>())?;
+        }
     }
 
     Ok(())
