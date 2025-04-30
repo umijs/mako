@@ -35,7 +35,7 @@ impl CommandService {
         let commands = self.get_available_commands()?;
         let is_empty = commands.is_empty();
 
-        println!("{}", "ut - A command line tool".bold());
+        println!("{}", "🌖 /juːtuː/ Unified Toolchain".bold());
         println!();
         println!("{}", "Usage:".bold());
         println!("  ut <COMMAND>");
@@ -113,7 +113,8 @@ impl CommandService {
             "Print version information"
         );
         println!();
-        println!("For more information about a command, try 'ut <command> --help'");
+        println!("\nFor more information, visit: {}", "https://github.com/umijs/mako/tree/next".blue().underline());
+
 
         Ok(())
     }

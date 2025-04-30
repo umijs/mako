@@ -12,8 +12,11 @@ use service::cmd::CommandService;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, disable_help_subcommand = true)]
 struct Cli {
+    #[arg(short = 'v', long = "version")]
+    version: bool,
+
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -73,7 +76,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Config { command } => match command {
+        Some(Commands::Config { command }) => match command {
             ConfigCommands::Set { key, value, global } => {
                 let mut config = Config::load(global)?;
                 config.set(&key, value, global)?;
@@ -113,7 +116,7 @@ fn main() -> Result<()> {
                 }
             }
         },
-        Commands::Execute(args) => {
+        Some(Commands::Execute(args)) => {
             if args.is_empty() {
                 // Show help when no command is provided
                 let config = Config::load(false)?;
@@ -125,6 +128,12 @@ fn main() -> Result<()> {
             let config = Config::load(false)?;
             let cmd_service = CommandService::new(config);
             cmd_service.execute(&args)?;
+        }
+        None => {
+            // Show help when no subcommand is provided
+            let config = Config::load(false)?;
+            let cmd_service = CommandService::new(config);
+            cmd_service.print_help()?;
         }
     }
 
