@@ -3,7 +3,7 @@
   "version": "{{version}}",
   "description": "Utoo CLI tool",
   "bin": {
-    "utoo": "bin/utoo"
+    "utoo": "bin/utoo",
     "ut": "bin/ut"
   },
   "repository": {
