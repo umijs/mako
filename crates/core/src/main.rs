@@ -28,12 +28,14 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum ConfigCommands {
+    #[command(about = "Set a configuration value with the specified key")]
     Set {
         key: String,
         value: String,
         #[arg(long)]
         global: bool,
     },
+    #[command(about = "Retrieve a configuration value by its key")]
     Get {
         key: String,
         #[arg(long)]
@@ -42,6 +44,7 @@ enum ConfigCommands {
         #[arg(trailing_var_arg = true)]
         override_values: Vec<String>,
     },
+    #[command(about = "Display all configuration key-value pairs")]
     List {
         #[arg(long)]
         global: bool,

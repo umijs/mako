@@ -13,7 +13,7 @@ impl CommandService {
     }
 
     pub fn get_available_commands(&self) -> Result<Vec<(String, String)>> {
-        let mut commands = Vec::new();
+        let mut commands: Vec<(String, String)> = Vec::new();
 
         // Get all config keys
         for (key, _) in self.config.list()? {
@@ -33,11 +33,21 @@ impl CommandService {
 
     pub fn print_help(&self) -> Result<()> {
         let commands = self.get_available_commands()?;
+        let is_empty = commands.is_empty();
 
         println!("{}", "ut - A command line tool".bold());
         println!();
         println!("{}", "Usage:".bold());
         println!("  ut <COMMAND>");
+        println!();
+        println!("{}", "Configuration:".bold());
+        println!("  Global config: {}", self.config.get_global_config_path()?.display());
+        let local_path = self.config.get_local_config_path()?;
+        if local_path.exists() {
+            println!("  Local config:  {}", local_path.display());
+        }
+        let registry = self.config.get("registry")?.unwrap_or_else(|| "https://registry.npmmirror.com".to_string());
+        println!("  Registry:      {}", registry);
         println!();
         println!("{}", "Commands:".bold());
 
@@ -53,6 +63,17 @@ impl CommandService {
         for (name, alias) in commands {
             println!("  {:<width$}    {} {}", name.cyan(), "→".bold(), alias, width = max_width);
         }
+
+        if is_empty {
+            println!();
+            println!("{}", "Notice:".yellow().bold());
+            println!("  No commands configured yet. Here are some common configurations:");
+            println!();
+            println!("  {}  Set registry", "ut config set registry https://registry.npmmirror.com --global".cyan());
+            println!("  {}  Set install command", "ut config set install.cmd \"utoo install\"".cyan());
+            println!("  {}  Set wildcard command", "ut config set *.cmd utoo --global".cyan());
+        }
+
         println!();
         println!("{}", "Options:".bold());
         println!("  {}     {}", "-h, --help".yellow(), "Print help information");

@@ -74,6 +74,14 @@ impl Config {
         Ok(std::env::current_dir()?.join(".utoo.toml"))
     }
 
+    pub fn get_global_config_path(&self) -> Result<PathBuf> {
+        Self::global_config_path()
+    }
+
+    pub fn get_local_config_path(&self) -> Result<PathBuf> {
+        Self::local_config_path()
+    }
+
     pub fn list(&self) -> Result<impl Iterator<Item = (&String, &String)>> {
         Ok(self.values.iter())
     }
