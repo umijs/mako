@@ -162,3 +162,59 @@ impl CommandService {
         std::process::exit(status.code().unwrap_or(1));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use std::fs;
+    use tempfile::tempdir;
+
+    fn setup_test_env() -> (Config, tempfile::TempDir) {
+        let temp_dir = tempdir().unwrap();
+        let config_dir = temp_dir.path().join(".utoo");
+        fs::create_dir_all(&config_dir).unwrap();
+
+        // Set up temporary home directory
+        env::set_var("HOME", temp_dir.path());
+
+        let mut config = Config::load(false).unwrap();
+        // Use "true" command which exists on Unix systems
+        config.set("test.cmd", "true".to_string(), true).unwrap();
+        config.set("*.cmd", "true".to_string(), true).unwrap();
+        config.set("registry", "https://test.registry.com".to_string(), true).unwrap();
+
+        (config, temp_dir)
+    }
+
+    #[test]
+    fn test_execute_specific_command() {
+        let (config, _temp_dir) = setup_test_env();
+        let service = CommandService::new(config);
+
+        let args = vec!["test".to_string()];
+        let result = service.execute(&args);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_execute_wildcard_command() {
+        let (config, _temp_dir) = setup_test_env();
+        let service = CommandService::new(config);
+
+        let args = vec!["unknown".to_string()];
+        let result = service.execute(&args);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_execute_empty_args() {
+        let (config, _temp_dir) = setup_test_env();
+        let service = CommandService::new(config);
+
+        let args = vec![];
+        let result = service.execute(&args);
+        assert!(result.is_ok());
+    }
+
+}
