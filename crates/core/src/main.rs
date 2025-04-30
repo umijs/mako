@@ -1,5 +1,5 @@
 use anyhow::Result;
-use clap::{Parser, Subcommand };
+use clap::{Parser, Subcommand};
 use std::collections::HashMap;
 
 mod config;
@@ -58,7 +58,6 @@ fn parse_key_val(s: &str) -> Result<(String, String)> {
         .ok_or_else(|| anyhow::anyhow!("invalid KEY=value: no `=` found in `{}`", s))?;
     Ok((s[..pos].to_string(), s[pos + 1..].to_string()))
 }
-
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
