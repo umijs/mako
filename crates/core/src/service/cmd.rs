@@ -28,12 +28,21 @@ impl CommandService {
             }
         }
 
+        // Add utoo as default command if no commands are configured
+        if commands.is_empty() {
+            commands.push((
+                "*".to_string(),
+                "utoo <command> (default wildcard)".to_string(),
+            ));
+        }
+
         Ok(commands)
     }
 
     pub fn print_help(&self) -> Result<()> {
         let commands = self.get_available_commands()?;
-        let is_empty = commands.is_empty();
+        // Check if there are any commands other than the default utoo command
+        let is_empty = commands.iter().all(|(name, _)| name == "*");
 
         println!("{}", "🌖 /juːtuː/ Unified Toolchain".bold());
         println!();
@@ -113,15 +122,20 @@ impl CommandService {
             "Print version information"
         );
         println!();
-        println!("\nFor more information, visit: {}", "https://github.com/umijs/mako/tree/next".blue().underline());
-
+        println!(
+            "\nFor more information, visit: {}",
+            "https://github.com/umijs/mako/tree/next".blue().underline()
+        );
 
         Ok(())
     }
 
     pub fn execute(&self, args: &[String]) -> Result<()> {
         if args.is_empty() {
-            return Ok(());
+            // Default to utoo when no arguments are provided
+            let mut command = Command::new("utoo");
+            let status: std::process::ExitStatus = command.status()?;
+            std::process::exit(status.code().unwrap_or(1));
         }
 
         let command_name = &args[0];
@@ -133,8 +147,8 @@ impl CommandService {
             } else if let Some(cmd) = self.config.get("*.cmd")? {
                 (cmd.replace("*", command_name), true)
             } else {
-                println!("Command '{}' not found", command_name);
-                std::process::exit(1);
+                // Default to utoo if no wildcard command is configured
+                (format!("utoo {}", command_name), true)
             };
 
         // Split the aliased command into parts
@@ -182,7 +196,9 @@ mod tests {
         // Use "true" command which exists on Unix systems
         config.set("test.cmd", "true".to_string(), true).unwrap();
         config.set("*.cmd", "true".to_string(), true).unwrap();
-        config.set("registry", "https://test.registry.com".to_string(), true).unwrap();
+        config
+            .set("registry", "https://test.registry.com".to_string(), true)
+            .unwrap();
 
         (config, temp_dir)
     }
@@ -216,5 +232,4 @@ mod tests {
         let result = service.execute(&args);
         assert!(result.is_ok());
     }
-
 }

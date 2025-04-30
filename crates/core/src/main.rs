@@ -130,10 +130,10 @@ fn main() -> Result<()> {
             cmd_service.execute(&args)?;
         }
         None => {
-            // Show help when no subcommand is provided
+            // Use Execute command logic when no subcommand is provided
             let config = Config::load(false)?;
             let cmd_service = CommandService::new(config);
-            cmd_service.print_help()?;
+            cmd_service.execute(&std::env::args().skip(1).collect::<Vec<_>>())?;
         }
     }
 
