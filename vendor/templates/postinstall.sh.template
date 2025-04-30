@@ -13,9 +13,33 @@ fi
 # prepare PACKAGE_NAME
 PACKAGE_NAME="@utoo/{{name}}-${OS}-${ARCH}"
 
-# check the binary node_modules exist
-if [ ! -d "node_modules/${PACKAGE_NAME}" ]; then
-    echo "Binary package ${PACKAGE_NAME} not found"
+# Function to find node_modules directory recursively
+find_node_modules() {
+    local current_dir="$1"
+    local target_package="$2"
+
+    # Check if we've reached the root directory
+    if [ "$current_dir" = "/" ]; then
+        return 1
+    fi
+
+    # Check if node_modules exists in current directory
+    if [ -d "$current_dir/node_modules" ]; then
+        if [ -d "$current_dir/node_modules/$target_package" ]; then
+            echo "$current_dir/node_modules"
+            return 0
+        fi
+    fi
+
+    # Recursively check parent directory
+    find_node_modules "$(dirname "$current_dir")" "$target_package"
+}
+
+# Find the node_modules directory containing our package
+NODE_MODULES_DIR=$(find_node_modules "$(pwd)" "$PACKAGE_NAME")
+
+if [ -z "$NODE_MODULES_DIR" ]; then
+    echo "Binary package ${PACKAGE_NAME} not found in any parent node_modules directory"
     exit 1
 fi
 
@@ -23,5 +47,5 @@ fi
 mkdir -p bin
 
 # copy file
-cp -f "node_modules/${PACKAGE_NAME}/bin/{{name}}" "bin/{{name}}"
+cp -f "${NODE_MODULES_DIR}/${PACKAGE_NAME}/bin/{{name}}" "bin/{{name}}"
 chmod +x "bin/{{name}}"
