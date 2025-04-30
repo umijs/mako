@@ -29,14 +29,16 @@ cat "$ENTRY_DIR/package.json" | \
 cp ../templates/postinstall.utoo.sh.template "$ENTRY_DIR/postinstall.sh"
 chmod +x "$ENTRY_DIR/postinstall.sh"
 
-# create placeholder binary
+# create placeholder binaries
 mkdir -p "$ENTRY_DIR/bin"
-cat > "$ENTRY_DIR/bin/utoo" << EOF
+for binary in utoo ut; do
+    cat > "$ENTRY_DIR/bin/$binary" << EOF
 #!/bin/bash
-echo "This is a placeholder binary for utoo. The actual binary will be installed via postinstall script."
+echo "This is a placeholder binary for $binary. The actual binary will be installed via postinstall script."
 exit 1
 EOF
-chmod +x "$ENTRY_DIR/bin/utoo"
+    chmod +x "$ENTRY_DIR/bin/$binary"
+done
 
 # do publish
 cd "$ENTRY_DIR"
