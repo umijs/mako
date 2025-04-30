@@ -1,14 +1,16 @@
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand };
 use std::collections::HashMap;
 
 mod config;
 mod error;
+mod service;
 
 use config::Config;
+use service::cmd::CommandService;
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None, disable_help_subcommand = true)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -20,6 +22,8 @@ enum Commands {
         #[command(subcommand)]
         command: ConfigCommands,
     },
+    #[command(external_subcommand)]
+    Execute(Vec<String>),
 }
 
 #[derive(Subcommand)]
@@ -52,7 +56,18 @@ fn parse_key_val(s: &str) -> Result<(String, String)> {
     Ok((s[..pos].to_string(), s[pos + 1..].to_string()))
 }
 
+
 fn main() -> Result<()> {
+    let args: Vec<String> = std::env::args().collect();
+
+    // Check for help flag
+    if args.len() > 1 && (args[1] == "-h" || args[1] == "--help") {
+        let config = Config::load(false)?;
+        let cmd_service = CommandService::new(config);
+        cmd_service.print_help()?;
+        return Ok(());
+    }
+
     let cli = Cli::parse();
 
     match cli.command {
@@ -96,6 +111,19 @@ fn main() -> Result<()> {
                 }
             }
         },
+        Commands::Execute(args) => {
+            if args.is_empty() {
+                // Show help when no command is provided
+                let config = Config::load(false)?;
+                let cmd_service = CommandService::new(config);
+                cmd_service.print_help()?;
+                return Ok(());
+            }
+
+            let config = Config::load(false)?;
+            let cmd_service = CommandService::new(config);
+            cmd_service.execute(&args)?;
+        }
     }
 
     Ok(())
