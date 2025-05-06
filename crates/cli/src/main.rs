@@ -31,6 +31,7 @@ use crate::constants::{APP_ABOUT, APP_NAME, APP_VERSION};
 #[command(version = None)]
 #[command(allow_external_subcommands(true))]
 #[command(disable_help_subcommand(true))]
+#[command(ignore_errors(true))]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -123,6 +124,10 @@ enum Commands {
     Run {
         /// Script name to run
         script: String,
+
+        /// Workspace to run script in
+        #[arg(short, long)]
+        workspace: Option<String>,
     },
 }
 
@@ -255,8 +260,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 process::exit(1);
             }
         }
-        Some(Commands::Run { script }) => {
-            if let Err(e) = cmd::run::run_script(&script).await {
+        Some(Commands::Run { script, workspace }) => {
+            if let Err(e) = cmd::run::run_script(&script, workspace).await {
                 log_error(&e.to_string());
                 let _ = write_verbose_logs_to_file();
                 process::exit(1);
@@ -265,7 +270,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None => {
             // Check if the first argument is a script name
             if let Some(script_name) = std::env::args().nth(1) {
-                if let Err(e) = cmd::run::run_script(&script_name).await {
+                // Parse workspace argument if present
+                let workspace = std::env::args()
+                    .position(|arg| arg == "--workspace")
+                    .and_then(|pos| std::env::args().nth(pos + 1));
+
+                if let Err(e) = cmd::run::run_script(&script_name, workspace).await {
                     log_error(&e.to_string());
                     let _ = write_verbose_logs_to_file();
                     process::exit(1);

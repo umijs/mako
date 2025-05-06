@@ -9,7 +9,7 @@ use crate::util::save_type::{PackageAction, SaveType};
 use crate::util::{cache::parse_pattern, cloner::clone, downloader::download};
 use crate::{cmd::deps::build_deps, util::logger::log_info};
 
-use super::workspace::find_workspaces;
+use super::workspace::find_workspace_path;
 
 #[derive(Deserialize)]
 pub struct PackageLock {
@@ -127,19 +127,6 @@ pub async fn parse_package_spec(
     let (name, version_spec) = parse_pattern(spec);
     let resolved = resolve(&name, &version_spec).await?;
     Ok((name, resolved.version))
-}
-
-async fn find_workspace_path(
-    cwd: &PathBuf,
-    workspace: &str,
-) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let workspaces = find_workspaces(cwd).await?;
-    for (name, path, _) in workspaces {
-        if name == workspace || path.to_string_lossy() == workspace {
-            return Ok(path);
-        }
-    }
-    Err(format!("Workspace '{}' not found", workspace).into())
 }
 
 pub async fn prepare_global_package_json(

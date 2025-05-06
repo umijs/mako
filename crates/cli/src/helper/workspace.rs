@@ -71,3 +71,26 @@ pub async fn find_workspaces(root_path: &PathBuf) -> io::Result<Vec<(String, Pat
 
     Ok(workspaces)
 }
+
+pub async fn find_workspace_path(cwd: &PathBuf, workspace: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let workspaces = find_workspaces(cwd).await?;
+    for (name, path, _) in workspaces {
+        // Try exact name match
+        if name == workspace {
+            return Ok(path);
+        }
+
+        // Try absolute path match
+        if path.to_string_lossy() == workspace {
+            return Ok(path);
+        }
+
+        // Try relative path match
+        if let Ok(relative) = path.strip_prefix(cwd) {
+            if relative.to_string_lossy() == workspace {
+                return Ok(path);
+            }
+        }
+    }
+    Err(format!("Workspace '{}' not found", workspace).into())
+}
