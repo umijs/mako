@@ -72,7 +72,10 @@ pub async fn find_workspaces(root_path: &PathBuf) -> io::Result<Vec<(String, Pat
     Ok(workspaces)
 }
 
-pub async fn find_workspace_path(cwd: &PathBuf, workspace: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+pub async fn find_workspace_path(
+    cwd: &PathBuf,
+    workspace: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let workspaces = find_workspaces(cwd).await?;
     for (name, path, _) in workspaces {
         // Try exact name match

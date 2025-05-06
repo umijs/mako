@@ -9,10 +9,17 @@ use std::path::PathBuf;
 
 pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<(), String> {
     let pkg = if let Some(workspace_name) = &workspace {
-        let workspace_dir = find_workspace_path(&std::env::current_dir().map_err(|e| e.to_string())?, workspace_name)
-            .await
-            .map_err(|e| e.to_string())?;
-        log_info(&format!("Using workspace: {} at path: {}", workspace_name, workspace_dir.display()));
+        let workspace_dir = find_workspace_path(
+            &std::env::current_dir().map_err(|e| e.to_string())?,
+            workspace_name,
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+        log_info(&format!(
+            "Using workspace: {} at path: {}",
+            workspace_name,
+            workspace_dir.display()
+        ));
         load_package_json_from_path(&workspace_dir)?
     } else {
         load_package_json()?
@@ -23,9 +30,12 @@ pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<
 
     let package = PackageInfo {
         path: if let Some(workspace_name) = workspace {
-            find_workspace_path(&std::env::current_dir().map_err(|e| e.to_string())?, &workspace_name)
-                .await
-                .map_err(|e| e.to_string())?
+            find_workspace_path(
+                &std::env::current_dir().map_err(|e| e.to_string())?,
+                &workspace_name,
+            )
+            .await
+            .map_err(|e| e.to_string())?
         } else {
             std::env::current_dir().map_err(|e| e.to_string())?
         },
