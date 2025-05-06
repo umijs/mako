@@ -72,7 +72,7 @@ pub async fn update_package_json(
     save_type: &SaveType,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Parse package spec
-    let (name, version) = parse_package_spec(spec).await?;
+    let (name, version, version_spec) = parse_package_spec(spec).await?;
 
     // 2. Find target workspace if specified
     let target_dir = if let Some(ws) = workspace {
@@ -92,11 +92,16 @@ pub async fn update_package_json(
         SaveType::Prod => "dependencies",
     };
 
+    let version_to_write = match version_spec {
+        spec if spec.is_empty() || spec == "*" || spec == "latest" => format!("^{}", version),
+        spec => spec.to_string(),
+    };
+
     if let Some(deps) = package_json.get_mut(dep_field) {
         if let Some(deps_obj) = deps.as_object_mut() {
             match action {
                 PackageAction::Add => {
-                    deps_obj.insert(name.clone(), Value::String(version.clone()));
+                    deps_obj.insert(name.clone(), Value::String(version_to_write.clone()));
                 }
                 PackageAction::Remove => {
                     deps_obj.remove(&name);
@@ -105,7 +110,7 @@ pub async fn update_package_json(
         }
     } else if PackageAction::Add == *action {
         let mut deps = serde_json::Map::new();
-        deps.insert(name.clone(), Value::String(version.clone()));
+        deps.insert(name.clone(), Value::String(version_to_write));
         package_json[dep_field] = Value::Object(deps);
     }
 
@@ -123,10 +128,10 @@ pub async fn update_package_json(
 
 pub async fn parse_package_spec(
     spec: &str,
-) -> Result<(String, String), Box<dyn std::error::Error>> {
+) -> Result<(String, String, String), Box<dyn std::error::Error>> {
     let (name, version_spec) = parse_pattern(spec);
     let resolved = resolve(&name, &version_spec).await?;
-    Ok((name, resolved.version))
+    Ok((name, resolved.version, version_spec))
 }
 
 async fn find_workspace_path(
@@ -146,7 +151,7 @@ pub async fn prepare_global_package_json(
     npm_spec: &str,
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
     // Parse package name and version
-    let (name, spec) = parse_package_spec(npm_spec).await?;
+    let (name, _version, version_spec) = parse_package_spec(npm_spec).await?;
 
     // Get current executable path
     let current_exe = std::env::current_exe()?;
@@ -163,7 +168,7 @@ pub async fn prepare_global_package_json(
     tokio::fs::create_dir_all(&package_path).await?;
 
     // Get package info from registry
-    let resolved = resolve(&name, &spec).await?;
+    let resolved = resolve(&name, &version_spec).await?;
 
     // Get tarball URL from manifest
     let tarball_url = resolved.manifest["dist"]["tarball"]
@@ -211,4 +216,30 @@ pub async fn prepare_global_package_json(
 
     log_verbose(&format!("package_path: {}", package_path.to_string_lossy()));
     Ok(package_path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_version_to_write() {
+        // Test cases for different version specifications
+        let test_cases = vec![
+            ("1.2.3", "", "^1.2.3"),
+            ("1.2.3", "*", "^1.2.3"),
+            ("1.2.3", "latest", "^1.2.3"),
+            ("1.2.3", "^1.2.0", "^1.2.0"),
+            ("1.2.3", "~1.2.0", "~1.2.0"),
+            ("1.2.3", "1.2.3", "1.2.3"),
+        ];
+
+        for (version, spec, expected) in test_cases {
+            let version_to_write = match spec {
+                spec if spec.is_empty() || spec == "*" || spec == "latest" => format!("^{}", version),
+                spec => spec.to_string(),
+            };
+            assert_eq!(version_to_write, expected, "Failed for version: {}, spec: {}", version, spec);
+        }
+    }
 }
