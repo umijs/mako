@@ -94,3 +94,64 @@ pub async fn find_workspace_path(cwd: &PathBuf, workspace: &str) -> Result<PathB
     }
     Err(format!("Workspace '{}' not found", workspace).into())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    async fn setup_test_workspace() -> (TempDir, PathBuf) {
+        let temp_dir = TempDir::new().unwrap();
+        let root_path = temp_dir.path().to_path_buf();
+
+        // Create root package.json
+        let root_pkg = r#"{
+            "name": "root",
+            "workspaces": ["packages/*"]
+        }"#;
+        fs::write(root_path.join("package.json"), root_pkg).unwrap();
+
+        // Create workspace package.json
+        let workspace_dir = root_path.join("packages").join("test-workspace");
+        fs::create_dir_all(&workspace_dir).unwrap();
+        let workspace_pkg = r#"{
+            "name": "test-workspace"
+        }"#;
+        fs::write(workspace_dir.join("package.json"), workspace_pkg).unwrap();
+
+        (temp_dir, root_path)
+    }
+
+    #[tokio::test]
+    async fn test_find_workspace_by_name() {
+        let (temp_dir, root_path) = setup_test_workspace().await;
+        let result = find_workspace_path(&root_path, "test-workspace").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().file_name().unwrap(), "test-workspace");
+    }
+
+    #[tokio::test]
+    async fn test_find_workspace_by_absolute_path() {
+        let (temp_dir, root_path) = setup_test_workspace().await;
+        let workspace_path = root_path.join("packages").join("test-workspace");
+        let result = find_workspace_path(&root_path, &workspace_path.to_string_lossy()).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), workspace_path);
+    }
+
+    #[tokio::test]
+    async fn test_find_workspace_by_relative_path() {
+        let (temp_dir, root_path) = setup_test_workspace().await;
+        let result = find_workspace_path(&root_path, "packages/test-workspace").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().file_name().unwrap(), "test-workspace");
+    }
+
+    #[tokio::test]
+    async fn test_workspace_not_found() {
+        let (temp_dir, root_path) = setup_test_workspace().await;
+        let result = find_workspace_path(&root_path, "non-existent-workspace").await;
+        assert!(result.is_err());
+    }
+}
