@@ -236,10 +236,16 @@ mod tests {
 
         for (version, spec, expected) in test_cases {
             let version_to_write = match spec {
-                spec if spec.is_empty() || spec == "*" || spec == "latest" => format!("^{}", version),
+                spec if spec.is_empty() || spec == "*" || spec == "latest" => {
+                    format!("^{}", version)
+                }
                 spec => spec.to_string(),
             };
-            assert_eq!(version_to_write, expected, "Failed for version: {}, spec: {}", version, spec);
+            assert_eq!(
+                version_to_write, expected,
+                "Failed for version: {}, spec: {}",
+                version, spec
+            );
         }
     }
 }
