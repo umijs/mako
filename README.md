@@ -1,9 +1,10 @@
 # Utoo
 
-Utoo is a modern frontend toolchain that provides powerful package management and build capabilities. It consists of two main components:
+Utoo is a modern frontend toolchain that provides a unified command-line interface for frontend development. It comes with built-in package management capabilities and can be extended with additional tools like the bundler.
 
-- `ut`: Toolchain entry point, responsible for configuration management and command mounting
-- `utoo`: Built-in package manager, implementing dependency resolution and installation
+- `ut`: The core toolchain entry point, providing command mounting and configuration management
+- `utoo`: Built-in package manager for dependency resolution and installation
+- `@utoo/bundler`: Optional high-performance bundler (requires separate installation)
 
 ## 🚀 Installation
 
@@ -15,9 +16,9 @@ Install the core tools (`ut` and `utoo`) globally:
 npm install -g utoo
 ```
 
-### 🛠️ Bundler
+### 🛠️ Bundler (Optional)
 
-Install the bundler globally:
+Install the bundler globally if you need build capabilities:
 
 ```bash
 npm install -g @utoo/bundler
