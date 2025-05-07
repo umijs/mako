@@ -114,7 +114,7 @@ Utoo provides a powerful command mounting system that allows you to extend the t
 
 ### 📜 Package.json Scripts
 
-Any script defined in your `package.json` can be executed directly through Utoo:
+Any script defined in your `package.json` can be executed directly through `ut`:
 
 ```json
 {
@@ -130,14 +130,14 @@ You can run these scripts using:
 
 ```bash
 # Using the run command
-utoo run dev
+ut run dev
 # or shorthand
-utoo r dev
+ut r dev
 
 # Direct command execution
-utoo dev
-utoo build
-utoo test
+ut dev
+ut build
+ut test
 ```
 
 ### 🛠️ Custom Commands
@@ -175,42 +175,42 @@ Utoo supports various command hooks that can be used to extend command behavior:
 #### 📥 Install Dependencies
 ```bash
 # Install project dependencies
-utoo install
+ut install
 # or shorthand
-utoo i
+ut i
 
 # Install specific package
-utoo install <package-name>
+ut install <package-name>
 # Example: install lodash
-utoo install lodash
+ut install lodash
 
 # Install as dev dependency
-utoo install <package-name> --save-dev
+ut install <package-name> --save-dev
 
 # Install as peer dependency
-utoo install <package-name> --save-peer
+ut install <package-name> --save-peer
 
 # Install as optional dependency
-utoo install <package-name> --save-optional
+ut install <package-name> --save-optional
 
 # Global installation
-utoo install <package-name> -g
+ut install <package-name> -g
 ```
 
 #### 🗑️ Uninstall Dependencies
 ```bash
 # Uninstall specific package
-utoo uninstall <package-name>
+ut uninstall <package-name>
 # or shorthand
-utoo un <package-name>
+ut un <package-name>
 ```
 
 #### 🔄 Update Dependencies
 ```bash
 # Update all dependencies
-utoo update
+ut update
 # or shorthand
-utoo u
+ut u
 ```
 
 ### 🏗️ Build Commands
@@ -218,31 +218,31 @@ utoo u
 #### 🔨 Rebuild Dependencies
 ```bash
 # Rebuild all dependencies
-utoo rebuild
+ut rebuild
 # or shorthand
-utoo rb
+ut rb
 ```
 
 #### 🧹 Clean Cache
 ```bash
 # Clean all cache
-utoo clean
+ut clean
 
 # Clean specific package cache
-utoo clean <package-pattern>
+ut clean <package-pattern>
 # Example: clean all react related packages
-utoo clean "react*"
+ut clean "react*"
 ```
 
 #### 📊 Dependency Analysis
 ```bash
 # Analyze project dependencies
-utoo deps
+ut deps
 # or shorthand
-utoo d
+ut d
 
 # Only analyze workspace dependencies
-utoo deps --workspace-only
+ut deps --workspace-only
 ```
 
 ### 🛠️ Bundler
@@ -252,10 +252,10 @@ Utoo includes a high-performance bundler that supports various build scenarios:
 #### 🚀 Basic Usage
 ```bash
 # Start development server
-utoo-bundler dev
+ut dev
 
 # Build production version
-utoo-bundler build
+ut build
 ```
 
 #### 📋 Supported Build Scenarios
@@ -300,9 +300,7 @@ All commands support the following common options:
 - `--legacy-peer-deps`: Use legacy peer dependency handling
 - `--ignore-scripts`: Skip running dependency scripts
 
-## 🚀 Quick Start
-
-### 🔨 Build from Source
+## 🔨 Build from Source
 
 ```bash
 # Build project
@@ -315,7 +313,7 @@ export PATH=$PATH:$(pwd)/target/release
 ### 📦 Install Dependencies
 
 ```bash
-# Install project dependencies using utoo
+# Install project dependencies
 ut
 ```
 
