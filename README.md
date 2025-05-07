@@ -1,8 +1,9 @@
 <div align="center">
-  <img src="https://mdn.alipayobjects.com/huamei_botco4/afts/img/okW_TImDaoEAAAAAAAAAAAAADnNMAQFr/original" alt="Utoo Logo" width="200"/>
+<img src="https://mdn.alipayobjects.com/huamei_botco4/afts/img/okW_TImDaoEAAAAAAAAAAAAADnNMAQFr/original" alt="Utoo Logo" width="200"/>
+<p>🌖 `/juːtuː/` **Unified Toolchain**</p>
 </div>
 
-🌖 Utoo is a modern frontend toolchain that provides a unified command-line interface for frontend development. It comes with built-in package management capabilities and can be extended with additional tools like the bundler.
+utoo is a modern frontend toolchain that provides a unified command-line interface for frontend development. It comes with built-in package management capabilities and can be extended with additional tools like the bundler.
 
 - `ut`: The core toolchain entry point, providing command mounting and configuration management
 - `utoo`: Built-in package manager for dependency resolution and installation
