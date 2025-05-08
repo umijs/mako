@@ -33,14 +33,15 @@ async fn clean_deps(
     for (_, path, _) in workspaces {
         let workspace_node_modules = path.join("node_modules");
         if workspace_node_modules.exists() {
-            node_modules_dirs.push(workspace_node_modules);
+            node_modules_dirs.push(workspace_node_modules.clone());
+            log_verbose(&format!("add workspace node_modules: {:?}", workspace_node_modules.display()));
         }
     }
 
     // cleanup unused packages in all workspace_members
     for node_modules in node_modules_dirs {
         let pattern = node_modules
-            .join("**/package.json")
+            .join("*/package.json")
             .to_string_lossy()
             .to_string();
         for entry in glob(&pattern)? {
