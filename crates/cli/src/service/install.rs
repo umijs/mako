@@ -14,6 +14,138 @@ use crate::util::logger::{log_progress, log_verbose, PROGRESS_BAR};
 
 use super::binary::update_package_binary;
 
+/// Clean up a single node_modules directory
+async fn clean_node_modules_dir(
+    node_modules: &Path,
+    cwd: &Path,
+    valid_packages: &std::collections::HashSet<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // clean up symlinks for npminstall
+    if let Ok(mut entries) = tokio::fs::read_dir(node_modules).await {
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let path = entry.path();
+            if path.is_symlink() {
+                clean_symlink(&path).await?;
+            } else if path.is_dir() {
+                clean_directory(&path).await?;
+            }
+        }
+    }
+
+    clean_unused_packages(node_modules, cwd, valid_packages).await?;
+
+    Ok(())
+}
+
+/// Clean up a symlink
+async fn clean_symlink(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    log_verbose(&format!("Removing symlink: {}", path.display()));
+    if let Err(e) = tokio::fs::remove_file(path).await {
+        log_verbose(&format!(
+            "Failed to remove symlink {}: {}",
+            path.display(),
+            e
+        ));
+    }
+    Ok(())
+}
+
+/// Clean up a directory, handling scoped packages and legacy npm install packages
+async fn clean_directory(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(file_name) = path.file_name() {
+        if let Some(name) = file_name.to_str() {
+            if name.starts_with('@') {
+                clean_scoped_package(path).await?;
+            } else {
+                clean_legacy_npminstall_package(path, name).await?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Clean up a scoped package directory
+async fn clean_scoped_package(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    if let Ok(mut scope_entries) = tokio::fs::read_dir(path).await {
+        while let Ok(Some(scope_entry)) = scope_entries.next_entry().await {
+            let scope_path = scope_entry.path();
+            if scope_path.is_symlink() {
+                log_verbose(&format!(
+                    "Removing scoped symlink: {}",
+                    scope_path.display()
+                ));
+                if let Err(e) = tokio::fs::remove_file(&scope_path).await {
+                    log_verbose(&format!(
+                        "Failed to remove scoped symlink {}: {}",
+                        scope_path.display(),
+                        e
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Clean up a legacy npminstall package
+async fn clean_legacy_npminstall_package(
+    path: &Path,
+    name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let at_count = name.matches('@').count();
+    if name.starts_with('_') && (at_count == 2 || at_count == 4) {
+        log_verbose(&format!("Removing legacy package: {}", path.display()));
+        if let Err(e) = tokio::fs::remove_dir_all(path).await {
+            log_verbose(&format!(
+                "Failed to remove legacy package {}: {}",
+                path.display(),
+                e
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Clean up unused packages in the node_modules directory
+async fn clean_unused_packages(
+    node_modules: &Path,
+    cwd: &Path,
+    valid_packages: &std::collections::HashSet<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let pattern = node_modules
+        .join("**/*/package.json")
+        .to_string_lossy()
+        .to_string();
+    for entry in glob(&pattern)? {
+        if let Ok(path) = entry {
+            let pkg_dir = path.parent().unwrap();
+            let relative_path = pkg_dir.strip_prefix(node_modules)?;
+            let pkg_name = relative_path.to_string_lossy().to_string();
+
+            // ignore package.json in dist directory
+            // exp: node_modules/react/dist/package.json
+            let parts: Vec<&str> = pkg_name.split('/').collect();
+            if parts.len() > 2 || (parts.len() == 2 && !parts[0].starts_with('@')) {
+                continue;
+            }
+
+            let node_modules_prefix = node_modules
+                .strip_prefix(cwd)?
+                .to_string_lossy()
+                .to_string();
+            let full_pkg_name = format!("{}/{}", node_modules_prefix, pkg_name);
+
+            if !valid_packages.contains(&full_pkg_name) {
+                log_verbose(&format!("Cleaning unused package: {}", full_pkg_name));
+                if let Err(e) = tokio::fs::remove_dir_all(pkg_dir).await {
+                    log_verbose(&format!("Failed to remove {}: {}", full_pkg_name, e));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 async fn clean_deps(
     groups: &HashMap<usize, Vec<(String, Package)>>,
     cwd: &Path,
@@ -33,43 +165,17 @@ async fn clean_deps(
     for (_, path, _) in workspaces {
         let workspace_node_modules = path.join("node_modules");
         if workspace_node_modules.exists() {
-            node_modules_dirs.push(workspace_node_modules);
+            node_modules_dirs.push(workspace_node_modules.clone());
+            log_verbose(&format!(
+                "add workspace node_modules: {:?}",
+                workspace_node_modules.display()
+            ));
         }
     }
 
     // cleanup unused packages in all workspace_members
     for node_modules in node_modules_dirs {
-        let pattern = node_modules
-            .join("**/package.json")
-            .to_string_lossy()
-            .to_string();
-        for entry in glob(&pattern)? {
-            if let Ok(path) = entry {
-                let pkg_dir = path.parent().unwrap();
-                let relative_path = pkg_dir.strip_prefix(&node_modules)?;
-                let pkg_name = relative_path.to_string_lossy().to_string();
-
-                // ignore package.json in dist directory
-                // exp: node_modules/react/dist/package.json
-                let parts: Vec<&str> = pkg_name.split('/').collect();
-                if parts.len() > 2 || (parts.len() == 2 && !parts[0].starts_with('@')) {
-                    continue;
-                }
-
-                let node_modules_prefix = node_modules
-                    .strip_prefix(cwd)?
-                    .to_string_lossy()
-                    .to_string();
-                let full_pkg_name = format!("{}/{}", node_modules_prefix, pkg_name);
-
-                if !valid_packages.contains(&full_pkg_name) {
-                    log_verbose(&format!("Cleaning unused package: {}", full_pkg_name));
-                    if let Err(e) = tokio::fs::remove_dir_all(pkg_dir).await {
-                        log_verbose(&format!("Failed to remove {}: {}", full_pkg_name, e));
-                    }
-                }
-            }
-        }
+        clean_node_modules_dir(&node_modules, cwd, &valid_packages).await?;
     }
 
     Ok(())
@@ -215,4 +321,77 @@ pub async fn install_packages(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+    use tokio::fs;
+
+    #[tokio::test]
+    async fn test_clean_symlink() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = TempDir::new()?;
+        let target_dir = temp_dir.path().join("utoo-cli");
+        let symlink_path = temp_dir.path().join("symlink");
+
+        // Create target directory
+        fs::create_dir(&target_dir).await?;
+
+        // Create symlink
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&target_dir, &symlink_path)?;
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_dir(&target_dir, &symlink_path)?;
+
+        // Test cleaning
+        clean_symlink(&symlink_path).await?;
+
+        // Verify symlink is removed
+        assert!(!symlink_path.exists());
+        assert!(target_dir.exists());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_clean_scoped_package() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = TempDir::new()?;
+        let scope_dir = temp_dir.path().join("@utoo");
+        fs::create_dir(&scope_dir).await?;
+
+        // Create a symlink in the scope directory
+        let target_dir = temp_dir.path().join("utoo-cli");
+        let symlink_path = scope_dir.join("cli");
+        fs::create_dir(&target_dir).await?;
+
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&target_dir, &symlink_path)?;
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_dir(&target_dir, &symlink_path)?;
+
+        // Test cleaning
+        clean_scoped_package(&scope_dir).await?;
+
+        // Verify symlink is removed
+        assert!(!symlink_path.exists());
+        assert!(target_dir.exists());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_clean_legacy_npminstall_package() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = TempDir::new()?;
+        let legacy_dir = temp_dir.path().join("_utoo-cli@1.0.0@2.0.0");
+        fs::create_dir(&legacy_dir).await?;
+
+        // Test cleaning
+        clean_legacy_npminstall_package(&legacy_dir, "_utoo-cli@1.0.0@2.0.0").await?;
+
+        // Verify directory is removed
+        assert!(!legacy_dir.exists());
+
+        Ok(())
+    }
 }

@@ -54,7 +54,7 @@ use crate::util::timer::Timer;
 
 pub fn log_verbose(msg: &str) {
     if VERBOSE.load(Ordering::Relaxed) {
-        println!("🔍 {}", msg);
+        println!("🔍 {}\x1b[0m", msg);
     }
     if let Ok(mut logs) = VERBOSE_LOGS.lock() {
         logs.push(format!("[{}][VERBOSE] {}", Timer::format_datetime(), msg));
@@ -69,21 +69,33 @@ pub fn get_verbose_logs() -> Vec<String> {
 }
 
 pub fn log_warning(text: &str) {
-    PROGRESS_BAR.suspend(|| println!("{} {}", " WARNING ".on_yellow(), text));
+    if VERBOSE.load(Ordering::Relaxed) {
+        PROGRESS_BAR.suspend(|| println!("[WARNING] {}", text));
+    } else {
+        PROGRESS_BAR.suspend(|| println!("{} {}\x1b[0m", " WARNING ".on_yellow(), text));
+    }
     if let Ok(mut logs) = VERBOSE_LOGS.lock() {
         logs.push(format!("[{}][WARNING] {}", Timer::format_datetime(), text));
     }
 }
 
 pub fn log_error(text: &str) {
-    PROGRESS_BAR.suspend(|| println!("{} {}", " ERROR ".on_red(), text));
+    if VERBOSE.load(Ordering::Relaxed) {
+        PROGRESS_BAR.suspend(|| println!("[ERROR] {}", text));
+    } else {
+        PROGRESS_BAR.suspend(|| println!("{} {}\x1b[0m", " ERROR ".on_red(), text));
+    }
     if let Ok(mut logs) = VERBOSE_LOGS.lock() {
         logs.push(format!("[{}][ERROR] {}", Timer::format_datetime(), text));
     }
 }
 
 pub fn log_info(text: &str) {
-    PROGRESS_BAR.suspend(|| println!("{} {}", " INFO ".on_cyan(), text));
+    if VERBOSE.load(Ordering::Relaxed) {
+        PROGRESS_BAR.suspend(|| println!("[INFO] {}", text));
+    } else {
+        PROGRESS_BAR.suspend(|| println!("{} {}\x1b[0m", " INFO ".on_cyan(), text));
+    }
     if let Ok(mut logs) = VERBOSE_LOGS.lock() {
         logs.push(format!("[{}][INFO] {}", Timer::format_datetime(), text));
     }
