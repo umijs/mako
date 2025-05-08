@@ -325,7 +325,10 @@ ut
 ```bash
 # Build local development environment
 cd packages/bundler
-ut build
+ut build:local
+
+# Build by native
+cargo run --bin bundler-cli -- --mode build  --project-dir examples/with-antd --root-dir .
 ```
 
 ## 📁 Project Structure

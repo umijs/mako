@@ -1,10 +1,11 @@
 #![feature(future_join)]
 #![feature(min_specialization)]
 
-use bundler_api::project::{PartialProjectOptions, ProjectOptions, WatchOptions};
+use bundler_api::project::{DefineEnv, ProjectOptions, WatchOptions};
 use clap::Parser;
 use dunce::canonicalize;
-use std::{env::current_dir, fs::File, io::Read, path::PathBuf, time::Instant};
+use serde::{Deserialize, Serialize};
+use std::{fs::File, path::PathBuf, time::Instant};
 use turbo_rcstr::RcStr;
 
 use bundler_core::tracing_presets::{
@@ -19,7 +20,7 @@ use turbopack_trace_utils::{
     exit::ExitGuard, filter_layer::FilterLayer, raw_trace::RawTraceLayer, trace_writer::TraceWriter,
 };
 
-use bundler_cli::{main_inner, Command};
+use bundler_cli::{main_inner, Command, Mode};
 
 #[global_allocator]
 static ALLOC: TurboMalloc = TurboMalloc;
@@ -27,19 +28,15 @@ static ALLOC: TurboMalloc = TurboMalloc;
 fn main() {
     let args = Command::parse();
 
-    let dev;
-    {
-        match args {
-            Command::Build => {
-                dev = false;
-            }
-            Command::Dev => {
-                dev = true;
-            }
-        }
-    }
+    let dev = matches!(args.mode, Mode::Dev);
 
-    let project_path: RcStr = current_dir().unwrap().to_str().unwrap().into();
+    let project_path: RcStr = canonicalize(args.project_dir)
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .into();
+
+    let root_dir = args.root_dir.map(RcStr::from);
 
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -108,26 +105,32 @@ fn main() {
             let project_options_path = PathBuf::from(&project_path).join("project_options.json");
             let mut project_options_file = File::open(&project_options_path)
                 .unwrap_or_else(|_| panic!("failed to load {}", project_options_path.display()));
-            let config_path = PathBuf::from(&project_path).join("config.json");
-            let mut config = String::new();
-            if let Ok(mut config_file) = File::open(&config_path) {
-                config_file.read_to_string(&mut config).unwrap();
-            }
 
             let partial_project_options: PartialProjectOptions =
                 serde_json::from_reader(&mut project_options_file).unwrap();
             let project_options = ProjectOptions {
-                root_path: partial_project_options
-                    .root_path
+                root_path: root_dir
                     .as_ref()
-                    .map(|r| canonicalize(r).unwrap().to_str().unwrap().into())
+                    .map(|r| {
+                        canonicalize(PathBuf::from(&r))
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .into()
+                    })
+                    .or(partial_project_options.root_path.as_ref().map(|r| {
+                        canonicalize(PathBuf::from(&project_path).join(r))
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .into()
+                    }))
                     .unwrap_or_else(|| project_path.clone()),
                 project_path,
-                config: if config.is_empty() {
-                    r#"{ "env": { },"experimental": { } }"#.into()
-                } else {
-                    config.into()
-                },
+                config: partial_project_options
+                    .config
+                    .map(|c| c.to_string().into())
+                    .unwrap_or(r#"{ "env": { },"experimental": { } }"#.into()),
                 process_env: partial_project_options.process_env.unwrap_or_default(),
                 process_define_env: partial_project_options
                     .process_define_env
@@ -157,4 +160,31 @@ fn main() {
             result
         })
         .unwrap();
+}
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PartialProjectOptions {
+    /// A root path from which all files must be nested under. Trying to access
+    /// a file outside this root will fail. Think of this as a chroot.
+    pub root_path: Option<RcStr>,
+
+    /// A path inside the root_path which contains the app/pages directories.
+    pub project_path: Option<RcStr>,
+
+    /// The contents of next.config.js, serialized to JSON.
+    pub config: Option<serde_json::Value>,
+
+    /// A map of environment variables to use when compiling code.
+    pub process_env: Option<Vec<(RcStr, RcStr)>>,
+
+    /// A map of environment variables which should get injected at compile
+    /// time.
+    pub process_define_env: Option<DefineEnv>,
+
+    /// Filesystem watcher options.
+    pub watch: Option<WatchOptions>,
+
+    /// The build id.
+    pub build_id: Option<RcStr>,
 }

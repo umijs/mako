@@ -10,15 +10,27 @@ use bundler_api::{
     endpoints::{endpoint_write_to_disk, Endpoint, EndpointOutputPaths},
     project::{ProjectContainer, ProjectOptions},
 };
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use futures_util::{StreamExt, TryStreamExt};
 use turbo_tasks::{get_effects, ReadConsistency, ResolvedVc, TransientInstance, TurboTasks, Vc};
 use turbo_tasks_backend::{NoopBackingStorage, TurboTasksBackend};
 use turbo_tasks_malloc::TurboMalloc;
 
-#[derive(Debug, Parser)]
-#[clap(author, version, about, long_about = None)]
-pub enum Command {
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+pub struct Command {
+    #[arg(short, long)]
+    pub mode: Mode,
+
+    #[arg(short, long)]
+    pub project_dir: String,
+
+    #[arg(short, long)]
+    pub root_dir: Option<String>,
+}
+
+#[derive(Debug, Clone, ValueEnum)]
+pub enum Mode {
     Build,
     Dev,
 }
