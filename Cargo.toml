@@ -51,35 +51,35 @@ qstring = "0.7.2"
 
 # Dependencies from nextjs, should keep the same rev!
 ## Dependencies for common cache and task. See https://github.com/vercel/next.js/blob/canary/turbopack/crates/turbopack/architecture.md
-auto-hash-map = { git = "https://github.com/vercel/next.js.git", package = "auto-hash-map", tag = "v15.3.0" }
-turbo-tasks = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks", tag = "v15.3.0" }
-turbo-tasks-fs = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-fs", tag = "v15.3.0" }
-turbo-tasks-env = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-env", tag = "v15.3.0" }
-turbo-tasks-backend = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-backend", tag = "v15.3.0" }
-turbo-tasks-bytes = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-bytes", tag = "v15.3.0" }
-turbo-tasks-fetch = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-fetch", tag = "v15.3.0" }
-turbo-tasks-hash = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-hash", tag = "v15.3.0" }
-turbo-tasks-build = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-build", tag = "v15.3.0" }
-turbo-rcstr = { git = "https://github.com/vercel/next.js.git", package = "turbo-rcstr", tag = "v15.3.0" }
-turbo-tasks-memory = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-memory", tag = "v15.3.0" }
-turbo-tasks-malloc = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-malloc", tag = "v15.3.0", default-features = false }
-turbopack-trace-utils = { git = "https://github.com/vercel/next.js.git", package = "turbopack-trace-utils", tag = "v15.3.0" }
-turbopack-trace-server = { git = "https://github.com/vercel/next.js.git", package = "turbopack-trace-server", tag = "v15.3.0" }
+auto-hash-map = { git = "https://github.com/vercel/next.js.git", package = "auto-hash-map", tag = "v15.3.2" }
+turbo-tasks = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks", tag = "v15.3.2" }
+turbo-tasks-fs = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-fs", tag = "v15.3.2" }
+turbo-tasks-env = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-env", tag = "v15.3.2" }
+turbo-tasks-backend = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-backend", tag = "v15.3.2" }
+turbo-tasks-bytes = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-bytes", tag = "v15.3.2" }
+turbo-tasks-fetch = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-fetch", tag = "v15.3.2" }
+turbo-tasks-hash = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-hash", tag = "v15.3.2" }
+turbo-tasks-build = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-build", tag = "v15.3.2" }
+turbo-rcstr = { git = "https://github.com/vercel/next.js.git", package = "turbo-rcstr", tag = "v15.3.2" }
+turbo-tasks-memory = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-memory", tag = "v15.3.2" }
+turbo-tasks-malloc = { git = "https://github.com/vercel/next.js.git", package = "turbo-tasks-malloc", tag = "v15.3.2", default-features = false }
+turbopack-trace-utils = { git = "https://github.com/vercel/next.js.git", package = "turbopack-trace-utils", tag = "v15.3.2" }
+turbopack-trace-server = { git = "https://github.com/vercel/next.js.git", package = "turbopack-trace-server", tag = "v15.3.2" }
 
 ### Dependencies for bundler specially.
-turbopack = { git = "https://github.com/vercel/next.js.git", package = "turbopack", tag = "v15.3.0" }
-turbopack-browser = { git = "https://github.com/vercel/next.js.git", package = "turbopack-browser", tag = "v15.3.0" }
-turbopack-core = { git = "https://github.com/vercel/next.js.git", package = "turbopack-core", tag = "v15.3.0" }
-turbopack-resolve = { git = "https://github.com/vercel/next.js.git", package = "turbopack-resolve", tag = "v15.3.0" }
-turbopack-ecmascript = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript", tag = "v15.3.0" }
-turbopack-ecmascript-plugins = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript-plugins", tag = "v15.3.0" }
-turbopack-ecmascript-runtime = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript-runtime", tag = "v15.3.0" }
-turbopack-ecmascript-hmr-protocol = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript-hmr-protocol", tag = "v15.3.0" }
-turbopack-image = { git = "https://github.com/vercel/next.js.git", package = "turbopack-image", tag = "v15.3.0" }
-turbopack-node = { git = "https://github.com/vercel/next.js.git", package = "turbopack-node", tag = "v15.3.0" }
-turbopack-nodejs = { git = "https://github.com/vercel/next.js.git", package = "turbopack-nodejs", tag = "v15.3.0" }
-turbopack-static = { git = "https://github.com/vercel/next.js.git", package = "turbopack-static", tag = "v15.3.0" }
-turbopack-dev-server = { git = "https://github.com/vercel/next.js.git", package = "turbopack-dev-server", tag = "v15.3.0" }
+turbopack = { git = "https://github.com/vercel/next.js.git", package = "turbopack", tag = "v15.3.2" }
+turbopack-browser = { git = "https://github.com/vercel/next.js.git", package = "turbopack-browser", tag = "v15.3.2" }
+turbopack-core = { git = "https://github.com/vercel/next.js.git", package = "turbopack-core", tag = "v15.3.2" }
+turbopack-resolve = { git = "https://github.com/vercel/next.js.git", package = "turbopack-resolve", tag = "v15.3.2" }
+turbopack-ecmascript = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript", tag = "v15.3.2" }
+turbopack-ecmascript-plugins = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript-plugins", tag = "v15.3.2" }
+turbopack-ecmascript-runtime = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript-runtime", tag = "v15.3.2" }
+turbopack-ecmascript-hmr-protocol = { git = "https://github.com/vercel/next.js.git", package = "turbopack-ecmascript-hmr-protocol", tag = "v15.3.2" }
+turbopack-image = { git = "https://github.com/vercel/next.js.git", package = "turbopack-image", tag = "v15.3.2" }
+turbopack-node = { git = "https://github.com/vercel/next.js.git", package = "turbopack-node", tag = "v15.3.2" }
+turbopack-nodejs = { git = "https://github.com/vercel/next.js.git", package = "turbopack-nodejs", tag = "v15.3.2" }
+turbopack-static = { git = "https://github.com/vercel/next.js.git", package = "turbopack-static", tag = "v15.3.2" }
+turbopack-dev-server = { git = "https://github.com/vercel/next.js.git", package = "turbopack-dev-server", tag = "v15.3.2" }
 
 [workspace.lints.clippy]
 too_many_arguments = "allow"
