@@ -1,3 +1,13 @@
+## 0.11.11
+
+`2025-05-09`
+
+- fix: dev支持inline-source-map by [miaodongqing](https://github.com/miaodongqing) in [#1859](https://github.com/umijs/mako/pull/1859)
+- chore: update changelog for v0.11.10 by [xusd320](https://github.com/xusd320)
+- fix: package-lock.json by [xusd320](https://github.com/xusd320)
+- release: [umijs/mako@0.11.10 by @xusd320](https://github.com/umijs/mako@0.11.10 by @xusd320)
+
+
 ## 0.11.10
 
 `2025-04-22`
