@@ -1,3 +1,10 @@
+## 0.11.11
+
+`2025-05-09`
+
+- fix: dev 模式 inline-source-map 无效 by [miaodongqing](https://github.com/miaodongqing) in [#1859](https://github.com/umijs/mako/pull/1859)
+
+
 ## 0.11.10
 
 `2025-04-22`
