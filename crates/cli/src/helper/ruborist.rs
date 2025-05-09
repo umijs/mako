@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use anyhow::{Context, Result};
 use std::sync::Mutex;
 use tokio::sync::Semaphore;
-use anyhow::{Context, Result};
 
 use crate::helper::workspace::find_workspaces;
 use crate::util::config::get_legacy_peer_deps;
@@ -87,8 +87,7 @@ async fn build_deps(root: Arc<Node>) -> Result<()> {
                         }
                         FindResult::Conflict(conflict_node) => {
                             let resolved = resolve(&edge.name, &edge.spec)
-                                .await
-                                .with_context(|| format!("Failed to resolve package {}@{} in conflict case", edge.name, edge.spec))?;
+                                .await?;
                             PROGRESS_BAR.inc(1);
                             log_progress(&format!(
                                 "resolved deps {}@{} => {} (conflict), need to fork, conflict_node: {:?}",
@@ -151,8 +150,7 @@ async fn build_deps(root: Arc<Node>) -> Result<()> {
                         }
                         FindResult::New(install_location) => {
                             let resolved = resolve(&edge.name, &edge.spec)
-                                .await
-                                .with_context(|| format!("Failed to resolve package {}@{} in new case", edge.name, edge.spec))?;
+                                .await?;
                             PROGRESS_BAR.inc(1);
                             log_progress(&format!(
                                 "resolved deps {}@{} => {} (new)",
@@ -294,10 +292,12 @@ impl Ruborist {
     async fn init_tree(&mut self) -> Result<Arc<Node>> {
         // load package.json
         let pkg_path = self.path.join("package.json");
-        let pkg_content = std::fs::read_to_string(&pkg_path)
-            .context(format!("Failed to read package.json at {}", pkg_path.display()))?;
-        let pkg: Value = serde_json::from_str(&pkg_content)
-            .context("Failed to parse package.json")?;
+        let pkg_content = std::fs::read_to_string(&pkg_path).context(format!(
+            "Failed to read package.json at {}",
+            pkg_path.display()
+        ))?;
+        let pkg: Value =
+            serde_json::from_str(&pkg_content).context("Failed to parse package.json")?;
 
         // create root node
         let root = Node::new_root(

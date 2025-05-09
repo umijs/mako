@@ -1,9 +1,9 @@
+use anyhow::{Context, Result};
 use std::env;
 use std::fs;
 use std::sync::Arc;
 use std::thread;
 use tokio::sync::Semaphore;
-use anyhow::{Context, Result};
 
 use crate::cmd::rebuild::rebuild;
 use crate::helper::lock::update_package_json;
@@ -50,9 +50,7 @@ pub async fn update_package(
 
 pub async fn install(ignore_scripts: bool) -> Result<()> {
     // Package lock prerequisite check
-    ensure_package_lock()
-        .await
-        .context("Failed to ensure package lock")?;
+    ensure_package_lock().await?;
     let cwd = env::current_dir().context("Failed to get current directory")?;
 
     // load package-lock.json
@@ -88,9 +86,7 @@ pub async fn install(ignore_scripts: bool) -> Result<()> {
         log_info(
             "Starting to execute dependency hook scripts, you can add --ignore-scripts to skip",
         );
-        rebuild()
-            .await
-            .context("Failed to rebuild dependencies")?;
+        rebuild().await.context("Failed to rebuild dependencies")?;
         log_info("💫 All dependencies installed successfully");
         return Ok(());
     } else {
@@ -109,8 +105,7 @@ pub async fn install_global_package(npm_spec: &str) -> Result<()> {
 
     // Change to package directory
     let original_dir = env::current_dir().context("Failed to get current directory")?;
-    env::set_current_dir(&package_path)
-        .context("Failed to change to package directory")?;
+    env::set_current_dir(&package_path).context("Failed to change to package directory")?;
 
     // Install dependencies
     install(false)
@@ -118,20 +113,23 @@ pub async fn install_global_package(npm_spec: &str) -> Result<()> {
         .context("Failed to install global package dependencies")?;
 
     // Create package info from path
-    let package_info = PackageInfo::from_path(&package_path)
-        .context("Failed to create package info from path")?;
+    let package_info =
+        PackageInfo::from_path(&package_path).context("Failed to create package info from path")?;
 
     // Link binary files to global
     log_verbose("Linking binary files to global...");
     let current_exe = std::env::current_exe().context("Failed to get current executable path")?;
     package_info
-        .link_to_global(&current_exe.parent().context("Failed to get executable parent directory")?)
+        .link_to_global(
+            &current_exe
+                .parent()
+                .context("Failed to get executable parent directory")?,
+        )
         .await
         .context("Failed to link binary files to global")?;
 
     // Change back to original directory
-    env::set_current_dir(original_dir)
-        .context("Failed to change back to original directory")?;
+    env::set_current_dir(original_dir).context("Failed to change back to original directory")?;
 
     Ok(())
 }

@@ -1,6 +1,6 @@
+use anyhow::{Context, Result};
 use std::path::Path;
 use std::process::Command;
-use anyhow::{Result, Context};
 
 pub fn get_node_abi(package_path: &Path) -> Result<String> {
     let output = Command::new("node")

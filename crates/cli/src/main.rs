@@ -133,7 +133,7 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     unsafe {
         libc::umask(0o00);
     }
@@ -164,7 +164,11 @@ async fn main() -> Result<()> {
 
     match cli.command {
         Some(Commands::Clean { pattern }) => {
-            clean(&pattern).await.map_err(|e| anyhow!("Failed to clean: {}", e))?;
+            if let Err(e) = clean(&pattern).await {
+                log_error(&e.to_string());
+                let _ = write_verbose_logs_to_file();
+                process::exit(1);
+            }
         }
         Some(Commands::Install {
             spec,
@@ -177,12 +181,14 @@ async fn main() -> Result<()> {
         }) => {
             if let Some(spec) = spec {
                 if global {
-                    install_global_package(&spec)
-                        .await
-                        .map_err(|e| anyhow!("Failed to install global package: {}", e))?;
+                    if let Err(e) = install_global_package(&spec).await {
+                        log_error(&e.to_string());
+                        let _ = write_verbose_logs_to_file();
+                        process::exit(1);
+                    }
                 } else {
                     let save_type = parse_save_type(save_dev, save_peer, save_optional);
-                    update_package(
+                    if let Err(e) = update_package(
                         PackageAction::Add,
                         &spec,
                         workspace.clone(),
@@ -190,12 +196,18 @@ async fn main() -> Result<()> {
                         save_type,
                     )
                     .await
-                    .map_err(|e| anyhow!("Failed to update package: {}", e))?;
+                    {
+                        log_error(&e.to_string());
+                        let _ = write_verbose_logs_to_file();
+                        process::exit(1);
+                    }
                 }
             } else {
-                install(ignore_scripts)
-                    .await
-                    .map_err(|e| anyhow!("Failed to install dependencies: {}", e))?;
+                if let Err(e) = install(ignore_scripts).await {
+                    log_error(&e.to_string());
+                    let _ = write_verbose_logs_to_file();
+                    process::exit(1);
+                }
             }
         }
         Some(Commands::Uninstall {
@@ -204,7 +216,7 @@ async fn main() -> Result<()> {
             ignore_scripts,
         }) => {
             if let Some(spec) = spec {
-                update_package(
+                if let Err(e) = update_package(
                     PackageAction::Remove,
                     &spec,
                     workspace.clone(),
@@ -212,16 +224,22 @@ async fn main() -> Result<()> {
                     SaveType::Prod,
                 )
                 .await
-                .map_err(|e| anyhow!("Failed to uninstall package: {}", e))?;
+                {
+                    log_error(&e.to_string());
+                    let _ = write_verbose_logs_to_file();
+                    process::exit(1);
+                }
             } else {
-                return Err(anyhow!("Package specification is required for uninstall"));
+                return Err("Package specification is required for uninstall".into());
             }
         }
         Some(Commands::Rebuild) => {
             log_info("Executing dependency hook scripts and creating node_modules/.bin links");
-            rebuild()
-                .await
-                .map_err(|e| anyhow!("Failed to rebuild: {}", e))?;
+            if let Err(e) = rebuild().await {
+                log_error(&e.to_string());
+                let _ = write_verbose_logs_to_file();
+                process::exit(1);
+            }
             log_info("💫 All dependencies rebuild completed");
         }
         Some(Commands::Deps { workspace_only }) => {
@@ -230,17 +248,26 @@ async fn main() -> Result<()> {
             } else {
                 build_deps().await
             };
-            result.map_err(|e| anyhow!("Failed to build dependencies: {}", e))?;
+
+            if let Err(e) = result {
+                log_error(&e.to_string());
+                let _ = write_verbose_logs_to_file();
+                process::exit(1);
+            }
         }
         Some(Commands::Update) => {
-            update(false)
-                .await
-                .map_err(|e| anyhow!("Failed to update: {}", e))?;
+            if let Err(e) = update(false).await {
+                log_error(&e.to_string());
+                let _ = write_verbose_logs_to_file();
+                process::exit(1);
+            }
         }
         Some(Commands::Run { script, workspace }) => {
-            cmd::run::run_script(&script, workspace)
-                .await
-                .map_err(|e| anyhow!("Failed to run script: {}", e))?;
+            if let Err(e) = cmd::run::run_script(&script, workspace).await {
+                log_error(&e.to_string());
+                let _ = write_verbose_logs_to_file();
+                process::exit(1);
+            }
         }
         None => {
             // Check if the first argument is a script name
@@ -250,14 +277,18 @@ async fn main() -> Result<()> {
                     .position(|arg| arg == "--workspace")
                     .and_then(|pos| std::env::args().nth(pos + 1));
 
-                cmd::run::run_script(&script_name, workspace)
-                    .await
-                    .map_err(|e| anyhow!("Failed to run script: {}", e))?;
+                if let Err(e) = cmd::run::run_script(&script_name, workspace).await {
+                    log_error(&e.to_string());
+                    let _ = write_verbose_logs_to_file();
+                    process::exit(1);
+                }
             } else {
                 // Default to install if no arguments
-                install(cli.ignore_scripts)
-                    .await
-                    .map_err(|e| anyhow!("Failed to install dependencies: {}", e))?;
+                if let Err(e) = install(cli.ignore_scripts).await {
+                    log_error(&e.to_string());
+                    let _ = write_verbose_logs_to_file();
+                    process::exit(1);
+                }
             }
         }
     }

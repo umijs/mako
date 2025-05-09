@@ -1,11 +1,11 @@
 use crate::util::config::get_registry;
 use crate::util::logger::{log_error, log_info, log_warning};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
-use anyhow::{Result, Context};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct VersionCache {
@@ -115,22 +115,18 @@ fn get_cache_path() -> PathBuf {
 }
 
 fn read_version_cache() -> Result<VersionCache> {
-    let content = fs::read_to_string(get_cache_path())
-        .context("Failed to read version cache file")?;
-    serde_json::from_str(&content)
-        .context("Failed to parse version cache")
+    let content =
+        fs::read_to_string(get_cache_path()).context("Failed to read version cache file")?;
+    serde_json::from_str(&content).context("Failed to parse version cache")
 }
 
 fn save_version_cache(cache: &VersionCache) -> Result<()> {
     let cache_path = get_cache_path();
     if let Some(parent) = cache_path.parent() {
-        fs::create_dir_all(parent)
-            .context("Failed to create cache directory")?;
+        fs::create_dir_all(parent).context("Failed to create cache directory")?;
     }
-    let content = serde_json::to_string(cache)
-        .context("Failed to serialize version cache")?;
-    fs::write(cache_path, content)
-        .context("Failed to write version cache file")
+    let content = serde_json::to_string(cache).context("Failed to serialize version cache")?;
+    fs::write(cache_path, content).context("Failed to write version cache file")
 }
 
 #[cfg(test)]

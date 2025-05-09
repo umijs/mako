@@ -37,14 +37,11 @@ pub async fn download(url: &str, dest: &Path) -> Result<()> {
     let result = RetryIf::spawn(
         create_retry_strategy(),
         || async {
-            let response = reqwest::get(url)
-                .await
-                .context("Network error")?;
+            let response = reqwest::get(url).await.context("Network error")?;
 
             match response.status() {
                 StatusCode::OK => {
-                    let bytes = response.bytes().await
-                        .context("Failed to read response")?;
+                    let bytes = response.bytes().await.context("Failed to read response")?;
                     if let Err(e) = try_unpack(&bytes, dest).await {
                         log_verbose(&format!("Unpacking failed {}: {}", dest.display(), e));
                         return Err(anyhow::anyhow!("Failed to unpack: {}", e));

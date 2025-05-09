@@ -1,7 +1,7 @@
-use anyhow::{Context, Result};
 use crate::util::config::get_registry;
 use crate::util::logger::log_info;
 use crate::util::semver::matches;
+use anyhow::{Context, Result};
 use regex::Regex;
 use serde_json::{Map, Value};
 use std::path::Path;
@@ -20,10 +20,7 @@ async fn load_config() -> Result<&'static Value> {
                 .context("Failed to fetch binary mirror config")?;
 
             if !response.status().is_success() {
-                return Err(anyhow::anyhow!(
-                    "HTTP status: {}",
-                    response.status()
-                ));
+                return Err(anyhow::anyhow!("HTTP status: {}", response.status()));
             }
 
             response
@@ -108,8 +105,8 @@ fn get_replace_host_files(binary_mirror: &Map<String, Value>) -> Vec<&str> {
 fn replace_with_regex(content: &str, replace_map: &Value) -> Result<String> {
     let mut result = content.to_string();
     for (pattern, replacement) in replace_map.as_object().unwrap() {
-        let re = Regex::new(pattern)
-            .with_context(|| format!("Invalid regex pattern {}", pattern))?;
+        let re =
+            Regex::new(pattern).with_context(|| format!("Invalid regex pattern {}", pattern))?;
         result = re
             .replace_all(&result, replacement.as_str().unwrap())
             .to_string();
@@ -117,10 +114,7 @@ fn replace_with_regex(content: &str, replace_map: &Value) -> Result<String> {
     Ok(result)
 }
 
-fn replace_with_map(
-    content: &str,
-    binary_mirror: &Map<String, Value>,
-) -> Result<String> {
+fn replace_with_map(content: &str, binary_mirror: &Map<String, Value>) -> Result<String> {
     let replace_map = if let Some(map) = binary_mirror.get("replaceHostMap") {
         map.as_object().unwrap().clone()
     } else {
@@ -147,10 +141,7 @@ fn replace_with_map(
     Ok(result)
 }
 
-async fn handle_replace_host(
-    dir: &Path,
-    binary_mirror: &Map<String, Value>,
-) -> Result<()> {
+async fn handle_replace_host(dir: &Path, binary_mirror: &Map<String, Value>) -> Result<()> {
     if !should_handle_replace_host(binary_mirror) {
         return Ok(());
     }
@@ -241,14 +232,14 @@ async fn handle_cypress(
 pub async fn update_package_binary(dir: &Path, name: &str) -> Result<()> {
     let config = load_config().await?;
 
-    let mirrors = config["mirrors"]["china"].as_object().ok_or_else(|| {
-        anyhow::anyhow!("Invalid binary mirror config format")
-    })?;
+    let mirrors = config["mirrors"]["china"]
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("Invalid binary mirror config format"))?;
 
     if let Some(binary_mirror) = mirrors.get(name) {
-        let binary_mirror = binary_mirror.as_object().ok_or_else(|| {
-            anyhow::anyhow!("Invalid binary mirror format")
-        })?;
+        let binary_mirror = binary_mirror
+            .as_object()
+            .ok_or_else(|| anyhow::anyhow!("Invalid binary mirror format"))?;
 
         // Read package.json
         let pkg_path = dir.join("package.json");
@@ -256,8 +247,8 @@ pub async fn update_package_binary(dir: &Path, name: &str) -> Result<()> {
             .await
             .context("Failed to read package.json")?;
 
-        let mut pkg: Value = serde_json::from_str(&content)
-            .context("Failed to parse package.json")?;
+        let mut pkg: Value =
+            serde_json::from_str(&content).context("Failed to parse package.json")?;
 
         // has install script and not replaceHostFiles
         let should_update_binary = if let Some(scripts) = pkg["scripts"].as_object() {

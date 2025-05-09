@@ -1,7 +1,7 @@
+use anyhow::{Context, Result};
 use glob::glob;
 use serde_json::Value;
 use std::path::PathBuf;
-use anyhow::{Context, Result};
 
 use crate::util::logger::log_verbose;
 
@@ -10,10 +10,11 @@ pub async fn find_workspaces(root_path: &PathBuf) -> Result<Vec<(String, PathBuf
 
     // load package.json
     let pkg_path = root_path.join("package.json");
-    let pkg_content = std::fs::read_to_string(&pkg_path)
-        .context(format!("Failed to read package.json at {}", pkg_path.display()))?;
-    let pkg: Value = serde_json::from_str(&pkg_content)
-        .context("Failed to parse package.json")?;
+    let pkg_content = std::fs::read_to_string(&pkg_path).context(format!(
+        "Failed to read package.json at {}",
+        pkg_path.display()
+    ))?;
+    let pkg: Value = serde_json::from_str(&pkg_content).context("Failed to parse package.json")?;
 
     // load workspaces config
     if let Some(workspaces_config) = pkg.get("workspaces") {
@@ -24,33 +25,44 @@ pub async fn find_workspaces(root_path: &PathBuf) -> Result<Vec<(String, PathBuf
                         // prepare glob pattern
                         let package_json_path = root_path.join(pattern_str).join("package.json");
                         let glob_pattern = package_json_path.to_str().ok_or_else(|| {
-                            anyhow::anyhow!("Invalid path encoding: {}", package_json_path.display())
+                            anyhow::anyhow!(
+                                "Invalid path encoding: {}",
+                                package_json_path.display()
+                            )
                         })?;
 
                         // glob match
-                        for entry in glob(glob_pattern).context(format!(
-                            "Invalid glob pattern: {}",
-                            glob_pattern
-                        ))? {
+                        for entry in glob(glob_pattern)
+                            .context(format!("Invalid glob pattern: {}", glob_pattern))?
+                        {
                             match entry {
                                 Ok(path) => {
                                     // load package.json in workspace
                                     let workspace_content = std::fs::read_to_string(&path)
-                                        .context(format!("Failed to read workspace package.json at {}", path.display()))?;
-                                    let workspace_pkg: Value = serde_json::from_str(&workspace_content)
-                                        .context(format!("Failed to parse workspace package.json at {}", path.display()))?;
+                                        .context(format!(
+                                            "Failed to read workspace package.json at {}",
+                                            path.display()
+                                        ))?;
+                                    let workspace_pkg: Value = serde_json::from_str(
+                                        &workspace_content,
+                                    )
+                                    .context(format!(
+                                        "Failed to parse workspace package.json at {}",
+                                        path.display()
+                                    ))?;
 
                                     // load workspace name
-                                    let name = workspace_pkg["name"]
-                                        .as_str()
-                                        .unwrap_or("")
-                                        .to_string();
+                                    let name =
+                                        workspace_pkg["name"].as_str().unwrap_or("").to_string();
 
                                     // get workspace path
                                     let workspace_path = path
                                         .parent()
                                         .ok_or_else(|| {
-                                            anyhow::anyhow!("Invalid workspace path: {}", path.display())
+                                            anyhow::anyhow!(
+                                                "Invalid workspace path: {}",
+                                                path.display()
+                                            )
                                         })?
                                         .to_path_buf();
 
@@ -72,10 +84,7 @@ pub async fn find_workspaces(root_path: &PathBuf) -> Result<Vec<(String, PathBuf
     Ok(workspaces)
 }
 
-pub async fn find_workspace_path(
-    cwd: &PathBuf,
-    workspace: &str,
-) -> Result<PathBuf> {
+pub async fn find_workspace_path(cwd: &PathBuf, workspace: &str) -> Result<PathBuf> {
     let workspaces = find_workspaces(cwd)
         .await
         .context("Failed to find workspaces")?;

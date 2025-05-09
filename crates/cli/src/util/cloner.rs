@@ -27,8 +27,7 @@ mod linux_clone {
         if ret == 0 {
             Ok(())
         } else {
-            Err(std::io::Error::last_os_error())
-                .context("Failed to clone file")
+            Err(std::io::Error::last_os_error()).context("Failed to clone file")
         }
     }
 
@@ -71,10 +70,7 @@ pub async fn validate_directory(src: &Path, dst: &Path) -> Result<bool> {
         size: u64,
     }
 
-    async fn collect_entries(
-        dir: &Path,
-        ignore: Option<&[&str]>,
-    ) -> Result<Vec<EntryInfo>> {
+    async fn collect_entries(dir: &Path, ignore: Option<&[&str]>) -> Result<Vec<EntryInfo>> {
         let mut entries = Vec::new();
         let mut read_dir = fs::read_dir(dir).await?;
 
@@ -167,9 +163,9 @@ pub async fn find_real_src<P: AsRef<Path>>(src: P) -> Option<PathBuf> {
 
 pub async fn clone(src: &Path, dst: &Path, find_real: bool) -> Result<()> {
     let real_src = if find_real {
-        find_real_src(src).await.ok_or_else(|| {
-            anyhow::anyhow!("Cannot find valid source directory in {:?}", src)
-        })?
+        find_real_src(src)
+            .await
+            .ok_or_else(|| anyhow::anyhow!("Cannot find valid source directory in {:?}", src))?
     } else {
         src.to_path_buf()
     };
@@ -220,7 +216,10 @@ pub async fn clone(src: &Path, dst: &Path, find_real: bool) -> Result<()> {
                             e
                         ));
                     });
-                    Err(anyhow::anyhow!("Failed to clone file: {}", std::io::Error::last_os_error()))
+                    Err(anyhow::anyhow!(
+                        "Failed to clone file: {}",
+                        std::io::Error::last_os_error()
+                    ))
                 }
             }
         })
@@ -277,10 +276,7 @@ mod tests {
         Ok(path)
     }
 
-    async fn create_test_structure(
-        dir: &Path,
-        structure: &[(&str, Option<&[u8]>)],
-    ) -> Result<()> {
+    async fn create_test_structure(dir: &Path, structure: &[(&str, Option<&[u8]>)]) -> Result<()> {
         for (path, content) in structure {
             let full_path = dir.join(path);
             if let Some(content) = content {

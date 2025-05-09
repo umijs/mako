@@ -1,11 +1,11 @@
 use crate::model::package::PackageInfo;
 use crate::util::logger::log_verbose;
+use anyhow::{Context, Result};
 use std::env;
 use std::os::unix::fs::{symlink as unix_symlink, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tokio::fs;
-use anyhow::{Context, Result};
 
 use super::binary::get_envs;
 
@@ -159,11 +159,7 @@ impl ScriptService {
         Ok(())
     }
 
-    fn create_symlink(
-        package: &PackageInfo,
-        bin_path: &Path,
-        relative_path: &str,
-    ) -> Result<()> {
+    fn create_symlink(package: &PackageInfo, bin_path: &Path, relative_path: &str) -> Result<()> {
         let node_modules_count = bin_path
             .components()
             .filter(|c| c.as_os_str() == "node_modules")

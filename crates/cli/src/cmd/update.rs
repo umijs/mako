@@ -16,9 +16,7 @@ pub async fn update(ignore_scripts: bool) -> Result<()> {
     // clean_node_modules().await?;
 
     // Install dependencies
-    install(ignore_scripts)
-        .await
-        .context("Failed to install dependencies")?;
+    install(ignore_scripts).await?;
 
     Ok(())
 }

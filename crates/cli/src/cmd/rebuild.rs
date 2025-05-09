@@ -2,8 +2,7 @@ use crate::service::package::PackageService;
 use anyhow::{Context, Result};
 
 pub async fn rebuild() -> Result<()> {
-    let packages = PackageService::collect_packages()
-        .context("Failed to collect packages")?;
+    let packages = PackageService::collect_packages().context("Failed to collect packages")?;
 
     let execution_queues = PackageService::create_execution_queues(packages)
         .context("Failed to create execution queues")?;

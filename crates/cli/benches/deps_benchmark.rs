@@ -1,7 +1,7 @@
+use anyhow::{Context, Result};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::process::Command;
 use std::{env, fs, path::PathBuf};
-use anyhow::{Context, Result};
 
 fn get_root_dir() -> PathBuf {
     env::current_dir().unwrap().join("../../")

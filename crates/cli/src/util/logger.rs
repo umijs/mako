@@ -1,8 +1,8 @@
+use anyhow::{Context, Result};
 use std::env;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use anyhow::{Context, Result};
 
 use indicatif::{ProgressBar, ProgressStyle};
 use once_cell::sync::Lazy;
@@ -26,6 +26,12 @@ pub fn finish_progress_bar(msg: &str) {
         ProgressStyle::with_template("✓ +{pos:.green} ~{len:.magenta} {wide_msg}").unwrap(),
     );
     PROGRESS_BAR.finish_with_message(msg.to_string());
+    PROGRESS_BAR.set_draw_target(indicatif::ProgressDrawTarget::hidden());
+}
+
+pub fn abort_progress_bar() {
+    PROGRESS_BAR.set_style(ProgressStyle::with_template("").unwrap());
+    PROGRESS_BAR.finish_with_message("aborted".to_string());
     PROGRESS_BAR.set_draw_target(indicatif::ProgressDrawTarget::hidden());
 }
 
@@ -108,7 +114,7 @@ pub fn log_progress(text: &str) {
 }
 
 pub fn write_verbose_logs_to_file() -> Result<String> {
-    self::finish_progress_bar("done");
+    abort_progress_bar();
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()

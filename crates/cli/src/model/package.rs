@@ -1,8 +1,8 @@
+use anyhow::{Context, Result};
 use serde_json::Value;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use anyhow::{Context, Result};
 
 use crate::{
     service::script::ScriptService,
@@ -82,10 +82,9 @@ impl PackageInfo {
     pub fn from_path(path: &Path) -> Result<Self> {
         // Read package.json
         let package_json_path = path.join("package.json");
-        let content = fs::read_to_string(&package_json_path)
-            .context("Failed to read package.json")?;
-        let data: Value = serde_json::from_str(&content)
-            .context("Failed to parse package.json")?;
+        let content =
+            fs::read_to_string(&package_json_path).context("Failed to read package.json")?;
+        let data: Value = serde_json::from_str(&content).context("Failed to parse package.json")?;
 
         // Parse package name
         let name = data["name"]
@@ -148,10 +147,7 @@ impl PackageInfo {
         })
     }
 
-    pub async fn link_to_global(
-        &self,
-        global_bin_dir: &Path,
-    ) -> Result<()> {
+    pub async fn link_to_global(&self, global_bin_dir: &Path) -> Result<()> {
         // Ensure bin directory exists
         tokio::fs::create_dir_all(&global_bin_dir)
             .await
@@ -173,8 +169,7 @@ impl PackageInfo {
                 .map_err(|e| anyhow::anyhow!("Failed to ensure binary is executable: {}", e))?;
 
             // Create symbolic link
-            link(&target_path, &link_path)
-                .context("Failed to create symbolic link")?;
+            link(&target_path, &link_path).context("Failed to create symbolic link")?;
         }
 
         // Update PATH environment variable for current process

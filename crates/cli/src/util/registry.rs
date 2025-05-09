@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use once_cell::sync::Lazy;
 use reqwest;
 use serde::{Deserialize, Serialize};
@@ -6,7 +7,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
-use anyhow::{Context, Result};
 
 use super::config::get_registry;
 use super::logger::log_verbose;
@@ -121,11 +121,7 @@ impl Registry {
         format!("{}/{}/{}", self.base_url, name, spec)
     }
 
-    pub async fn get_package_manifest(
-        &self,
-        name: &str,
-        spec: &str,
-    ) -> Result<(String, Value)> {
+    pub async fn get_package_manifest(&self, name: &str, spec: &str) -> Result<(String, Value)> {
         // First check cache for version
         if let Some(version) = PACKAGE_CACHE.get_version(name, spec).await {
             if let Some(manifest) = PACKAGE_CACHE.get_manifest(name, spec, &version).await {
@@ -228,8 +224,8 @@ pub async fn resolve(name: &str, spec: &str) -> Result<ResolvedPackage> {
 // Public cache operations
 pub async fn store_cache(path: &str) -> Result<()> {
     let cache_data = PACKAGE_CACHE.export_data().await;
-    let cache_str = serde_json::to_string_pretty(&cache_data)
-        .context("Failed to serialize cache data")?;
+    let cache_str =
+        serde_json::to_string_pretty(&cache_data).context("Failed to serialize cache data")?;
 
     if let Some(parent) = std::path::Path::new(path).parent() {
         tokio::fs::create_dir_all(parent)
@@ -256,8 +252,8 @@ pub async fn load_cache(path: &str) -> Result<()> {
     let cache_str = tokio::fs::read_to_string(path)
         .await
         .context("Failed to read cache file")?;
-    let cache_data: CacheData = serde_json::from_str(&cache_str)
-        .context("Failed to parse cache data")?;
+    let cache_data: CacheData =
+        serde_json::from_str(&cache_str).context("Failed to parse cache data")?;
 
     PACKAGE_CACHE.import_data(cache_data).await;
     log_verbose(&format!("Cache loaded from {}", path));

@@ -102,8 +102,7 @@ pub async fn build_workspace() -> Result<()> {
 
         fs::write(&temp_path, serde_json::to_string_pretty(&workspace_file)?)
             .context("Failed to write temporary workspace.json")?;
-        fs::rename(temp_path, target_path)
-            .context("Failed to rename temporary workspace.json")?;
+        fs::rename(temp_path, target_path).context("Failed to rename temporary workspace.json")?;
     }
 
     Ok(())
@@ -113,10 +112,9 @@ fn validate_deps() -> Result<()> {
     let path = PathBuf::from(".");
     let lock_path = path.join("package-lock.json");
 
-    let lock_content = fs::read_to_string(lock_path)
-        .context("Failed to read package-lock.json")?;
-    let lock_file: serde_json::Value = serde_json::from_str(&lock_content)
-        .context("Failed to parse package-lock.json")?;
+    let lock_content = fs::read_to_string(lock_path).context("Failed to read package-lock.json")?;
+    let lock_file: serde_json::Value =
+        serde_json::from_str(&lock_content).context("Failed to parse package-lock.json")?;
 
     if let Some(packages) = lock_file.get("packages").and_then(|p| p.as_object()) {
         for (pkg_path, pkg_info) in packages {

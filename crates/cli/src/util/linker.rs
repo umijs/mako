@@ -1,14 +1,17 @@
+use anyhow::{bail, Context, Result};
 use std::os::unix::fs::symlink;
 use std::path::Path;
 use std::{env, fs};
-use anyhow::{Context, Result, bail};
 
 pub fn link(src: &Path, dst: &Path) -> Result<()> {
     // get current working directory as prefix
     let cwd = env::current_dir().context("Failed to get current working directory")?;
     // ensure the destination directory exists
     if let Some(parent) = dst.parent() {
-        fs::create_dir_all(parent).context(format!("Failed to create parent directory: {}", parent.display()))?;
+        fs::create_dir_all(parent).context(format!(
+            "Failed to create parent directory: {}",
+            parent.display()
+        ))?;
     }
 
     let abs_src = cwd.join(src);
@@ -21,15 +24,17 @@ pub fn link(src: &Path, dst: &Path) -> Result<()> {
 
     // Check if destination exists or is a broken symlink
     if let Ok(_) = fs::symlink_metadata(&abs_dst) {
-        fs::remove_file(&abs_dst).context(format!("Failed to remove existing file: {}", abs_dst.display()))?;
+        fs::remove_file(&abs_dst).context(format!(
+            "Failed to remove existing file: {}",
+            abs_dst.display()
+        ))?;
     }
 
-    symlink(&abs_src, &abs_dst)
-        .context(format!(
-            "Failed to create symbolic link from {} to {}",
-            abs_src.display(),
-            abs_dst.display()
-        ))
+    symlink(&abs_src, &abs_dst).context(format!(
+        "Failed to create symbolic link from {} to {}",
+        abs_src.display(),
+        abs_dst.display()
+    ))
 }
 
 #[cfg(test)]

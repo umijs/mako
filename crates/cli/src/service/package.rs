@@ -3,12 +3,9 @@ use crate::helper::env::get_node_abi;
 use crate::helper::package::parse_package_name;
 use crate::model::package::{PackageInfo, Scripts};
 use crate::util::cache::get_cache_dir;
-use crate::util::logger::{
-    log_info, log_verbose,
-};
-use std::path::{Path, PathBuf};
+use crate::util::logger::{log_info, log_verbose};
 use anyhow::{Context, Result};
-
+use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use std::fs;
@@ -19,11 +16,9 @@ pub struct PackageService;
 
 impl PackageService {
     pub async fn process_project_hooks() -> Result<()> {
-        let content = fs::read_to_string("package.json")
-            .context("Failed to read package.json")?;
+        let content = fs::read_to_string("package.json").context("Failed to read package.json")?;
 
-        let data: Value = serde_json::from_str(&content)
-            .context("Failed to parse package.json")?;
+        let data: Value = serde_json::from_str(&content).context("Failed to parse package.json")?;
 
         let binding = serde_json::Map::new();
         let scripts = data
@@ -97,7 +92,9 @@ impl PackageService {
                 log_info(&format!("Executing project hook: {}", hook));
                 ScriptService::execute_script(&package_info, hook, true)
                     .await
-                    .map_err(|e| anyhow::anyhow!("Failed to execute project hook {}: {}", hook, e))?;
+                    .map_err(|e| {
+                        anyhow::anyhow!("Failed to execute project hook {}: {}", hook, e)
+                    })?;
             }
         }
 
@@ -106,11 +103,11 @@ impl PackageService {
 
     pub fn collect_packages() -> Result<Vec<PackageInfo>> {
         log_verbose("Collecting packages...");
-        let lock_file = fs::read_to_string("package-lock.json")
-            .context("Failed to load package-lock.json")?;
+        let lock_file =
+            fs::read_to_string("package-lock.json").context("Failed to load package-lock.json")?;
 
-        let lock_data: Value = serde_json::from_str(&lock_file)
-            .context("Failed to parse package-lock.json")?;
+        let lock_data: Value =
+            serde_json::from_str(&lock_file).context("Failed to parse package-lock.json")?;
 
         let mut packages = Vec::new();
         if let Some(deps) = lock_data.get("packages").and_then(|v| v.as_object()) {
@@ -126,9 +123,7 @@ impl PackageService {
         Ok(packages)
     }
 
-    pub fn create_execution_queues(
-        packages: Vec<PackageInfo>,
-    ) -> Result<Vec<Vec<PackageInfo>>> {
+    pub fn create_execution_queues(packages: Vec<PackageInfo>) -> Result<Vec<Vec<PackageInfo>>> {
         log_verbose("Prepareing execute queues...");
         let mut queues = vec![Vec::new(); 5];
 
@@ -305,10 +300,9 @@ impl PackageService {
 
     fn read_package_scripts(package_path: &Path) -> Result<Scripts> {
         let package_json_path = package_path.join("package.json");
-        let content = fs::read_to_string(package_json_path)
-            .context("Failed to read package.json")?;
-        let data: Value = serde_json::from_str(&content)
-            .context("Failed to parse package.json")?;
+        let content =
+            fs::read_to_string(package_json_path).context("Failed to read package.json")?;
+        let data: Value = serde_json::from_str(&content).context("Failed to parse package.json")?;
 
         let default_scripts = serde_json::Map::new();
         let scripts = data
@@ -358,30 +352,46 @@ impl PackageService {
                 ));
                 ScriptService::execute_script(package, "preinstall", false)
                     .await
-                    .map_err(|e| anyhow::anyhow!("Failed to execute preinstall script for {} (command: {}): {}", package.fullname, script, e))?;
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Failed to execute preinstall script for {} (command: {}): {}",
+                            package.fullname,
+                            script,
+                            e
+                        )
+                    })?;
             }
         }
 
         // Link binary files
         for package in &queues[2] {
             if !package.bin_files.is_empty() {
-                log_info(&format!(
-                    "Linking binary files for {}",
-                    package.fullname
-                ));
+                log_info(&format!("Linking binary files for {}", package.fullname));
                 for (bin_name, relative_path) in &package.bin_files {
                     let target_path = package.path.join(relative_path);
-                    let bin_dir = package
-                        .get_bin_dir()
-                        .context(format!("Failed to get bin directory for {}", package.fullname))?;
+                    let bin_dir = package.get_bin_dir().context(format!(
+                        "Failed to get bin directory for {}",
+                        package.fullname
+                    ))?;
                     let link_path = bin_dir.join(bin_name);
 
                     ScriptService::ensure_executable(&target_path)
                         .await
-                        .map_err(|e| anyhow::anyhow!("Failed to ensure binary is executable for {} (path: {}): {}", package.fullname, target_path.display(), e))?;
+                        .map_err(|e| {
+                            anyhow::anyhow!(
+                                "Failed to ensure binary is executable for {} (path: {}): {}",
+                                package.fullname,
+                                target_path.display(),
+                                e
+                            )
+                        })?;
 
-                    crate::util::linker::link(&target_path, &link_path)
-                        .context(format!("Failed to create symbolic link for {} (from: {} to: {})", package.fullname, target_path.display(), link_path.display()))?;
+                    crate::util::linker::link(&target_path, &link_path).context(format!(
+                        "Failed to create symbolic link for {} (from: {} to: {})",
+                        package.fullname,
+                        target_path.display(),
+                        link_path.display()
+                    ))?;
                 }
                 log_verbose(&format!(
                     "Linking binary files for {} successfully",
@@ -399,7 +409,14 @@ impl PackageService {
                 ));
                 ScriptService::execute_script(package, "install", false)
                     .await
-                    .map_err(|e| anyhow::anyhow!("Failed to execute install script for {} (command: {}): {}", package.fullname, script, e))?;
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Failed to execute install script for {} (command: {}): {}",
+                            package.fullname,
+                            script,
+                            e
+                        )
+                    })?;
             }
         }
 
@@ -412,7 +429,14 @@ impl PackageService {
                 ));
                 ScriptService::execute_script(package, "postinstall", false)
                     .await
-                    .map_err(|e| anyhow::anyhow!("Failed to execute postinstall script for {} (command: {}): {}", package.fullname, script, e))?;
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Failed to execute postinstall script for {} (command: {}): {}",
+                            package.fullname,
+                            script,
+                            e
+                        )
+                    })?;
             }
         }
 
