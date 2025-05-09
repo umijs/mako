@@ -69,10 +69,17 @@ impl ScriptService {
             }
 
             if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let exit_code = output.status.code().unwrap_or(-1);
                 anyhow::bail!(
-                    "Script execution failed: {}\n{}",
-                    String::from_utf8_lossy(&output.stderr),
-                    String::from_utf8_lossy(&output.stdout)
+                    "Script execution failed for {} in {}:\nCommand: {}\nExit code: {}\nStderr: {}\nStdout: {}",
+                    script_type,
+                    package.path.display(),
+                    script,
+                    exit_code,
+                    stderr,
+                    stdout
                 );
             }
         }

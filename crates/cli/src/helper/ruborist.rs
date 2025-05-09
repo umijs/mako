@@ -88,7 +88,7 @@ async fn build_deps(root: Arc<Node>) -> Result<()> {
                         FindResult::Conflict(conflict_node) => {
                             let resolved = resolve(&edge.name, &edge.spec)
                                 .await
-                                .context(format!("Failed to resolve package {}@{}", edge.name, edge.spec))?;
+                                .with_context(|| format!("Failed to resolve package {}@{} in conflict case", edge.name, edge.spec))?;
                             PROGRESS_BAR.inc(1);
                             log_progress(&format!(
                                 "resolved deps {}@{} => {} (conflict), need to fork, conflict_node: {:?}",
@@ -101,7 +101,7 @@ async fn build_deps(root: Arc<Node>) -> Result<()> {
                             // process conflict node
                             let install_parent = conflict_node;
                             let new_node = place_deps(edge.name.clone(), resolved, &install_parent)
-                                .context(format!("Failed to place dependencies for {}@{}", edge.name, edge.spec))?;
+                                .with_context(|| format!("Failed to place dependencies for {}@{} in conflict case", edge.name, edge.spec))?;
 
                             {
                                 let mut parent = new_node.parent.write().unwrap();
@@ -152,7 +152,7 @@ async fn build_deps(root: Arc<Node>) -> Result<()> {
                         FindResult::New(install_location) => {
                             let resolved = resolve(&edge.name, &edge.spec)
                                 .await
-                                .context(format!("Failed to resolve package {}@{}", edge.name, edge.spec))?;
+                                .with_context(|| format!("Failed to resolve package {}@{} in new case", edge.name, edge.spec))?;
                             PROGRESS_BAR.inc(1);
                             log_progress(&format!(
                                 "resolved deps {}@{} => {} (new)",
@@ -163,7 +163,7 @@ async fn build_deps(root: Arc<Node>) -> Result<()> {
                                 edge.name, &edge.spec, resolved.version
                             ));
                             let new_node = place_deps(edge.name.clone(), resolved, &install_location)
-                                .context(format!("Failed to place dependencies for {}@{}", edge.name, edge.spec))?;
+                                .with_context(|| format!("Failed to place dependencies for {}@{} in new case", edge.name, edge.spec))?;
                             let root_node = install_location.clone();
 
                             {
@@ -204,7 +204,13 @@ async fn build_deps(root: Arc<Node>) -> Result<()> {
         // waiting for all tasks in this level to finish
         futures::future::try_join_all(level_tasks)
             .await
-            .context("Failed to process dependency level")?;
+            .map_err(|e| {
+                let mut err_msg = String::new();
+                for err in e.chain() {
+                    err_msg.push_str(&format!("  {}\n", err));
+                }
+                anyhow::anyhow!(err_msg)
+            })?;
 
         // continue to next level
         *current_level.lock().unwrap() = next_level.lock().unwrap().clone();

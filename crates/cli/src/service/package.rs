@@ -358,7 +358,7 @@ impl PackageService {
                 ));
                 ScriptService::execute_script(package, "preinstall", false)
                     .await
-                    .map_err(|e| anyhow::anyhow!("Failed to execute preinstall script for {}: {}", package.fullname, e))?;
+                    .map_err(|e| anyhow::anyhow!("Failed to execute preinstall script for {} (command: {}): {}", package.fullname, script, e))?;
             }
         }
 
@@ -378,11 +378,15 @@ impl PackageService {
 
                     ScriptService::ensure_executable(&target_path)
                         .await
-                        .map_err(|e| anyhow::anyhow!("Failed to ensure binary is executable for {}: {}", package.fullname, e))?;
+                        .map_err(|e| anyhow::anyhow!("Failed to ensure binary is executable for {} (path: {}): {}", package.fullname, target_path.display(), e))?;
 
                     crate::util::linker::link(&target_path, &link_path)
-                        .context(format!("Failed to create symbolic link for {}", package.fullname))?;
+                        .context(format!("Failed to create symbolic link for {} (from: {} to: {})", package.fullname, target_path.display(), link_path.display()))?;
                 }
+                log_verbose(&format!(
+                    "Linking binary files for {} successfully",
+                    package.fullname
+                ));
             }
         }
 
@@ -395,7 +399,7 @@ impl PackageService {
                 ));
                 ScriptService::execute_script(package, "install", false)
                     .await
-                    .map_err(|e| anyhow::anyhow!("Failed to execute install script for {}: {}", package.fullname, e))?;
+                    .map_err(|e| anyhow::anyhow!("Failed to execute install script for {} (command: {}): {}", package.fullname, script, e))?;
             }
         }
 
@@ -408,7 +412,7 @@ impl PackageService {
                 ));
                 ScriptService::execute_script(package, "postinstall", false)
                     .await
-                    .map_err(|e| anyhow::anyhow!("Failed to execute postinstall script for {}: {}", package.fullname, e))?;
+                    .map_err(|e| anyhow::anyhow!("Failed to execute postinstall script for {} (command: {}): {}", package.fullname, script, e))?;
             }
         }
 
