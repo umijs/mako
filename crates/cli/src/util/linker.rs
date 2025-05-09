@@ -1,23 +1,24 @@
 use std::os::unix::fs::symlink;
 use std::path::Path;
 use std::{env, fs};
+use anyhow::{Context, Result};
 
-pub fn link(src: &Path, dst: &Path) -> Result<(), std::io::Error> {
+pub fn link(src: &Path, dst: &Path) -> Result<()> {
     // get current working directory as prefix
-    let cwd = env::current_dir().expect("Failed to get current working directory");
+    let cwd = env::current_dir().context("Failed to get current working directory")?;
     // ensure the destination directory exists
     if let Some(parent) = dst.parent() {
-        fs::create_dir_all(parent)?;
+        fs::create_dir_all(parent).context("Failed to create parent directory")?;
     }
 
     let abs_src = cwd.join(src);
     let abs_dst = cwd.join(dst);
 
     if dst.exists() {
-        fs::remove_file(dst)?;
+        fs::remove_file(dst).context("Failed to remove existing file")?;
     }
 
-    symlink(abs_src, abs_dst)
+    symlink(abs_src, abs_dst).context("Failed to create symbolic link")
 }
 
 #[cfg(test)]

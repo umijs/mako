@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::path::{Path, PathBuf};
 
 use tokio::fs;
@@ -13,6 +14,7 @@ use std::os::unix::ffi::OsStrExt;
 
 #[cfg(target_os = "linux")]
 mod linux_clone {
+    use anyhow::{Context, Result};
     use std::fs::File;
     use std::os::unix::io::AsRawFd;
     use std::path::Path;
@@ -20,21 +22,19 @@ mod linux_clone {
 
     const FICLONE: libc::c_ulong = 0x40049409;
 
-    pub fn clone_file(src: &File, dst: &File) -> std::io::Result<()> {
+    pub fn clone_file(src: &File, dst: &File) -> Result<()> {
         let ret = unsafe { libc::ioctl(dst.as_raw_fd(), FICLONE, src.as_raw_fd()) };
         if ret == 0 {
             Ok(())
         } else {
             Err(std::io::Error::last_os_error())
+                .context("Failed to clone file")
         }
     }
 
-    pub async fn clone_dir(src: &Path, dst: &Path) -> std::io::Result<()> {
+    pub async fn clone_dir(src: &Path, dst: &Path) -> Result<()> {
         if !fs::metadata(src).await?.is_dir() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "Source is not a directory",
-            ));
+            return Err(anyhow::anyhow!("Source is not a directory"));
         }
 
         fs::create_dir_all(dst).await?;
@@ -58,7 +58,7 @@ mod linux_clone {
     }
 }
 
-pub async fn validate_directory(src: &Path, dst: &Path) -> std::io::Result<bool> {
+pub async fn validate_directory(src: &Path, dst: &Path) -> Result<bool> {
     if !fs::metadata(src).await?.is_dir() || !fs::metadata(dst).await?.is_dir() {
         log_verbose("validating failed, since it's not a directory");
         return Ok(false);
@@ -74,7 +74,7 @@ pub async fn validate_directory(src: &Path, dst: &Path) -> std::io::Result<bool>
     async fn collect_entries(
         dir: &Path,
         ignore: Option<&[&str]>,
-    ) -> std::io::Result<Vec<EntryInfo>> {
+    ) -> Result<Vec<EntryInfo>> {
         let mut entries = Vec::new();
         let mut read_dir = fs::read_dir(dir).await?;
 
@@ -165,13 +165,10 @@ pub async fn find_real_src<P: AsRef<Path>>(src: P) -> Option<PathBuf> {
     None
 }
 
-pub async fn clone(src: &Path, dst: &Path, find_real: bool) -> Result<(), std::io::Error> {
+pub async fn clone(src: &Path, dst: &Path, find_real: bool) -> Result<()> {
     let real_src = if find_real {
         find_real_src(src).await.ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("Cannot find valid source directory in {:?}", src),
-            )
+            anyhow::anyhow!("Cannot find valid source directory in {:?}", src)
         })?
     } else {
         src.to_path_buf()
@@ -223,7 +220,7 @@ pub async fn clone(src: &Path, dst: &Path, find_real: bool) -> Result<(), std::i
                             e
                         ));
                     });
-                    Err(std::io::Error::last_os_error())
+                    Err(anyhow::anyhow!("Failed to clone file: {}", std::io::Error::last_os_error()))
                 }
             }
         })
@@ -273,7 +270,7 @@ mod tests {
     use tempfile::TempDir;
     use tokio::io::AsyncWriteExt;
 
-    async fn create_test_file(dir: &Path, name: &str, content: &[u8]) -> std::io::Result<PathBuf> {
+    async fn create_test_file(dir: &Path, name: &str, content: &[u8]) -> Result<PathBuf> {
         let path = dir.join(name);
         let mut file = fs::File::create(&path).await?;
         file.write_all(content).await?;
@@ -283,7 +280,7 @@ mod tests {
     async fn create_test_structure(
         dir: &Path,
         structure: &[(&str, Option<&[u8]>)],
-    ) -> std::io::Result<()> {
+    ) -> Result<()> {
         for (path, content) in structure {
             let full_path = dir.join(path);
             if let Some(content) = content {
@@ -300,7 +297,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_validate_directory_different_sizes() -> std::io::Result<()> {
+    async fn test_validate_directory_different_sizes() -> Result<()> {
         let temp = TempDir::new()?;
         let src_dir = temp.path().join("src");
         let dst_dir = temp.path().join("dst");
@@ -313,7 +310,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_find_real_src() -> std::io::Result<()> {
+    async fn test_find_real_src() -> Result<()> {
         let temp = TempDir::new()?;
         let dir = temp.path().join("test_dir");
         fs::create_dir(&dir).await?;
@@ -337,7 +334,7 @@ mod tests {
         use std::io::Read;
 
         #[tokio::test]
-        async fn test_clone_dir_basic() -> std::io::Result<()> {
+        async fn test_clone_dir_basic() -> Result<()> {
             let temp = TempDir::new()?;
             let src_dir = temp.path().join("src");
             let dst_dir = temp.path().join("dst");
@@ -373,7 +370,7 @@ mod tests {
         }
 
         #[tokio::test]
-        async fn test_clone_dir_nested() -> std::io::Result<()> {
+        async fn test_clone_dir_nested() -> Result<()> {
             let temp = TempDir::new()?;
             let src_dir = temp.path().join("src");
             let dst_dir = temp.path().join("dst");
@@ -405,7 +402,7 @@ mod tests {
         }
 
         #[tokio::test]
-        async fn test_clone_dir_error_cases() -> std::io::Result<()> {
+        async fn test_clone_dir_error_cases() -> Result<()> {
             let temp = TempDir::new()?;
             let src_dir = temp.path().join("src");
             let dst_dir = temp.path().join("dst");

@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use async_compression::tokio::bufread::GzipDecoder;
 use flate2::read::GzDecoder;
 use reqwest::StatusCode;
@@ -31,50 +32,46 @@ impl std::fmt::Display for DownloadError {
     }
 }
 
-pub async fn download(url: &str, dest: &Path) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn download(url: &str, dest: &Path) -> Result<()> {
     let start = std::time::Instant::now();
     let result = RetryIf::spawn(
         create_retry_strategy(),
         || async {
             let response = reqwest::get(url)
                 .await
-                .map_err(|e| DownloadError::Temporary(format!("Network error: {}", e)))?;
+                .context("Network error")?;
 
             match response.status() {
                 StatusCode::OK => {
-                    let bytes = response.bytes().await.map_err(|e| {
-                        DownloadError::Temporary(format!("Failed to read response: {}", e))
-                    })?;
+                    let bytes = response.bytes().await
+                        .context("Failed to read response")?;
                     if let Err(e) = try_unpack(&bytes, dest).await {
                         log_verbose(&format!("Unpacking failed {}: {}", dest.display(), e));
-                        return Err(DownloadError::Temporary(e.to_string()));
+                        return Err(anyhow::anyhow!("Failed to unpack: {}", e));
                     }
                     Ok(())
                 }
                 StatusCode::NOT_FOUND => {
                     log_verbose(&format!("URL not found {}", url));
-                    Err(DownloadError::Permanent(
-                        format!("URL not found {}", url).into(),
-                    ))
+                    Err(anyhow::anyhow!("URL not found {}", url))
                 }
                 status => {
-                    // Handle other status codes as needed
                     log_verbose(&format!("Error: {}, retrying", status));
-                    Err(DownloadError::Temporary(format!("HTTP error: {}", status)))
+                    Err(anyhow::anyhow!("HTTP error: {}", status))
                 }
             }
         },
-        |e: &DownloadError| matches!(e, DownloadError::Temporary(_)),
+        |e: &anyhow::Error| e.to_string().contains("HTTP error: 5"),
     )
     .await
-    .map_err(|e: DownloadError| Box::new(e) as Box<dyn std::error::Error>);
+    .context("Download failed after retries")?;
 
     let duration = start.elapsed();
     log_verbose(&format!(
         "Download task took: {:?}, url: {:?}",
         duration, url
     ));
-    result
+    Ok(())
 }
 
 async fn try_unpack(bytes: &[u8], dest: &Path) -> Result<(), Box<dyn std::error::Error>> {

@@ -3,18 +3,19 @@ use crate::helper::workspace::find_workspace_path;
 use crate::model::package::{PackageInfo, Scripts};
 use crate::service::script::ScriptService;
 use crate::util::logger::log_info;
+use anyhow::{Context, Result};
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
 
-pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<(), String> {
+pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<()> {
     let pkg = if let Some(workspace_name) = &workspace {
         let workspace_dir = find_workspace_path(
-            &std::env::current_dir().map_err(|e| e.to_string())?,
+            &std::env::current_dir().context("Failed to get current directory")?,
             workspace_name,
         )
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| anyhow::anyhow!("Failed to find workspace path: {}", e))?;
         log_info(&format!(
             "Using workspace: {} at path: {}",
             workspace_name,
@@ -31,13 +32,13 @@ pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<
     let package = PackageInfo {
         path: if let Some(workspace_name) = workspace {
             find_workspace_path(
-                &std::env::current_dir().map_err(|e| e.to_string())?,
+                &std::env::current_dir().context("Failed to get current directory")?,
                 &workspace_name,
             )
             .await
-            .map_err(|e| e.to_string())?
+            .map_err(|e| anyhow::anyhow!("Failed to find workspace path: {}", e))?
         } else {
-            std::env::current_dir().map_err(|e| e.to_string())?
+            std::env::current_dir().context("Failed to get current directory")?
         },
         bin_files: Default::default(),
         scripts: Scripts::default(),
@@ -55,32 +56,31 @@ pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<
         if let Some(Value::String(content)) = scripts.get(script_name) {
             content
         } else {
-            return Err(format!(
-                "Script '{}' not found in package.json",
-                script_name
-            ));
+            anyhow::bail!("Script '{}' not found in package.json", script_name);
         }
     } else {
-        return Err("No scripts found in package.json".to_string());
+        anyhow::bail!("No scripts found in package.json");
     };
 
     log_info(&format!("Executing script: {}", script_name));
-    ScriptService::execute_custom_script(&package, script_name, script_content).await
+    ScriptService::execute_custom_script(&package, script_name, script_content)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to execute script: {}", e))
 }
 
-fn load_package_json() -> Result<Value, String> {
+fn load_package_json() -> Result<Value> {
     let content = fs::read_to_string("package.json")
-        .map_err(|e| format!("Failed to read package.json: {}", e))?;
+        .context("Failed to read package.json")?;
 
-    serde_json::from_str(&content).map_err(|e| format!("Failed to parse package.json: {}", e))
+    serde_json::from_str(&content).context("Failed to parse package.json")
 }
 
-fn load_package_json_from_path(path: &PathBuf) -> Result<Value, String> {
+fn load_package_json_from_path(path: &PathBuf) -> Result<Value> {
     let package_json_path = path.join("package.json");
     let content = fs::read_to_string(package_json_path)
-        .map_err(|e| format!("Failed to read package.json: {}", e))?;
+        .context("Failed to read package.json")?;
 
-    serde_json::from_str(&content).map_err(|e| format!("Failed to parse package.json: {}", e))
+    serde_json::from_str(&content).context("Failed to parse package.json")
 }
 
 #[cfg(test)]
@@ -111,6 +111,7 @@ mod tests {
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
+            .to_string()
             .contains("Script 'nonexistent' not found"));
     }
 

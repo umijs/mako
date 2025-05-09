@@ -57,6 +57,7 @@ glob = "0.3.1"
 criterion = { workspace = true }
 utoo-core = { path = "../core/" }
 regex = "1.10"
+anyhow = { workspace = true }
 
 [[bench]]
 name = "install_benchmark"

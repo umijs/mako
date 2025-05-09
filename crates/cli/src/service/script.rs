@@ -5,6 +5,7 @@ use std::os::unix::fs::{symlink as unix_symlink, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tokio::fs;
+use anyhow::{Context, Result};
 
 use super::binary::get_envs;
 
@@ -15,7 +16,7 @@ impl ScriptService {
         package: &PackageInfo,
         script_type: &str,
         show_output: bool,
-    ) -> Result<(), String> {
+    ) -> Result<()> {
         let script = package.scripts.get_script(script_type);
 
         if let Some(script) = script {
@@ -61,27 +62,27 @@ impl ScriptService {
             let output = tokio::process::Command::from(cmd)
                 .output()
                 .await
-                .map_err(|e| format!("Failed to execute script: {}", e))?;
+                .context("Failed to execute script")?;
 
             if show_output && !output.stdout.is_empty() {
                 println!("{}", String::from_utf8_lossy(&output.stdout));
             }
 
             if !output.status.success() {
-                return Err(format!(
+                anyhow::bail!(
                     "Script execution failed: {}\n{}",
                     String::from_utf8_lossy(&output.stderr),
                     String::from_utf8_lossy(&output.stdout)
-                ));
+                );
             }
         }
 
         Ok(())
     }
 
-    pub async fn link_bin_files(package: &PackageInfo) -> Result<(), String> {
+    pub async fn link_bin_files(package: &PackageInfo) -> Result<()> {
         let bin_dir = package.get_bin_dir().ok_or_else(|| {
-            format!(
+            anyhow::anyhow!(
                 "Cannot find node_modules directory: {}",
                 package.path.display()
             )
@@ -89,7 +90,7 @@ impl ScriptService {
 
         fs::create_dir_all(&bin_dir)
             .await
-            .map_err(|e| format!("Failed to create .bin directory: {}", e))?;
+            .context("Failed to create .bin directory")?;
 
         for (bin_name, relative_path) in &package.bin_files {
             Self::process_bin_file(package, bin_dir.as_path(), bin_name, &relative_path).await?;
@@ -103,7 +104,7 @@ impl ScriptService {
         bin_dir: &Path,
         bin_name: &str,
         relative_path: &str,
-    ) -> Result<(), String> {
+    ) -> Result<()> {
         let target_path = package.path.join(relative_path);
         let bin_path = bin_dir.join(bin_name);
 
@@ -118,16 +119,13 @@ impl ScriptService {
         Ok(())
     }
 
-    pub async fn ensure_executable(target_path: &Path) -> Result<(), String> {
+    pub async fn ensure_executable(target_path: &Path) -> Result<()> {
         let permissions = tokio::fs::metadata(&target_path)
             .await
-            .map_err(|e| {
-                format!(
-                    "Failed to get file permissions {}: {}",
-                    target_path.display(),
-                    e
-                )
-            })?
+            .context(format!(
+                "Failed to get file permissions {}",
+                target_path.display()
+            ))?
             .permissions();
 
         let is_executable = permissions.mode() & 0o111 != 0;
@@ -135,13 +133,13 @@ impl ScriptService {
         if !is_executable {
             let mut content = fs::read_to_string(&target_path)
                 .await
-                .map_err(|e| format!("Failed to read file {}: {}", target_path.display(), e))?;
+                .context(format!("Failed to read file {}", target_path.display()))?;
 
             if !content.starts_with("#!") {
                 content = format!("#!/usr/bin/env node\n{}", content);
-                fs::write(&target_path, content).await.map_err(|e| {
-                    format!("Failed to write shebang {}: {}", target_path.display(), e)
-                })?;
+                fs::write(&target_path, content)
+                    .await
+                    .context(format!("Failed to write shebang {}", target_path.display()))?;
             }
         }
 
@@ -149,7 +147,7 @@ impl ScriptService {
         perms.set_mode(0o755);
         fs::set_permissions(&target_path, perms)
             .await
-            .map_err(|e| format!("Failed to set executable permissions: {}", e))?;
+            .context("Failed to set executable permissions")?;
 
         Ok(())
     }
@@ -158,7 +156,7 @@ impl ScriptService {
         package: &PackageInfo,
         bin_path: &Path,
         relative_path: &str,
-    ) -> Result<(), String> {
+    ) -> Result<()> {
         let node_modules_count = bin_path
             .components()
             .filter(|c| c.as_os_str() == "node_modules")
@@ -170,12 +168,12 @@ impl ScriptService {
         if let Err(e) = unix_symlink(&relative_target, bin_path) {
             if e.raw_os_error() != Some(17) {
                 // EEXIST = 17
-                return Err(format!(
+                anyhow::bail!(
                     "Failed to create symlink {} -> {:?}: {}",
                     bin_path.display(),
                     relative_target,
                     e
-                ));
+                );
             }
             log_verbose(&format!(
                 "Link already exists, skipping: {} -> {:?}",
@@ -235,7 +233,7 @@ impl ScriptService {
         package: &PackageInfo,
         script_name: &str,
         script_content: &str,
-    ) -> Result<(), String> {
+    ) -> Result<()> {
         log_verbose(&format!(
             "Executing custom script for {}: {}",
             package.path.display(),
@@ -250,6 +248,7 @@ impl ScriptService {
             .arg(script_content)
             .current_dir(&package.path)
             .env("PATH", env_path)
+            .env("npm_lifecycle_event", script_name)
             .env(
                 "INIT_CWD",
                 env::current_dir()
@@ -272,17 +271,21 @@ impl ScriptService {
             }
         }
 
-        log_verbose(&format!("Executing command: {:?}", cmd));
-
-        let status = tokio::process::Command::from(cmd)
-            .stdout(std::process::Stdio::inherit())
-            .stderr(std::process::Stdio::inherit())
-            .status()
+        let output = tokio::process::Command::from(cmd)
+            .output()
             .await
-            .map_err(|e| format!("Failed to execute script: {}", e))?;
+            .context("Failed to execute custom script")?;
 
-        if !status.success() {
-            return Err(format!("Script execution failed"));
+        if !output.stdout.is_empty() {
+            println!("{}", String::from_utf8_lossy(&output.stdout));
+        }
+
+        if !output.status.success() {
+            anyhow::bail!(
+                "Custom script execution failed: {}\n{}",
+                String::from_utf8_lossy(&output.stderr),
+                String::from_utf8_lossy(&output.stdout)
+            );
         }
 
         Ok(())

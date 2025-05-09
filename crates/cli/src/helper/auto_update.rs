@@ -5,6 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
+use anyhow::{Result, Context};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct VersionCache {
@@ -12,7 +13,7 @@ struct VersionCache {
     check_time: u64,
 }
 
-pub async fn init_auto_update() -> Result<(), String> {
+pub async fn init_auto_update() -> Result<()> {
     // if prcess::env CI=1 ignore auto update
     if std::env::var("CI").unwrap_or_default() == "1" {
         return Ok(());
@@ -46,58 +47,55 @@ pub async fn init_auto_update() -> Result<(), String> {
     Ok(())
 }
 
-async fn check_and_update_cache() -> Result<VersionCache, String> {
+async fn check_and_update_cache() -> Result<VersionCache> {
     match check_remote_version().await {
         Ok(_) => read_version_cache(),
         Err(e) => {
             log_warning(&format!("Failed to check remote version: {}", e));
-            Err("RegistryError".to_string())
+            anyhow::bail!("RegistryError")
         }
     }
 }
 
-async fn execute_update(version: &str) -> Result<(), String> {
+async fn execute_update(version: &str) -> Result<()> {
     let status = Command::new("utoo")
         .args(&["i", &format!("@utoo/utoo@{}", version), "-g"])
         .env("CI", "1")
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .map_err(|e| e.to_string())?;
+        .context("Failed to execute update command")?;
 
     if status.success() {
         log_info("Update completed, please restart");
         Ok(())
     } else {
         log_error("Auto update failed, please update manually");
-        Err(format!(
-            "Auto update failed, please execute manually {}",
-            status
-        ))
+        anyhow::bail!("Auto update failed, please execute manually {}", status)
     }
 }
 
-async fn check_remote_version() -> Result<(), String> {
+async fn check_remote_version() -> Result<()> {
     let registry_url = format!("{}/@utoo/utoo/latest", get_registry());
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_millis(2000))
         .build()
-        .map_err(|e| e.to_string())?;
+        .context("Failed to create HTTP client")?;
 
     let response = client
         .get(registry_url)
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .context("Failed to fetch remote version")?;
 
     let package_info = response
         .json::<serde_json::Value>()
         .await
-        .map_err(|e| e.to_string())?;
+        .context("Failed to parse package info")?;
 
     let version = package_info["version"]
         .as_str()
-        .ok_or("Unable to get version information")?
+        .context("Unable to get version information")?
         .to_string();
 
     let cache = VersionCache {
@@ -116,18 +114,23 @@ fn get_cache_path() -> PathBuf {
     home.join(".utoo").join("remote-version.json")
 }
 
-fn read_version_cache() -> Result<VersionCache, String> {
-    let content = fs::read_to_string(get_cache_path()).map_err(|e| e.to_string())?;
-    serde_json::from_str(&content).map_err(|e| e.to_string())
+fn read_version_cache() -> Result<VersionCache> {
+    let content = fs::read_to_string(get_cache_path())
+        .context("Failed to read version cache file")?;
+    serde_json::from_str(&content)
+        .context("Failed to parse version cache")
 }
 
-fn save_version_cache(cache: &VersionCache) -> Result<(), String> {
+fn save_version_cache(cache: &VersionCache) -> Result<()> {
     let cache_path = get_cache_path();
     if let Some(parent) = cache_path.parent() {
-        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        fs::create_dir_all(parent)
+            .context("Failed to create cache directory")?;
     }
-    let content = serde_json::to_string(cache).map_err(|e| e.to_string())?;
-    fs::write(cache_path, content).map_err(|e| e.to_string())
+    let content = serde_json::to_string(cache)
+        .context("Failed to serialize version cache")?;
+    fs::write(cache_path, content)
+        .context("Failed to write version cache file")
 }
 
 #[cfg(test)]

@@ -2,6 +2,7 @@ use serde_json::Value;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use anyhow::{Context, Result};
 
 use crate::{
     service::script::ScriptService,
@@ -78,22 +79,24 @@ impl PackageInfo {
         self.scripts.has_any_script()
     }
 
-    pub fn from_path(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn from_path(path: &Path) -> Result<Self> {
         // Read package.json
         let package_json_path = path.join("package.json");
-        let content = fs::read_to_string(&package_json_path)?;
-        let data: Value = serde_json::from_str(&content)?;
+        let content = fs::read_to_string(&package_json_path)
+            .context("Failed to read package.json")?;
+        let data: Value = serde_json::from_str(&content)
+            .context("Failed to parse package.json")?;
 
         // Parse package name
         let name = data["name"]
             .as_str()
-            .ok_or_else(|| "Failed to get package name from package.json")?
+            .ok_or_else(|| anyhow::anyhow!("Failed to get package name from package.json"))?
             .to_string();
 
         // Parse version
         let version = data["version"]
             .as_str()
-            .ok_or_else(|| "Failed to get package version from package.json")?
+            .ok_or_else(|| anyhow::anyhow!("Failed to get package version from package.json"))?
             .to_string();
 
         // Parse scope
@@ -148,9 +151,11 @@ impl PackageInfo {
     pub async fn link_to_global(
         &self,
         global_bin_dir: &Path,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<()> {
         // Ensure bin directory exists
-        tokio::fs::create_dir_all(&global_bin_dir).await?;
+        tokio::fs::create_dir_all(&global_bin_dir)
+            .await
+            .context("Failed to create global bin directory")?;
 
         // Link each binary file
         for (bin_name, relative_path) in &self.bin_files {
@@ -163,10 +168,13 @@ impl PackageInfo {
             ));
 
             // Ensure target file is executable
-            ScriptService::ensure_executable(&target_path).await?;
+            ScriptService::ensure_executable(&target_path)
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to ensure binary is executable: {}", e))?;
 
             // Create symbolic link
-            link(&target_path, &link_path)?;
+            link(&target_path, &link_path)
+                .context("Failed to create symbolic link")?;
         }
 
         // Update PATH environment variable for current process

@@ -3,6 +3,9 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
+use anyhow::{Context, Result};
+use std::fs;
+use serde_json::Value;
 
 use crate::helper::lock::{extract_package_name, Package};
 use crate::helper::workspace;
@@ -13,6 +16,17 @@ use crate::util::linker::link;
 use crate::util::logger::{log_progress, log_verbose, PROGRESS_BAR};
 
 use super::binary::update_package_binary;
+
+#[derive(Debug)]
+pub struct Scripts {
+    pub preinstall: Option<String>,
+    pub install: Option<String>,
+    pub postinstall: Option<String>,
+    pub prepare: Option<String>,
+    pub preprepare: Option<String>,
+    pub postprepare: Option<String>,
+    pub prepublish: Option<String>,
+}
 
 /// Clean up a single node_modules directory
 async fn clean_node_modules_dir(
@@ -321,6 +335,40 @@ pub async fn install_packages(
     }
 
     Ok(())
+}
+
+fn read_package_scripts(package_path: &Path) -> Result<Scripts> {
+    let package_json_path = package_path.join("package.json");
+    let content = fs::read_to_string(&package_json_path)
+        .with_context(|| format!("Failed to read {}", package_json_path.display()))?;
+
+    let data: Value = serde_json::from_str(&content)
+        .with_context(|| format!("Failed to parse {}", package_json_path.display()))?;
+
+    let binding = serde_json::Map::new();
+    let scripts = data
+        .get("scripts")
+        .and_then(|s| s.as_object())
+        .unwrap_or(&binding);
+
+    Ok(Scripts {
+        preinstall: scripts
+            .get("preinstall")
+            .and_then(|s| s.as_str())
+            .map(String::from),
+        install: scripts
+            .get("install")
+            .and_then(|s| s.as_str())
+            .map(String::from),
+        postinstall: scripts
+            .get("postinstall")
+            .and_then(|s| s.as_str())
+            .map(String::from),
+        prepare: None,
+        preprepare: None,
+        postprepare: None,
+        prepublish: None,
+    })
 }
 
 #[cfg(test)]

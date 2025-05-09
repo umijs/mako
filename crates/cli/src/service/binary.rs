@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use crate::util::config::get_registry;
 use crate::util::logger::log_info;
 use crate::util::semver::matches;
@@ -7,49 +8,28 @@ use std::path::Path;
 use tokio::fs;
 use tokio::sync::OnceCell;
 
-#[derive(Debug)]
-pub enum BinaryError {
-    InvalidConfig(String),
-    FileOperation(String),
-    NetworkError(String),
-    ParseError(String),
-}
-
-impl std::fmt::Display for BinaryError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BinaryError::InvalidConfig(msg) => write!(f, "Invalid config: {}", msg),
-            BinaryError::FileOperation(msg) => write!(f, "File operation failed: {}", msg),
-            BinaryError::NetworkError(msg) => write!(f, "Network error: {}", msg),
-            BinaryError::ParseError(msg) => write!(f, "Parse error: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for BinaryError {}
-
 static CONFIG: OnceCell<Value> = OnceCell::const_new();
 
-async fn load_config() -> Result<&'static Value, BinaryError> {
+async fn load_config() -> Result<&'static Value> {
     CONFIG
         .get_or_try_init(|| async {
             let registry = get_registry();
             let url = format!("{}/binary-mirror-config/latest", registry);
             let response = reqwest::get(&url)
                 .await
-                .map_err(|e| BinaryError::NetworkError(e.to_string()))?;
+                .context("Failed to fetch binary mirror config")?;
 
             if !response.status().is_success() {
-                return Err(BinaryError::NetworkError(format!(
+                return Err(anyhow::anyhow!(
                     "HTTP status: {}",
                     response.status()
-                )));
+                ));
             }
 
             response
                 .json()
                 .await
-                .map_err(|e| BinaryError::ParseError(e.to_string()))
+                .context("Failed to parse binary mirror config")
         })
         .await
 }
@@ -92,12 +72,12 @@ fn update_binary_config(pkg: &mut Value, binary_mirror: &Map<String, Value>) {
     ));
 }
 
-async fn handle_node_pre_gyp_versioning(dir: &Path) -> Result<(), BinaryError> {
+async fn handle_node_pre_gyp_versioning(dir: &Path) -> Result<()> {
     let versioning_file = dir.join("node_modules/node-pre-gyp/lib/util/versioning.js");
     if versioning_file.exists() {
         let content = fs::read_to_string(&versioning_file)
             .await
-            .map_err(|e| BinaryError::FileOperation(e.to_string()))?;
+            .context("Failed to read versioning.js")?;
 
         let new_content = content.replace(
             "if (protocol === 'http:') {",
@@ -106,7 +86,7 @@ async fn handle_node_pre_gyp_versioning(dir: &Path) -> Result<(), BinaryError> {
 
         fs::write(&versioning_file, new_content)
             .await
-            .map_err(|e| BinaryError::FileOperation(e.to_string()))?;
+            .context("Failed to write versioning.js")?;
     }
     Ok(())
 }
@@ -125,12 +105,11 @@ fn get_replace_host_files(binary_mirror: &Map<String, Value>) -> Vec<&str> {
         .unwrap_or_else(|| vec!["lib/index.js", "lib/install.js"])
 }
 
-fn replace_with_regex(content: &str, replace_map: &Value) -> Result<String, BinaryError> {
+fn replace_with_regex(content: &str, replace_map: &Value) -> Result<String> {
     let mut result = content.to_string();
     for (pattern, replacement) in replace_map.as_object().unwrap() {
-        let re = Regex::new(pattern).map_err(|e| {
-            BinaryError::ParseError(format!("Invalid regex pattern {}: {}", pattern, e))
-        })?;
+        let re = Regex::new(pattern)
+            .with_context(|| format!("Invalid regex pattern {}", pattern))?;
         result = re
             .replace_all(&result, replacement.as_str().unwrap())
             .to_string();
@@ -141,7 +120,7 @@ fn replace_with_regex(content: &str, replace_map: &Value) -> Result<String, Bina
 fn replace_with_map(
     content: &str,
     binary_mirror: &Map<String, Value>,
-) -> Result<String, BinaryError> {
+) -> Result<String> {
     let replace_map = if let Some(map) = binary_mirror.get("replaceHostMap") {
         map.as_object().unwrap().clone()
     } else {
@@ -171,7 +150,7 @@ fn replace_with_map(
 async fn handle_replace_host(
     dir: &Path,
     binary_mirror: &Map<String, Value>,
-) -> Result<(), BinaryError> {
+) -> Result<()> {
     if !should_handle_replace_host(binary_mirror) {
         return Ok(());
     }
@@ -182,7 +161,7 @@ async fn handle_replace_host(
         if file_path.exists() {
             let content = fs::read_to_string(&file_path)
                 .await
-                .map_err(|e| BinaryError::FileOperation(e.to_string()))?;
+                .context("Failed to read file")?;
 
             let new_content = if let Some(replace_map) = binary_mirror.get("replaceHostRegExpMap") {
                 replace_with_regex(&content, replace_map)?
@@ -192,7 +171,7 @@ async fn handle_replace_host(
 
             fs::write(&file_path, new_content)
                 .await
-                .map_err(|e| BinaryError::FileOperation(e.to_string()))?;
+                .context("Failed to write file")?;
         }
     }
     Ok(())
@@ -203,7 +182,7 @@ async fn handle_cypress(
     pkg: &Value,
     binary_mirror: &Map<String, Value>,
     target_os: Option<&str>,
-) -> Result<(), BinaryError> {
+) -> Result<()> {
     if pkg["name"].as_str().unwrap() != "cypress" {
         return Ok(());
     }
@@ -230,7 +209,7 @@ async fn handle_cypress(
         if download_file.exists() {
             let content = fs::read_to_string(&download_file)
                 .await
-                .map_err(|e| BinaryError::FileOperation(e.to_string()))?;
+                .context("Failed to read download.js")?;
 
             let new_content = content
                 .replace(
@@ -252,33 +231,33 @@ async fn handle_cypress(
 
             fs::write(&download_file, new_content)
                 .await
-                .map_err(|e| BinaryError::FileOperation(e.to_string()))?;
+                .context("Failed to write download.js")?;
         }
     }
 
     Ok(())
 }
 
-pub async fn update_package_binary(dir: &Path, name: &str) -> Result<(), BinaryError> {
+pub async fn update_package_binary(dir: &Path, name: &str) -> Result<()> {
     let config = load_config().await?;
 
     let mirrors = config["mirrors"]["china"].as_object().ok_or_else(|| {
-        BinaryError::InvalidConfig("Invalid binary mirror config format".to_string())
+        anyhow::anyhow!("Invalid binary mirror config format")
     })?;
 
     if let Some(binary_mirror) = mirrors.get(name) {
         let binary_mirror = binary_mirror.as_object().ok_or_else(|| {
-            BinaryError::InvalidConfig("Invalid binary mirror format".to_string())
+            anyhow::anyhow!("Invalid binary mirror format")
         })?;
 
         // Read package.json
         let pkg_path = dir.join("package.json");
         let content = fs::read_to_string(&pkg_path)
             .await
-            .map_err(|e| BinaryError::FileOperation(e.to_string()))?;
+            .context("Failed to read package.json")?;
 
-        let mut pkg: Value =
-            serde_json::from_str(&content).map_err(|e| BinaryError::ParseError(e.to_string()))?;
+        let mut pkg: Value = serde_json::from_str(&content)
+            .context("Failed to parse package.json")?;
 
         // has install script and not replaceHostFiles
         let should_update_binary = if let Some(scripts) = pkg["scripts"].as_object() {
@@ -314,7 +293,7 @@ pub async fn update_package_binary(dir: &Path, name: &str) -> Result<(), BinaryE
         // Write updated package.json
         fs::write(pkg_path, serde_json::to_string_pretty(&pkg).unwrap())
             .await
-            .map_err(|e| BinaryError::FileOperation(e.to_string()))?;
+            .context("Failed to write package.json")?;
     }
 
     Ok(())

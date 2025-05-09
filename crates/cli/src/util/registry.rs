@@ -3,10 +3,10 @@ use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::io;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
+use anyhow::{Context, Result};
 
 use super::config::get_registry;
 use super::logger::log_verbose;
@@ -125,7 +125,7 @@ impl Registry {
         &self,
         name: &str,
         spec: &str,
-    ) -> io::Result<(String, Value)> {
+    ) -> Result<(String, Value)> {
         // First check cache for version
         if let Some(version) = PACKAGE_CACHE.get_version(name, spec).await {
             if let Some(manifest) = PACKAGE_CACHE.get_manifest(name, spec, &version).await {
@@ -147,7 +147,7 @@ impl Registry {
             .header("Accept", "application/vnd.npm.install-v1+json") // Request simplified manifest
             .send()
             .await
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            .context("Failed to send HTTP request")?;
 
         // Calculate and log request duration
         let duration = start_time.elapsed();
@@ -158,9 +158,10 @@ impl Registry {
 
         // Check response status
         if !response.status().is_success() {
-            return Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                format!("Fetch Error: {}, status: {}", url, response.status()),
+            return Err(anyhow::anyhow!(
+                "Fetch Error: {}, status: {}",
+                url,
+                response.status()
             ));
         }
 
@@ -168,17 +169,14 @@ impl Registry {
         let manifest: Value = response
             .json()
             .await
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+            .context("Failed to parse JSON response")?;
 
         // Extract version
         let version = match manifest.get("version").and_then(|v| v.as_str()) {
             Some(v) => v.to_string(),
             None => {
                 log_verbose(&format!("Invalid manifest: {:?}", manifest));
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Invalid manifest: missing version",
-                ));
+                return Err(anyhow::anyhow!("Invalid manifest: missing version"));
             }
         };
 
@@ -190,7 +188,7 @@ impl Registry {
         Ok((version, manifest))
     }
 
-    async fn resolve_package(&self, name: &str, spec: &str) -> io::Result<ResolvedPackage> {
+    async fn resolve_package(&self, name: &str, spec: &str) -> Result<ResolvedPackage> {
         let (version, mut manifest) = self.get_package_manifest(name, spec).await?;
         log_verbose(&format!("Resolved {}@{} => {}", name, spec, version));
         if let Some(obj) = manifest.as_object_mut() {
@@ -223,34 +221,43 @@ impl Registry {
 }
 
 // Global resolve function
-pub async fn resolve(name: &str, spec: &str) -> io::Result<ResolvedPackage> {
+pub async fn resolve(name: &str, spec: &str) -> Result<ResolvedPackage> {
     REGISTRY.resolve_package(name, spec).await
 }
 
 // Public cache operations
-pub async fn store_cache(path: &str) -> io::Result<()> {
+pub async fn store_cache(path: &str) -> Result<()> {
     let cache_data = PACKAGE_CACHE.export_data().await;
     let cache_str = serde_json::to_string_pretty(&cache_data)
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        .context("Failed to serialize cache data")?;
 
     if let Some(parent) = std::path::Path::new(path).parent() {
-        tokio::fs::create_dir_all(parent).await?;
+        tokio::fs::create_dir_all(parent)
+            .await
+            .context("Failed to create cache directory")?;
     }
-    tokio::fs::write(path, cache_str).await?;
+    tokio::fs::write(path, cache_str)
+        .await
+        .context("Failed to write cache file")?;
     log_verbose(&format!("Cache stored to {}", path));
     Ok(())
 }
 
-pub async fn load_cache(path: &str) -> io::Result<()> {
+pub async fn load_cache(path: &str) -> Result<()> {
     // Check file existence
-    if !tokio::fs::try_exists(path).await? {
+    if !tokio::fs::try_exists(path)
+        .await
+        .context("Failed to check cache file existence")?
+    {
         log_verbose(&format!("Cache file not found: {}", path));
         return Ok(());
     }
 
-    let cache_str = tokio::fs::read_to_string(path).await?;
-    let cache_data: CacheData =
-        serde_json::from_str(&cache_str).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+    let cache_str = tokio::fs::read_to_string(path)
+        .await
+        .context("Failed to read cache file")?;
+    let cache_data: CacheData = serde_json::from_str(&cache_str)
+        .context("Failed to parse cache data")?;
 
     PACKAGE_CACHE.import_data(cache_data).await;
     log_verbose(&format!("Cache loaded from {}", path));
@@ -262,7 +269,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_resolve_package() -> io::Result<()> {
+    async fn test_resolve_package() -> Result<()> {
         let result = resolve("lodash", "^4").await?;
 
         assert!(result.version.starts_with("4"));
@@ -272,7 +279,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_package_manifest() -> io::Result<()> {
+    async fn test_get_package_manifest() -> Result<()> {
         let registry = Registry::new();
 
         // Test fetching lodash manifest
@@ -291,7 +298,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_package_manifest_from_cache() -> io::Result<()> {
+    async fn test_get_package_manifest_from_cache() -> Result<()> {
         let registry = Registry::new();
 
         // First request
@@ -317,7 +324,7 @@ mod tests {
 
         assert!(result.is_err());
         if let Err(e) = result {
-            assert_eq!(e.kind(), io::ErrorKind::NotFound);
+            assert!(e.to_string().contains("Fetch Error"));
         }
     }
 

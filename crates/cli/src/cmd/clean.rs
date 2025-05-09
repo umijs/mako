@@ -1,15 +1,16 @@
 use std::io::{self, Write};
 use tokio::fs;
+use anyhow::{Context, Result};
 
 use crate::util::{
     cache::{collect_matching_versions, matches_pattern, parse_pattern},
     logger::{log_error, log_info, log_verbose},
 };
 
-pub async fn clean(pattern: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn clean(pattern: &str) -> Result<()> {
     let cache_dir = dirs::home_dir()
         .map(|p| p.join(".cache").join("nm"))
-        .ok_or("Failed to get cache directory")?;
+        .context("Failed to get cache directory")?;
 
     let (pkg_pattern, version_pattern) = parse_pattern(pattern);
     let mut to_delete = Vec::new();
