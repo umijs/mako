@@ -339,7 +339,7 @@ mod tests {
         let result = ScriptService::execute_custom_script(&package, "test", "exit 1").await;
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Script execution failed"));
+        assert!(result.unwrap_err().to_string().contains("Custom script execution failed"));
     }
 
     #[tokio::test]
