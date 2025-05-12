@@ -219,6 +219,9 @@ async fn validate_deps() -> Result<()> {
                                         "Package {} {} dependency {} (required version: {}, effective version: {}) does not match actual version {}@{}",
                                         pkg_path, dep_field, dep_name, req_version_str, effective_req_version, current_path, actual_version
                                     ));
+                                    anyhow::bail!("Package {} {} dependency {} (required version: {}, effective version: {}) does not match actual version {}@{}",
+                                        pkg_path, dep_field, dep_name, req_version_str, effective_req_version, current_path, actual_version
+                                    );
                                 }
                             }
                         } else if !is_optional {
@@ -226,6 +229,12 @@ async fn validate_deps() -> Result<()> {
                                 "pkg_path {} dep_field {} dep_name {} not found",
                                 pkg_path, dep_field, dep_name
                             ));
+                            anyhow::bail!(
+                                "Package {} {} dependency {} not found",
+                                pkg_path,
+                                dep_field,
+                                dep_name
+                            );
                         }
                     }
                 }
