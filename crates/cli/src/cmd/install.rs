@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::env;
 use std::fs;
 use std::sync::Arc;
@@ -27,29 +28,38 @@ pub async fn update_package(
     workspace: Option<String>,
     ignore_scripts: bool,
     save_type: SaveType,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     log_verbose(&format!(
         "update package: {:?} {:?} {:?} {:?}",
         action, spec, &workspace, ignore_scripts
     ));
     // 1. Update package.json and package-lock.json
-    update_package_json(&action, spec, &workspace, &save_type).await?;
+    update_package_json(&action, spec, &workspace, &save_type)
+        .await
+        .context("Failed to update package.json")?;
 
     // 2. Rebuild Deps
-    let _ = build_deps().await;
+    build_deps()
+        .await
+        .context("Failed to build package-lock.json")?;
 
-    install(ignore_scripts).await?;
+    install(ignore_scripts)
+        .await
+        .context("Failed to install packages")?;
 
     Ok(())
 }
 
-pub async fn install(ignore_scripts: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn install(ignore_scripts: bool) -> Result<()> {
     // Package lock prerequisite check
     ensure_package_lock().await?;
-    let cwd = env::current_dir()?;
+    let cwd = env::current_dir().context("Failed to get current directory")?;
 
     // load package-lock.json
-    let package_lock: PackageLock = serde_json::from_reader(fs::File::open("package-lock.json")?)?;
+    let package_lock: PackageLock = serde_json::from_reader(
+        fs::File::open("package-lock.json").context("Failed to open package-lock.json")?,
+    )
+    .map_err(|e| anyhow::anyhow!("Failed to parse package-lock.json: {}", e))?;
 
     let cache_dir = get_cache_dir();
 
@@ -68,7 +78,9 @@ pub async fn install(ignore_scripts: bool) -> Result<(), Box<dyn std::error::Err
     log_verbose(&format!("Setting concurrent limit to {}", concurrent_limit));
     let semaphore = Arc::new(Semaphore::new(concurrent_limit));
 
-    install_packages(&groups, &cache_dir, &cwd, semaphore).await?;
+    install_packages(&groups, &cache_dir, &cwd, semaphore)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to install packages: {}", e))?;
 
     finish_progress_bar("node_modules cloned finished");
 
@@ -76,40 +88,50 @@ pub async fn install(ignore_scripts: bool) -> Result<(), Box<dyn std::error::Err
         log_info(
             "Starting to execute dependency hook scripts, you can add --ignore-scripts to skip",
         );
-        rebuild().await?;
+        rebuild().await.context("Failed to rebuild dependencies")?;
         log_info("💫 All dependencies installed successfully");
-        return Ok(());
+        Ok(())
     } else {
         log_info("💫 All dependencies installed successfully (you can run 'utoo rebuild' to trigger dependency hooks)");
-        return Ok(());
+        Ok(())
     }
 }
 
-pub async fn install_global_package(npm_spec: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn install_global_package(npm_spec: &str) -> Result<()> {
     // Prepare global package directory and package.json
-    let package_path = prepare_global_package_json(npm_spec).await?;
+    let package_path = prepare_global_package_json(npm_spec)
+        .await
+        .context("Failed to prepare global package.json")?;
 
     log_verbose(&format!("Installing global package: {}", npm_spec));
 
     // Change to package directory
-    let original_dir = env::current_dir()?;
-    env::set_current_dir(&package_path)?;
+    let original_dir = env::current_dir().context("Failed to get current directory")?;
+    env::set_current_dir(&package_path).context("Failed to change to package directory")?;
 
     // Install dependencies
-    install(false).await?;
+    install(false)
+        .await
+        .context("Failed to install global package dependencies")?;
 
     // Create package info from path
-    let package_info = PackageInfo::from_path(&package_path)?;
+    let package_info =
+        PackageInfo::from_path(&package_path).context("Failed to create package info from path")?;
 
     // Link binary files to global
     log_verbose("Linking binary files to global...");
-    let current_exe = std::env::current_exe()?;
+    let current_exe = std::env::current_exe().context("Failed to get current executable path")?;
     package_info
-        .link_to_global(&current_exe.parent().unwrap())
-        .await?;
+        .link_to_global(
+            current_exe
+                .parent()
+                .context("Failed to get executable parent directory")?,
+        )
+        .await
+        .context("Failed to link binary files to global")?;
 
     // Change back to original directory
-    env::set_current_dir(original_dir)?;
+    env::set_current_dir(original_dir).context("Failed to change back to original directory")?;
 
     Ok(())
 }

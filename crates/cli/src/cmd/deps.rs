@@ -2,6 +2,7 @@ use crate::helper::{package::serialize_tree_to_packages, ruborist::Ruborist};
 use crate::util::config::get_legacy_peer_deps;
 use crate::util::logger::log_warning;
 use crate::util::semver;
+use anyhow::{Context, Result};
 use serde_json::json;
 use std::collections::HashSet;
 use std::fs;
@@ -26,7 +27,7 @@ fn get_dep_types() -> Vec<(&'static str, bool)> {
     }
 }
 
-pub async fn build_deps() -> std::io::Result<()> {
+pub async fn build_deps() -> Result<()> {
     let path = PathBuf::from(".");
     let mut ruborist = Ruborist::new(path.clone());
     ruborist.build_ideal_tree().await?;
@@ -48,16 +49,18 @@ pub async fn build_deps() -> std::io::Result<()> {
         let temp_path = path.join("package-lock.json.tmp");
         let target_path = path.join("package-lock.json");
 
-        fs::write(&temp_path, serde_json::to_string_pretty(&lock_file)?)?;
+        fs::write(&temp_path, serde_json::to_string_pretty(&lock_file)?)
+            .context("Failed to write temporary package-lock.json")?;
 
-        fs::rename(temp_path, target_path)?;
+        fs::rename(temp_path, target_path)
+            .context("Failed to rename temporary package-lock.json")?;
     }
 
     validate_deps()?;
     Ok(())
 }
 
-pub async fn build_workspace() -> std::io::Result<()> {
+pub async fn build_workspace() -> Result<()> {
     let path = PathBuf::from(".");
     let mut ruborist = Ruborist::new(path.clone());
     ruborist.build_workspace_tree().await?;
@@ -97,19 +100,21 @@ pub async fn build_workspace() -> std::io::Result<()> {
         let temp_path = path.join("workspace.json.tmp");
         let target_path = path.join("workspace.json");
 
-        fs::write(&temp_path, serde_json::to_string_pretty(&workspace_file)?)?;
-        fs::rename(temp_path, target_path)?;
+        fs::write(&temp_path, serde_json::to_string_pretty(&workspace_file)?)
+            .context("Failed to write temporary workspace.json")?;
+        fs::rename(temp_path, target_path).context("Failed to rename temporary workspace.json")?;
     }
 
     Ok(())
 }
 
-fn validate_deps() -> std::io::Result<()> {
+fn validate_deps() -> Result<()> {
     let path = PathBuf::from(".");
     let lock_path = path.join("package-lock.json");
 
-    let lock_content = fs::read_to_string(lock_path)?;
-    let lock_file: serde_json::Value = serde_json::from_str(&lock_content)?;
+    let lock_content = fs::read_to_string(lock_path).context("Failed to read package-lock.json")?;
+    let lock_file: serde_json::Value = serde_json::from_str(&lock_content)
+        .map_err(|e| anyhow::anyhow!("Failed to parse package-lock.json: {}", e))?;
 
     if let Some(packages) = lock_file.get("packages").and_then(|p| p.as_object()) {
         for (pkg_path, pkg_info) in packages {
@@ -158,7 +163,7 @@ fn validate_deps() -> std::io::Result<()> {
                             if let Some(actual_version) =
                                 dep_info.get("version").and_then(|v| v.as_str())
                             {
-                                if !semver::matches(&req_version_str, &actual_version) {
+                                if !semver::matches(req_version_str, actual_version) {
                                     log_warning(&format!(
                                         "Package {} {} dependency {} (required version: {}) does not match actual version {}@{}",
                                         pkg_path, dep_field, dep_name, req_version_str, current_path, actual_version

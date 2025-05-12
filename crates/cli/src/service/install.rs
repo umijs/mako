@@ -1,3 +1,4 @@
+use anyhow::Result;
 use glob::glob;
 use std::collections::HashMap;
 use std::path::Path;
@@ -151,7 +152,7 @@ async fn clean_deps(
     cwd: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut valid_packages = std::collections::HashSet::new();
-    for (_, packages) in groups {
+    for packages in groups.values() {
         for (path, _) in packages {
             valid_packages.insert(path.clone());
         }
@@ -210,7 +211,7 @@ pub async fn install_packages(
                                 "Link skipped due to empty package name: {}",
                                 path
                             ));
-                            log_progress(&format!("empty package name link skipped"));
+                            log_progress("empty package name link skipped");
                             continue;
                         }
                         log_verbose(&format!("Attempting to link from {} to {}", resolved, path));
@@ -222,27 +223,23 @@ pub async fn install_packages(
                             return Err(format!("Link failed: {}", e).into());
                         }
                         PROGRESS_BAR.inc(1);
-                        log_progress(&format!("resolved link skipped",));
+                        log_progress("resolved link skipped");
                         continue;
                     }
 
                     // skip when cpu or os is not compatible
-                    if package.cpu.is_some() {
-                        if !is_cpu_compatible(&package.cpu.unwrap()) {
-                            PROGRESS_BAR.inc(1);
-                            log_verbose(&format!("cpu skipped: {}", &path));
-                            log_progress(&format!("uncompatibel cpu skipped",));
-                            continue;
-                        }
+                    if package.cpu.is_some() && !is_cpu_compatible(&package.cpu.unwrap()) {
+                        PROGRESS_BAR.inc(1);
+                        log_verbose(&format!("cpu skipped: {}", &path));
+                        log_progress("uncompatibel cpu skipped");
+                        continue;
                     }
 
-                    if package.os.is_some() {
-                        if !is_os_compatible(&package.os.unwrap()) {
-                            PROGRESS_BAR.inc(1);
-                            log_verbose(&format!("os skipped: {}", &path));
-                            log_progress(&format!("uncompatibel os skipped",));
-                            continue;
-                        }
+                    if package.os.is_some() && !is_os_compatible(&package.os.unwrap()) {
+                        PROGRESS_BAR.inc(1);
+                        log_verbose(&format!("os skipped: {}", &path));
+                        log_progress("uncompatibel os skipped");
+                        continue;
                     }
 
                     let name = extract_package_name(&path);

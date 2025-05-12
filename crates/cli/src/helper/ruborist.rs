@@ -1,9 +1,9 @@
 use serde_json::Value;
 use std::collections::HashMap;
-use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use anyhow::{Context, Result};
 use std::sync::Mutex;
 use tokio::sync::Semaphore;
 
@@ -26,7 +26,7 @@ use once_cell::sync::Lazy;
 // concurrency limit default to 100
 static CONCURRENCY_LIMITER: Lazy<Arc<Semaphore>> = Lazy::new(|| Arc::new(Semaphore::new(100)));
 
-async fn build_deps(root: Arc<Node>) -> io::Result<()> {
+async fn build_deps(root: Arc<Node>) -> Result<()> {
     let legacy_peer_deps = get_legacy_peer_deps();
     log_verbose(&format!(
         "going to build deps for {}, legacy_peer_deps: {}",
@@ -66,7 +66,6 @@ async fn build_deps(root: Arc<Node>) -> io::Result<()> {
                         return Ok(());
                     }
 
-
                     log_verbose(&format!("going to build deps {}@{} from [{}]", edge.name, edge.spec, edge.from.name));
 
                     match find_compatible_node(&edge.from, &edge.name, &edge.spec) {
@@ -87,7 +86,8 @@ async fn build_deps(root: Arc<Node>) -> io::Result<()> {
                             existing_node.update_type();
                         }
                         FindResult::Conflict(conflict_node) => {
-                            let resolved = resolve(&edge.name, &edge.spec).await?;
+                            let resolved = resolve(&edge.name, &edge.spec)
+                                .await?;
                             PROGRESS_BAR.inc(1);
                             log_progress(&format!(
                                 "resolved deps {}@{} => {} (conflict), need to fork, conflict_node: {:?}",
@@ -99,7 +99,8 @@ async fn build_deps(root: Arc<Node>) -> io::Result<()> {
                             ));
                             // process conflict node
                             let install_parent = conflict_node;
-                            let new_node = place_deps(edge.name.clone(), resolved, &install_parent)?;
+                            let new_node = place_deps(edge.name.clone(), resolved, &install_parent)
+                                .with_context(|| format!("Failed to place dependencies for {}@{} in conflict case", edge.name, edge.spec))?;
 
                             {
                                 let mut parent = new_node.parent.write().unwrap();
@@ -148,7 +149,8 @@ async fn build_deps(root: Arc<Node>) -> io::Result<()> {
                             next_level.lock().unwrap().push(new_node);
                         }
                         FindResult::New(install_location) => {
-                            let resolved = resolve(&edge.name, &edge.spec).await?;
+                            let resolved = resolve(&edge.name, &edge.spec)
+                                .await?;
                             PROGRESS_BAR.inc(1);
                             log_progress(&format!(
                                 "resolved deps {}@{} => {} (new)",
@@ -158,7 +160,8 @@ async fn build_deps(root: Arc<Node>) -> io::Result<()> {
                                 "resolved deps {}@{} => {} (new)",
                                 edge.name, &edge.spec, resolved.version
                             ));
-                            let new_node = place_deps(edge.name.clone(), resolved, &install_location)?;
+                            let new_node = place_deps(edge.name.clone(), resolved, &install_location)
+                                .with_context(|| format!("Failed to place dependencies for {}@{} in new case", edge.name, edge.spec))?;
                             let root_node = install_location.clone();
 
                             {
@@ -190,14 +193,22 @@ async fn build_deps(root: Arc<Node>) -> io::Result<()> {
                             next_level.lock().unwrap().push(new_node);
                         }
                     }
-                    Ok::<_, io::Error>(())
+                    Ok::<_, anyhow::Error>(())
                 });
             }
             level_tasks.push(futures::future::try_join_all(tasks));
         }
 
         // waiting for all tasks in this level to finish
-        futures::future::try_join_all(level_tasks).await?;
+        futures::future::try_join_all(level_tasks)
+            .await
+            .map_err(|e| {
+                let mut err_msg = String::new();
+                for err in e.chain() {
+                    err_msg.push_str(&format!("  {}\n", err));
+                }
+                anyhow::anyhow!(err_msg)
+            })?;
 
         // continue to next level
         *current_level.lock().unwrap() = next_level.lock().unwrap().clone();
@@ -207,7 +218,7 @@ async fn build_deps(root: Arc<Node>) -> io::Result<()> {
 }
 
 // create a new node under parent
-fn place_deps(name: String, pkg: ResolvedPackage, parent: &Arc<Node>) -> io::Result<Arc<Node>> {
+fn place_deps(name: String, pkg: ResolvedPackage, parent: &Arc<Node>) -> Result<Arc<Node>> {
     let new_node = Node::new(name, parent.path.clone(), pkg.manifest);
 
     log_verbose(&format!(
@@ -278,11 +289,15 @@ impl Ruborist {
         }
     }
 
-    async fn init_tree(&mut self) -> io::Result<Arc<Node>> {
+    async fn init_tree(&mut self) -> Result<Arc<Node>> {
         // load package.json
         let pkg_path = self.path.join("package.json");
-        let pkg_content = std::fs::read_to_string(pkg_path)?;
-        let pkg: Value = serde_json::from_str(&pkg_content)?;
+        let pkg_content = std::fs::read_to_string(&pkg_path).context(format!(
+            "Failed to read package.json at {}",
+            pkg_path.display()
+        ))?;
+        let pkg: Value = serde_json::from_str(&pkg_content)
+            .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
 
         // create root node
         let root = Node::new_root(
@@ -337,8 +352,10 @@ impl Ruborist {
         Ok(root)
     }
 
-    pub async fn init_workspaces(&mut self, root: Arc<Node>) -> io::Result<()> {
-        let workspaces = find_workspaces(&self.path).await?;
+    pub async fn init_workspaces(&mut self, root: Arc<Node>) -> Result<()> {
+        let workspaces = find_workspaces(&self.path)
+            .await
+            .context("Failed to find workspaces")?;
 
         // Process each workspace member
         for (name, path, pkg) in workspaces {
@@ -427,8 +444,10 @@ impl Ruborist {
         Ok(())
     }
 
-    pub async fn build_ideal_tree(&mut self) -> io::Result<()> {
-        load_cache("./node_modules/.utoo-manifest.json").await?;
+    pub async fn build_ideal_tree(&mut self) -> Result<()> {
+        load_cache("./node_modules/.utoo-manifest.json")
+            .await
+            .context("Failed to load cache")?;
         let root = self.init_tree().await?;
 
         start_progress_bar();
@@ -439,13 +458,15 @@ impl Ruborist {
             self.replace_deps(dup_node).await?;
         }
 
-        store_cache("./node_modules/.utoo-manifest.json").await?;
+        store_cache("./node_modules/.utoo-manifest.json")
+            .await
+            .context("Failed to store cache")?;
         finish_progress_bar("Building dependency tree complete.");
         self.ideal_tree = Some(root);
         Ok(())
     }
 
-    pub async fn build_workspace_tree(&mut self) -> io::Result<()> {
+    pub async fn build_workspace_tree(&mut self) -> Result<()> {
         let root = self.init_tree().await?;
 
         start_progress_bar();
@@ -504,7 +525,7 @@ impl Ruborist {
                 }
                 name_map
                     .entry(child.name.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(child.clone());
             }
 
@@ -543,7 +564,7 @@ impl Ruborist {
         duplicates
     }
 
-    pub async fn replace_deps(&self, node: Arc<Node>) -> io::Result<()> {
+    pub async fn replace_deps(&self, node: Arc<Node>) -> Result<()> {
         log_verbose(&format!("going to replace node {}", node));
         // 1. remove from parent node
         if let Some(parent) = node.parent.read().unwrap().as_ref() {

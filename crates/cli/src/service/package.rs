@@ -2,32 +2,22 @@ use crate::helper::compatibility::{is_cpu_compatible, is_os_compatible};
 use crate::helper::env::get_node_abi;
 use crate::helper::package::parse_package_name;
 use crate::model::package::{PackageInfo, Scripts};
-use crate::util::cache::get_cache_dir;
-use crate::util::cloner::clone;
-use crate::util::logger::{
-    finish_progress_bar, log_info, log_progress, log_verbose, log_warning, start_progress_bar,
-    PROGRESS_BAR,
-};
-use std::path::{Path, PathBuf};
-
-use std::collections::HashMap;
-
-use futures::future::join_all;
+use crate::util::logger::{log_info, log_verbose};
+use anyhow::{Context, Result};
 use serde_json::Value;
 use std::fs;
-use tokio::task;
+use std::path::{Path, PathBuf};
 
 use super::script::ScriptService;
 
 pub struct PackageService;
 
 impl PackageService {
-    pub async fn process_project_hooks() -> Result<(), String> {
-        let content = fs::read_to_string("package.json")
-            .map_err(|e| format!("Failed to read package.json: {}", e))?;
+    pub async fn process_project_hooks() -> Result<()> {
+        let content = fs::read_to_string("package.json").context("Failed to read package.json")?;
 
         let data: Value = serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse package.json: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
 
         let binding = serde_json::Map::new();
         let scripts = data
@@ -50,7 +40,6 @@ impl PackageService {
             data.get("name")
                 .and_then(|v| v.as_str())
                 .unwrap_or_default()
-                .to_string()
         ));
 
         let package_info = PackageInfo {
@@ -97,26 +86,31 @@ impl PackageService {
         };
 
         for hook in hooks {
-            if let Some(_) = scripts.get(hook).and_then(|s| s.as_str()) {
+            if scripts.get(hook).and_then(|s| s.as_str()).is_some() {
                 log_info(&format!("Executing project hook: {}", hook));
-                ScriptService::execute_script(&package_info, hook, true).await?;
+                ScriptService::execute_script(&package_info, hook, true)
+                    .await
+                    .map_err(|e| {
+                        anyhow::anyhow!("Failed to execute project hook {}: {}", hook, e)
+                    })?;
             }
         }
 
         Ok(())
     }
-    pub fn collect_packages() -> Result<Vec<PackageInfo>, String> {
+
+    pub fn collect_packages() -> Result<Vec<PackageInfo>> {
         log_verbose("Collecting packages...");
-        let lock_file = fs::read_to_string("package-lock.json")
-            .map_err(|e| format!("Failed to load package-lock.json: {}", e))?;
+        let lock_file =
+            fs::read_to_string("package-lock.json").context("Failed to load package-lock.json")?;
 
         let lock_data: Value = serde_json::from_str(&lock_file)
-            .map_err(|e| format!("Failed to parse package-lock.json: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to parse package-lock.json: {}", e))?;
 
         let mut packages = Vec::new();
         if let Some(deps) = lock_data.get("packages").and_then(|v| v.as_object()) {
             for (path, info) in deps {
-                if path == "" {
+                if path.is_empty() {
                     continue;
                 }
                 if let Some(package) = Self::process_package_info(path, info)? {
@@ -127,9 +121,7 @@ impl PackageService {
         Ok(packages)
     }
 
-    pub fn create_execution_queues(
-        packages: Vec<PackageInfo>,
-    ) -> Result<Vec<Vec<PackageInfo>>, String> {
+    pub fn create_execution_queues(packages: Vec<PackageInfo>) -> Result<Vec<Vec<PackageInfo>>> {
         log_verbose("Prepareing execute queues...");
         let mut queues = vec![Vec::new(); 5];
 
@@ -182,7 +174,7 @@ impl PackageService {
         Ok(queues)
     }
 
-    pub fn process_package_info(path: &str, info: &Value) -> Result<Option<PackageInfo>, String> {
+    pub fn process_package_info(path: &str, info: &Value) -> Result<Option<PackageInfo>> {
         let info = match info.as_object() {
             Some(obj) => obj,
             None => return Ok(None),
@@ -200,147 +192,108 @@ impl PackageService {
             return Ok(None);
         }
 
-        // check if the package is compatible in current os & cpu
-        if let Some(os_constraint) = info.get("os") {
-            if !is_os_compatible(os_constraint) {
-                log_verbose(&format!(
-                    "Package {} is not compatible with current OS, skipped",
-                    path
-                ));
-                return Ok(None);
-            }
-        }
-
-        if let Some(cpu_constraint) = info.get("cpu") {
-            if !is_cpu_compatible(cpu_constraint) {
-                log_verbose(&format!(
-                    "Package {} is not compatible with current CPU architecture, skipped",
-                    path
-                ));
-                return Ok(None);
-            }
-        }
-
-        let (scope, name, fullname) = parse_package_name(path);
-        let bin_files = Self::parse_bin_files(info.get("bin"), &name);
-        let package_path = if path.is_empty() {
-            PathBuf::from(".")
+        // check if the package is compatible with current platform
+        let is_compatible = if let Some(cpu) = info.get("cpu") {
+            is_cpu_compatible(cpu)
         } else {
-            PathBuf::from(path)
+            true
+        } && if let Some(os) = info.get("os") {
+            is_os_compatible(os)
+        } else {
+            true
         };
 
-        let scripts = Self::read_package_scripts(&package_path)?;
+        if !is_compatible {
+            log_verbose(&format!(
+                "Package {} is not compatible with current platform",
+                path
+            ));
+            return Ok(None);
+        }
+
+        // check if the package is compatible with current node version
+        let is_node_compatible = if let Some(engines) = info.get("engines") {
+            if let Some(node) = engines.get("node") {
+                if let Some(_) = node.as_str() {
+                    let package_path = Path::new(path);
+                    let current_abi = get_node_abi(package_path)
+                        .context("Failed to get current Node.js ABI version")?;
+                    let package_abi = info
+                        .get("_node_abi")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default();
+                    current_abi == package_abi
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        } else {
+            true
+        };
+
+        if !is_node_compatible {
+            log_verbose(&format!(
+                "Package {} is not compatible with current node version",
+                path
+            ));
+            return Ok(None);
+        }
+
+        // parse package name
+        let (scope, name, fullname) = parse_package_name(path);
+
+        // parse bin files
+        let bin_files = Self::parse_bin_files(info.get("bin"), &name);
+
+        // parse scripts
+        let scripts = Self::read_package_scripts(Path::new(path))
+            .context(format!("Failed to read scripts for package: {}", path))?;
 
         Ok(Some(PackageInfo {
-            path: package_path,
+            path: PathBuf::from(path),
             bin_files,
             scripts,
-            scope,
-            fullname,
             name,
+            fullname,
             version: info
                 .get("version")
                 .and_then(|v| v.as_str())
                 .unwrap_or_default()
                 .to_string(),
+            scope,
         }))
     }
 
     fn parse_bin_files(bin: Option<&Value>, package_name: &str) -> Vec<(String, String)> {
         match bin {
-            Some(bin) => {
-                if bin.is_object() {
-                    bin.as_object()
-                        .map(|obj| {
-                            obj.iter()
-                                .map(|(k, v)| {
-                                    (k.clone(), v.as_str().unwrap_or_default().to_string())
-                                })
-                                .collect()
-                        })
-                        .unwrap_or_default()
-                } else if bin.is_string() {
-                    let bin_path = bin.as_str().unwrap_or_default().to_string();
-                    vec![(package_name.to_string(), bin_path)]
-                } else {
-                    Vec::new()
-                }
-            }
-            None => Vec::new(),
+            Some(Value::Object(obj)) => obj
+                .iter()
+                .map(|(k, v)| (k.clone(), v.as_str().unwrap_or_default().to_string()))
+                .collect(),
+            Some(Value::String(s)) => vec![(package_name.to_string(), s.clone())],
+            _ => Vec::new(),
         }
-    }
-
-    fn get_package_cache_dir(package: &PackageInfo) -> PathBuf {
-        let cache_dir = get_cache_dir();
-        let node_abi = get_node_abi(&package.path).unwrap_or_else(|_| "unknown".to_string());
-
-        PathBuf::from(cache_dir)
-            .join(&package.fullname)
-            .join(&package.version)
-            .join(".utoo_builded")
-            .join(&node_abi)
     }
 
     fn has_cached(_package: &PackageInfo) -> bool {
-        // TODO: Implement caching
+        // TODO: implement cache check
         false
-        // if !package.has_script() {
-        //     return false;
-        // }
-        // let target_dir = Self::get_package_cache_dir(package);
-        // target_dir.exists()
     }
 
-    async fn store_build_result(_package: &PackageInfo) {
-        // TODO: Implement build result storage
-        return;
-        // if Self::has_cached(package) {
-        //     return;
-        // }
-        // let target_dir = Self::get_package_cache_dir(package);
-
-        // match clone(&package.path, &target_dir, false).await {
-        //     Ok(_) => log_info(&format!(
-        //         "Cached build result for package {}/{}, will be reused later",
-        //         package.fullname, package.version
-        //     )),
-        //     Err(e) => log_warning(&format!(
-        //         "Failed to cache package {}: {}",
-        //         package.fullname, e
-        //     )),
-        // }
-    }
-
-    async fn restore_build_result(package: &PackageInfo) -> Result<(), String> {
-        if !package.has_script() {
-            return Ok(());
-        }
-        let target_dir = Self::get_package_cache_dir(package);
-        match clone(&target_dir, &package.path, false).await {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                log_warning(&format!(
-                    "Failed to restore package {} from cache: {}",
-                    package.fullname, e
-                ));
-                Err(format!("Failed to restore cache: {}", e))
-            }
-        }
-    }
-
-    fn read_package_scripts(package_path: &Path) -> Result<Scripts, String> {
+    fn read_package_scripts(package_path: &Path) -> Result<Scripts> {
         let package_json_path = package_path.join("package.json");
-        let content = fs::read_to_string(&package_json_path)
-            .map_err(|e| format!("Failed to read {}: {}", package_json_path.display(), e))?;
-
+        let content =
+            fs::read_to_string(package_json_path).context("Failed to read package.json")?;
         let data: Value = serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse {}: {}", package_json_path.display(), e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
 
-        let binding = serde_json::Map::new();
+        let default_scripts = serde_json::Map::new();
         let scripts = data
             .get("scripts")
             .and_then(|s| s.as_object())
-            .unwrap_or(&binding);
+            .unwrap_or(&default_scripts);
 
         Ok(Scripts {
             preinstall: scripts
@@ -355,86 +308,123 @@ impl PackageService {
                 .get("postinstall")
                 .and_then(|s| s.as_str())
                 .map(String::from),
-            prepare: None,
-            preprepare: None,
-            postprepare: None,
-            prepublish: None,
+            prepare: scripts
+                .get("prepare")
+                .and_then(|s| s.as_str())
+                .map(String::from),
+            preprepare: scripts
+                .get("preprepare")
+                .and_then(|s| s.as_str())
+                .map(String::from),
+            postprepare: scripts
+                .get("postprepare")
+                .and_then(|s| s.as_str())
+                .map(String::from),
+            prepublish: scripts
+                .get("prepublish")
+                .and_then(|s| s.as_str())
+                .map(String::from),
         })
     }
 
-    pub async fn execute_queues(queues: Vec<Vec<PackageInfo>>) -> Result<(), String> {
-        let mut all_packages = Vec::new(); // collect all packages in queue
-
-        // collect all tasks in queue
-        let total_tasks: usize = queues.iter().map(|q| q.len()).sum();
-        PROGRESS_BAR.set_length(total_tasks as u64);
-        start_progress_bar();
-
-        for (i, queue) in queues.into_iter().enumerate() {
-            let phase_name = match i {
-                0 => "restore cache",
-                1 => "preinstall",
-                2 => "bin files",
-                3 => "install",
-                4 => "postinstall",
-                _ => unreachable!(),
-            };
-
-            if i != 0 && i != 2 {
-                // collect scripts related tasks
-                all_packages.extend(queue.clone());
+    pub async fn execute_queues(queues: Vec<Vec<PackageInfo>>) -> Result<()> {
+        // Execute preinstall scripts
+        for package in &queues[1] {
+            if let Some(script) = &package.scripts.preinstall {
+                log_info(&format!(
+                    "Executing preinstall script for {}",
+                    package.fullname
+                ));
+                ScriptService::execute_script(package, "preinstall", false)
+                    .await
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Failed to execute preinstall script for {} (command: {}): {}",
+                            package.fullname,
+                            script,
+                            e
+                        )
+                    })?;
             }
+        }
 
-            let tasks: Vec<_> = queue
-                .into_iter()
-                .map(|package| {
-                    task::spawn(async move {
-                        let result = match i {
-                            0 => Self::restore_build_result(&package).await,
-                            1 => ScriptService::execute_script(&package, "preinstall", false).await,
-                            2 => ScriptService::link_bin_files(&package).await,
-                            3 => ScriptService::execute_script(&package, "install", false).await,
-                            4 => {
-                                ScriptService::execute_script(&package, "postinstall", false).await
-                            }
-                            _ => unreachable!(),
-                        };
+        // Link binary files
+        for package in &queues[2] {
+            if !package.bin_files.is_empty() {
+                log_info(&format!("Linking binary files for {}", package.fullname));
+                for (bin_name, relative_path) in &package.bin_files {
+                    let target_path = package.path.join(relative_path);
+                    let bin_dir = package.get_bin_dir().context(format!(
+                        "Failed to get bin directory for {}",
+                        package.fullname
+                    ))?;
+                    let link_path = bin_dir.join(bin_name);
 
-                        PROGRESS_BAR.inc(1);
-                        log_progress(&format!(
-                            "{} / {}@{} / {:?}",
-                            phase_name, &package.fullname, &package.version, &package.path
-                        ));
+                    ScriptService::ensure_executable(&target_path)
+                        .await
+                        .map_err(|e| {
+                            anyhow::anyhow!(
+                                "Failed to ensure binary is executable for {} (path: {}): {}",
+                                package.fullname,
+                                target_path.display(),
+                                e
+                            )
+                        })?;
 
-                        result
-                    })
-                })
-                .collect();
-
-            let results = join_all(tasks).await;
-            for result in results {
-                match result {
-                    Ok(task_result) => {
-                        if let Err(e) = task_result {
-                            return Err(format!("Task execution failed: {}", e));
-                        }
-                    }
-                    Err(e) => return Err(format!("Task execution failed: {}", e)),
+                    crate::util::linker::link(&target_path, &link_path).context(format!(
+                        "Failed to create symbolic link for {} (from: {} to: {})",
+                        package.fullname,
+                        target_path.display(),
+                        link_path.display()
+                    ))?;
                 }
+                log_verbose(&format!(
+                    "Linking binary files for {} successfully",
+                    package.fullname
+                ));
             }
         }
 
-        // store build result for unique packages after all queues are executed
-        let unique_packages = all_packages
-            .into_iter()
-            .map(|p| ((p.fullname.clone(), p.version.clone()), p))
-            .collect::<HashMap<(String, String), PackageInfo>>()
-            .into_values();
-
-        for package in unique_packages {
-            Self::store_build_result(&package).await;
+        // Execute install scripts
+        for package in &queues[3] {
+            if let Some(script) = &package.scripts.install {
+                log_info(&format!(
+                    "Executing install script for {}",
+                    package.fullname
+                ));
+                ScriptService::execute_script(package, "install", false)
+                    .await
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Failed to execute install script for {} (command: {}): {}",
+                            package.fullname,
+                            script,
+                            e
+                        )
+                    })?;
+            }
         }
-        finish_progress_bar("hook scripts completed");
+
+        // Execute postinstall scripts
+        for package in &queues[4] {
+            if let Some(script) = &package.scripts.postinstall {
+                log_info(&format!(
+                    "Executing postinstall script for {}",
+                    package.fullname
+                ));
+                ScriptService::execute_script(package, "postinstall", false)
+                    .await
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Failed to execute postinstall script for {} (command: {}): {}",
+                            package.fullname,
+                            script,
+                            e
+                        )
+                    })?;
+            }
+        }
+
         Ok(())
     }
 }

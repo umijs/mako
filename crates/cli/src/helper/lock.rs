@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use serde::Deserialize;
 use serde_json::Value;
 use std::path::PathBuf;
@@ -48,15 +49,15 @@ pub fn extract_package_name(path: &str) -> String {
     }
 }
 
-pub async fn ensure_package_lock() -> Result<(), String> {
+pub async fn ensure_package_lock() -> Result<()> {
     // check package.json exists in cwd
-    if !fs::metadata("package.json").is_ok() {
-        return Err("package.json not found".to_string());
+    if fs::metadata("package.json").is_err() {
+        return Err(anyhow!("package.json not found"));
     }
     // check package-lock.json exists in cwd
-    if !fs::metadata("package-lock.json").is_ok() {
+    if fs::metadata("package-lock.json").is_err() {
         log_info("Resolving dependencies");
-        let _ = build_deps().await;
+        build_deps().await?;
         Ok(())
     } else {
         // load package-lock.json directly if exists
@@ -70,13 +71,15 @@ pub async fn update_package_json(
     spec: &str,
     workspace: &Option<String>,
     save_type: &SaveType,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     // 1. Parse package spec
     let (name, version, version_spec) = parse_package_spec(spec).await?;
 
     // 2. Find target workspace if specified
     let target_dir = if let Some(ws) = workspace {
-        find_workspace_path(&PathBuf::from("."), &ws).await?
+        find_workspace_path(&PathBuf::from("."), ws)
+            .await
+            .map_err(|e| anyhow!("Failed to find workspace path: {}", e))?
     } else {
         PathBuf::from(".")
     };
@@ -121,22 +124,20 @@ pub async fn update_package_json(
     )?;
 
     // 4. Rebuild package-lock.json
-    build_deps().await?;
+    build_deps()
+        .await
+        .map_err(|e| anyhow!("Failed to rebuild dependencies: {}", e))?;
 
     Ok(())
 }
 
-pub async fn parse_package_spec(
-    spec: &str,
-) -> Result<(String, String, String), Box<dyn std::error::Error>> {
+pub async fn parse_package_spec(spec: &str) -> Result<(String, String, String)> {
     let (name, version_spec) = parse_pattern(spec);
     let resolved = resolve(&name, &version_spec).await?;
     Ok((name, resolved.version, version_spec))
 }
 
-pub async fn prepare_global_package_json(
-    npm_spec: &str,
-) -> Result<PathBuf, Box<dyn std::error::Error>> {
+pub async fn prepare_global_package_json(npm_spec: &str) -> Result<PathBuf> {
     // Parse package name and version
     let (name, _version, version_spec) = parse_package_spec(npm_spec).await?;
 
@@ -160,7 +161,7 @@ pub async fn prepare_global_package_json(
     // Get tarball URL from manifest
     let tarball_url = resolved.manifest["dist"]["tarball"]
         .as_str()
-        .ok_or_else(|| "Failed to get tarball URL from manifest")?;
+        .ok_or_else(|| anyhow!("Failed to get tarball URL from manifest"))?;
 
     // Download and extract package
     let cache_dir = crate::util::cache::get_cache_dir();
@@ -174,7 +175,9 @@ pub async fn prepare_global_package_json(
             tarball_url,
             cache_path.display()
         ));
-        download(tarball_url, &cache_path).await?;
+        download(tarball_url, &cache_path)
+            .await
+            .map_err(|e| anyhow!("Failed to download package: {}", e))?;
     }
 
     // Clone to package directory
@@ -183,7 +186,9 @@ pub async fn prepare_global_package_json(
         cache_path.display(),
         package_path.display()
     ));
-    clone(&cache_path, &package_path, true).await?;
+    clone(&cache_path, &package_path, true)
+        .await
+        .map_err(|e| anyhow!("Failed to clone package: {}", e))?;
 
     // Remove devDependencies, peerDependencies and optionalDependencies from package.json
     let package_json_path = package_path.join("package.json");

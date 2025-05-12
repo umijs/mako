@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use async_compression::tokio::bufread::GzipDecoder;
 use flate2::read::GzDecoder;
 use reqwest::StatusCode;
@@ -31,9 +32,9 @@ impl std::fmt::Display for DownloadError {
     }
 }
 
-pub async fn download(url: &str, dest: &Path) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn download(url: &str, dest: &Path) -> Result<()> {
     let start = std::time::Instant::now();
-    let result = RetryIf::spawn(
+    RetryIf::spawn(
         create_retry_strategy(),
         || async {
             let response = reqwest::get(url)
@@ -53,12 +54,9 @@ pub async fn download(url: &str, dest: &Path) -> Result<(), Box<dyn std::error::
                 }
                 StatusCode::NOT_FOUND => {
                     log_verbose(&format!("URL not found {}", url));
-                    Err(DownloadError::Permanent(
-                        format!("URL not found {}", url).into(),
-                    ))
+                    Err(DownloadError::Permanent(format!("URL not found {}", url)))
                 }
                 status => {
-                    // Handle other status codes as needed
                     log_verbose(&format!("Error: {}, retrying", status));
                     Err(DownloadError::Temporary(format!("HTTP error: {}", status)))
                 }
@@ -67,14 +65,14 @@ pub async fn download(url: &str, dest: &Path) -> Result<(), Box<dyn std::error::
         |e: &DownloadError| matches!(e, DownloadError::Temporary(_)),
     )
     .await
-    .map_err(|e: DownloadError| Box::new(e) as Box<dyn std::error::Error>);
+    .context("Download failed after retries")?;
 
     let duration = start.elapsed();
     log_verbose(&format!(
         "Download task took: {:?}, url: {:?}",
         duration, url
     ));
-    result
+    Ok(())
 }
 
 async fn try_unpack(bytes: &[u8], dest: &Path) -> Result<(), Box<dyn std::error::Error>> {

@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::io::{self, Write};
 use tokio::fs;
 
@@ -6,10 +7,10 @@ use crate::util::{
     logger::{log_error, log_info, log_verbose},
 };
 
-pub async fn clean(pattern: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn clean(pattern: &str) -> Result<()> {
     let cache_dir = dirs::home_dir()
         .map(|p| p.join(".cache").join("nm"))
-        .ok_or("Failed to get cache directory")?;
+        .context("Failed to get cache directory")?;
 
     let (pkg_pattern, version_pattern) = parse_pattern(pattern);
     let mut to_delete = Vec::new();
@@ -75,7 +76,7 @@ pub async fn clean(pattern: &str) -> Result<(), Box<dyn std::error::Error>> {
         println!("- {}@{}", pkg, version);
     }
 
-    print!("\n");
+    println!();
     log_info("Note: This will only delete caches from global storage and won't affect dependencies in the current project. If you need to reinstall project dependencies, please run 'utoo update'");
     print!(
         "\nConfirm to delete these {} packages? [y/N] ",

@@ -89,7 +89,7 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
                     .get("dist")
                     .unwrap_or(&json!(""))
                     .get("integrity"));
-                total_packages = total_packages + 1;
+                total_packages += 1;
             }
 
             if *current.is_peer.read().unwrap() == Some(true) {

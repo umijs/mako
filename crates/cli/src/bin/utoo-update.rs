@@ -1,5 +1,7 @@
-use clap::Parser;
 use std::process;
+
+use anyhow::Result;
+use clap::Parser;
 use utoo_cli::{
     cmd::update::update,
     constants::{cmd::UPDATE_ABOUT, APP_VERSION},
@@ -21,7 +23,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     if let Err(e) = update(cli.ignore_scripts).await {
@@ -29,4 +31,5 @@ async fn main() {
         let _ = write_verbose_logs_to_file();
         process::exit(1);
     }
+    Ok(())
 }

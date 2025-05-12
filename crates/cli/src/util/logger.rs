@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::env;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -25,6 +26,12 @@ pub fn finish_progress_bar(msg: &str) {
         ProgressStyle::with_template("✓ +{pos:.green} ~{len:.magenta} {wide_msg}").unwrap(),
     );
     PROGRESS_BAR.finish_with_message(msg.to_string());
+    PROGRESS_BAR.set_draw_target(indicatif::ProgressDrawTarget::hidden());
+}
+
+pub fn abort_progress_bar() {
+    PROGRESS_BAR.set_style(ProgressStyle::with_template("").unwrap());
+    PROGRESS_BAR.finish_with_message("aborted".to_string());
     PROGRESS_BAR.set_draw_target(indicatif::ProgressDrawTarget::hidden());
 }
 
@@ -106,8 +113,8 @@ pub fn log_progress(text: &str) {
     // log_verbose(text);
 }
 
-pub fn write_verbose_logs_to_file() -> std::io::Result<String> {
-    self::finish_progress_bar("done");
+pub fn write_verbose_logs_to_file() -> Result<String> {
+    abort_progress_bar();
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
@@ -123,9 +130,11 @@ pub fn write_verbose_logs_to_file() -> std::io::Result<String> {
             .create(true)
             .write(true)
             .truncate(true)
-            .open(&log_file)?;
+            .open(&log_file)
+            .context("Failed to open log file")?;
 
-        file.write_all(logs.join("\n").as_bytes())?;
+        file.write_all(logs.join("\n").as_bytes())
+            .context("Failed to write logs to file")?;
 
         log_error(&format!("Verbose logs have been saved to {}", log_file));
     }
@@ -158,5 +167,21 @@ mod tests {
 
         set_verbose(true);
         assert!(VERBOSE.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn test_write_verbose_logs_to_file() -> Result<()> {
+        set_verbose(true);
+        log_verbose("Test verbose message");
+        log_warning("Test warning message");
+        log_error("Test error message");
+        log_info("Test info message");
+
+        let log_file = write_verbose_logs_to_file()?;
+        assert!(std::path::Path::new(&log_file).exists());
+
+        // Clean up
+        std::fs::remove_file(log_file)?;
+        Ok(())
     }
 }
