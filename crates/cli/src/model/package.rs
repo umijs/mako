@@ -49,6 +49,7 @@ pub struct PackageInfo {
     pub fullname: String, // exp "@babel/parser"
     #[allow(dead_code)]
     pub name: String, // exp parser
+    #[allow(dead_code)]
     pub version: String,
 }
 
@@ -75,16 +76,13 @@ impl PackageInfo {
         self.has_bin_files() || self.scripts.has_any_script()
     }
 
-    pub fn has_script(&self) -> bool {
-        self.scripts.has_any_script()
-    }
-
     pub fn from_path(path: &Path) -> Result<Self> {
         // Read package.json
         let package_json_path = path.join("package.json");
         let content =
             fs::read_to_string(&package_json_path).context("Failed to read package.json")?;
-        let data: Value = serde_json::from_str(&content).map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
+        let data: Value = serde_json::from_str(&content)
+            .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
 
         // Parse package name
         let name = data["name"]

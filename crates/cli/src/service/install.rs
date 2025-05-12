@@ -1,8 +1,6 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use glob::glob;
-use serde_json::Value;
 use std::collections::HashMap;
-use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
@@ -16,17 +14,6 @@ use crate::util::linker::link;
 use crate::util::logger::{log_progress, log_verbose, PROGRESS_BAR};
 
 use super::binary::update_package_binary;
-
-#[derive(Debug)]
-pub struct Scripts {
-    pub preinstall: Option<String>,
-    pub install: Option<String>,
-    pub postinstall: Option<String>,
-    pub prepare: Option<String>,
-    pub preprepare: Option<String>,
-    pub postprepare: Option<String>,
-    pub prepublish: Option<String>,
-}
 
 /// Clean up a single node_modules directory
 async fn clean_node_modules_dir(
@@ -165,7 +152,7 @@ async fn clean_deps(
     cwd: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut valid_packages = std::collections::HashSet::new();
-    for (_, packages) in groups {
+    for packages in groups.values() {
         for (path, _) in packages {
             valid_packages.insert(path.clone());
         }
@@ -224,7 +211,7 @@ pub async fn install_packages(
                                 "Link skipped due to empty package name: {}",
                                 path
                             ));
-                            log_progress(&format!("empty package name link skipped"));
+                            log_progress("empty package name link skipped");
                             continue;
                         }
                         log_verbose(&format!("Attempting to link from {} to {}", resolved, path));
@@ -236,27 +223,23 @@ pub async fn install_packages(
                             return Err(format!("Link failed: {}", e).into());
                         }
                         PROGRESS_BAR.inc(1);
-                        log_progress(&format!("resolved link skipped",));
+                        log_progress("resolved link skipped");
                         continue;
                     }
 
                     // skip when cpu or os is not compatible
-                    if package.cpu.is_some() {
-                        if !is_cpu_compatible(&package.cpu.unwrap()) {
-                            PROGRESS_BAR.inc(1);
-                            log_verbose(&format!("cpu skipped: {}", &path));
-                            log_progress(&format!("uncompatibel cpu skipped",));
-                            continue;
-                        }
+                    if package.cpu.is_some() && !is_cpu_compatible(&package.cpu.unwrap()) {
+                        PROGRESS_BAR.inc(1);
+                        log_verbose(&format!("cpu skipped: {}", &path));
+                        log_progress("uncompatibel cpu skipped");
+                        continue;
                     }
 
-                    if package.os.is_some() {
-                        if !is_os_compatible(&package.os.unwrap()) {
-                            PROGRESS_BAR.inc(1);
-                            log_verbose(&format!("os skipped: {}", &path));
-                            log_progress(&format!("uncompatibel os skipped",));
-                            continue;
-                        }
+                    if package.os.is_some() && !is_os_compatible(&package.os.unwrap()) {
+                        PROGRESS_BAR.inc(1);
+                        log_verbose(&format!("os skipped: {}", &path));
+                        log_progress("uncompatibel os skipped");
+                        continue;
                     }
 
                     let name = extract_package_name(&path);
@@ -335,40 +318,6 @@ pub async fn install_packages(
     }
 
     Ok(())
-}
-
-fn read_package_scripts(package_path: &Path) -> Result<Scripts> {
-    let package_json_path = package_path.join("package.json");
-    let content = fs::read_to_string(&package_json_path)
-        .with_context(|| format!("Failed to read {}", package_json_path.display()))?;
-
-    let data: Value = serde_json::from_str(&content)
-        .with_context(|| format!("Failed to parse {}", package_json_path.display()))?;
-
-    let binding = serde_json::Map::new();
-    let scripts = data
-        .get("scripts")
-        .and_then(|s| s.as_object())
-        .unwrap_or(&binding);
-
-    Ok(Scripts {
-        preinstall: scripts
-            .get("preinstall")
-            .and_then(|s| s.as_str())
-            .map(String::from),
-        install: scripts
-            .get("install")
-            .and_then(|s| s.as_str())
-            .map(String::from),
-        postinstall: scripts
-            .get("postinstall")
-            .and_then(|s| s.as_str())
-            .map(String::from),
-        prepare: None,
-        preprepare: None,
-        postprepare: None,
-        prepublish: None,
-    })
 }
 
 #[cfg(test)]

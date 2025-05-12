@@ -113,8 +113,8 @@ fn validate_deps() -> Result<()> {
     let lock_path = path.join("package-lock.json");
 
     let lock_content = fs::read_to_string(lock_path).context("Failed to read package-lock.json")?;
-    let lock_file: serde_json::Value =
-        serde_json::from_str(&lock_content).map_err(|e| anyhow::anyhow!("Failed to parse package-lock.json: {}", e))?;
+    let lock_file: serde_json::Value = serde_json::from_str(&lock_content)
+        .map_err(|e| anyhow::anyhow!("Failed to parse package-lock.json: {}", e))?;
 
     if let Some(packages) = lock_file.get("packages").and_then(|p| p.as_object()) {
         for (pkg_path, pkg_info) in packages {
@@ -163,7 +163,7 @@ fn validate_deps() -> Result<()> {
                             if let Some(actual_version) =
                                 dep_info.get("version").and_then(|v| v.as_str())
                             {
-                                if !semver::matches(&req_version_str, &actual_version) {
+                                if !semver::matches(req_version_str, actual_version) {
                                     log_warning(&format!(
                                         "Package {} {} dependency {} (required version: {}) does not match actual version {}@{}",
                                         pkg_path, dep_field, dep_name, req_version_str, current_path, actual_version

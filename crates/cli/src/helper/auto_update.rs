@@ -59,7 +59,7 @@ async fn check_and_update_cache() -> Result<VersionCache> {
 
 async fn execute_update(version: &str) -> Result<()> {
     let status = Command::new("utoo")
-        .args(&["i", &format!("@utoo/utoo@{}", version), "-g"])
+        .args(["i", &format!("@utoo/utoo@{}", version), "-g"])
         .env("CI", "1")
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -117,7 +117,8 @@ fn get_cache_path() -> PathBuf {
 fn read_version_cache() -> Result<VersionCache> {
     let content =
         fs::read_to_string(get_cache_path()).context("Failed to read version cache file")?;
-    serde_json::from_str(&content).map_err(|e| anyhow::anyhow!("Failed to parse version cache: {}", e))
+    serde_json::from_str(&content)
+        .map_err(|e| anyhow::anyhow!("Failed to parse version cache: {}", e))
 }
 
 fn save_version_cache(cache: &VersionCache) -> Result<()> {

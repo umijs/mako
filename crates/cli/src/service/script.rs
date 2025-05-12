@@ -2,7 +2,7 @@ use crate::model::package::PackageInfo;
 use crate::util::logger::log_verbose;
 use anyhow::{Context, Result};
 use std::env;
-use std::os::unix::fs::{symlink as unix_symlink, PermissionsExt};
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tokio::fs;
@@ -87,45 +87,6 @@ impl ScriptService {
         Ok(())
     }
 
-    pub async fn link_bin_files(package: &PackageInfo) -> Result<()> {
-        let bin_dir = package.get_bin_dir().ok_or_else(|| {
-            anyhow::anyhow!(
-                "Cannot find node_modules directory: {}",
-                package.path.display()
-            )
-        })?;
-
-        fs::create_dir_all(&bin_dir)
-            .await
-            .context("Failed to create .bin directory")?;
-
-        for (bin_name, relative_path) in &package.bin_files {
-            Self::process_bin_file(package, bin_dir.as_path(), bin_name, &relative_path).await?;
-        }
-
-        Ok(())
-    }
-
-    pub async fn process_bin_file(
-        package: &PackageInfo,
-        bin_dir: &Path,
-        bin_name: &str,
-        relative_path: &str,
-    ) -> Result<()> {
-        let target_path = package.path.join(relative_path);
-        let bin_path = bin_dir.join(bin_name);
-
-        log_verbose(&format!(
-            "Processing binary file: {} -> {}",
-            bin_name, relative_path
-        ));
-
-        Self::ensure_executable(&target_path).await?;
-        Self::create_symlink(package, &bin_path, relative_path)?;
-
-        Ok(())
-    }
-
     pub async fn ensure_executable(target_path: &Path) -> Result<()> {
         let permissions = tokio::fs::metadata(&target_path)
             .await
@@ -155,41 +116,6 @@ impl ScriptService {
         fs::set_permissions(&target_path, perms)
             .await
             .context("Failed to set executable permissions")?;
-
-        Ok(())
-    }
-
-    fn create_symlink(package: &PackageInfo, bin_path: &Path, relative_path: &str) -> Result<()> {
-        let node_modules_count = bin_path
-            .components()
-            .filter(|c| c.as_os_str() == "node_modules")
-            .count();
-
-        let prefix = "../".repeat(node_modules_count);
-        let relative_target = format!("../{}{}/{}", prefix, package.path.display(), relative_path);
-
-        if let Err(e) = unix_symlink(&relative_target, bin_path) {
-            if e.raw_os_error() != Some(17) {
-                // EEXIST = 17
-                anyhow::bail!(
-                    "Failed to create symlink {} -> {:?}: {}",
-                    bin_path.display(),
-                    relative_target,
-                    e
-                );
-            }
-            log_verbose(&format!(
-                "Link already exists, skipping: {} -> {:?}",
-                bin_path.display(),
-                relative_target
-            ));
-        } else {
-            log_verbose(&format!(
-                "Successfully created link: {} -> {:?}",
-                bin_path.display(),
-                relative_target
-            ));
-        }
 
         Ok(())
     }
@@ -339,7 +265,10 @@ mod tests {
         let result = ScriptService::execute_custom_script(&package, "test", "exit 1").await;
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Custom script execution failed"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Custom script execution failed"));
     }
 
     #[tokio::test]

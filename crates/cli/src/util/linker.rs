@@ -23,7 +23,7 @@ pub fn link(src: &Path, dst: &Path) -> Result<()> {
     }
 
     // Check if destination exists or is a broken symlink
-    if let Ok(_) = fs::symlink_metadata(&abs_dst) {
+    if fs::symlink_metadata(&abs_dst).is_ok() {
         fs::remove_file(&abs_dst).context(format!(
             "Failed to remove existing file: {}",
             abs_dst.display()

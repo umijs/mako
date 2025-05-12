@@ -39,7 +39,9 @@ pub async fn update_package(
         .context("Failed to update package.json")?;
 
     // 2. Rebuild Deps
-    build_deps().await.context("Failed to build package-lock.json")?;
+    build_deps()
+        .await
+        .context("Failed to build package-lock.json")?;
 
     install(ignore_scripts)
         .await
@@ -88,10 +90,10 @@ pub async fn install(ignore_scripts: bool) -> Result<()> {
         );
         rebuild().await.context("Failed to rebuild dependencies")?;
         log_info("💫 All dependencies installed successfully");
-        return Ok(());
+        Ok(())
     } else {
         log_info("💫 All dependencies installed successfully (you can run 'utoo rebuild' to trigger dependency hooks)");
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -121,7 +123,7 @@ pub async fn install_global_package(npm_spec: &str) -> Result<()> {
     let current_exe = std::env::current_exe().context("Failed to get current executable path")?;
     package_info
         .link_to_global(
-            &current_exe
+            current_exe
                 .parent()
                 .context("Failed to get executable parent directory")?,
         )

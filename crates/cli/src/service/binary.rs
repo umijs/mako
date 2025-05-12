@@ -194,7 +194,7 @@ async fn handle_cypress(
         &default_platforms
     };
 
-    let os = target_os.unwrap_or_else(|| std::env::consts::OS);
+    let os = target_os.unwrap_or(std::env::consts::OS);
     if let Some(target_platform) = platforms[os].as_str() {
         let download_file = dir.join("lib/tasks/download.js");
         if download_file.exists() {
@@ -247,8 +247,8 @@ pub async fn update_package_binary(dir: &Path, name: &str) -> Result<()> {
             .await
             .context("Failed to read package.json")?;
 
-        let mut pkg: Value =
-            serde_json::from_str(&content).map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
+        let mut pkg: Value = serde_json::from_str(&content)
+            .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
 
         // has install script and not replaceHostFiles
         let should_update_binary = if let Some(scripts) = pkg["scripts"].as_object() {

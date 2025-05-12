@@ -51,11 +51,11 @@ pub fn extract_package_name(path: &str) -> String {
 
 pub async fn ensure_package_lock() -> Result<()> {
     // check package.json exists in cwd
-    if !fs::metadata("package.json").is_ok() {
+    if fs::metadata("package.json").is_err() {
         return Err(anyhow!("package.json not found"));
     }
     // check package-lock.json exists in cwd
-    if !fs::metadata("package-lock.json").is_ok() {
+    if fs::metadata("package-lock.json").is_err() {
         log_info("Resolving dependencies");
         build_deps().await?;
         Ok(())
@@ -77,7 +77,7 @@ pub async fn update_package_json(
 
     // 2. Find target workspace if specified
     let target_dir = if let Some(ws) = workspace {
-        find_workspace_path(&PathBuf::from("."), &ws)
+        find_workspace_path(&PathBuf::from("."), ws)
             .await
             .map_err(|e| anyhow!("Failed to find workspace path: {}", e))?
     } else {

@@ -11,7 +11,7 @@ use tokio::sync::RwLock;
 use super::config::get_registry;
 use super::logger::log_verbose;
 
-pub static PACKAGE_CACHE: Lazy<PackageCache> = Lazy::new(|| PackageCache::new());
+pub static PACKAGE_CACHE: Lazy<PackageCache> = Lazy::new(PackageCache::new);
 
 // Modified cache structure definition
 type VersionMap = HashMap<String, Value>;
@@ -26,6 +26,12 @@ pub struct PackageCache {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CacheData {
     cache: CacheMap,
+}
+
+impl Default for PackageCache {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PackageCache {
@@ -90,7 +96,7 @@ pub struct Registry {
 }
 
 // Global Registry instance
-static REGISTRY: Lazy<Registry> = Lazy::new(|| Registry::new());
+static REGISTRY: Lazy<Registry> = Lazy::new(Registry::new);
 
 #[derive(Debug, Clone)]
 pub struct ResolvedPackage {
@@ -98,6 +104,12 @@ pub struct ResolvedPackage {
     pub name: String,
     pub manifest: Value,
     pub version: String,
+}
+
+impl Default for Registry {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Registry {
@@ -252,8 +264,8 @@ pub async fn load_cache(path: &str) -> Result<()> {
     let cache_str = tokio::fs::read_to_string(path)
         .await
         .context("Failed to read cache file")?;
-    let cache_data: CacheData =
-        serde_json::from_str(&cache_str).map_err(|e| anyhow::anyhow!("Failed to parse cache data: {}", e))?;
+    let cache_data: CacheData = serde_json::from_str(&cache_str)
+        .map_err(|e| anyhow::anyhow!("Failed to parse cache data: {}", e))?;
 
     PACKAGE_CACHE.import_data(cache_data).await;
     log_verbose(&format!("Cache loaded from {}", path));

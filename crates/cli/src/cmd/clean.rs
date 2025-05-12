@@ -76,7 +76,7 @@ pub async fn clean(pattern: &str) -> Result<()> {
         println!("- {}@{}", pkg, version);
     }
 
-    print!("\n");
+    println!();
     log_info("Note: This will only delete caches from global storage and won't affect dependencies in the current project. If you need to reinstall project dependencies, please run 'utoo update'");
     print!(
         "\nConfirm to delete these {} packages? [y/N] ",

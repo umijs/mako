@@ -1,6 +1,6 @@
 use std::process;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 use cmd::deps::build_deps;
 use cmd::install::{install, install_global_package, update_package};
@@ -159,7 +159,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Ensure the version is up to date, weak dependency
     if let Err(_e) = init_auto_update().await {
-        log_warning(&format!("Auto update cancelled"));
+        log_warning("Auto update cancelled");
     }
 
     match cli.command {
@@ -202,12 +202,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         process::exit(1);
                     }
                 }
-            } else {
-                if let Err(e) = install(ignore_scripts).await {
-                    log_error(&e.to_string());
-                    let _ = write_verbose_logs_to_file();
-                    process::exit(1);
-                }
+            } else if let Err(e) = install(ignore_scripts).await {
+                log_error(&e.to_string());
+                let _ = write_verbose_logs_to_file();
+                process::exit(1);
             }
         }
         Some(Commands::Uninstall {

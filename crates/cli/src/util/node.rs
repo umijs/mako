@@ -194,18 +194,16 @@ impl Node {
                     if rule.spec != "*" {
                         let matches = if edge.spec == "*" {
                             true
-                        } else {
-                            if let Ok(resolved) = resolve(&edge.name, &edge.spec).await {
-                                if let Some(version) =
-                                    resolved.manifest.get("version").and_then(|v| v.as_str())
-                                {
-                                    matches(&rule.spec, version)
-                                } else {
-                                    false
-                                }
+                        } else if let Ok(resolved) = resolve(&edge.name, &edge.spec).await {
+                            if let Some(version) =
+                                resolved.manifest.get("version").and_then(|v| v.as_str())
+                            {
+                                matches(&rule.spec, version)
                             } else {
-                                edge.spec == "*" || edge.spec == rule.spec
+                                false
                             }
+                        } else {
+                            edge.spec == "*" || edge.spec == rule.spec
                         };
                         if !matches {
                             continue;
@@ -337,12 +335,10 @@ impl Node {
                 *self.is_prod.write().unwrap() = Some(false);
                 changed = true;
             }
-        } else if all_peer {
-            if *self.is_peer.read().unwrap() != Some(true) {
-                *self.is_peer.write().unwrap() = Some(true);
-                *self.is_prod.write().unwrap() = Some(false);
-                changed = true;
-            }
+        } else if all_peer && *self.is_peer.read().unwrap() != Some(true) {
+            *self.is_peer.write().unwrap() = Some(true);
+            *self.is_prod.write().unwrap() = Some(false);
+            changed = true;
         }
 
         // Propagate changes

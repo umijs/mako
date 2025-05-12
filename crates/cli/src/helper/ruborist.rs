@@ -296,8 +296,8 @@ impl Ruborist {
             "Failed to read package.json at {}",
             pkg_path.display()
         ))?;
-        let pkg: Value =
-            serde_json::from_str(&pkg_content).map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
+        let pkg: Value = serde_json::from_str(&pkg_content)
+            .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
 
         // create root node
         let root = Node::new_root(
@@ -525,7 +525,7 @@ impl Ruborist {
                 }
                 name_map
                     .entry(child.name.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(child.clone());
             }
 

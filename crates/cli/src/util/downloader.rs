@@ -34,31 +34,35 @@ impl std::fmt::Display for DownloadError {
 
 pub async fn download(url: &str, dest: &Path) -> Result<()> {
     let start = std::time::Instant::now();
-    let result = RetryIf::spawn(
+    RetryIf::spawn(
         create_retry_strategy(),
         || async {
-            let response = reqwest::get(url).await.context("Network error")?;
+            let response = reqwest::get(url)
+                .await
+                .map_err(|e| DownloadError::Temporary(format!("Network error: {}", e)))?;
 
             match response.status() {
                 StatusCode::OK => {
-                    let bytes = response.bytes().await.context("Failed to read response")?;
+                    let bytes = response.bytes().await.map_err(|e| {
+                        DownloadError::Temporary(format!("Failed to read response: {}", e))
+                    })?;
                     if let Err(e) = try_unpack(&bytes, dest).await {
                         log_verbose(&format!("Unpacking failed {}: {}", dest.display(), e));
-                        return Err(anyhow::anyhow!("Failed to unpack: {}", e));
+                        return Err(DownloadError::Temporary(e.to_string()));
                     }
                     Ok(())
                 }
                 StatusCode::NOT_FOUND => {
                     log_verbose(&format!("URL not found {}", url));
-                    Err(anyhow::anyhow!("URL not found {}", url))
+                    Err(DownloadError::Permanent(format!("URL not found {}", url)))
                 }
                 status => {
                     log_verbose(&format!("Error: {}, retrying", status));
-                    Err(anyhow::anyhow!("HTTP error: {}", status))
+                    Err(DownloadError::Temporary(format!("HTTP error: {}", status)))
                 }
             }
         },
-        |e: &anyhow::Error| e.to_string().contains("HTTP error: 5"),
+        |e: &DownloadError| matches!(e, DownloadError::Temporary(_)),
     )
     .await
     .context("Download failed after retries")?;
