@@ -39,7 +39,7 @@ pub async fn update_package(
         .context("Failed to update package.json")?;
 
     // 2. Rebuild Deps
-    let _ = build_deps().await;
+    build_deps().await.context("Failed to build package-lock.json")?;
 
     install(ignore_scripts)
         .await
@@ -57,7 +57,7 @@ pub async fn install(ignore_scripts: bool) -> Result<()> {
     let package_lock: PackageLock = serde_json::from_reader(
         fs::File::open("package-lock.json").context("Failed to open package-lock.json")?,
     )
-    .context("Failed to parse package-lock.json")?;
+    .map_err(|e| anyhow::anyhow!("Failed to parse package-lock.json: {}", e))?;
 
     let cache_dir = get_cache_dir();
 

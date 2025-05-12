@@ -165,7 +165,7 @@ impl Registry {
         let manifest: Value = response
             .json()
             .await
-            .context("Failed to parse JSON response")?;
+            .map_err(|e| anyhow::anyhow!("Failed to parse JSON response: {}", e))?;
 
         // Extract version
         let version = match manifest.get("version").and_then(|v| v.as_str()) {
@@ -253,7 +253,7 @@ pub async fn load_cache(path: &str) -> Result<()> {
         .await
         .context("Failed to read cache file")?;
     let cache_data: CacheData =
-        serde_json::from_str(&cache_str).context("Failed to parse cache data")?;
+        serde_json::from_str(&cache_str).map_err(|e| anyhow::anyhow!("Failed to parse cache data: {}", e))?;
 
     PACKAGE_CACHE.import_data(cache_data).await;
     log_verbose(&format!("Cache loaded from {}", path));

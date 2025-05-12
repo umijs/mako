@@ -26,7 +26,7 @@ async fn load_config() -> Result<&'static Value> {
             response
                 .json()
                 .await
-                .context("Failed to parse binary mirror config")
+                .map_err(|e| anyhow::anyhow!("Failed to parse binary mirror config: {}", e))
         })
         .await
 }
@@ -248,7 +248,7 @@ pub async fn update_package_binary(dir: &Path, name: &str) -> Result<()> {
             .context("Failed to read package.json")?;
 
         let mut pkg: Value =
-            serde_json::from_str(&content).context("Failed to parse package.json")?;
+            serde_json::from_str(&content).map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
 
         // has install script and not replaceHostFiles
         let should_update_binary = if let Some(scripts) = pkg["scripts"].as_object() {

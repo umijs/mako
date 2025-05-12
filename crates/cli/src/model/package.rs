@@ -84,7 +84,7 @@ impl PackageInfo {
         let package_json_path = path.join("package.json");
         let content =
             fs::read_to_string(&package_json_path).context("Failed to read package.json")?;
-        let data: Value = serde_json::from_str(&content).context("Failed to parse package.json")?;
+        let data: Value = serde_json::from_str(&content).map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
 
         // Parse package name
         let name = data["name"]

@@ -297,7 +297,7 @@ impl Ruborist {
             pkg_path.display()
         ))?;
         let pkg: Value =
-            serde_json::from_str(&pkg_content).context("Failed to parse package.json")?;
+            serde_json::from_str(&pkg_content).map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
 
         // create root node
         let root = Node::new_root(

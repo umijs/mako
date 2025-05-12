@@ -18,7 +18,7 @@ impl PackageService {
     pub async fn process_project_hooks() -> Result<()> {
         let content = fs::read_to_string("package.json").context("Failed to read package.json")?;
 
-        let data: Value = serde_json::from_str(&content).context("Failed to parse package.json")?;
+        let data: Value = serde_json::from_str(&content).map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
 
         let binding = serde_json::Map::new();
         let scripts = data
@@ -107,7 +107,7 @@ impl PackageService {
             fs::read_to_string("package-lock.json").context("Failed to load package-lock.json")?;
 
         let lock_data: Value =
-            serde_json::from_str(&lock_file).context("Failed to parse package-lock.json")?;
+            serde_json::from_str(&lock_file).map_err(|e| anyhow::anyhow!("Failed to parse package-lock.json: {}", e))?;
 
         let mut packages = Vec::new();
         if let Some(deps) = lock_data.get("packages").and_then(|v| v.as_object()) {
@@ -302,7 +302,7 @@ impl PackageService {
         let package_json_path = package_path.join("package.json");
         let content =
             fs::read_to_string(package_json_path).context("Failed to read package.json")?;
-        let data: Value = serde_json::from_str(&content).context("Failed to parse package.json")?;
+        let data: Value = serde_json::from_str(&content).map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
 
         let default_scripts = serde_json::Map::new();
         let scripts = data

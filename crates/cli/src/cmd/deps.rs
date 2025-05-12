@@ -114,7 +114,7 @@ fn validate_deps() -> Result<()> {
 
     let lock_content = fs::read_to_string(lock_path).context("Failed to read package-lock.json")?;
     let lock_file: serde_json::Value =
-        serde_json::from_str(&lock_content).context("Failed to parse package-lock.json")?;
+        serde_json::from_str(&lock_content).map_err(|e| anyhow::anyhow!("Failed to parse package-lock.json: {}", e))?;
 
     if let Some(packages) = lock_file.get("packages").and_then(|p| p.as_object()) {
         for (pkg_path, pkg_info) in packages {

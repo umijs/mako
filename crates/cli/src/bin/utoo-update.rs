@@ -1,3 +1,5 @@
+use std::process;
+
 use anyhow::Result;
 use clap::Parser;
 use utoo_cli::{
@@ -24,6 +26,10 @@ struct Cli {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    update(cli.ignore_scripts).await?;
+    if let Err(e) = update(cli.ignore_scripts).await {
+        log_error(&e.to_string());
+        let _ = write_verbose_logs_to_file();
+        process::exit(1);
+    }
     Ok(())
 }

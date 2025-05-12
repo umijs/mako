@@ -71,14 +71,14 @@ pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<
 fn load_package_json() -> Result<Value> {
     let content = fs::read_to_string("package.json").context("Failed to read package.json")?;
 
-    serde_json::from_str(&content).context("Failed to parse package.json")
+    serde_json::from_str(&content).map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))
 }
 
 fn load_package_json_from_path(path: &PathBuf) -> Result<Value> {
     let package_json_path = path.join("package.json");
     let content = fs::read_to_string(package_json_path).context("Failed to read package.json")?;
 
-    serde_json::from_str(&content).context("Failed to parse package.json")
+    serde_json::from_str(&content).map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))
 }
 
 #[cfg(test)]

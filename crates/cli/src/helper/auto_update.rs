@@ -52,7 +52,7 @@ async fn check_and_update_cache() -> Result<VersionCache> {
         Ok(_) => read_version_cache(),
         Err(e) => {
             log_warning(&format!("Failed to check remote version: {}", e));
-            anyhow::bail!("RegistryError")
+            Err(e).context("Failed to check remote version")
         }
     }
 }
@@ -91,7 +91,7 @@ async fn check_remote_version() -> Result<()> {
     let package_info = response
         .json::<serde_json::Value>()
         .await
-        .context("Failed to parse package info")?;
+        .map_err(|e| anyhow::anyhow!("Failed to parse package info: {}", e))?;
 
     let version = package_info["version"]
         .as_str()
@@ -117,7 +117,7 @@ fn get_cache_path() -> PathBuf {
 fn read_version_cache() -> Result<VersionCache> {
     let content =
         fs::read_to_string(get_cache_path()).context("Failed to read version cache file")?;
-    serde_json::from_str(&content).context("Failed to parse version cache")
+    serde_json::from_str(&content).map_err(|e| anyhow::anyhow!("Failed to parse version cache: {}", e))
 }
 
 fn save_version_cache(cache: &VersionCache) -> Result<()> {

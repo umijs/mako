@@ -14,7 +14,7 @@ pub async fn find_workspaces(root_path: &PathBuf) -> Result<Vec<(String, PathBuf
         "Failed to read package.json at {}",
         pkg_path.display()
     ))?;
-    let pkg: Value = serde_json::from_str(&pkg_content).context("Failed to parse package.json")?;
+    let pkg: Value = serde_json::from_str(&pkg_content).map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
 
     // load workspaces config
     if let Some(workspaces_config) = pkg.get("workspaces") {

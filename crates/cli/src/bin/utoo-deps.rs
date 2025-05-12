@@ -1,8 +1,10 @@
 use anyhow::Result;
 use clap::Parser;
+use std::process;
 use utoo_cli::{
     cmd::deps::{build_deps, build_workspace},
     constants::{cmd::DEPS_ABOUT, APP_VERSION},
+    util::logger::{log_error, write_verbose_logs_to_file},
 };
 
 #[derive(Parser)]
@@ -31,6 +33,11 @@ async fn main() -> Result<()> {
         build_deps().await
     };
 
+    if let Err(e) = result {
+        log_error(&e.to_string());
+        let _ = write_verbose_logs_to_file();
+        process::exit(1);
+    }
     result?;
     Ok(())
 }
