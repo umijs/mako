@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use super::logger::{log_info, log_verbose};
-use super::registry::resolve;
 use crate::util::semver::matches;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -184,71 +183,27 @@ impl Node {
         // Apply override rules if exists
         if let Some(root) = root {
             if let Some(overrides) = &root.overrides {
-                'rules: for rule in &overrides.rules {
-                    // Check name match
-                    if edge.name != rule.name {
-                        continue;
-                    }
+                // Collect parent chain information
+                let mut parent_chain = Vec::new();
+                let mut current_node = edge.from.parent.read().unwrap().clone();
 
-                    // Check version spec matching
-                    if rule.spec != "*" {
-                        let matches = if edge.spec == "*" {
-                            true
-                        } else if let Ok(resolved) = resolve(&edge.name, &edge.spec).await {
-                            if let Some(version) =
-                                resolved.manifest.get("version").and_then(|v| v.as_str())
-                            {
-                                matches(&rule.spec, version)
-                            } else {
-                                false
-                            }
-                        } else {
-                            edge.spec == "*" || edge.spec == rule.spec
-                        };
-                        if !matches {
-                            continue;
+                while let Some(node) = current_node {
+                    parent_chain.push((node.name.clone(), node.version.clone()));
+                    current_node = node.parent.read().unwrap().clone();
+                }
+
+                // Check each rule
+                for rule in &overrides.rules {
+                    if overrides.matches_rule(rule, &edge.name, &edge.spec, &parent_chain) {
+                        if let Some(edge_mut) = Arc::get_mut(&mut edge) {
+                            log_info(&format!(
+                                "Override rule applied {}@{} => {}",
+                                rule.name, rule.spec, rule.target_spec
+                            ));
+                            edge_mut.spec = rule.target_spec.clone();
                         }
+                        break;
                     }
-
-                    // Check parent rule chain
-                    if let Some(mut current_rule) = rule.parent.as_ref() {
-                        let mut current_node = edge.from.parent.read().unwrap().clone();
-
-                        while let Some(node) = current_node {
-                            if node.name == current_rule.name {
-                                let matches = if current_rule.spec == "*" {
-                                    true
-                                } else {
-                                    matches(&current_rule.spec, &node.version)
-                                };
-
-                                if matches {
-                                    if let Some(next_rule) = current_rule.parent.as_ref() {
-                                        current_rule = next_rule;
-                                        current_node = node.parent.read().unwrap().clone();
-                                        continue;
-                                    } else {
-                                        break;
-                                    }
-                                }
-                            }
-                            current_node = node.parent.read().unwrap().clone();
-                        }
-
-                        if current_rule.parent.is_some() {
-                            continue 'rules;
-                        }
-                    }
-
-                    // Apply override rule
-                    if let Some(edge_mut) = Arc::get_mut(&mut edge) {
-                        log_info(&format!(
-                            "Override rule applied {}@{} => {}",
-                            rule.name, rule.spec, rule.target_spec
-                        ));
-                        edge_mut.spec = rule.target_spec.clone();
-                    }
-                    break;
                 }
             }
         }
@@ -481,6 +436,63 @@ impl Overrides {
             Value::String(s) => s.clone(),
             _ => String::from("*"),
         }
+    }
+
+    // Check if a rule matches a dependency with its parent chain
+    pub fn matches_rule(&self, rule: &OverrideRule, dep_name: &str, dep_version: &str, parent_chain: &[(String, String)]) -> bool {
+        // Check name match
+        if rule.name != dep_name {
+            return false;
+        }
+
+        // Check version spec matching
+        if rule.spec != "*" {
+            // If dep_version is a version spec (not a resolved version)
+            if dep_version.contains(|c: char| c == '^' || c == '~' || c == '>' || c == '<' || c == '=') {
+                // For version specs, we check if the rule's spec matches the dep_version
+                if !matches(dep_version, &rule.spec) {
+                    return false;
+                }
+            } else {
+                // For resolved versions, we check if the rule's spec matches the version
+                if !matches(&rule.spec, dep_version) {
+                    return false;
+                }
+            }
+        }
+
+        // Check parent rule chain
+        if let Some(mut current_rule) = rule.parent.as_ref() {
+            let mut parent_idx = 0;
+
+            while let Some((parent_name, parent_version)) = parent_chain.get(parent_idx) {
+                if parent_name == &current_rule.name {
+                    let matches = if current_rule.spec == "*" {
+                        true
+                    } else {
+                        matches(&current_rule.spec, parent_version)
+                    };
+
+                    if matches {
+                        if let Some(next_rule) = current_rule.parent.as_ref() {
+                            current_rule = next_rule;
+                            parent_idx += 1;
+                            continue;
+                        } else {
+                            return true;
+                        }
+                    }
+                }
+                parent_idx += 1;
+            }
+
+            // If we still have parent rules to check but ran out of parents
+            if current_rule.parent.is_some() {
+                return false;
+            }
+        }
+
+        true
     }
 }
 
