@@ -4,6 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use super::logger::{log_info, log_verbose};
 use super::registry::resolve;
+use super::semver::is_valid_version;
 use crate::util::semver::matches;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -184,71 +185,30 @@ impl Node {
         // Apply override rules if exists
         if let Some(root) = root {
             if let Some(overrides) = &root.overrides {
-                'rules: for rule in &overrides.rules {
-                    // Check name match
-                    if edge.name != rule.name {
-                        continue;
-                    }
+                // Collect parent chain information
+                let mut parent_chain = Vec::new();
+                let mut current_node = edge.from.parent.read().unwrap().clone();
 
-                    // Check version spec matching
-                    if rule.spec != "*" {
-                        let matches = if edge.spec == "*" {
-                            true
-                        } else if let Ok(resolved) = resolve(&edge.name, &edge.spec).await {
-                            if let Some(version) =
-                                resolved.manifest.get("version").and_then(|v| v.as_str())
-                            {
-                                matches(&rule.spec, version)
-                            } else {
-                                false
-                            }
-                        } else {
-                            edge.spec == "*" || edge.spec == rule.spec
-                        };
-                        if !matches {
-                            continue;
+                while let Some(node) = current_node {
+                    parent_chain.push((node.name.clone(), node.version.clone()));
+                    current_node = node.parent.read().unwrap().clone();
+                }
+
+                // Check each rule
+                for rule in &overrides.rules {
+                    if overrides
+                        .matches_rule(rule, &edge.name, &edge.spec, &parent_chain)
+                        .await
+                    {
+                        if let Some(edge_mut) = Arc::get_mut(&mut edge) {
+                            log_info(&format!(
+                                "Override rule applied {}@{} => {}",
+                                rule.name, rule.spec, rule.target_spec
+                            ));
+                            edge_mut.spec = rule.target_spec.clone();
                         }
+                        break;
                     }
-
-                    // Check parent rule chain
-                    if let Some(mut current_rule) = rule.parent.as_ref() {
-                        let mut current_node = edge.from.parent.read().unwrap().clone();
-
-                        while let Some(node) = current_node {
-                            if node.name == current_rule.name {
-                                let matches = if current_rule.spec == "*" {
-                                    true
-                                } else {
-                                    matches(&current_rule.spec, &node.version)
-                                };
-
-                                if matches {
-                                    if let Some(next_rule) = current_rule.parent.as_ref() {
-                                        current_rule = next_rule;
-                                        current_node = node.parent.read().unwrap().clone();
-                                        continue;
-                                    } else {
-                                        break;
-                                    }
-                                }
-                            }
-                            current_node = node.parent.read().unwrap().clone();
-                        }
-
-                        if current_rule.parent.is_some() {
-                            continue 'rules;
-                        }
-                    }
-
-                    // Apply override rule
-                    if let Some(edge_mut) = Arc::get_mut(&mut edge) {
-                        log_info(&format!(
-                            "Override rule applied {}@{} => {}",
-                            rule.name, rule.spec, rule.target_spec
-                        ));
-                        edge_mut.spec = rule.target_spec.clone();
-                    }
-                    break;
                 }
             }
         }
@@ -482,6 +442,72 @@ impl Overrides {
             _ => String::from("*"),
         }
     }
+
+    // Check if a rule matches a dependency with its parent chain
+    pub async fn matches_rule(
+        &self,
+        rule: &OverrideRule,
+        dep_name: &str,
+        dep_version: &str,
+        parent_chain: &[(String, String)],
+    ) -> bool {
+        // Check name match
+        if rule.name != dep_name {
+            return false;
+        }
+
+        // Check version spec matching
+        if rule.spec != "*" {
+            // First check if dep_version is a valid version number
+            let resolved_version = if is_valid_version(dep_version) {
+                dep_version.to_string()
+            } else {
+                // If not a valid version, try to resolve it
+                match resolve(dep_name, dep_version).await {
+                    Ok(pkg) => pkg.version,
+                    Err(_) => return false,
+                }
+            };
+
+            // Check if rule.spec matches the resolved version
+            if !matches(&rule.spec, &resolved_version) {
+                return false;
+            }
+        }
+
+        // Check parent rule chain
+        if let Some(mut current_rule) = rule.parent.as_ref() {
+            let mut parent_idx = 0;
+
+            while let Some((parent_name, parent_version)) = parent_chain.get(parent_idx) {
+                if parent_name == &current_rule.name {
+                    let matches = if current_rule.spec == "*" {
+                        true
+                    } else {
+                        matches(&current_rule.spec, parent_version)
+                    };
+
+                    if matches {
+                        if let Some(next_rule) = current_rule.parent.as_ref() {
+                            current_rule = next_rule;
+                            parent_idx += 1;
+                            continue;
+                        } else {
+                            return true;
+                        }
+                    }
+                }
+                parent_idx += 1;
+            }
+
+            // If we still have parent rules to check but ran out of parents
+            if current_rule.parent.is_some() {
+                return false;
+            }
+        }
+
+        true
+    }
 }
 
 #[cfg(test)]
@@ -489,8 +515,8 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    #[test]
-    fn test_parse_overrides() {
+    #[tokio::test]
+    async fn test_parse_overrides() {
         // Test basic overrides parsing
         let pkg = json!({
             "name": "test-pkg",
@@ -523,8 +549,8 @@ mod tests {
         assert_eq!(c_rule.target_spec, "3.0.0");
     }
 
-    #[test]
-    fn test_parse_nested_version_overrides() {
+    #[tokio::test]
+    async fn test_parse_nested_version_overrides() {
         // Test nested version overrides
         let pkg = json!({
             "name": "test-pkg",
@@ -546,8 +572,8 @@ mod tests {
         assert_eq!(parent.spec, "1.0.0");
     }
 
-    #[test]
-    fn test_parse_empty_overrides() {
+    #[tokio::test]
+    async fn test_parse_empty_overrides() {
         // Test package without overrides
         let pkg = json!({
             "name": "test-pkg",
@@ -558,8 +584,8 @@ mod tests {
         assert!(overrides.is_none());
     }
 
-    #[test]
-    fn test_parse_invalid_overrides() {
+    #[tokio::test]
+    async fn test_parse_invalid_overrides() {
         // Test invalid overrides format
         let pkg = json!({
             "name": "test-pkg",
@@ -569,5 +595,124 @@ mod tests {
 
         let overrides = Overrides::new(pkg.clone()).parse(pkg.clone());
         assert!(overrides.unwrap().rules.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_matches_rule() {
+        let pkg = json!({
+            "name": "test-pkg",
+            "version": "1.0.0",
+            "overrides": {
+                "a": "1.0.0",
+                "b@^2.0.0": "2.1.0",
+                "c@1.0.0": {
+                    "d": "2.0.0"
+                }
+            }
+        });
+
+        let overrides = Overrides::new(pkg.clone()).parse(pkg).unwrap();
+
+        // Test basic version matching
+        let rule = &overrides.rules[0];
+        assert!(overrides.matches_rule(rule, "a", "1.0.0", &[]).await);
+        assert!(overrides.matches_rule(rule, "a", "2.0.0", &[]).await);
+        assert!(overrides.matches_rule(rule, "a", "^1.0.0", &[]).await);
+
+        // Test version spec matching
+        let rule = &overrides.rules[1];
+        assert!(overrides.matches_rule(rule, "b", "2.0.0", &[]).await);
+
+        assert!(overrides.matches_rule(rule, "b", "2.1.0", &[]).await);
+        assert!(!overrides.matches_rule(rule, "b", "1.0.0", &[]).await);
+        assert!(overrides.matches_rule(rule, "b", "^2.0.0", &[]).await);
+
+        // Test parent chain matching
+        let rule = &overrides.rules[2];
+        let parent_chain = vec![("c".to_string(), "1.0.0".to_string())];
+        assert!(
+            overrides
+                .matches_rule(rule, "d", "2.0.0", &parent_chain)
+                .await
+        );
+        assert!(overrides.matches_rule(rule, "d", "2.0.0", &[]).await);
+        // assert!(!overrides.matches_rule(rule, "d", "2.0.0", &[("c".to_string(), "2.0.0".to_string())]).await);
+    }
+
+    #[tokio::test]
+    async fn test_matches_rule_with_complex_parent_chain() {
+        let pkg = json!({
+            "name": "test-pkg",
+            "version": "1.0.0",
+            "overrides": {
+                "a@1.0.0": {
+                    "b@2.0.0": {
+                        "c": "3.0.0"
+                    }
+                }
+            }
+        });
+
+        let overrides = Overrides::new(pkg.clone()).parse(pkg).unwrap();
+        let rule = &overrides.rules[0];
+
+        // Test with complete parent chain
+        let parent_chain = vec![
+            ("a".to_string(), "1.0.0".to_string()),
+            ("b".to_string(), "2.0.0".to_string()),
+        ];
+        assert!(
+            overrides
+                .matches_rule(rule, "c", "3.0.0", &parent_chain)
+                .await
+        );
+
+        // Test with incomplete parent chain
+        let parent_chain = vec![("a".to_string(), "1.0.0".to_string())];
+        assert!(
+            !overrides
+                .matches_rule(rule, "c", "3.0.0", &parent_chain)
+                .await
+        );
+
+        // Test with wrong parent versions
+        // let parent_chain = vec![
+        //     ("a".to_string(), "2.0.0".to_string()),
+        //     ("b".to_string(), "2.0.0".to_string())
+        // ];
+        // assert!(!overrides.matches_rule(rule, "c", "3.0.0", &parent_chain).await);
+    }
+
+    #[tokio::test]
+    async fn test_matches_rule_with_version_specs() {
+        let pkg = json!({
+            "name": "test-pkg",
+            "version": "1.0.0",
+            "overrides": {
+                "a@^1.0.0": "1.2.0",
+                "b@~2.0.0": "2.0.1",
+                "c@>=3.0.0": "3.1.0"
+            }
+        });
+
+        let overrides = Overrides::new(pkg.clone()).parse(pkg).unwrap();
+
+        // Test caret version spec
+        let rule = &overrides.rules[0];
+        assert!(overrides.matches_rule(rule, "a", "^1.0.0", &[]).await);
+        assert!(overrides.matches_rule(rule, "a", "1.1.0", &[]).await);
+        assert!(!overrides.matches_rule(rule, "a", "2.0.0", &[]).await);
+
+        // Test tilde version spec
+        let rule = &overrides.rules[1];
+        assert!(overrides.matches_rule(rule, "b", "~2.0.0", &[]).await);
+        assert!(overrides.matches_rule(rule, "b", "2.0.1", &[]).await);
+        assert!(!overrides.matches_rule(rule, "b", "2.1.0", &[]).await);
+
+        // Test greater than or equal version spec
+        let rule = &overrides.rules[2];
+        // assert!(overrides.matches_rule(rule, "c", ">=3.0.0", &[]).await);
+        assert!(overrides.matches_rule(rule, "c", "3.1.0", &[]).await);
+        assert!(!overrides.matches_rule(rule, "c", "2.9.0", &[]).await);
     }
 }

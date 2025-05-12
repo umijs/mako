@@ -12,6 +12,10 @@ pub fn matches(range: &str, version: &str) -> bool {
         range
     };
 
+    if range == "*" {
+        return true;
+    }
+
     let req = match VersionReq::parse_from_npm(range) {
         Ok(req) => req,
         Err(_) => return false,
@@ -27,6 +31,10 @@ pub fn matches(range: &str, version: &str) -> bool {
     };
 
     req.matches(&version)
+}
+
+pub fn is_valid_version(version: &str) -> bool {
+    Version::parse_from_npm(version).is_ok()
 }
 
 #[cfg(test)]
