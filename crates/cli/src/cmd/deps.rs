@@ -33,8 +33,6 @@ pub async fn build_deps() -> Result<()> {
     let mut ruborist = Ruborist::new(path.clone());
     ruborist.build_ideal_tree().await?;
 
-    // let _ = ruborist.print_tree();
-
     if let Some(ideal_tree) = &ruborist.ideal_tree {
         // Add reference
         // Create package-lock.json structure
@@ -57,7 +55,7 @@ pub async fn build_deps() -> Result<()> {
             .context("Failed to rename temporary package-lock.json")?;
     }
 
-    validate_deps()?;
+    validate_deps().await?;
     Ok(())
 }
 
@@ -109,7 +107,7 @@ pub async fn build_workspace() -> Result<()> {
     Ok(())
 }
 
-fn validate_deps() -> Result<()> {
+async fn validate_deps() -> Result<()> {
     let path = PathBuf::from(".");
     let lock_path = path.join("package-lock.json");
     let pkg_path = path.join("package.json");
@@ -144,7 +142,9 @@ fn validate_deps() -> Result<()> {
                         while !current_path.is_empty() {
                             if let Some(pkg_info) = packages.get(&current_path) {
                                 if let Some(name) = pkg_info.get("name").and_then(|n| n.as_str()) {
-                                    if let Some(version) = pkg_info.get("version").and_then(|v| v.as_str()) {
+                                    if let Some(version) =
+                                        pkg_info.get("version").and_then(|v| v.as_str())
+                                    {
                                         parent_chain.push((name.to_string(), version.to_string()));
                                     }
                                 }
@@ -161,7 +161,10 @@ fn validate_deps() -> Result<()> {
                         let effective_req_version = if let Some(overrides) = &overrides {
                             let mut effective_version = req_version_str.to_string();
                             for rule in &overrides.rules {
-                                if overrides.matches_rule(rule, dep_name, req_version_str, &parent_chain) {
+                                if overrides
+                                    .matches_rule(rule, dep_name, req_version_str, &parent_chain)
+                                    .await
+                                {
                                     effective_version = rule.target_spec.clone();
                                     break;
                                 }
