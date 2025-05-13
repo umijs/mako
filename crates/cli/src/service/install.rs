@@ -5,7 +5,7 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 
-use crate::helper::lock::{extract_package_name, Package};
+use crate::helper::lock::{extract_package_name, path_to_pkg_name, Package};
 use crate::helper::workspace;
 use crate::helper::{is_cpu_compatible, is_os_compatible};
 use crate::util::cloner::clone;
@@ -120,26 +120,15 @@ async fn clean_unused_packages(
     for entry in glob(&pattern)? {
         if let Ok(path) = entry {
             let pkg_dir = path.parent().unwrap();
-            let relative_path = pkg_dir.strip_prefix(node_modules)?;
-            let pkg_name = relative_path.to_string_lossy().to_string();
-
-            // ignore package.json in dist directory
-            // exp: node_modules/react/dist/package.json
-            let parts: Vec<&str> = pkg_name.split('/').collect();
-            if parts.len() > 2 || (parts.len() == 2 && !parts[0].starts_with('@')) {
-                continue;
-            }
-
-            let node_modules_prefix = node_modules
-                .strip_prefix(cwd)?
-                .to_string_lossy()
-                .to_string();
-            let full_pkg_name = format!("{}/{}", node_modules_prefix, pkg_name);
-
-            if !valid_packages.contains(&full_pkg_name) {
-                log_verbose(&format!("Cleaning unused package: {}", full_pkg_name));
-                if let Err(e) = tokio::fs::remove_dir_all(pkg_dir).await {
-                    log_verbose(&format!("Failed to remove {}: {}", full_pkg_name, e));
+            // /Users/xxx/utoo/node_modules/utoo-cli/node_modules/ora/package.json
+            // => ora
+            if let Some(pkg_name) = path_to_pkg_name(&pkg_dir.to_string_lossy()) {
+                let pkg_path = pkg_dir.strip_prefix(cwd).unwrap();
+                if !valid_packages.contains(pkg_path.to_string_lossy().as_ref()) {
+                    log_verbose(&format!("Cleaning unused package: {}", pkg_name));
+                    if let Err(e) = tokio::fs::remove_dir_all(pkg_dir).await {
+                        log_verbose(&format!("Failed to remove {}: {}", pkg_name, e));
+                    }
                 }
             }
         }

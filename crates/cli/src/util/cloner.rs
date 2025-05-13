@@ -178,7 +178,7 @@ pub async fn clone(src: &Path, dst: &Path, find_real: bool) -> Result<()> {
             ));
             return Ok(());
         } else {
-            log_warning(&format!("{:?} --> {:?} overrides", real_src, dst));
+            log_verbose(&format!("{:?} --> {:?} overrides", real_src, dst));
             if let Err(e) = fs::remove_dir_all(dst).await {
                 log_warning(&format!(
                     "Failed to clean target directory {}: {}",

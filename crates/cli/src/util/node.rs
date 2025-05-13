@@ -2,7 +2,7 @@ use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
-use super::logger::{log_info, log_verbose};
+use super::logger::log_verbose;
 use super::registry::resolve;
 use super::semver::is_valid_version;
 use crate::util::semver::matches;
@@ -201,7 +201,7 @@ impl Node {
                         .await
                     {
                         if let Some(edge_mut) = Arc::get_mut(&mut edge) {
-                            log_info(&format!(
+                            log_verbose(&format!(
                                 "Override rule applied {}@{} => {}",
                                 rule.name, rule.spec, rule.target_spec
                             ));
