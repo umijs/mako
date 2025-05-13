@@ -908,7 +908,7 @@ impl Project {
     #[turbo_tasks::function]
     async fn hmr_content(self: Vc<Self>, identifier: RcStr) -> Result<Vc<OptionVersionedContent>> {
         if let Some(map) = self.await?.versioned_content_map {
-            let content = map.get(self.client_root().join(identifier.clone()));
+            let content = map.get(self.dist_root().join(identifier.clone()));
             Ok(content)
         } else {
             bail!("must be in dev mode to hmr")
@@ -975,7 +975,7 @@ impl Project {
     #[turbo_tasks::function]
     pub async fn hmr_identifiers(self: Vc<Self>) -> Result<Vc<Vec<RcStr>>> {
         if let Some(map) = self.await?.versioned_content_map {
-            Ok(map.keys_in_path(self.client_root()))
+            Ok(map.keys_in_path(self.dist_root()))
         } else {
             bail!("must be in dev mode to hmr")
         }
