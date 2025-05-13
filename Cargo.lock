@@ -532,9 +532,11 @@ dependencies = [
  "serde",
  "serde_json",
  "swc_core",
+ "tokio",
  "tracing",
  "turbo-rcstr",
  "turbo-tasks",
+ "turbo-tasks-backend",
  "turbo-tasks-build",
  "turbo-tasks-env",
  "turbo-tasks-fs",
@@ -546,6 +548,9 @@ dependencies = [
  "turbopack-ecmascript",
  "turbopack-node",
  "turbopack-nodejs",
+ "turbopack-trace-utils",
+ "url",
+ "urlencoding",
  "vergen 9.0.6 (git+https://github.com/bgw/vergen.git?branch=bgw%2Fno-optional-locks)",
 ]
 
@@ -638,6 +643,7 @@ dependencies = [
  "bundler-core",
  "console-subscriber",
  "dhat",
+ "futures",
  "mdxjs",
  "napi",
  "napi-build",
@@ -666,7 +672,6 @@ dependencies = [
  "turbopack-ecmascript-plugins",
  "turbopack-trace-server",
  "turbopack-trace-utils",
- "url",
  "urlencoding",
  "vergen-gitcl",
 ]

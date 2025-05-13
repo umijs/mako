@@ -1,19 +1,26 @@
 use std::{
     io::Write,
     path::PathBuf,
-    sync::{Arc, LazyLock},
+    sync::LazyLock,
     thread::{self, JoinHandle},
     time::Duration,
 };
 
 use anyhow::{anyhow, bail, Context, Result};
 use bundler_api::{
-    endpoints::Endpoint,
-    entrypoints::Entrypoints,
+    entrypoints::get_all_written_entrypoints_with_issues_operation,
+    hmr::{
+        get_hmr_identifiers_with_issues_operation, hmr_update_with_issues_operation,
+        HmrIdentifiersWithIssues, HmrUpdateWithIssues,
+    },
+    issues::{get_entrypoints_with_issues_operation, EntrypointsWithIssues},
     operation::EntrypointsOperation,
     project::{
-        DefineEnv, PartialProjectOptions, Project, ProjectContainer, ProjectOptions, WatchOptions,
+        DefineEnv, PartialProjectOptions, ProjectContainer, ProjectInstance, ProjectOptions,
+        WatchOptions,
     },
+    source_map::{get_source_map, get_source_map_rope},
+    tasks::BundlerTurboTasks,
 };
 use bundler_core::tracing_presets::{
     TRACING_OVERVIEW_TARGETS, TRACING_TARGETS, TRACING_TURBOPACK_TARGETS,
@@ -29,34 +36,24 @@ use tracing_subscriber::{
     fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry,
 };
 use turbo_rcstr::RcStr;
-use turbo_tasks::{
-    get_effects, Effects, FxIndexSet, ReadRef, ResolvedVc, TransientInstance, TryJoinIterExt,
-    UpdateInfo, Vc,
-};
+use turbo_tasks::{TransientInstance, UpdateInfo};
 use turbo_tasks_fs::{get_relative_path_to, util::uri_from_file, FileContent, FileSystem};
 use turbopack_core::{
-    diagnostics::PlainDiagnostic,
     error::PrettyPrintError,
-    issue::PlainIssue,
-    output::{OutputAsset, OutputAssets},
-    source_map::{OptionSourceMap, OptionStringifiedSourceMap, SourceMap, Token},
-    version::{PartialUpdate, TotalUpdate, Update, VersionState},
+    source_map::Token,
+    version::{PartialUpdate, TotalUpdate, Update},
     PROJECT_FILESYSTEM_NAME, SOURCE_URL_PROTOCOL,
 };
 use turbopack_ecmascript_hmr_protocol::{ClientUpdateInstruction, ResourceIdentifier};
 use turbopack_trace_utils::{
-    exit::{ExitHandler, ExitReceiver},
-    filter_layer::FilterLayer,
-    raw_trace::RawTraceLayer,
+    exit::ExitHandler, filter_layer::FilterLayer, raw_trace::RawTraceLayer,
     trace_writer::TraceWriter,
 };
-use url::Url;
 
 use super::{
     endpoint::ExternalEndpoint,
     utils::{
-        create_turbo_tasks, get_diagnostics, get_issues, subscribe, BundlerTurboTasks,
-        NapiDiagnostic, NapiIssue, RootTask, TurbopackResult, VcArc,
+        create_turbo_tasks, subscribe, NapiDiagnostic, NapiIssue, RootTask, TurbopackResult, VcArc,
     },
 };
 use crate::{register, util::DhatProfilerGuard};
@@ -234,12 +231,6 @@ impl From<NapiDefineEnv> for DefineEnv {
                 .collect(),
         }
     }
-}
-
-pub struct ProjectInstance {
-    turbo_tasks: BundlerTurboTasks,
-    container: Vc<ProjectContainer>,
-    exit_receiver: tokio::sync::Mutex<Option<ExitReceiver>>,
 }
 
 #[napi(ts_return_type = "Promise<{ __napiType: \"Project\" }>")]
@@ -457,50 +448,6 @@ impl NapiEntrypoints {
     }
 }
 
-#[turbo_tasks::value(serialization = "none")]
-struct EntrypointsWithIssues {
-    entrypoints: ReadRef<EntrypointsOperation>,
-    issues: Arc<Vec<ReadRef<PlainIssue>>>,
-    diagnostics: Arc<Vec<ReadRef<PlainDiagnostic>>>,
-    effects: Arc<Effects>,
-}
-
-#[turbo_tasks::function(operation)]
-async fn get_entrypoints_with_issues_operation(
-    container: ResolvedVc<ProjectContainer>,
-) -> Result<Vc<EntrypointsWithIssues>> {
-    let entrypoints_operation =
-        EntrypointsOperation::new(project_container_entrypoints_operation(container));
-    let entrypoints = entrypoints_operation.read_strongly_consistent().await?;
-    let issues = get_issues(entrypoints_operation).await?;
-    let diagnostics = get_diagnostics(entrypoints_operation).await?;
-    let effects = Arc::new(get_effects(entrypoints_operation).await?);
-    Ok(EntrypointsWithIssues {
-        entrypoints,
-        issues,
-        diagnostics,
-        effects,
-    }
-    .cell())
-}
-
-#[turbo_tasks::function(operation)]
-fn project_container_entrypoints_operation(
-    // the container is a long-lived object with internally mutable state, there's no risk of it
-    // becoming stale
-    container: ResolvedVc<ProjectContainer>,
-) -> Vc<Entrypoints> {
-    container.entrypoints()
-}
-
-#[turbo_tasks::value(serialization = "none")]
-struct AllWrittenEntrypointsWithIssues {
-    entrypoints: Option<ReadRef<Entrypoints>>,
-    issues: Arc<Vec<ReadRef<PlainIssue>>>,
-    diagnostics: Arc<Vec<ReadRef<PlainDiagnostic>>>,
-    effects: Arc<Effects>,
-}
-
 #[napi]
 pub async fn project_write_all_entrypoints_to_disk(
     #[napi(ts_arg_type = "{ __napiType: \"Project\" }")] project: External<ProjectInstance>,
@@ -534,59 +481,6 @@ pub async fn project_write_all_entrypoints_to_disk(
         issues: issues.iter().map(|i| NapiIssue::from(&**i)).collect(),
         diagnostics: diags.iter().map(|d| NapiDiagnostic::from(d)).collect(),
     })
-}
-
-#[turbo_tasks::function(operation)]
-async fn get_all_written_entrypoints_with_issues_operation(
-    container: ResolvedVc<ProjectContainer>,
-) -> Result<Vc<EntrypointsWithIssues>> {
-    let entrypoints_operation =
-        EntrypointsOperation::new(all_entrypoints_write_to_disk_operation(container));
-    let entrypoints = entrypoints_operation.read_strongly_consistent().await?;
-    let issues = get_issues(entrypoints_operation).await?;
-    let diagnostics = get_diagnostics(entrypoints_operation).await?;
-    let effects = Arc::new(get_effects(entrypoints_operation).await?);
-    Ok(EntrypointsWithIssues {
-        entrypoints,
-        issues,
-        diagnostics,
-        effects,
-    }
-    .cell())
-}
-
-#[turbo_tasks::function(operation)]
-pub async fn all_entrypoints_write_to_disk_operation(
-    project: ResolvedVc<ProjectContainer>,
-) -> Result<Vc<Entrypoints>> {
-    let _ = project
-        .project()
-        .emit_all_output_assets(output_assets_operation(project))
-        .resolve()
-        .await?;
-
-    Ok(project.entrypoints())
-}
-
-#[turbo_tasks::function(operation)]
-async fn output_assets_operation(
-    container: ResolvedVc<ProjectContainer>,
-) -> Result<Vc<OutputAssets>> {
-    let endpoint_assets = container
-        .project()
-        .get_all_endpoints()
-        .await?
-        .iter()
-        .map(|endpoint| async move { endpoint.output().await?.output_assets.await })
-        .try_join()
-        .await?;
-
-    let mut output_assets: FxIndexSet<ResolvedVc<Box<dyn OutputAsset>>> = FxIndexSet::default();
-    for assets in endpoint_assets {
-        output_assets.extend(assets.iter());
-    }
-
-    Ok(Vc::cell(output_assets.into_iter().collect()))
 }
 
 #[napi(ts_return_type = "{ __napiType: \"RootTask\" }")]
@@ -629,43 +523,6 @@ pub fn project_entrypoints_subscribe(
             }])
         },
     )
-}
-
-#[turbo_tasks::value(serialization = "none")]
-struct HmrUpdateWithIssues {
-    update: ReadRef<Update>,
-    issues: Arc<Vec<ReadRef<PlainIssue>>>,
-    diagnostics: Arc<Vec<ReadRef<PlainDiagnostic>>>,
-    effects: Arc<Effects>,
-}
-
-#[turbo_tasks::function(operation)]
-async fn hmr_update_with_issues_operation(
-    project: ResolvedVc<Project>,
-    identifier: RcStr,
-    state: ResolvedVc<VersionState>,
-) -> Result<Vc<HmrUpdateWithIssues>> {
-    let update_op = project_hmr_update_operation(project, identifier, state);
-    let update = update_op.read_strongly_consistent().await?;
-    let issues = get_issues(update_op).await?;
-    let diagnostics = get_diagnostics(update_op).await?;
-    let effects = Arc::new(get_effects(update_op).await?);
-    Ok(HmrUpdateWithIssues {
-        update,
-        issues,
-        diagnostics,
-        effects,
-    }
-    .cell())
-}
-
-#[turbo_tasks::function(operation)]
-fn project_hmr_update_operation(
-    project: ResolvedVc<Project>,
-    identifier: RcStr,
-    state: ResolvedVc<VersionState>,
-) -> Vc<Update> {
-    project.hmr_update(identifier, *state)
 }
 
 #[napi(ts_return_type = "{ __napiType: \"RootTask\" }")]
@@ -760,39 +617,6 @@ pub fn project_hmr_events(
 #[napi(object)]
 struct HmrIdentifiers {
     pub identifiers: Vec<String>,
-}
-
-#[turbo_tasks::value(serialization = "none")]
-struct HmrIdentifiersWithIssues {
-    identifiers: ReadRef<Vec<RcStr>>,
-    issues: Arc<Vec<ReadRef<PlainIssue>>>,
-    diagnostics: Arc<Vec<ReadRef<PlainDiagnostic>>>,
-    effects: Arc<Effects>,
-}
-
-#[turbo_tasks::function(operation)]
-async fn get_hmr_identifiers_with_issues_operation(
-    container: ResolvedVc<ProjectContainer>,
-) -> Result<Vc<HmrIdentifiersWithIssues>> {
-    let hmr_identifiers_op = project_container_hmr_identifiers_operation(container);
-    let hmr_identifiers = hmr_identifiers_op.read_strongly_consistent().await?;
-    let issues = get_issues(hmr_identifiers_op).await?;
-    let diagnostics = get_diagnostics(hmr_identifiers_op).await?;
-    let effects = Arc::new(get_effects(hmr_identifiers_op).await?);
-    Ok(HmrIdentifiersWithIssues {
-        identifiers: hmr_identifiers,
-        issues,
-        diagnostics,
-        effects,
-    }
-    .cell())
-}
-
-#[turbo_tasks::function(operation)]
-fn project_container_hmr_identifiers_operation(
-    container: ResolvedVc<ProjectContainer>,
-) -> Vc<Vec<RcStr>> {
-    container.hmr_identifiers()
 }
 
 #[napi(ts_return_type = "{ __napiType: \"RootTask\" }")]
@@ -956,71 +780,6 @@ pub struct StackFrame {
     // 1-indexed, unlike source map tokens
     pub column: Option<u32>,
     pub method_name: Option<String>,
-}
-
-pub async fn get_source_map_rope(
-    container: Vc<ProjectContainer>,
-    file_path: String,
-) -> Result<Option<Vc<OptionStringifiedSourceMap>>> {
-    let (file, module) = match Url::parse(&file_path) {
-        Ok(url) => match url.scheme() {
-            "file" => {
-                let path = urlencoding::decode(url.path())?.to_string();
-                let module = url.query_pairs().find(|(k, _)| k == "id");
-                (
-                    path,
-                    match module {
-                        Some(module) => Some(urlencoding::decode(&module.1)?.into_owned().into()),
-                        None => None,
-                    },
-                )
-            }
-            _ => bail!("Unknown url scheme"),
-        },
-        Err(_) => (file_path.to_string(), None),
-    };
-
-    let Some(chunk_base) = file.strip_prefix(
-        &(format!(
-            "{}/{}/",
-            container.project().await?.project_path,
-            container.project().dist_dir().await?
-        )),
-    ) else {
-        // File doesn't exist within the dist dir
-        return Ok(None);
-    };
-
-    let server_path = container.project().node_root().join(chunk_base.into());
-
-    let client_path = container.project().client_root().join(chunk_base.into());
-
-    let mut map = container.get_source_map(server_path, module.clone());
-
-    if map.await?.is_none() {
-        // If the chunk doesn't exist as a server chunk, try a client chunk.
-        // TODO: Properly tag all server chunks and use the `isServer` query param.
-        // Currently, this is inaccurate as it does not cover RSC server
-        // chunks.
-        map = container.get_source_map(client_path, module);
-    }
-
-    if map.await?.is_none() {
-        bail!("chunk/module is missing a sourcemap");
-    }
-
-    Ok(Some(map))
-}
-
-pub async fn get_source_map(
-    container: Vc<ProjectContainer>,
-    file_path: String,
-) -> Result<Option<ReadRef<OptionSourceMap>>> {
-    let Some(map) = get_source_map_rope(container, file_path).await? else {
-        return Ok(None);
-    };
-    let map = SourceMap::new_from_rope_cached(map).await?;
-    Ok(Some(map))
 }
 
 #[napi]

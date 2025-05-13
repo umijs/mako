@@ -51,11 +51,13 @@ use turbopack_core::{
 };
 use turbopack_node::execution_context::ExecutionContext;
 use turbopack_nodejs::NodeJsChunkingContext;
+use turbopack_trace_utils::exit::ExitReceiver;
 
 use crate::{
     endpoints::{Endpoint, Endpoints},
     entrypoints::Entrypoints,
     library::{Library, LibraryProject, OptionLibraryProject},
+    tasks::BundlerTurboTasks,
     versioned_content_map::VersionedContentMap,
 };
 
@@ -1107,7 +1109,8 @@ async fn all_assets_from_entries_operation(
     Ok(all_assets_from_entries(assets))
 }
 
-#[turbo_tasks::function]
-fn stable_endpoint(endpoint: Vc<Box<dyn Endpoint>>) -> Vc<Box<dyn Endpoint>> {
-    endpoint
+pub struct ProjectInstance {
+    pub turbo_tasks: BundlerTurboTasks,
+    pub container: Vc<ProjectContainer>,
+    pub exit_receiver: tokio::sync::Mutex<Option<ExitReceiver>>,
 }

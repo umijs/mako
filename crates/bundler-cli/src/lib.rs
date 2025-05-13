@@ -45,7 +45,7 @@ pub async fn main_inner(
 
     let project = tt
         .run_once(async {
-            let project = ProjectContainer::new("bundler-cli-test".into(), options.dev);
+            let project = ProjectContainer::new("utoo-bundler-cli".into(), options.dev);
             let project = project.to_resolved().await?;
             project.initialize(options).await?;
             Ok(project)
