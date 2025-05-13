@@ -14,22 +14,15 @@ plugin = [
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 base64 = "0.22.1"
-either = { workspace = true }
-lazy-regex = "3.0.1"
 qstring = "0.7.2"
 regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_qs = { workspace = true }
-indexmap = { workspace = true, features = ["serde"] }
 mime_guess = "2.0.4"
 indoc = "2.0.6"
-futures = { workspace = true }
-thiserror = { workspace = true }
 tracing = { workspace = true }
 rustc-hash = { workspace = true }
 remove_console = "0.34.0"
-auto-hash-map = { workspace = true }
 urlencoding = { workspace = true }
 modularize_imports = { version = "0.79.0" }
 swc_core = { workspace = true, features = [
@@ -68,7 +61,6 @@ turbopack-ecmascript-plugins = { workspace = true, features = [
 ] }
 turbopack-ecmascript-runtime = { workspace = true }
 turbopack-node = { workspace = true }
-turbopack-nodejs = { workspace = true }
 turbopack-static = { workspace = true }
 turbopack-image = { workspace = true }
 turbopack-resolve = { workspace = true }

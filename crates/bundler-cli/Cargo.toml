@@ -15,9 +15,7 @@ bundler-core = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-console-subscriber = { workspace = true, optional = true }
 tokio = { workspace = true }
-rustc-hash = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 serde = { workspace = true }
 dunce = { workspace = true }
@@ -27,13 +25,7 @@ futures-util = "0.3.30"
 turbo-rcstr = { workspace = true }
 turbo-tasks = { workspace = true }
 turbo-tasks-backend = { workspace = true }
-turbo-tasks-fs = { workspace = true }
-turbo-tasks-env = { workspace = true }
-turbo-tasks-memory = { workspace = true }
 turbo-tasks-malloc = { workspace = true }
-turbopack = { workspace = true }
-turbopack-browser = { workspace = true }
-turbopack-core = { workspace = true }
 turbopack-trace-utils = { workspace = true }
 
 
