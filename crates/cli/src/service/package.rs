@@ -1,5 +1,4 @@
 use crate::helper::compatibility::{is_cpu_compatible, is_os_compatible};
-use crate::helper::env::get_node_abi;
 use crate::helper::package::parse_package_name;
 use crate::model::package::{PackageInfo, Scripts};
 use crate::util::logger::{log_info, log_verbose};
@@ -206,36 +205,6 @@ impl PackageService {
         if !is_compatible {
             log_verbose(&format!(
                 "Package {} is not compatible with current platform",
-                path
-            ));
-            return Ok(None);
-        }
-
-        // check if the package is compatible with current node version
-        let is_node_compatible = if let Some(engines) = info.get("engines") {
-            if let Some(node) = engines.get("node") {
-                if let Some(_) = node.as_str() {
-                    let package_path = Path::new(path);
-                    let current_abi = get_node_abi(package_path)
-                        .context("Failed to get current Node.js ABI version")?;
-                    let package_abi = info
-                        .get("_node_abi")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or_default();
-                    current_abi == package_abi
-                } else {
-                    true
-                }
-            } else {
-                true
-            }
-        } else {
-            true
-        };
-
-        if !is_node_compatible {
-            log_verbose(&format!(
-                "Package {} is not compatible with current node version",
                 path
             ));
             return Ok(None);
