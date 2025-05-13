@@ -1,12 +1,16 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use turbo_rcstr::RcStr;
-use turbo_tasks::{Completion, OperationVc, ResolvedVc, Vc};
+use turbo_tasks::{Completion, Effects, OperationVc, ReadRef, ResolvedVc, Vc};
 use turbopack_core::{
+    diagnostics::PlainDiagnostic,
+    issue::PlainIssue,
     module_graph::{GraphEntries, ModuleGraph},
     output::OutputAssets,
 };
 
-use crate::{paths::ServerPath, project::Project};
+use crate::{paths::ServerPath, project::Project, utils::strongly_consistent_catch_collectables};
 
 #[turbo_tasks::value(shared)]
 #[derive(Debug, Clone)]
@@ -93,4 +97,28 @@ async fn endpoint_output_assets_operation(
     output: OperationVc<EndpointOutput>,
 ) -> Result<Vc<OutputAssets>> {
     Ok(*output.connect().await?.output_assets)
+}
+
+#[turbo_tasks::value(serialization = "none")]
+pub struct WrittenEndpointWithIssues {
+    pub written: Option<ReadRef<EndpointOutputPaths>>,
+    pub issues: Arc<Vec<ReadRef<PlainIssue>>>,
+    pub diagnostics: Arc<Vec<ReadRef<PlainDiagnostic>>>,
+    pub effects: Arc<Effects>,
+}
+
+#[turbo_tasks::function(operation)]
+pub async fn get_written_endpoint_with_issues_operation(
+    endpoint_op: OperationVc<Box<dyn Endpoint>>,
+) -> Result<Vc<WrittenEndpointWithIssues>> {
+    let write_to_disk_op = endpoint_write_to_disk_operation(endpoint_op);
+    let (written, issues, diagnostics, effects) =
+        strongly_consistent_catch_collectables(write_to_disk_op).await?;
+    Ok(WrittenEndpointWithIssues {
+        written,
+        issues,
+        diagnostics,
+        effects,
+    }
+    .cell())
 }

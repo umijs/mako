@@ -6,11 +6,16 @@
 
 pub mod endpoints;
 pub mod entrypoints;
+pub mod hmr;
+pub mod issues;
 pub mod library;
 pub mod ntf_json;
 pub mod operation;
 pub mod paths;
 pub mod project;
+pub mod source_map;
+pub mod tasks;
+pub mod utils;
 pub mod versioned_content_map;
 pub mod webpack_stats;
 

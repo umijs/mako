@@ -1,6 +1,7 @@
-use std::{future::Future, ops::Deref, path::PathBuf, sync::Arc, time::Duration};
+use std::{future::Future, ops::Deref, path::PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
+use bundler_api::tasks::BundlerTurboTasks;
 use napi::{
     bindgen_prelude::{External, ToNapiValue},
     threadsafe_function::{ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode},
@@ -8,129 +9,17 @@ use napi::{
 };
 use rustc_hash::FxHashMap;
 use serde::Serialize;
-use turbo_tasks::{
-    get_effects, task_statistics::TaskStatisticsApi, trace::TraceRawVcs, Effects, OperationVc,
-    ReadRef, TaskId, TryJoinIterExt, TurboTasks, TurboTasksApi, UpdateInfo, Vc, VcValueType,
-};
-use turbo_tasks_backend::{
-    default_backing_storage, noop_backing_storage, DefaultBackingStorage, GitVersionInfo,
-    NoopBackingStorage,
-};
+use turbo_tasks::{OperationVc, TaskId, TurboTasks, Vc};
+use turbo_tasks_backend::{default_backing_storage, noop_backing_storage, GitVersionInfo};
 use turbo_tasks_fs::FileContent;
 use turbopack_core::{
-    diagnostics::{Diagnostic, DiagnosticContextExt, PlainDiagnostic},
+    diagnostics::PlainDiagnostic,
     error::PrettyPrintError,
-    issue::{
-        IssueDescriptionExt, IssueSeverity, PlainIssue, PlainIssueSource, PlainSource, StyledString,
-    },
+    issue::{PlainIssue, PlainIssueSource, PlainSource, StyledString},
     source_pos::SourcePos,
 };
 
 use crate::util::log_internal_error_and_inform;
-
-#[derive(Clone)]
-pub enum BundlerTurboTasks {
-    Memory(Arc<TurboTasks<turbo_tasks_backend::TurboTasksBackend<NoopBackingStorage>>>),
-    PersistentCaching(
-        Arc<TurboTasks<turbo_tasks_backend::TurboTasksBackend<DefaultBackingStorage>>>,
-    ),
-}
-
-impl BundlerTurboTasks {
-    pub fn dispose_root_task(&self, task: TaskId) {
-        match self {
-            BundlerTurboTasks::Memory(turbo_tasks) => turbo_tasks.dispose_root_task(task),
-            BundlerTurboTasks::PersistentCaching(turbo_tasks) => {
-                turbo_tasks.dispose_root_task(task)
-            }
-        }
-    }
-
-    pub fn spawn_root_task<T, F, Fut>(&self, functor: F) -> TaskId
-    where
-        T: Send,
-        F: Fn() -> Fut + Send + Sync + Clone + 'static,
-        Fut: Future<Output = Result<Vc<T>>> + Send,
-    {
-        match self {
-            BundlerTurboTasks::Memory(turbo_tasks) => turbo_tasks.spawn_root_task(functor),
-            BundlerTurboTasks::PersistentCaching(turbo_tasks) => {
-                turbo_tasks.spawn_root_task(functor)
-            }
-        }
-    }
-
-    pub async fn run_once<T: TraceRawVcs + Send + 'static>(
-        &self,
-        future: impl Future<Output = Result<T>> + Send + 'static,
-    ) -> Result<T> {
-        match self {
-            BundlerTurboTasks::Memory(turbo_tasks) => turbo_tasks.run_once(future).await,
-            BundlerTurboTasks::PersistentCaching(turbo_tasks) => turbo_tasks.run_once(future).await,
-        }
-    }
-
-    pub fn spawn_once_task<T, Fut>(&self, future: Fut) -> TaskId
-    where
-        T: Send,
-        Fut: Future<Output = Result<Vc<T>>> + Send + 'static,
-    {
-        match self {
-            BundlerTurboTasks::Memory(turbo_tasks) => turbo_tasks.spawn_once_task(future),
-            BundlerTurboTasks::PersistentCaching(turbo_tasks) => {
-                turbo_tasks.spawn_once_task(future)
-            }
-        }
-    }
-
-    pub async fn aggregated_update_info(
-        &self,
-        aggregation: Duration,
-        timeout: Duration,
-    ) -> Option<UpdateInfo> {
-        match self {
-            BundlerTurboTasks::Memory(turbo_tasks) => {
-                turbo_tasks
-                    .aggregated_update_info(aggregation, timeout)
-                    .await
-            }
-            BundlerTurboTasks::PersistentCaching(turbo_tasks) => {
-                turbo_tasks
-                    .aggregated_update_info(aggregation, timeout)
-                    .await
-            }
-        }
-    }
-
-    pub async fn get_or_wait_aggregated_update_info(&self, aggregation: Duration) -> UpdateInfo {
-        match self {
-            BundlerTurboTasks::Memory(turbo_tasks) => {
-                turbo_tasks
-                    .get_or_wait_aggregated_update_info(aggregation)
-                    .await
-            }
-            BundlerTurboTasks::PersistentCaching(turbo_tasks) => {
-                turbo_tasks
-                    .get_or_wait_aggregated_update_info(aggregation)
-                    .await
-            }
-        }
-    }
-
-    pub async fn stop_and_wait(&self) {
-        match self {
-            BundlerTurboTasks::Memory(turbo_tasks) => turbo_tasks.stop_and_wait().await,
-            BundlerTurboTasks::PersistentCaching(turbo_tasks) => turbo_tasks.stop_and_wait().await,
-        }
-    }
-
-    pub fn task_statistics(&self) -> &TaskStatisticsApi {
-        match self {
-            BundlerTurboTasks::Memory(turbo_tasks) => turbo_tasks.task_statistics(),
-            BundlerTurboTasks::PersistentCaching(turbo_tasks) => turbo_tasks.task_statistics(),
-        }
-    }
-}
 
 pub fn create_turbo_tasks(
     output_path: PathBuf,
@@ -199,13 +88,6 @@ impl<T> Deref for VcArc<T> {
     }
 }
 
-pub fn serde_enum_to_string<T: Serialize>(value: &T) -> Result<String> {
-    Ok(serde_json::to_value(value)?
-        .as_str()
-        .context("value must serialize to a string")?
-        .to_string())
-}
-
 /// The root of our turbopack computation.
 pub struct RootTask {
     #[allow(dead_code)]
@@ -228,31 +110,6 @@ pub fn root_task_dispose(
         root_task.turbo_tasks.dispose_root_task(task);
     }
     Ok(())
-}
-
-pub async fn get_issues<T: Send>(source: OperationVc<T>) -> Result<Arc<Vec<ReadRef<PlainIssue>>>> {
-    let issues = source.peek_issues_with_path().await?;
-    Ok(Arc::new(issues.get_plain_issues().await?))
-}
-
-/// Reads the [turbopack_core::diagnostics::Diagnostic] held
-/// by the given source and returns it as a
-/// [turbopack_core::diagnostics::PlainDiagnostic]. It does
-/// not consume any Diagnostics held by the source.
-pub async fn get_diagnostics<T: Send>(
-    source: OperationVc<T>,
-) -> Result<Arc<Vec<ReadRef<PlainDiagnostic>>>> {
-    let captured_diags = source.peek_diagnostics().await?;
-    let mut diags = captured_diags
-        .diagnostics
-        .iter()
-        .map(|d| d.into_plain())
-        .try_join()
-        .await?;
-
-    diags.sort();
-
-    Ok(Arc::new(diags))
 }
 
 #[napi(object)]
@@ -488,28 +345,4 @@ pub fn subscribe<T: 'static + Send + Sync, F: Future<Output = Result<T>> + Send,
         turbo_tasks,
         task_id: Some(task_id),
     }))
-}
-
-// Await the source and return fatal issues if there are any, otherwise
-// propagate any actual error results.
-pub async fn strongly_consistent_catch_collectables<R: VcValueType + Send>(
-    source_op: OperationVc<R>,
-) -> Result<(
-    Option<ReadRef<R>>,
-    Arc<Vec<ReadRef<PlainIssue>>>,
-    Arc<Vec<ReadRef<PlainDiagnostic>>>,
-    Arc<Effects>,
-)> {
-    let result = source_op.read_strongly_consistent().await;
-    let issues = get_issues(source_op).await?;
-    let diagnostics = get_diagnostics(source_op).await?;
-    let effects = Arc::new(get_effects(source_op).await?);
-
-    let result = if result.is_err() && issues.iter().any(|i| i.severity <= IssueSeverity::Error) {
-        None
-    } else {
-        Some(result?)
-    };
-
-    Ok((result, issues, diagnostics, effects))
 }

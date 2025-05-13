@@ -69,11 +69,11 @@ console-subscriber = { workspace = true, optional = true }
 rand = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+futures = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 rustc-hash = { workspace = true }
 tracing-chrome = "0.5.0"
-url = { workspace = true }
 urlencoding = { workspace = true }
 owo-colors = { workspace = true }
 dhat = { version = "0.3.2", optional = true }

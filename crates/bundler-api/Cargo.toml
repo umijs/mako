@@ -18,18 +18,23 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 swc_core = { workspace = true }
 tracing = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+url = { workspace = true }
+urlencoding = { workspace = true }
 turbo-rcstr = { workspace = true }
 turbo-tasks = { workspace = true }
 turbo-tasks-env = { workspace = true }
 turbo-tasks-fs = { workspace = true }
 turbo-tasks-hash = { workspace = true }
 turbo-tasks-memory = { workspace = true }
+turbo-tasks-backend = { workspace = true }
 turbopack = { workspace = true }
 turbopack-browser = { workspace = true }
 turbopack-core = { workspace = true }
 turbopack-ecmascript = { workspace = true }
 turbopack-node = { workspace = true }
 turbopack-nodejs = { workspace = true }
+turbopack-trace-utils = { workspace = true }
 
 [build-dependencies]
 anyhow = { workspace = true }

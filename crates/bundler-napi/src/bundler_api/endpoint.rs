@@ -1,22 +1,20 @@
-use std::{ops::Deref, sync::Arc};
+use std::ops::Deref;
 
-use anyhow::Result;
 use bundler_api::{
     endpoints::{
-        endpoint_server_changed_operation, endpoint_write_to_disk_operation, Endpoint,
-        EndpointOutputPaths,
+        get_written_endpoint_with_issues_operation, Endpoint, EndpointOutputPaths,
+        WrittenEndpointWithIssues,
     },
+    issues::EndpointIssuesAndDiags,
     paths::ServerPath,
+    utils::{endpoint_client_changed_operation, subscribe_issues_and_diags_operation},
 };
 use napi::{bindgen_prelude::External, JsFunction};
 use tracing::Instrument;
-use turbo_tasks::{Completion, Effects, OperationVc, ReadRef, Vc};
-use turbopack_core::{diagnostics::PlainDiagnostic, error::PrettyPrintError, issue::PlainIssue};
+use turbo_tasks::ReadRef;
+use turbopack_core::error::PrettyPrintError;
 
-use super::utils::{
-    strongly_consistent_catch_collectables, subscribe, NapiDiagnostic, NapiIssue, RootTask,
-    TurbopackResult, VcArc,
-};
+use super::utils::{subscribe, NapiDiagnostic, NapiIssue, RootTask, TurbopackResult, VcArc};
 
 #[napi(object)]
 #[derive(Default)]
@@ -95,30 +93,6 @@ impl Deref for ExternalEndpoint {
     }
 }
 
-#[turbo_tasks::value(serialization = "none")]
-struct WrittenEndpointWithIssues {
-    written: Option<ReadRef<EndpointOutputPaths>>,
-    issues: Arc<Vec<ReadRef<PlainIssue>>>,
-    diagnostics: Arc<Vec<ReadRef<PlainDiagnostic>>>,
-    effects: Arc<Effects>,
-}
-
-#[turbo_tasks::function(operation)]
-async fn get_written_endpoint_with_issues_operation(
-    endpoint_op: OperationVc<Box<dyn Endpoint>>,
-) -> Result<Vc<WrittenEndpointWithIssues>> {
-    let write_to_disk_op = endpoint_write_to_disk_operation(endpoint_op);
-    let (written, issues, diagnostics, effects) =
-        strongly_consistent_catch_collectables(write_to_disk_op).await?;
-    Ok(WrittenEndpointWithIssues {
-        written,
-        issues,
-        diagnostics,
-        effects,
-    }
-    .cell())
-}
-
 #[napi]
 #[tracing::instrument(skip_all)]
 pub async fn endpoint_write_to_disk(
@@ -189,63 +163,6 @@ pub fn endpoint_server_changed_subscribe(
             }])
         },
     )
-}
-
-#[turbo_tasks::value(shared, serialization = "none", eq = "manual")]
-struct EndpointIssuesAndDiags {
-    changed: Option<ReadRef<Completion>>,
-    issues: Arc<Vec<ReadRef<PlainIssue>>>,
-    diagnostics: Arc<Vec<ReadRef<PlainDiagnostic>>>,
-    effects: Arc<Effects>,
-}
-
-impl PartialEq for EndpointIssuesAndDiags {
-    fn eq(&self, other: &Self) -> bool {
-        (match (&self.changed, &other.changed) {
-            (Some(a), Some(b)) => ReadRef::ptr_eq(a, b),
-            (None, None) => true,
-            (None, Some(_)) | (Some(_), None) => false,
-        }) && self.issues == other.issues
-            && self.diagnostics == other.diagnostics
-    }
-}
-
-impl Eq for EndpointIssuesAndDiags {}
-
-#[turbo_tasks::function(operation)]
-async fn subscribe_issues_and_diags_operation(
-    endpoint_op: OperationVc<Box<dyn Endpoint>>,
-    should_include_issues: bool,
-) -> Result<Vc<EndpointIssuesAndDiags>> {
-    let changed_op = endpoint_server_changed_operation(endpoint_op);
-
-    if should_include_issues {
-        let (changed_value, issues, diagnostics, effects) =
-            strongly_consistent_catch_collectables(changed_op).await?;
-        Ok(EndpointIssuesAndDiags {
-            changed: changed_value,
-            issues,
-            diagnostics,
-            effects,
-        }
-        .cell())
-    } else {
-        let changed_value = changed_op.read_strongly_consistent().await?;
-        Ok(EndpointIssuesAndDiags {
-            changed: Some(changed_value),
-            issues: Arc::new(vec![]),
-            diagnostics: Arc::new(vec![]),
-            effects: Arc::new(Effects::default()),
-        }
-        .cell())
-    }
-}
-
-#[turbo_tasks::function(operation)]
-fn endpoint_client_changed_operation(
-    endpoint_op: OperationVc<Box<dyn Endpoint>>,
-) -> Vc<Completion> {
-    endpoint_op.connect().client_changed()
 }
 
 #[napi(ts_return_type = "{ __napiType: \"RootTask\" }")]
