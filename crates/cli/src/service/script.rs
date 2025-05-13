@@ -206,7 +206,10 @@ impl ScriptService {
         let status = cmd.status().context("Failed to execute custom script")?;
 
         if !status.success() {
-            anyhow::bail!("Custom script execution failed with exit code: {}", status.code().unwrap_or(-1));
+            anyhow::bail!(
+                "Custom script execution failed with exit code: {}",
+                status.code().unwrap_or(-1)
+            );
         }
 
         Ok(())

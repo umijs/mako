@@ -1,7 +1,9 @@
 use crate::helper::compatibility::{is_cpu_compatible, is_os_compatible};
 use crate::helper::package::parse_package_name;
 use crate::model::package::{PackageInfo, Scripts};
-use crate::util::logger::{log_info, log_verbose};
+use crate::util::logger::{
+    finish_progress_bar, log_info, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
+};
 use anyhow::{Context, Result};
 use serde_json::Value;
 use std::fs;
@@ -297,10 +299,13 @@ impl PackageService {
     }
 
     pub async fn execute_queues(queues: Vec<Vec<PackageInfo>>) -> Result<()> {
+        start_progress_bar();
+        let total_scripts = queues[1].len() + queues[3].len() + queues[4].len();
+        PROGRESS_BAR.set_length(total_scripts as u64);
         // Execute preinstall scripts
         for package in &queues[1] {
             if let Some(script) = &package.scripts.preinstall {
-                log_info(&format!(
+                log_progress(&format!(
                     "Executing preinstall script for {}",
                     package.fullname
                 ));
@@ -314,13 +319,14 @@ impl PackageService {
                             e
                         )
                     })?;
+                PROGRESS_BAR.inc(1);
             }
         }
 
         // Link binary files
         for package in &queues[2] {
             if !package.bin_files.is_empty() {
-                log_info(&format!("Linking binary files for {}", package.fullname));
+                log_verbose(&format!("Linking binary files for {}", package.fullname));
                 for (bin_name, relative_path) in &package.bin_files {
                     let target_path = package.path.join(relative_path);
                     let bin_dir = package.get_bin_dir().context(format!(
@@ -357,7 +363,7 @@ impl PackageService {
         // Execute install scripts
         for package in &queues[3] {
             if let Some(script) = &package.scripts.install {
-                log_info(&format!(
+                log_progress(&format!(
                     "Executing install script for {}",
                     package.fullname
                 ));
@@ -371,13 +377,14 @@ impl PackageService {
                             e
                         )
                     })?;
+                PROGRESS_BAR.inc(1);
             }
         }
 
         // Execute postinstall scripts
         for package in &queues[4] {
             if let Some(script) = &package.scripts.postinstall {
-                log_info(&format!(
+                log_progress(&format!(
                     "Executing postinstall script for {}",
                     package.fullname
                 ));
@@ -391,9 +398,11 @@ impl PackageService {
                             e
                         )
                     })?;
+                PROGRESS_BAR.inc(1);
             }
         }
 
+        finish_progress_bar("Executing dependency hook scripts successfully");
         Ok(())
     }
 }
