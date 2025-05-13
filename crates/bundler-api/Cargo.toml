@@ -6,17 +6,11 @@ license.workspace = true
 
 [dependencies]
 anyhow = { workspace = true, features = ["backtrace"] }
-auto-hash-map = { workspace = true }
-either = { workspace = true }
-futures = { workspace = true }
-indexmap = { workspace = true }
 bundler-core = { workspace = true }
 qstring = { workspace = true }
-regex = { workspace = true }
 rustc-hash = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-swc_core = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 url = { workspace = true }
@@ -25,13 +19,10 @@ turbo-rcstr = { workspace = true }
 turbo-tasks = { workspace = true }
 turbo-tasks-env = { workspace = true }
 turbo-tasks-fs = { workspace = true }
-turbo-tasks-hash = { workspace = true }
-turbo-tasks-memory = { workspace = true }
 turbo-tasks-backend = { workspace = true }
 turbopack = { workspace = true }
 turbopack-browser = { workspace = true }
 turbopack-core = { workspace = true }
-turbopack-ecmascript = { workspace = true }
 turbopack-node = { workspace = true }
 turbopack-nodejs = { workspace = true }
 turbopack-trace-utils = { workspace = true }

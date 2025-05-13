@@ -521,17 +521,11 @@ name = "bundler-api"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "auto-hash-map",
  "bundler-core",
- "either",
- "futures",
- "indexmap 2.9.0",
  "qstring",
- "regex",
  "rustc-hash 2.1.1",
  "serde",
  "serde_json",
- "swc_core",
  "tokio",
  "tracing",
  "turbo-rcstr",
@@ -540,12 +534,9 @@ dependencies = [
  "turbo-tasks-build",
  "turbo-tasks-env",
  "turbo-tasks-fs",
- "turbo-tasks-hash",
- "turbo-tasks-memory",
  "turbopack",
  "turbopack-browser",
  "turbopack-core",
- "turbopack-ecmascript",
  "turbopack-node",
  "turbopack-nodejs",
  "turbopack-trace-utils",
@@ -562,10 +553,8 @@ dependencies = [
  "bundler-api",
  "bundler-core",
  "clap",
- "console-subscriber",
  "dunce",
  "futures-util",
- "rustc-hash 2.1.1",
  "serde",
  "serde_json",
  "tokio",
@@ -576,13 +565,7 @@ dependencies = [
  "turbo-tasks",
  "turbo-tasks-backend",
  "turbo-tasks-build",
- "turbo-tasks-env",
- "turbo-tasks-fs",
  "turbo-tasks-malloc",
- "turbo-tasks-memory",
- "turbopack",
- "turbopack-browser",
- "turbopack-core",
  "turbopack-trace-utils",
 ]
 
@@ -592,13 +575,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "auto-hash-map",
  "base64 0.22.1",
- "either",
- "futures",
- "indexmap 2.9.0",
  "indoc",
- "lazy-regex",
  "mime_guess",
  "modularize_imports 0.79.0",
  "qstring",
@@ -607,9 +585,7 @@ dependencies = [
  "rustc-hash 2.1.1",
  "serde",
  "serde_json",
- "serde_qs",
  "swc_core",
- "thiserror 1.0.69",
  "tracing",
  "turbo-rcstr",
  "turbo-tasks",
@@ -627,7 +603,6 @@ dependencies = [
  "turbopack-ecmascript-runtime",
  "turbopack-image",
  "turbopack-node",
- "turbopack-nodejs",
  "turbopack-resolve",
  "turbopack-static",
  "turbopack-trace-utils",
@@ -643,7 +618,6 @@ dependencies = [
  "bundler-core",
  "console-subscriber",
  "dhat",
- "futures",
  "mdxjs",
  "napi",
  "napi-build",
@@ -3213,29 +3187,6 @@ checksum = "ed9625ffda8729b85e45cf04090035ac368927b8cebc34898e7c120f52e4838b"
 dependencies = [
  "bitflags 1.3.2",
  "libc",
-]
-
-[[package]]
-name = "lazy-regex"
-version = "3.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60c7310b93682b36b98fa7ea4de998d3463ccbebd94d935d6b48ba5b6ffa7126"
-dependencies = [
- "lazy-regex-proc_macros",
- "once_cell",
- "regex",
-]
-
-[[package]]
-name = "lazy-regex-proc_macros"
-version = "3.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ba01db5ef81e17eb10a5e0f2109d1b3a3e29bac3070fdbd7d156bf7dbd206a1"
-dependencies = [
- "proc-macro2",
- "quote",
- "regex",
- "syn 2.0.100",
 ]
 
 [[package]]
