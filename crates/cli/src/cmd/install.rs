@@ -88,7 +88,7 @@ pub async fn install(ignore_scripts: bool) -> Result<()> {
         log_info(
             "Starting to execute dependency hook scripts, you can add --ignore-scripts to skip",
         );
-        rebuild().await.context("Failed to rebuild dependencies")?;
+        rebuild().await?;
         log_info("💫 All dependencies installed successfully");
         Ok(())
     } else {

@@ -190,7 +190,10 @@ impl ScriptService {
                 package.path.join("package.json").display().to_string(),
             )
             .env("npm_config_prefix", "")
-            .env("npm_config_global", "false");
+            .env("npm_config_global", "false")
+            .stdin(std::process::Stdio::inherit())
+            .stdout(std::process::Stdio::inherit())
+            .stderr(std::process::Stdio::inherit());
 
         if let Some(envs) = get_envs().await {
             for (key, value) in envs {
@@ -200,20 +203,12 @@ impl ScriptService {
             }
         }
 
-        let output = tokio::process::Command::from(cmd)
-            .output()
-            .await
-            .context("Failed to execute custom script")?;
+        let status = cmd.status().context("Failed to execute custom script")?;
 
-        if !output.stdout.is_empty() {
-            println!("{}", String::from_utf8_lossy(&output.stdout));
-        }
-
-        if !output.status.success() {
+        if !status.success() {
             anyhow::bail!(
-                "Custom script execution failed: {}\n{}",
-                String::from_utf8_lossy(&output.stderr),
-                String::from_utf8_lossy(&output.stdout)
+                "Custom script execution failed with exit code: {}",
+                status.code().unwrap_or(-1)
             );
         }
 

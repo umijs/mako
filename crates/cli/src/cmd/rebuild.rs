@@ -8,7 +8,7 @@ pub async fn rebuild() -> Result<()> {
         .context("Failed to create execution queues")?;
     PackageService::execute_queues(execution_queues)
         .await
-        .context("Failed to execute queues")?;
+        .map_err(|e| anyhow::anyhow!("Failed to execute queues: {}", e))?;
 
     // Handle project's own rebuild logic
     // Since package-lock.json doesn't have root node information for "", need to manually add

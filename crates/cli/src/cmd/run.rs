@@ -52,20 +52,44 @@ pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<
             .to_string(),
     };
 
-    let script_content = if let Some(Value::Object(scripts)) = pkg.get("scripts") {
-        if let Some(Value::String(content)) = scripts.get(script_name) {
-            content
-        } else {
-            anyhow::bail!("Script '{}' not found in package.json", script_name);
-        }
+    // Get all scripts from package.json
+    let scripts = if let Some(Value::Object(scripts)) = pkg.get("scripts") {
+        scripts
     } else {
         anyhow::bail!("No scripts found in package.json");
+    };
+
+    // Execute pre script if exists
+    let pre_script_name = format!("pre{}", script_name);
+    if let Some(Value::String(pre_script)) = scripts.get(&pre_script_name) {
+        log_info(&format!("Executing pre script: {}", pre_script_name));
+        ScriptService::execute_custom_script(&package, &pre_script_name, pre_script)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to execute pre script: {}", e))?;
+    }
+
+    // Execute main script
+    let script_content = if let Some(Value::String(content)) = scripts.get(script_name) {
+        content
+    } else {
+        anyhow::bail!("Script '{}' not found in package.json", script_name);
     };
 
     log_info(&format!("Executing script: {}", script_name));
     ScriptService::execute_custom_script(&package, script_name, script_content)
         .await
-        .map_err(|e| anyhow::anyhow!("Failed to execute script: {}", e))
+        .map_err(|e| anyhow::anyhow!("Failed to execute script: {}", e))?;
+
+    // Execute post script if exists
+    let post_script_name = format!("post{}", script_name);
+    if let Some(Value::String(post_script)) = scripts.get(&post_script_name) {
+        log_info(&format!("Executing post script: {}", post_script_name));
+        ScriptService::execute_custom_script(&package, &post_script_name, post_script)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to execute post script: {}", e))?;
+    }
+
+    Ok(())
 }
 
 fn load_package_json() -> Result<Value> {

@@ -1,6 +1,5 @@
 pub mod auto_update;
 pub mod compatibility;
-pub mod env;
 pub mod lock;
 pub mod package;
 pub mod ruborist;
