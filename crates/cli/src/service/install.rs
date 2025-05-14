@@ -1,11 +1,14 @@
+use anyhow::Context;
 use anyhow::Result;
 use glob::glob;
 use std::collections::HashMap;
+use std::future::Future;
 use std::path::Path;
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 
-use crate::helper::lock::{extract_package_name, Package};
+use crate::helper::lock::{extract_package_name, path_to_pkg_name, Package};
 use crate::helper::workspace;
 use crate::helper::{is_cpu_compatible, is_os_compatible};
 use crate::util::cloner::clone;
@@ -112,38 +115,55 @@ async fn clean_unused_packages(
     node_modules: &Path,
     cwd: &Path,
     valid_packages: &std::collections::HashSet<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let pattern = node_modules
-        .join("**/*/package.json")
-        .to_string_lossy()
-        .to_string();
-    for entry in glob(&pattern)? {
-        if let Ok(path) = entry {
-            let pkg_dir = path.parent().unwrap();
-            let relative_path = pkg_dir.strip_prefix(node_modules)?;
-            let pkg_name = relative_path.to_string_lossy().to_string();
-
-            // ignore package.json in dist directory
-            // exp: node_modules/react/dist/package.json
-            let parts: Vec<&str> = pkg_name.split('/').collect();
-            if parts.len() > 2 || (parts.len() == 2 && !parts[0].starts_with('@')) {
-                continue;
-            }
-
-            let node_modules_prefix = node_modules
-                .strip_prefix(cwd)?
-                .to_string_lossy()
-                .to_string();
-            let full_pkg_name = format!("{}/{}", node_modules_prefix, pkg_name);
-
-            if !valid_packages.contains(&full_pkg_name) {
-                log_verbose(&format!("Cleaning unused package: {}", full_pkg_name));
-                if let Err(e) = tokio::fs::remove_dir_all(pkg_dir).await {
-                    log_verbose(&format!("Failed to remove {}: {}", full_pkg_name, e));
+) -> Result<()> {
+    // Helper function for recursive search
+    fn find_and_clean<'a>(
+        node_modules: &'a Path,
+        cwd: &'a Path,
+        valid_packages: &'a std::collections::HashSet<String>,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>> {
+        Box::pin(async move {
+            let patterns = [
+                node_modules.join("*/package.json"),
+                node_modules.join("@*/*/package.json"),
+            ];
+            for pattern in patterns.iter() {
+                let pattern_str = pattern.to_string_lossy().to_string();
+                for entry in glob(&pattern_str)
+                    .with_context(|| format!("Glob failed for pattern: {}", pattern_str))?
+                {
+                    let pkg_json_path = entry.with_context(|| {
+                        format!("Glob entry error for pattern: {}", pattern_str)
+                    })?;
+                    let pkg_dir = pkg_json_path
+                        .parent()
+                        .context("Failed to get parent directory of package.json")?;
+                    if let Some(pkg_name) = path_to_pkg_name(&pkg_dir.to_string_lossy()) {
+                        let pkg_path = pkg_dir.strip_prefix(cwd).with_context(|| {
+                            format!(
+                                "Failed to strip prefix {} from {}",
+                                cwd.display(),
+                                pkg_dir.display()
+                            )
+                        })?;
+                        if !valid_packages.contains(pkg_path.to_string_lossy().as_ref()) {
+                            log_verbose(&format!("Cleaning unused package: {}", pkg_name));
+                            if let Err(e) = tokio::fs::remove_dir_all(pkg_dir).await {
+                                log_verbose(&format!("Failed to remove {}: {}", pkg_name, e));
+                            }
+                        }
+                    }
+                    // Recursively check nested node_modules
+                    let nested_node_modules = pkg_dir.join("node_modules");
+                    if nested_node_modules.exists() {
+                        find_and_clean(&nested_node_modules, cwd, valid_packages).await?;
+                    }
                 }
             }
-        }
+            Ok(())
+        })
     }
+    find_and_clean(node_modules, cwd, valid_packages).await?;
     Ok(())
 }
 

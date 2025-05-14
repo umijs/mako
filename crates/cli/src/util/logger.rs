@@ -27,6 +27,8 @@ pub fn finish_progress_bar(msg: &str) {
     );
     PROGRESS_BAR.finish_with_message(msg.to_string());
     PROGRESS_BAR.set_draw_target(indicatif::ProgressDrawTarget::hidden());
+    // reset color
+    println!("\x1b[0m");
 }
 
 pub fn abort_progress_bar() {
@@ -61,7 +63,7 @@ use crate::util::timer::Timer;
 
 pub fn log_verbose(msg: &str) {
     if VERBOSE.load(Ordering::Relaxed) {
-        println!("🔍 {}\x1b[0m", msg);
+        println!("🔍 {}", msg);
     }
     if let Ok(mut logs) = VERBOSE_LOGS.lock() {
         logs.push(format!("[{}][VERBOSE] {}", Timer::format_datetime(), msg));
@@ -77,12 +79,12 @@ pub fn get_verbose_logs() -> Vec<String> {
 
 pub fn log_warning(text: &str) {
     if VERBOSE.load(Ordering::Relaxed) {
-        PROGRESS_BAR.suspend(|| println!("[WARNING] {}", text));
+        PROGRESS_BAR.suspend(|| println!("[WARN] {}", text));
     } else {
-        PROGRESS_BAR.suspend(|| println!("{} {}\x1b[0m", " WARNING ".on_yellow(), text));
+        PROGRESS_BAR.suspend(|| println!("{} {}", " WARN ".on_yellow(), text));
     }
     if let Ok(mut logs) = VERBOSE_LOGS.lock() {
-        logs.push(format!("[{}][WARNING] {}", Timer::format_datetime(), text));
+        logs.push(format!("[{}][WARN] {}", Timer::format_datetime(), text));
     }
 }
 
@@ -90,7 +92,7 @@ pub fn log_error(text: &str) {
     if VERBOSE.load(Ordering::Relaxed) {
         PROGRESS_BAR.suspend(|| println!("[ERROR] {}", text));
     } else {
-        PROGRESS_BAR.suspend(|| println!("{} {}\x1b[0m", " ERROR ".on_red(), text));
+        PROGRESS_BAR.suspend(|| println!("{} {}", " ERROR ".on_red(), text));
     }
     if let Ok(mut logs) = VERBOSE_LOGS.lock() {
         logs.push(format!("[{}][ERROR] {}", Timer::format_datetime(), text));
@@ -101,7 +103,7 @@ pub fn log_info(text: &str) {
     if VERBOSE.load(Ordering::Relaxed) {
         PROGRESS_BAR.suspend(|| println!("[INFO] {}", text));
     } else {
-        PROGRESS_BAR.suspend(|| println!("{} {}\x1b[0m", " INFO ".on_cyan(), text));
+        PROGRESS_BAR.suspend(|| println!("{} {}", " INFO ".on_cyan(), text));
     }
     if let Ok(mut logs) = VERBOSE_LOGS.lock() {
         logs.push(format!("[{}][INFO] {}", Timer::format_datetime(), text));

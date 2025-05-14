@@ -210,6 +210,22 @@ pub async fn prepare_global_package_json(npm_spec: &str) -> Result<PathBuf> {
     Ok(package_path)
 }
 
+/// Extract the relative package name from a package directory path string.
+/// Handles both normal and scoped packages, and skips invalid deep paths.
+pub fn path_to_pkg_name(path_str: &str) -> Option<&str> {
+    if let Some(idx) = path_str.rfind("node_modules/") {
+        let pkg_name = &path_str[idx + "node_modules/".len()..];
+        let parts: Vec<&str> = pkg_name.split('/').collect();
+        // Only allow ora or @scope/ora, skip @pkg/name/path/custom/package.json
+        if parts.len() > 2 || (parts.len() == 2 && !parts[0].starts_with('@')) {
+            return None;
+        }
+        Some(pkg_name)
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -239,5 +255,26 @@ mod tests {
                 version, spec
             );
         }
+    }
+
+    #[test]
+    fn test_path_to_pkg_name() {
+        // Normal nested package
+        assert_eq!(
+            super::path_to_pkg_name("/root/node_modules/a/node_modules/b"),
+            Some("b")
+        );
+        // Top-level package
+        assert_eq!(super::path_to_pkg_name("/root/node_modules/a"), Some("a"));
+
+        assert_eq!(
+            super::path_to_pkg_name("/root/node_modules/@a/b"),
+            Some("@a/b")
+        );
+        // Deep invalid path (should be None)
+        assert_eq!(
+            super::path_to_pkg_name("/root/node_modules/@a/b/node_modules/b/c/d"),
+            None
+        );
     }
 }
