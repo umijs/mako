@@ -93,7 +93,7 @@ fn main() {
                 None
             };
 
-            let tt = TurboTasks::new(TurboTasksBackend::new(
+            let turbo_tasks = TurboTasks::new(TurboTasksBackend::new(
                 BackendOptions {
                     dependency_tracking: false,
                     storage_mode: None,
@@ -151,11 +151,11 @@ fn main() {
                 dev,
             };
 
-            let result = main_inner(&tt, project_options).await;
+            let result = main_inner(&turbo_tasks, project_options).await;
             let memory = TurboMalloc::memory_usage();
             tracing::info!("memory usage: {} MiB", memory / 1024 / 1024);
             let start = Instant::now();
-            drop(tt);
+            drop(turbo_tasks);
             tracing::info!("drop {:?}", start.elapsed());
             result
         })
