@@ -1,0 +1,18 @@
+{
+    "rootPath": "../../",
+    "projectPath": "./",
+    "config": {
+      "entry": [
+        {
+          "import": "./index.js",
+          "library": {
+            "name": "with-externals"
+          }
+        }
+      ],
+      "output": {
+        "path": "./dist"
+      }
+    }
+  }
+  
