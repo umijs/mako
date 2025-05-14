@@ -8,10 +8,6 @@
 - [ ] This message body should clearly illustrate what problems it solves.
 - [ ] Ideally, include a test that fails without this PR but passes with it.
 
-### Tests
-
-- [ ] Run the tests and other checks with `just ready`
-
 ### Edits
 
 - [ ] Please ensure that 'Allow edits from maintainers' is checked. PRs without this option may be closed.
