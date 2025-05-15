@@ -46,12 +46,10 @@ mod linux_clone {
 
             if ret < 0 {
                 let err = std::io::Error::last_os_error();
-                if err.raw_os_error() == Some(libc::ENOTTY) {
-                    log_verbose("FICLONE not supported, will use copy_file_range");
-                    FICLONE_CHECKED.store(true, Ordering::Relaxed);
-                    FICLONE_SUPPORTED.store(false, Ordering::Relaxed);
-                    return false;
-                }
+                log_verbose(&format!("FICLONE not supported, will use copy_file_range: {}", err));
+                FICLONE_CHECKED.store(true, Ordering::Relaxed);
+                FICLONE_SUPPORTED.store(false, Ordering::Relaxed);
+                return false;
             }
         }
 
@@ -78,12 +76,10 @@ mod linux_clone {
 
             if ret < 0 {
                 let err = std::io::Error::last_os_error();
-                if err.raw_os_error() == Some(libc::ENOSYS) {
-                    log_verbose("copy_file_range not supported, will use regular copy");
-                    COPY_FILE_RANGE_CHECKED.store(true, Ordering::Relaxed);
-                    COPY_FILE_RANGE_SUPPORTED.store(false, Ordering::Relaxed);
-                    return false;
-                }
+                log_verbose(&format!("copy_file_range not supported, will use regular copy: {}", err));
+                COPY_FILE_RANGE_CHECKED.store(true, Ordering::Relaxed);
+                COPY_FILE_RANGE_SUPPORTED.store(false, Ordering::Relaxed);
+                return false;
             }
         }
 
@@ -204,29 +200,23 @@ mod linux_clone {
 
     // Fast copy using the best available method
     async fn fast_copy(src: &Path, dst: &Path) -> Result<()> {
-        let metadata = fs::metadata(src).await?;
+        // Create destination directory
+        fs::create_dir_all(dst).await?;
 
-        if metadata.is_dir() {
-            // Create destination directory
-            fs::create_dir_all(dst).await?;
+        // Copy all files in the directory
+        let mut read_dir = fs::read_dir(src).await?;
+        while let Some(entry) = read_dir.next_entry().await? {
+            let entry_path = entry.path();
+            let file_name = entry_path.file_name().unwrap();
+            let target_path = dst.join(file_name);
 
-            // Copy all files in the directory
-            let mut read_dir = fs::read_dir(src).await?;
-            while let Some(entry) = read_dir.next_entry().await? {
-                let entry_path = entry.path();
-                let file_name = entry_path.file_name().unwrap();
-                let target_path = dst.join(file_name);
-
-                if entry.metadata().await?.is_dir() {
-                    Box::pin(fast_copy(&entry_path, &target_path)).await?;
-                } else {
-                    fast_copy_file(&entry_path, &target_path).await?;
-                }
+            if entry.metadata().await?.is_dir() {
+                Box::pin(fast_copy(&entry_path, &target_path)).await?;
+            } else {
+                fast_copy_file(&entry_path, &target_path).await?;
             }
-            Ok(())
-        } else {
-            fast_copy_file(src, dst).await
         }
+        Ok(())
     }
 
     // Check if the package has install scripts
