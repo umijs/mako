@@ -87,3 +87,7 @@ fetch = true
 checkout = true
 list_files = true
 internal_use_git2 = false
+
+[alias]
+format = "fmt --all --verbose"
+lint = "clippy --workspace --all-targets -- --deny warnings"

@@ -183,7 +183,7 @@ async fn clean_deps(
 
     let mut node_modules_dirs = vec![cwd.join("node_modules")];
 
-    let workspaces = workspace::find_workspaces(&cwd.to_path_buf()).await?;
+    let workspaces = workspace::find_workspaces(cwd).await?;
     for (_, path, _) in workspaces {
         let workspace_node_modules = path.join("node_modules");
         if workspace_node_modules.exists() {

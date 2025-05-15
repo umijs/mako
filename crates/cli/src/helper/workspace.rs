@@ -1,11 +1,11 @@
 use anyhow::{Context, Result};
 use glob::glob;
 use serde_json::Value;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::util::logger::log_verbose;
 
-pub async fn find_workspaces(root_path: &PathBuf) -> Result<Vec<(String, PathBuf, Value)>> {
+pub async fn find_workspaces(root_path: &Path) -> Result<Vec<(String, PathBuf, Value)>> {
     let mut workspaces = Vec::new();
 
     // load package.json
@@ -140,7 +140,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_workspace_by_name() {
-        let (temp_dir, root_path) = setup_test_workspace().await;
+        let (_temp_dir, root_path) = setup_test_workspace().await;
         let result = find_workspace_path(&root_path, "test-workspace").await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap().file_name().unwrap(), "test-workspace");
@@ -148,7 +148,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_workspace_by_absolute_path() {
-        let (temp_dir, root_path) = setup_test_workspace().await;
+        let (_temp_dir, root_path) = setup_test_workspace().await;
         let workspace_path = root_path.join("packages").join("test-workspace");
         let result = find_workspace_path(&root_path, &workspace_path.to_string_lossy()).await;
         assert!(result.is_ok());
@@ -157,7 +157,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_workspace_by_relative_path() {
-        let (temp_dir, root_path) = setup_test_workspace().await;
+        let (_temp_dir, root_path) = setup_test_workspace().await;
         let result = find_workspace_path(&root_path, "packages/test-workspace").await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap().file_name().unwrap(), "test-workspace");
@@ -165,7 +165,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_workspace_not_found() {
-        let (temp_dir, root_path) = setup_test_workspace().await;
+        let (_temp_dir, root_path) = setup_test_workspace().await;
         let result = find_workspace_path(&root_path, "non-existent-workspace").await;
         assert!(result.is_err());
     }
