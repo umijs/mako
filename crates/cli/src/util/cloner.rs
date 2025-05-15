@@ -15,7 +15,7 @@ use std::os::unix::ffi::OsStrExt;
 #[cfg(target_os = "linux")]
 mod linux_clone {
     use crate::util::logger::{log_verbose, log_warning};
-    use anyhow::{Context, Result};
+    use anyhow::Result;
     use std::fs::File;
     use std::os::unix::io::AsRawFd;
     use std::path::Path;
@@ -86,30 +86,6 @@ mod linux_clone {
         }
 
         Ok(())
-    }
-
-    // Try to copy a file using the best available method
-    async fn copy_file(src: &Path, dst: &Path) -> Result<()> {
-        // Try hardlink first
-        match fs::hard_link(src, dst).await {
-            Ok(_) => {
-                log_verbose(&format!(
-                    "Successfully created hardlink for file from {} to {}",
-                    src.display(),
-                    dst.display()
-                ));
-                Ok(())
-            }
-            Err(e) => {
-                log_warning(&format!(
-                    "Failed to create hardlink for file from {} to {}: {}, trying fast copy",
-                    src.display(),
-                    dst.display(),
-                    e
-                ));
-                fast_copy_file(src, dst).await
-            }
-        }
     }
 
     // Fast copy a single file using the best available method
