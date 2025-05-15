@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::{collections::HashMap, fs};
 
@@ -18,12 +18,14 @@ pub struct PackageLock {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
 pub struct Package {
     pub version: Option<String>,
     pub resolved: Option<String>,
     pub link: Option<bool>,
     pub cpu: Option<Value>,
     pub os: Option<Value>,
+    pub has_install_script: Option<bool>,
 }
 
 pub fn group_by_depth(
@@ -178,6 +180,14 @@ pub async fn prepare_global_package_json(npm_spec: &str) -> Result<PathBuf> {
         download(tarball_url, &cache_path)
             .await
             .map_err(|e| anyhow!("Failed to download package: {}", e))?;
+
+        // If the package has install scripts, create a flag file
+        // in linux, we can use hardlink when FICLONE is not supported
+        // so we need to copy the file to the package directory to avoid effect other packages
+        if resolved.manifest.get("hasInstallScript") == Some(&json!(true)) {
+            let has_install_script_flag_path = cache_path.join("_hasInstallScript");
+            fs::write(has_install_script_flag_path, "")?;
+        }
     }
 
     // Clone to package directory
@@ -228,8 +238,6 @@ pub fn path_to_pkg_name(path_str: &str) -> Option<&str> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_version_to_write() {
         // Test cases for different version specifications

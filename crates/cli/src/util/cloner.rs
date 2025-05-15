@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio_retry::Retry;
 
-use super::logger::{log_verbose, log_warning};
 use super::retry::create_retry_strategy;
+use crate::util::logger::{log_verbose, log_warning};
 
 #[cfg(target_os = "macos")]
 use libc::clonefile;
@@ -14,21 +14,141 @@ use std::os::unix::ffi::OsStrExt;
 
 #[cfg(target_os = "linux")]
 mod linux_clone {
-    use anyhow::{Context, Result};
+    use crate::util::logger::{log_verbose, log_warning};
+    use anyhow::Result;
     use std::fs::File;
     use std::os::unix::io::AsRawFd;
     use std::path::Path;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use tokio::fs;
 
-    const FICLONE: libc::c_ulong = 0x40049409;
+    // Cache for copy_file_range support
+    static COPY_FILE_RANGE_SUPPORTED: AtomicBool = AtomicBool::new(true);
 
-    pub fn clone_file(src: &File, dst: &File) -> Result<()> {
-        let ret = unsafe { libc::ioctl(dst.as_raw_fd(), FICLONE, src.as_raw_fd()) };
-        if ret == 0 {
-            Ok(())
-        } else {
-            Err(std::io::Error::last_os_error()).context("Failed to clone file")
+    // Cache for FICLONE support
+    static FICLONE_SUPPORTED: AtomicBool = AtomicBool::new(true);
+
+    // Check if FICLONE is supported
+    fn is_ficlone_supported() -> bool {
+        FICLONE_SUPPORTED.load(Ordering::Relaxed)
+    }
+
+    // Check if copy_file_range is supported
+    fn is_copy_file_range_supported() -> bool {
+        COPY_FILE_RANGE_SUPPORTED.load(Ordering::Relaxed)
+    }
+
+    // Copy a single file using FICLONE
+    async fn copy_file_with_ficlone(src: &Path, dst: &Path) -> Result<()> {
+        let src_file = File::open(src)?;
+        let dst_file = File::create(dst)?;
+
+        let src_fd = src_file.as_raw_fd();
+        let dst_fd = dst_file.as_raw_fd();
+
+        let ret = unsafe { libc::ioctl(dst_fd, libc::FICLONE, src_fd) };
+
+        if ret < 0 {
+            let err = std::io::Error::last_os_error();
+            FICLONE_SUPPORTED.store(false, Ordering::Relaxed);
+            return Err(err).map_err(|e| anyhow::anyhow!("FICLONE not supported: {}", e));
         }
+
+        Ok(())
+    }
+
+    // Copy a single file using copy_file_range
+    async fn copy_file_with_range(src: &Path, dst: &Path) -> Result<()> {
+        let src_file = File::open(src)?;
+        let dst_file = File::create(dst)?;
+
+        let src_fd = src_file.as_raw_fd();
+        let dst_fd = dst_file.as_raw_fd();
+
+        let metadata = src_file.metadata()?;
+        let mut offset: i64 = 0;
+
+        let ret = unsafe {
+            libc::copy_file_range(
+                src_fd,
+                &mut offset,
+                dst_fd,
+                &mut offset,
+                metadata.len() as usize,
+                0,
+            )
+        };
+
+        if ret < 0 {
+            let err = std::io::Error::last_os_error();
+            COPY_FILE_RANGE_SUPPORTED.store(false, Ordering::Relaxed);
+            return Err(err).map_err(|e| anyhow::anyhow!("copy_file_range not supported: {}", e));
+        }
+
+        Ok(())
+    }
+
+    // Fast copy a single file using the best available method
+    async fn fast_copy_file(src: &Path, dst: &Path) -> Result<()> {
+        // Try FICLONE if supported
+        if is_ficlone_supported() {
+            match copy_file_with_ficlone(src, dst).await {
+                Ok(_) => return Ok(()),
+                Err(e) => {
+                    log_verbose(&format!("FICLONE failed: {}, trying copy_file_range", e));
+                }
+            }
+        }
+
+        // Try copy_file_range if supported
+        if is_copy_file_range_supported() {
+            match copy_file_with_range(src, dst).await {
+                Ok(_) => return Ok(()),
+                Err(e) => {
+                    log_verbose(&format!(
+                        "copy_file_range failed: {}, using regular copy",
+                        e
+                    ));
+                }
+            }
+        }
+
+        // Fallback to regular copy
+        let _ = fs::copy(src, dst).await.map_err(anyhow::Error::from);
+
+        Ok(())
+    }
+
+    // Fast copy using the best available method
+    async fn fast_copy(src: &Path, dst: &Path) -> Result<()> {
+        // Create destination directory
+        fs::create_dir_all(dst).await?;
+
+        // Copy all files in the directory
+        let mut read_dir = fs::read_dir(src).await?;
+        while let Some(entry) = read_dir.next_entry().await? {
+            let entry_path = entry.path();
+            let file_name = entry_path.file_name().unwrap();
+            let target_path = dst.join(file_name);
+
+            if entry.metadata().await?.is_dir() {
+                Box::pin(fast_copy(&entry_path, &target_path)).await?;
+            } else {
+                fast_copy_file(&entry_path, &target_path).await?;
+            }
+        }
+        Ok(())
+    }
+
+    // Check if the package has install scripts
+    async fn has_install_script(src: &Path) -> bool {
+        if let Some(parent) = src.parent() {
+            let flag_path = parent.join("_hasInstallScript");
+            if let Ok(metadata) = fs::metadata(&flag_path).await {
+                return metadata.is_file();
+            }
+        }
+        false
     }
 
     pub async fn clone_dir(src: &Path, dst: &Path) -> Result<()> {
@@ -36,8 +156,20 @@ mod linux_clone {
             return Err(anyhow::anyhow!("Source is not a directory"));
         }
 
+        // Create destination directory
         fs::create_dir_all(dst).await?;
 
+        // Check if the package has install scripts
+        if has_install_script(src).await {
+            log_verbose(&format!(
+                "Package has install scripts, using fast copy for directory {} to {}",
+                src.display(),
+                dst.display()
+            ));
+            return fast_copy(src, dst).await;
+        }
+
+        // For directories without install scripts, recursively create the directory structure
         let mut read_dir = fs::read_dir(src).await?;
         while let Some(entry) = read_dir.next_entry().await? {
             let entry_path = entry.path();
@@ -47,9 +179,26 @@ mod linux_clone {
             if entry.metadata().await?.is_dir() {
                 Box::pin(clone_dir(&entry_path, &target_path)).await?;
             } else {
-                let src_file = File::open(&entry_path)?;
-                let dst_file = File::create(&target_path)?;
-                clone_file(&src_file, &dst_file)?;
+                // Try hardlink first for files in packages without install scripts
+                match fs::hard_link(&entry_path, &target_path).await {
+                    Ok(_) => {
+                        log_verbose(&format!(
+                            "Successfully created hardlink for file from {} to {}",
+                            entry_path.display(),
+                            target_path.display()
+                        ));
+                    }
+                    Err(e) => {
+                        log_warning(&format!(
+                            "Failed to create hardlink for file from {} to {}: {}, trying fast copy",
+                            entry_path.display(),
+                            target_path.display(),
+                            e
+                        ));
+                        // If hardlink fails, fallback to fast copy
+                        fast_copy_file(&entry_path, &target_path).await?;
+                    }
+                }
             }
         }
 
@@ -145,7 +294,6 @@ pub async fn validate_directory(src: &Path, dst: &Path) -> Result<bool> {
 
 // find the first non builded subdirectory
 pub async fn find_real_src<P: AsRef<Path>>(src: P) -> Option<PathBuf> {
-    // 查找第一个非 builded 的子目录
     let mut read_dir = fs::read_dir(src.as_ref()).await.ok()?;
     while let Some(entry) = read_dir.next_entry().await.ok()? {
         if let Ok(metadata) = entry.metadata().await {
@@ -228,36 +376,14 @@ pub async fn clone(src: &Path, dst: &Path, find_real: bool) -> Result<()> {
 
     #[cfg(target_os = "linux")]
     {
-        use std::fs::File;
-
         Retry::spawn(create_retry_strategy(), || async {
-            if fs::metadata(&real_src).await?.is_dir() {
-                linux_clone::clone_dir(&real_src, dst).await?;
-                log_verbose(&format!(
-                    "clone {} to {} success",
-                    real_src.display(),
-                    dst.display()
-                ));
-                Ok(())
-            } else {
-                let src_file = File::open(&real_src)?;
-                let dst_file = File::create(dst)?;
-
-                match linux_clone::clone_file(&src_file, &dst_file) {
-                    Ok(()) => {
-                        log_verbose(&format!(
-                            "clone {} to {} success",
-                            real_src.display(),
-                            dst.display()
-                        ));
-                        Ok(())
-                    }
-                    Err(e) => {
-                        let _ = fs::remove_file(dst).await;
-                        Err(e)
-                    }
-                }
-            }
+            linux_clone::clone_dir(&real_src, dst).await?;
+            log_verbose(&format!(
+                "clone {} to {} success",
+                real_src.display(),
+                dst.display()
+            ));
+            Ok(())
         })
         .await
     }
@@ -306,6 +432,77 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_validate_directory_same_content() -> Result<()> {
+        let temp = TempDir::new()?;
+        let src_dir = temp.path().join("src");
+        let dst_dir = temp.path().join("dst");
+
+        create_test_structure(&src_dir, &[("file.txt", Some(b"same content"))]).await?;
+        create_test_structure(&dst_dir, &[("file.txt", Some(b"same content"))]).await?;
+
+        assert!(validate_directory(&src_dir, &dst_dir).await?);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_validate_directory_nested_structure() -> Result<()> {
+        let temp = TempDir::new()?;
+        let src_dir = temp.path().join("src");
+        let dst_dir = temp.path().join("dst");
+
+        create_test_structure(
+            &src_dir,
+            &[
+                ("dir1/file1.txt", Some(b"content1")),
+                ("dir1/dir2/file2.txt", Some(b"content2")),
+                ("dir3/file3.txt", Some(b"content3")),
+            ],
+        )
+        .await?;
+
+        create_test_structure(
+            &dst_dir,
+            &[
+                ("dir1/file1.txt", Some(b"content1")),
+                ("dir1/dir2/file2.txt", Some(b"content2")),
+                ("dir3/file3.txt", Some(b"content3")),
+            ],
+        )
+        .await?;
+
+        assert!(validate_directory(&src_dir, &dst_dir).await?);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_validate_directory_different_structure() -> Result<()> {
+        let temp = TempDir::new()?;
+        let src_dir = temp.path().join("src");
+        let dst_dir = temp.path().join("dst");
+
+        create_test_structure(
+            &src_dir,
+            &[
+                ("dir1/file1.txt", Some(b"content1")),
+                ("dir2/file2.txt", Some(b"content2")),
+            ],
+        )
+        .await?;
+
+        create_test_structure(
+            &dst_dir,
+            &[
+                ("dir1/file1.txt", Some(b"content1")),
+                ("dir3/file3.txt", Some(b"content31")),
+            ],
+        )
+        .await?;
+
+        assert!(!validate_directory(&src_dir, &dst_dir).await?);
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_find_real_src() -> Result<()> {
         let temp = TempDir::new()?;
         let dir = temp.path().join("test_dir");
@@ -319,6 +516,84 @@ mod tests {
         let subdir = dir.join("subdir");
         fs::create_dir(&subdir).await?;
         assert_eq!(find_real_src(&dir).await.unwrap(), subdir);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_find_real_src_with_builded_dir() -> Result<()> {
+        let temp = TempDir::new()?;
+        let dir = temp.path().join("test_dir");
+        fs::create_dir(&dir).await?;
+
+        // Create .utoo_builded directory
+        let builded_dir = dir.join(".utoo_builded");
+        fs::create_dir(&builded_dir).await?;
+
+        // Create a regular subdirectory
+        let subdir = dir.join("subdir");
+        fs::create_dir(&subdir).await?;
+
+        assert_eq!(find_real_src(&dir).await.unwrap(), subdir);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_clone_without_find_real() -> Result<()> {
+        let temp = TempDir::new()?;
+        let src_dir = temp.path().join("src");
+        let dst_dir = temp.path().join("dst");
+
+        // Create source structure
+        create_test_structure(
+            &src_dir,
+            &[
+                (".utoo_builded", None),
+                ("real_dir/file.txt", Some(b"content")),
+            ],
+        )
+        .await?;
+
+        // Test cloning with find_real=false
+        clone(&src_dir, &dst_dir, false).await?;
+
+        // Verify everything was cloned
+        assert!(dst_dir.join("real_dir").exists());
+        assert!(dst_dir.join(".utoo_builded").exists());
+        assert_eq!(
+            fs::read_to_string(dst_dir.join("real_dir/file.txt")).await?,
+            "content"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_clone_existing_directory() -> Result<()> {
+        let temp = TempDir::new()?;
+        let src_dir = temp.path().join("src");
+        let dst_dir = temp.path().join("dst");
+
+        // Create initial source and destination
+        create_test_structure(&src_dir, &[("file.txt", Some(b"old content"))]).await?;
+        create_test_structure(&dst_dir, &[("file.txt", Some(b"old content"))]).await?;
+
+        // Clone should succeed and skip since content is identical
+        clone(&src_dir, &dst_dir, false).await?;
+        assert_eq!(
+            fs::read_to_string(dst_dir.join("file.txt")).await?,
+            "old content"
+        );
+
+        // Update source content
+        create_test_structure(&src_dir, &[("file.txt", Some(b"new content"))]).await?;
+
+        // Clone should update the destination
+        clone(&src_dir, &dst_dir, false).await?;
+        assert_eq!(
+            fs::read_to_string(dst_dir.join("file.txt")).await?,
+            "new content"
+        );
 
         Ok(())
     }

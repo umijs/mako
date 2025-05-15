@@ -6,6 +6,7 @@ use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
 use std::sync::Arc;
+use tokio::fs;
 use tokio::sync::Semaphore;
 
 use crate::helper::lock::{extract_package_name, path_to_pkg_name, Package};
@@ -278,7 +279,12 @@ pub async fn install_packages(
                             match download(&resolved, &cache_path).await {
                                 Ok(_) => {
                                     log_progress(&format!("{} downloaded", name));
-                                    log_verbose(&format!("{} downloaded", name));
+                                    if package.has_install_script.is_some() {
+                                        log_verbose(&format!("{} has install script", name));
+                                        let has_install_script_flag_path =
+                                            cache_path.join("_hasInstallScript");
+                                        fs::write(has_install_script_flag_path, "").await?;
+                                    }
                                 }
                                 Err(e) => {
                                     log_verbose(&format!(
