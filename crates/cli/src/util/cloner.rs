@@ -52,7 +52,6 @@ mod linux_clone {
             let err = std::io::Error::last_os_error();
             // If FICLONE is not supported, mark it as unsupported and fallback to copy_file_range
             log_verbose(&format!("FICLONE not supported, will use copy_file_range: {}", err));
-            FICLONE_CHECKED.store(true, Ordering::Relaxed);
             FICLONE_SUPPORTED.store(false, Ordering::Relaxed);
             return copy_file_with_range(src, dst).await;
             return Err(err).context("Failed to copy file with FICLONE");
@@ -84,7 +83,6 @@ mod linux_clone {
                 let err = std::io::Error::last_os_error();
                 // If copy_file_range is not supported, mark it as unsupported and fallback to regular copy
                 log_verbose(&format!("copy_file_range not supported, will use regular copy: {}", err));
-                COPY_FILE_RANGE_CHECKED.store(true, Ordering::Relaxed);
                 COPY_FILE_RANGE_SUPPORTED.store(false, Ordering::Relaxed);
                 return fs::copy(src, dst)
                     .await
