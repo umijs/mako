@@ -24,71 +24,21 @@ mod linux_clone {
 
     // Cache for copy_file_range support
     static COPY_FILE_RANGE_SUPPORTED: AtomicBool = AtomicBool::new(true);
-    static COPY_FILE_RANGE_CHECKED: AtomicBool = AtomicBool::new(false);
 
     // Cache for FICLONE support
     static FICLONE_SUPPORTED: AtomicBool = AtomicBool::new(true);
-    static FICLONE_CHECKED: AtomicBool = AtomicBool::new(false);
 
     // Check if FICLONE is supported
     fn is_ficlone_supported() -> bool {
-        // If we've already checked, return cached result
-        if FICLONE_CHECKED.load(Ordering::Relaxed) {
-            return FICLONE_SUPPORTED.load(Ordering::Relaxed);
-        }
-
-        // Try to create a temporary file and test FICLONE
-        if let (Ok(src_file), Ok(dst_file)) = (File::open("/dev/null"), File::create("/dev/null")) {
-            let src_fd = src_file.as_raw_fd();
-            let dst_fd = dst_file.as_raw_fd();
-
-            let ret = unsafe { libc::ioctl(dst_fd, libc::FICLONE, src_fd) };
-
-            if ret < 0 {
-                let err = std::io::Error::last_os_error();
-                log_verbose(&format!("FICLONE not supported, will use copy_file_range: {}", err));
-                FICLONE_CHECKED.store(true, Ordering::Relaxed);
-                FICLONE_SUPPORTED.store(false, Ordering::Relaxed);
-                return false;
-            }
-        }
-
-        FICLONE_CHECKED.store(true, Ordering::Relaxed);
-        FICLONE_SUPPORTED.store(true, Ordering::Relaxed);
-        true
+        FICLONE_SUPPORTED.load(Ordering::Relaxed)
     }
 
     // Check if copy_file_range is supported
     fn is_copy_file_range_supported() -> bool {
-        // If we've already checked, return cached result
-        if COPY_FILE_RANGE_CHECKED.load(Ordering::Relaxed) {
-            return COPY_FILE_RANGE_SUPPORTED.load(Ordering::Relaxed);
-        }
-
-        // Try to create a temporary file and test copy_file_range
-        if let (Ok(src_file), Ok(dst_file)) = (File::open("/dev/null"), File::create("/dev/null")) {
-            let src_fd = src_file.as_raw_fd();
-            let dst_fd = dst_file.as_raw_fd();
-            let mut offset: i64 = 0;
-
-            let ret =
-                unsafe { libc::copy_file_range(src_fd, &mut offset, dst_fd, &mut offset, 1, 0) };
-
-            if ret < 0 {
-                let err = std::io::Error::last_os_error();
-                log_verbose(&format!("copy_file_range not supported, will use regular copy: {}", err));
-                COPY_FILE_RANGE_CHECKED.store(true, Ordering::Relaxed);
-                COPY_FILE_RANGE_SUPPORTED.store(false, Ordering::Relaxed);
-                return false;
-            }
-        }
-
-        COPY_FILE_RANGE_CHECKED.store(true, Ordering::Relaxed);
-        COPY_FILE_RANGE_SUPPORTED.store(true, Ordering::Relaxed);
-        true
+        COPY_FILE_RANGE_SUPPORTED.load(Ordering::Relaxed)
     }
 
-    // Copy a single file using FICLONE
+    // Try to copy a file using FICLONE
     async fn copy_file_with_ficlone(src: &Path, dst: &Path) -> Result<()> {
         let src_file = File::open(src)?;
         let dst_file = File::create(dst)?;
@@ -100,11 +50,11 @@ mod linux_clone {
 
         if ret < 0 {
             let err = std::io::Error::last_os_error();
-            if err.raw_os_error() == Some(libc::ENOTTY) {
-                // If FICLONE is not supported, fallback to copy_file_range
-                log_verbose("FICLONE not supported, falling back to copy_file_range");
-                return copy_file_with_range(src, dst).await;
-            }
+            // If FICLONE is not supported, mark it as unsupported and fallback to copy_file_range
+            log_verbose(&format!("FICLONE not supported, will use copy_file_range: {}", err));
+            FICLONE_CHECKED.store(true, Ordering::Relaxed);
+            FICLONE_SUPPORTED.store(false, Ordering::Relaxed);
+            return copy_file_with_range(src, dst).await;
             return Err(err).context("Failed to copy file with FICLONE");
         }
 
@@ -132,14 +82,14 @@ mod linux_clone {
 
             if ret < 0 {
                 let err = std::io::Error::last_os_error();
-                if err.raw_os_error() == Some(libc::ENOSYS) {
-                    // If copy_file_range is not supported, fallback to regular copy
-                    log_verbose("copy_file_range not supported, falling back to regular copy");
-                    return fs::copy(src, dst)
-                        .await
-                        .map(|_| ())
-                        .map_err(anyhow::Error::from);
-                }
+                // If copy_file_range is not supported, mark it as unsupported and fallback to regular copy
+                log_verbose(&format!("copy_file_range not supported, will use regular copy: {}", err));
+                COPY_FILE_RANGE_CHECKED.store(true, Ordering::Relaxed);
+                COPY_FILE_RANGE_SUPPORTED.store(false, Ordering::Relaxed);
+                return fs::copy(src, dst)
+                    .await
+                    .map(|_| ())
+                    .map_err(anyhow::Error::from);
                 return Err(err).context("Failed to copy file");
             }
 
