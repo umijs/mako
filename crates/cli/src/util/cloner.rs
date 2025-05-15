@@ -114,7 +114,7 @@ mod linux_clone {
         }
 
         // Fallback to regular copy
-        fs::copy(src, dst).await?;
+        let _ = fs::copy(src, dst).await.map_err(anyhow::Error::from);
         Ok(())
     }
 
@@ -180,7 +180,7 @@ mod linux_clone {
             } else {
                 // Try hardlink first for files in packages without install scripts
                 if let Err(e) = fs::hard_link(&entry_path, &target_path).await {
-                    log_warning(&format!(
+                    log_verbose(&format!(
                         "Failed to create hardlink for file from {} to {}: {}, trying fast copy",
                         entry_path.display(),
                         target_path.display(),
