@@ -114,7 +114,10 @@ mod linux_clone {
         }
 
         // Fallback to regular copy
-        fs::copy(src, dst).await.map_err(anyhow::Error::from)
+        fs::copy(src, dst)
+            .await
+            .map(|_| ())
+            .map_err(anyhow::Error::from)
     }
 
     // Fast copy using the best available method

@@ -18,13 +18,13 @@ pub struct PackageLock {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
 pub struct Package {
     pub version: Option<String>,
     pub resolved: Option<String>,
     pub link: Option<bool>,
     pub cpu: Option<Value>,
     pub os: Option<Value>,
-    #[serde(rename = "hasInstallScript")]
     pub has_install_script: Option<bool>,
 }
 
