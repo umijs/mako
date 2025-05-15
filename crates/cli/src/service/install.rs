@@ -1,12 +1,12 @@
 use anyhow::Context;
 use anyhow::Result;
 use glob::glob;
-use tokio::fs;
 use std::collections::HashMap;
 use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
 use std::sync::Arc;
+use tokio::fs;
 use tokio::sync::Semaphore;
 
 use crate::helper::lock::{extract_package_name, path_to_pkg_name, Package};
@@ -281,7 +281,8 @@ pub async fn install_packages(
                                     log_progress(&format!("{} downloaded", name));
                                     if package.has_install_script.is_some() {
                                         log_verbose(&format!("{} has install script", name));
-                                        let has_install_script_flag_path = cache_path.join("_hasInstallScript");
+                                        let has_install_script_flag_path =
+                                            cache_path.join("_hasInstallScript");
                                         fs::write(has_install_script_flag_path, "").await?;
                                     }
                                 }

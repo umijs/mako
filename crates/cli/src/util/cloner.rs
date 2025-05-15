@@ -105,16 +105,16 @@ mod linux_clone {
             match copy_file_with_range(src, dst).await {
                 Ok(_) => return Ok(()),
                 Err(e) => {
-                    log_verbose(&format!("copy_file_range failed: {}, using regular copy", e));
+                    log_verbose(&format!(
+                        "copy_file_range failed: {}, using regular copy",
+                        e
+                    ));
                 }
             }
         }
 
         // Fallback to regular copy
-        fs::copy(src, dst)
-            .await
-            .map(|_| ())
-            .map_err(anyhow::Error::from)
+        fs::copy(src, dst).await.map_err(anyhow::Error::from)
     }
 
     // Fast copy using the best available method
@@ -166,7 +166,6 @@ mod linux_clone {
             ));
             return fast_copy(src, dst).await;
         }
-
 
         // For directories without install scripts, recursively create the directory structure
         let mut read_dir = fs::read_dir(src).await?;
