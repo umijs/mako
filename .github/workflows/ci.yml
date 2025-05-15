@@ -81,6 +81,12 @@ jobs:
         toolchain: nightly-2025-02-12
         args: --all -- --check
 
+    - name: Lint Rust Code
+      uses: actions-rs/cargo@v1
+      with:
+        command: lint
+        toolchain: nightly-2025-02-12 
+
     - name: Build changed crates
       run: |
         for crate in ${{ needs.detect-changes.outputs.changed-crates }}; do

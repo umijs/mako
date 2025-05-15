@@ -82,11 +82,9 @@ async fn main() {
             let _ = write_verbose_logs_to_file();
             process::exit(1);
         }
-    } else {
-        if let Err(e) = install(cli.ignore_scripts).await {
-            log_error(&e.to_string());
-            let _ = write_verbose_logs_to_file();
-            process::exit(1);
-        }
+    } else if let Err(e) = install(cli.ignore_scripts).await {
+        log_error(&e.to_string());
+        let _ = write_verbose_logs_to_file();
+        process::exit(1);
     }
 }

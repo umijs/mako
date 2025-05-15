@@ -32,20 +32,17 @@ pub fn matches_pattern(text: &str, pattern: &str) -> bool {
     }
 
     // special handle when /*
-    if pattern.ends_with("/*") {
-        let scope = &pattern[..pattern.len() - 2];
+    if let Some(scope) = pattern.strip_suffix("/*") {
         return text.starts_with(scope);
     }
 
     // starts with *
-    if pattern.starts_with('*') {
-        let suffix = &pattern[1..];
+    if let Some(suffix) = pattern.strip_prefix('*') {
         return text.ends_with(suffix);
     }
 
     // ends with *
-    if pattern.ends_with('*') {
-        let prefix = &pattern[..pattern.len() - 1];
+    if let Some(prefix) = pattern.strip_suffix('*') {
         return text.starts_with(prefix);
     }
 

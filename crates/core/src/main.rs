@@ -89,14 +89,7 @@ fn main() -> Result<()> {
             } => {
                 let overrides: HashMap<String, String> = override_values
                     .iter()
-                    .filter_map(|arg| {
-                        if arg.starts_with("--") {
-                            if let Ok((k, v)) = parse_key_val(&arg[2..]) {
-                                return Some((k, v));
-                            }
-                        }
-                        None
-                    })
+                    .filter_map(|arg| arg.strip_prefix("--").and_then(|s| parse_key_val(s).ok()))
                     .collect();
 
                 if let Some(value) = overrides.get(&key) {
@@ -205,12 +198,12 @@ mod tests {
 
     #[test]
     fn test_cli_override() {
-        let args = vec!["--test.key=cli_value"];
+        let args = ["--test.key=cli_value"];
         let overrides: HashMap<String, String> = args
             .iter()
             .filter_map(|arg| {
-                if arg.starts_with("--") {
-                    if let Ok((k, v)) = parse_key_val(&arg[2..]) {
+                if let Some(strip_arg) = arg.strip_prefix("--") {
+                    if let Ok((k, v)) = parse_key_val(strip_arg) {
                         return Some((k, v));
                     }
                 }

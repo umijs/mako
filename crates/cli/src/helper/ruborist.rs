@@ -40,7 +40,7 @@ async fn build_deps(root: Arc<Node>) -> Result<()> {
         let mut level_tasks = Vec::new();
 
         for node in nodes {
-            let edges = node.edges_out.write().unwrap();
+            let edges = node.edges_out.read().unwrap();
             let total_deps = edges.len();
             PROGRESS_BAR.inc_length(total_deps as u64);
             log_progress(&format!("Resolving dependencies for {}", node.name));
