@@ -44,7 +44,7 @@ pub fn is_cpu_compatible(constraint: &Value) -> bool {
             }
         }
         Value::Array(cpu_list) => cpu_list.iter().any(|cpu| {
-            cpu.as_str().map_or(false, |cpu_str| {
+            cpu.as_str().is_some_and(|cpu_str| {
                 let cpu_str = cpu_str.to_lowercase();
                 let arch = cpu_str.strip_prefix('!').unwrap_or(&cpu_str);
                 let matches = is_arch_match(arch);
