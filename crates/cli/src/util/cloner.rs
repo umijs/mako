@@ -38,7 +38,7 @@ mod linux_clone {
         COPY_FILE_RANGE_SUPPORTED.load(Ordering::Relaxed)
     }
 
-    // Try to copy a file using FICLONE
+    // Copy a single file using FICLONE
     async fn copy_file_with_ficlone(src: &Path, dst: &Path) -> Result<()> {
         let src_file = File::open(src)?;
         let dst_file = File::create(dst)?;
@@ -50,11 +50,8 @@ mod linux_clone {
 
         if ret < 0 {
             let err = std::io::Error::last_os_error();
-            // If FICLONE is not supported, mark it as unsupported and fallback to copy_file_range
-            log_verbose(&format!("FICLONE not supported, will use copy_file_range: {}", err));
             FICLONE_SUPPORTED.store(false, Ordering::Relaxed);
-            return copy_file_with_range(src, dst).await;
-            return Err(err).context("Failed to copy file with FICLONE");
+            return Err(err).map_err(|e| anyhow::anyhow!("FICLONE not supported: {}", e));
         }
 
         Ok(())
@@ -71,7 +68,6 @@ mod linux_clone {
         let metadata = src_file.metadata()?;
         let mut offset: i64 = 0;
 
-        // Try to copy the entire file at once
         let ret = unsafe {
             libc::copy_file_range(
                 src_fd,
@@ -85,31 +81,11 @@ mod linux_clone {
 
         if ret < 0 {
             let err = std::io::Error::last_os_error();
-            // If copy_file_range is not supported, mark it as unsupported and fallback to regular copy
-            log_verbose(&format!("copy_file_range not supported, will use regular copy: {}", err));
             COPY_FILE_RANGE_SUPPORTED.store(false, Ordering::Relaxed);
-            return fs::copy(src, dst)
-                .await
-                .map(|_| ())
-                .map_err(anyhow::Error::from);
+            return Err(err).map_err(|e| anyhow::anyhow!("copy_file_range not supported: {}", e));
         }
 
         Ok(())
-    }
-
-    // Fast copy a single file using the best available method
-    async fn fast_copy_file(src: &Path, dst: &Path) -> Result<()> {
-        // Try FICLONE if supported
-        if is_ficlone_supported() {
-            copy_file_with_ficlone(src, dst).await
-        } else if is_copy_file_range_supported() {
-            copy_file_with_range(src, dst).await
-        } else {
-            fs::copy(src, dst)
-                .await
-                .map(|_| ())
-                .map_err(anyhow::Error::from)
-        }
     }
 
     // Try to copy a file using the best available method
@@ -131,19 +107,38 @@ mod linux_clone {
                     dst.display(),
                     e
                 ));
-                // Try FICLONE if supported
-                if is_ficlone_supported() {
-                    copy_file_with_ficlone(src, dst).await
-                } else if is_copy_file_range_supported() {
-                    copy_file_with_range(src, dst).await
-                } else {
-                    fs::copy(src, dst)
-                        .await
-                        .map(|_| ())
-                        .map_err(anyhow::Error::from)
+                fast_copy_file(src, dst).await
+            }
+        }
+    }
+
+    // Fast copy a single file using the best available method
+    async fn fast_copy_file(src: &Path, dst: &Path) -> Result<()> {
+        // Try FICLONE if supported
+        if is_ficlone_supported() {
+            match copy_file_with_ficlone(src, dst).await {
+                Ok(_) => return Ok(()),
+                Err(e) => {
+                    log_verbose(&format!("FICLONE failed: {}, trying copy_file_range", e));
                 }
             }
         }
+
+        // Try copy_file_range if supported
+        if is_copy_file_range_supported() {
+            match copy_file_with_range(src, dst).await {
+                Ok(_) => return Ok(()),
+                Err(e) => {
+                    log_verbose(&format!("copy_file_range failed: {}, using regular copy", e));
+                }
+            }
+        }
+
+        // Fallback to regular copy
+        fs::copy(src, dst)
+            .await
+            .map(|_| ())
+            .map_err(anyhow::Error::from)
     }
 
     // Fast copy using the best available method
