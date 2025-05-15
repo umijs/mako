@@ -111,6 +111,7 @@ pub struct Config {
     experimental: ExperimentalConfig,
     persistent_caching: Option<bool>,
     cache_handler: Option<RcStr>,
+    externals: Option<Vec<RcStr>>,
 }
 
 #[turbo_tasks::value(eq = "manual")]

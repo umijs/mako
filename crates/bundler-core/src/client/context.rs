@@ -185,6 +185,8 @@ pub async fn get_client_module_options_context(
     dynamic_import_to_require: Vc<bool>,
 ) -> Result<Vc<ModuleOptionsContext>> {
     let mode_ref = mode.await?;
+
+    // resolve context
     let resolve_options_context =
         get_client_resolve_options_context(*project_path, mode, config, *execution_context);
 
@@ -370,6 +372,9 @@ pub async fn get_client_resolve_options_context(
     let client_resolved_map = get_client_resolved_map(*project_path, project_path, *mode.await?)
         .to_resolved()
         .await?;
+
+    let external_packages = config.externals().await?;
+
     let custom_conditions = vec![mode.await?.condition().into()];
     let resolve_options_context = ResolveOptionsContext {
         enable_node_modules: Some(project_path.root().to_resolved().await?),
