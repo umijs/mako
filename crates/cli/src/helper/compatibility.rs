@@ -64,6 +64,50 @@ fn is_arch_match(arch: &str) -> bool {
     match arch {
         "arm64" => current_arch == "aarch64",
         "aarch64" => current_arch == "aarch64",
+        "x64" => current_arch == "x86_64",
         _ => arch == current_arch,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_normalize_os() {
+        assert_eq!(normalize_os("darwin"), "macos");
+        assert_eq!(normalize_os("macos"), "macos");
+        assert_eq!(normalize_os("linux"), "linux");
+    }
+
+    #[test]
+    fn test_is_cpu_compatible() {
+        // Test string value
+        assert!(is_cpu_compatible(&json!(ARCH)));
+        assert!(!is_cpu_compatible(&json!("invalid_arch")));
+
+        // Test array value
+        assert!(is_cpu_compatible(&json!([ARCH])));
+        assert!(is_cpu_compatible(&json!(["invalid_arch", ARCH])));
+        assert!(!is_cpu_compatible(&json!([
+            "invalid_arch",
+            "another_invalid"
+        ])));
+
+        // Test negation
+        assert!(!is_cpu_compatible(&json!([format!("!{}", ARCH)])));
+        assert!(is_cpu_compatible(&json!(["!invalid_arch"])));
+
+        // Test architecture aliases
+        if ARCH == "aarch64" {
+            assert!(is_cpu_compatible(&json!("arm64")));
+            assert!(is_cpu_compatible(&json!("aarch64")));
+        } else if ARCH == "x86_64" {
+            assert!(is_cpu_compatible(&json!("x64")));
+        }
+
+        // Test invalid format
+        assert!(is_cpu_compatible(&json!(123)));
     }
 }
