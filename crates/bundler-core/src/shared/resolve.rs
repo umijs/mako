@@ -115,7 +115,7 @@ impl AfterResolvePlugin for ExternalModulesResolvePlugin {
         Ok(ResolveResultOption::some(*ResolveResult::primary(
             ResolveResultItem::External {
                 name: request_str.into(),
-                ty: ExternalType::Module,
+                ty: ExternalType::EcmaScriptModule,
                 traced: ExternalTraced::Traced,
             }
         )))
