@@ -153,6 +153,21 @@ mod linux_clone {
         Ok(())
     }
 
+    // Fast copy a single file using the best available method
+    async fn fast_copy_file(src: &Path, dst: &Path) -> Result<()> {
+        // Try FICLONE if supported
+        if is_ficlone_supported() {
+            copy_file_with_ficlone(src, dst).await
+        } else if is_copy_file_range_supported() {
+            copy_file_with_range(src, dst).await
+        } else {
+            fs::copy(src, dst)
+                .await
+                .map(|_| ())
+                .map_err(anyhow::Error::from)
+        }
+    }
+
     // Try to copy a file using the best available method
     async fn copy_file(src: &Path, dst: &Path) -> Result<()> {
         // Try hardlink first
@@ -205,12 +220,12 @@ mod linux_clone {
                 if entry.metadata().await?.is_dir() {
                     Box::pin(fast_copy(&entry_path, &target_path)).await?;
                 } else {
-                    copy_file(&entry_path, &target_path).await?;
+                    fast_copy_file(&entry_path, &target_path).await?;
                 }
             }
             Ok(())
         } else {
-            copy_file(src, dst).await
+            fast_copy_file(src, dst).await
         }
     }
 
@@ -230,6 +245,9 @@ mod linux_clone {
             return Err(anyhow::anyhow!("Source is not a directory"));
         }
 
+        // Create destination directory
+        fs::create_dir_all(dst).await?;
+
         // Check if the package has install scripts
         if has_install_script(src).await {
             log_verbose(&format!(
@@ -240,8 +258,6 @@ mod linux_clone {
             return fast_copy(src, dst).await;
         }
 
-        // Create destination directory
-        fs::create_dir_all(dst).await?;
 
         // For directories without install scripts, recursively create the directory structure
         let mut read_dir = fs::read_dir(src).await?;
@@ -253,7 +269,26 @@ mod linux_clone {
             if entry.metadata().await?.is_dir() {
                 Box::pin(clone_dir(&entry_path, &target_path)).await?;
             } else {
-                copy_file(&entry_path, &target_path).await?;
+                // Try hardlink first for files in packages without install scripts
+                match fs::hard_link(&entry_path, &target_path).await {
+                    Ok(_) => {
+                        log_verbose(&format!(
+                            "Successfully created hardlink for file from {} to {}",
+                            entry_path.display(),
+                            target_path.display()
+                        ));
+                    }
+                    Err(e) => {
+                        log_warning(&format!(
+                            "Failed to create hardlink for file from {} to {}: {}, trying fast copy",
+                            entry_path.display(),
+                            target_path.display(),
+                            e
+                        ));
+                        // If hardlink fails, fallback to fast copy
+                        fast_copy_file(&entry_path, &target_path).await?;
+                    }
+                }
             }
         }
 
