@@ -114,8 +114,7 @@ mod linux_clone {
         }
 
         // Fallback to regular copy
-        let _ = fs::copy(src, dst).await.map_err(anyhow::Error::from);
-
+        fs::copy(src, dst).await?;
         Ok(())
     }
 
@@ -180,24 +179,15 @@ mod linux_clone {
                 Box::pin(clone_dir(&entry_path, &target_path)).await?;
             } else {
                 // Try hardlink first for files in packages without install scripts
-                match fs::hard_link(&entry_path, &target_path).await {
-                    Ok(_) => {
-                        log_verbose(&format!(
-                            "Successfully created hardlink for file from {} to {}",
-                            entry_path.display(),
-                            target_path.display()
-                        ));
-                    }
-                    Err(e) => {
-                        log_warning(&format!(
-                            "Failed to create hardlink for file from {} to {}: {}, trying fast copy",
-                            entry_path.display(),
-                            target_path.display(),
-                            e
-                        ));
-                        // If hardlink fails, fallback to fast copy
-                        fast_copy_file(&entry_path, &target_path).await?;
-                    }
+                if let Err(e) = fs::hard_link(&entry_path, &target_path).await {
+                    log_warning(&format!(
+                        "Failed to create hardlink for file from {} to {}: {}, trying fast copy",
+                        entry_path.display(),
+                        target_path.display(),
+                        e
+                    ));
+                    // If hardlink fails, fallback to fast copy
+                    fast_copy_file(&entry_path, &target_path).await?;
                 }
             }
         }

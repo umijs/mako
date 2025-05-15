@@ -60,6 +60,7 @@ fn is_arch_match(arch: &str) -> bool {
     match arch {
         "arm64" => current_arch == "aarch64",
         "aarch64" => current_arch == "aarch64",
+        "x64" => current_arch == "x86_64",
         _ => arch == current_arch,
     }
 }
