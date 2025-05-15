@@ -15,10 +15,12 @@ pub fn is_os_compatible(constraint: &Value) -> bool {
             let current_os = normalize_os(OS);
             os_list.iter().any(|os| {
                 if let Some(os_str) = os.as_str() {
+                    let matches =
+                        normalize_os(os_str.strip_prefix('!').unwrap_or(os_str)) == current_os;
                     if os_str.starts_with('!') {
-                        normalize_os(&os_str[1..]) != current_os
+                        !matches
                     } else {
-                        normalize_os(os_str) == current_os
+                        matches
                     }
                 } else {
                     false
@@ -33,23 +35,25 @@ pub fn is_cpu_compatible(constraint: &Value) -> bool {
     match constraint {
         Value::String(cpu_name) => {
             let cpu_name = cpu_name.to_lowercase();
+            let arch = cpu_name.strip_prefix('!').unwrap_or(&cpu_name);
+            let matches = is_arch_match(arch);
             if cpu_name.starts_with('!') {
-                !is_arch_match(&cpu_name[1..])
+                !matches
             } else {
-                is_arch_match(&cpu_name)
+                matches
             }
         }
         Value::Array(cpu_list) => cpu_list.iter().any(|cpu| {
-            if let Some(cpu_str) = cpu.as_str() {
+            cpu.as_str().map_or(false, |cpu_str| {
                 let cpu_str = cpu_str.to_lowercase();
+                let arch = cpu_str.strip_prefix('!').unwrap_or(&cpu_str);
+                let matches = is_arch_match(arch);
                 if cpu_str.starts_with('!') {
-                    !is_arch_match(&cpu_str[1..])
+                    !matches
                 } else {
-                    is_arch_match(&cpu_str)
+                    matches
                 }
-            } else {
-                false
-            }
+            })
         }),
         _ => true, // ignore when format is incorrect
     }

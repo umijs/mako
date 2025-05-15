@@ -110,14 +110,8 @@ impl CommandService {
 
         println!();
         println!("{}", "Options:".bold());
-        println!(
-            "  {}     Print help information",
-            "-h, --help".yellow()
-        );
-        println!(
-            "  {}  Print version information",
-            "-V, --version".yellow()
-        );
+        println!("  {}     Print help information", "-h, --help".yellow());
+        println!("  {}  Print version information", "-V, --version".yellow());
         println!();
         println!(
             "\nFor more information, visit: {}",

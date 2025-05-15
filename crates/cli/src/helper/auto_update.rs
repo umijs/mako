@@ -132,7 +132,7 @@ fn save_version_cache(cache: &VersionCache) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    
+
     use std::process::{Command, Stdio};
 
     #[test]

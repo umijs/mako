@@ -6,7 +6,7 @@ use crate::util::logger::log_info;
 use anyhow::{Context, Result};
 use serde_json::Value;
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 
 pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<()> {
     let pkg = if let Some(workspace_name) = &workspace {
@@ -99,7 +99,7 @@ fn load_package_json() -> Result<Value> {
         .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))
 }
 
-fn load_package_json_from_path(path: &PathBuf) -> Result<Value> {
+fn load_package_json_from_path(path: &Path) -> Result<Value> {
     let package_json_path = path.join("package.json");
     let content = fs::read_to_string(package_json_path).context("Failed to read package.json")?;
 
