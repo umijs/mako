@@ -24,6 +24,8 @@ pub struct Package {
     pub link: Option<bool>,
     pub cpu: Option<Value>,
     pub os: Option<Value>,
+    #[serde(rename = "hasInstallScript")]
+    pub has_install_script: Option<bool>,
 }
 
 pub fn group_by_depth(
