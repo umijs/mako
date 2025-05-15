@@ -75,9 +75,8 @@ impl CommandService {
             .max("config".len());
 
         println!(
-            "  {:<width$}    {}",
+            "  {:<width$}    Manage configuration",
             "config".cyan(),
-            "Manage configuration",
             width = max_width
         );
         for (name, alias) in commands {
@@ -112,14 +111,12 @@ impl CommandService {
         println!();
         println!("{}", "Options:".bold());
         println!(
-            "  {}     {}",
-            "-h, --help".yellow(),
-            "Print help information"
+            "  {}     Print help information",
+            "-h, --help".yellow()
         );
         println!(
-            "  {}  {}",
-            "-V, --version".yellow(),
-            "Print version information"
+            "  {}  Print version information",
+            "-V, --version".yellow()
         );
         println!();
         println!(

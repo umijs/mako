@@ -205,7 +205,7 @@ mod tests {
 
     #[test]
     fn test_cli_override() {
-        let args = vec!["--test.key=cli_value"];
+        let args = ["--test.key=cli_value"];
         let overrides: HashMap<String, String> = args
             .iter()
             .filter_map(|arg| {
