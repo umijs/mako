@@ -81,7 +81,7 @@ async fn try_unpack(bytes: &[u8], dest: &Path) -> Result<(), Box<dyn std::error:
     let tar_tgz = GzipDecoder::new(BufReader::new(bytes));
     let mut archive = Archive::new(tar_tgz);
 
-    if let Err(_) = archive.unpack(dest).await {
+    if (archive.unpack(dest).await).is_err() {
         let tar_gz = GzDecoder::new(bytes);
         let mut archive = TarArchive::new(tar_gz);
 
