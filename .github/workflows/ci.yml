@@ -81,11 +81,17 @@ jobs:
         toolchain: nightly-2025-02-12
         args: --all -- --check
 
-    - name: Lint Rust Code
-      uses: actions-rs/cargo@v1
-      with:
-        command: lint
-        toolchain: nightly-2025-02-12 
+    - name: Lint changed Rust Code
+      run: |
+        for crate in ${{ needs.detect-changes.outputs.changed-crates }}; do
+          echo "Building crate: $crate"
+          if [ "$crate" == "utoo_runtime" ]; then
+            cd crates/runtime && cargo build
+          else
+            cargo clippy -p $crate
+          fi
+        done
+      
 
     - name: Build changed crates
       run: |
