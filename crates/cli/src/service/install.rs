@@ -279,7 +279,6 @@ pub async fn install_packages(
                             match download(&resolved, &cache_path).await {
                                 Ok(_) => {
                                     log_progress(&format!("{} downloaded", name));
-                                    println!("package: {:?}", &package.has_install_script.clone());
                                     if package.has_install_script.is_some() {
                                         log_verbose(&format!("{} has install script", name));
                                         let has_install_script_flag_path = cache_path.join("_hasInstallScript");

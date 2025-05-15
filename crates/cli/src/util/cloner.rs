@@ -69,29 +69,29 @@ mod linux_clone {
         let dst_fd = dst_file.as_raw_fd();
 
         let metadata = src_file.metadata()?;
-        let mut remaining = metadata.len();
         let mut offset: i64 = 0;
 
-        while remaining > 0 {
-            let bytes_to_copy = std::cmp::min(remaining, 1024 * 1024) as usize; // 1MB chunks
+        // Try to copy the entire file at once
+        let ret = unsafe {
+            libc::copy_file_range(
+                src_fd,
+                &mut offset,
+                dst_fd,
+                &mut offset,
+                metadata.len() as usize,
+                0,
+            )
+        };
 
-            let ret = unsafe {
-                libc::copy_file_range(src_fd, &mut offset, dst_fd, &mut offset, bytes_to_copy, 0)
-            };
-
-            if ret < 0 {
-                let err = std::io::Error::last_os_error();
-                // If copy_file_range is not supported, mark it as unsupported and fallback to regular copy
-                log_verbose(&format!("copy_file_range not supported, will use regular copy: {}", err));
-                COPY_FILE_RANGE_SUPPORTED.store(false, Ordering::Relaxed);
-                return fs::copy(src, dst)
-                    .await
-                    .map(|_| ())
-                    .map_err(anyhow::Error::from);
-                return Err(err).context("Failed to copy file");
-            }
-
-            remaining -= ret as u64;
+        if ret < 0 {
+            let err = std::io::Error::last_os_error();
+            // If copy_file_range is not supported, mark it as unsupported and fallback to regular copy
+            log_verbose(&format!("copy_file_range not supported, will use regular copy: {}", err));
+            COPY_FILE_RANGE_SUPPORTED.store(false, Ordering::Relaxed);
+            return fs::copy(src, dst)
+                .await
+                .map(|_| ())
+                .map_err(anyhow::Error::from);
         }
 
         Ok(())
