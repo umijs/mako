@@ -13,7 +13,7 @@ use turbopack_core::{
 use crate::mode::Mode;
 
 use super::LibraryChunkingContext;
-
+/// TODO: avoid so many arguments
 #[turbo_tasks::function]
 pub async fn get_library_chunking_context(
     root_path: ResolvedVc<FileSystemPath>,
@@ -27,6 +27,7 @@ pub async fn get_library_chunking_context(
     no_mangling: Vc<bool>,
     runtime_root: Vc<RcStr>,
     runtime_export: Vc<Vec<RcStr>>,
+    filename: Vc<Option<RcStr>>,
 ) -> Result<Vc<Box<dyn ChunkingContext>>> {
     let mode = mode.await?;
     let mut builder = LibraryChunkingContext::builder(
@@ -51,6 +52,10 @@ pub async fn get_library_chunking_context(
         SourceMapsType::None
     })
     .module_id_strategy(module_id_strategy);
+
+    if let Some(filename) = filename.owned().await? {
+        builder = builder.filename(filename);
+    }
 
     if mode.is_development() {
         builder = builder.use_file_source_map_uris();

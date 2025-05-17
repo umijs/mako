@@ -40,7 +40,6 @@ export type RustifiedEnv = { name: string; value: string }[];
 export interface EntryOptions {
   name?: string;
   import: string;
-  filename?: string;
   library?: LibraryOptions;
 }
 
@@ -97,6 +96,8 @@ export interface ConfigComplete {
   output?: {
     path?: string;
     type?: "standalone" | "export";
+    filename?: string;
+    chunkFilename?: string;
   };
   target?: string;
   sourceMaps?: boolean;
@@ -265,6 +266,7 @@ export interface Project {
 }
 
 export interface RawEntrypoints {
+  apps?: Endpoint[];
   libraries?: Endpoint[];
 }
 

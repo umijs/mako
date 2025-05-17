@@ -54,6 +54,7 @@ use turbopack_nodejs::NodeJsChunkingContext;
 use turbopack_trace_utils::exit::ExitReceiver;
 
 use crate::{
+    app::{App, AppProject, OptionAppProject},
     endpoints::{Endpoint, Endpoints},
     entrypoints::Entrypoints,
     library::{Library, LibraryProject, OptionLibraryProject},
@@ -516,7 +517,6 @@ impl Project {
                             .into(),
                     ),
                     import: e.import.clone(),
-                    filename: e.filename.clone(),
                     runtime_root: l.name.clone(),
                     runtime_export: l.export.clone(),
                 })
@@ -527,6 +527,43 @@ impl Project {
         } else {
             Ok(Vc::cell(Some(
                 LibraryProject::new(self, Vc::cell(lib_vec))
+                    .to_resolved()
+                    .await?,
+            )))
+        }
+    }
+
+    #[turbo_tasks::function]
+    pub async fn app_project(self: Vc<Self>) -> Result<Vc<OptionAppProject>> {
+        let this = self.await?;
+        let app_vec: Vec<App> = this
+            .config
+            .entries()
+            .await?
+            .iter()
+            .filter_map(|e| {
+                e.library.as_ref().map_or_else(
+                    || {
+                        Some(App {
+                            name: e.name.clone().unwrap_or(
+                                PathBuf::from(e.import.as_str())
+                                    .file_stem()
+                                    .unwrap()
+                                    .to_string_lossy()
+                                    .into(),
+                            ),
+                            import: e.import.clone(),
+                        })
+                    },
+                    |_| None,
+                )
+            })
+            .collect();
+        if app_vec.is_empty() {
+            Ok(Vc::cell(None))
+        } else {
+            Ok(Vc::cell(Some(
+                AppProject::new(self, Vc::cell(app_vec))
                     .to_resolved()
                     .await?,
             )))
@@ -690,6 +727,9 @@ impl Project {
     pub async fn get_all_endpoints(self: Vc<Self>) -> Result<Vc<Endpoints>> {
         let mut endpoints = vec![];
         let entrypoints = self.entrypoints().await?;
+        if let Some(apps) = entrypoints.apps {
+            endpoints.extend(apps.await?);
+        }
         if let Some(libraries) = entrypoints.libraries {
             endpoints.extend(libraries.await?);
         }
@@ -803,8 +843,10 @@ impl Project {
     }
 
     #[turbo_tasks::function]
-    pub(super) fn client_chunking_context(self: Vc<Self>) -> Vc<Box<dyn ChunkingContext>> {
-        get_client_chunking_context(
+    pub(super) async fn client_chunking_context(
+        self: Vc<Self>,
+    ) -> Result<Vc<Box<dyn ChunkingContext>>> {
+        Ok(get_client_chunking_context(
             self.project_root(),
             self.client_root(),
             Vc::cell("/ROOT".into()),
@@ -814,7 +856,9 @@ impl Project {
             self.config().minify(self.mode()),
             self.config().source_maps(),
             self.no_mangling(),
-        )
+            Vc::cell(self.config().output().await?.filename.clone()),
+            Vc::cell(self.config().output().await?.chunk_filename.clone()),
+        ))
     }
 
     #[turbo_tasks::function]
@@ -848,10 +892,27 @@ impl Project {
     #[turbo_tasks::function]
     pub async fn entrypoints(self: Vc<Self>) -> Result<Vc<Entrypoints>> {
         let library_project = self.library_project().to_resolved().await?.await?;
+        let app_project = self.app_project().to_resolved().await?.await?;
         Ok(Entrypoints {
+            apps: match *app_project {
+                Some(app) => {
+                    let endpoints = app
+                        .get_app_endpoints()
+                        .await?
+                        .into_iter()
+                        .map(|l| async move {
+                            let endpoint: Vc<Box<dyn Endpoint>> = Vc::upcast(**l);
+                            endpoint.to_resolved().await
+                        })
+                        .try_join()
+                        .await?;
+                    Some(Endpoints(endpoints.to_vec()).resolved_cell())
+                }
+                None => None,
+            },
             libraries: match *library_project {
-                Some(lp) => {
-                    let endpoints = lp
+                Some(lib) => {
+                    let endpoints = lib
                         .get_library_endpoints()
                         .await?
                         .into_iter()

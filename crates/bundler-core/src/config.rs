@@ -66,7 +66,6 @@ pub struct OptionalJsonValue(Option<JsonValue>);
 pub struct EntryOptions {
     pub name: Option<RcStr>,
     pub import: RcStr,
-    pub filename: Option<RcStr>,
     pub library: Option<LibraryOptions>,
 }
 
@@ -186,6 +185,9 @@ pub struct OptimizationConfig {
 #[serde(rename_all = "camelCase")]
 pub struct OutputConfig {
     pub path: Option<RcStr>,
+    pub filename: Option<RcStr>,
+    pub chunk_filename: Option<RcStr>,
+    // TODO: make sure this is needed
     pub r#type: Option<OutputType>,
 }
 

@@ -80,11 +80,16 @@ pub async fn main_inner(
     tracing::info!("all project entrypoints wrote to disk.");
 
     tracing::info!(
-        "bundler tasks with {} libraries finished in {:?}",
+        "bundler tasks with {} apps {} libraries finished in {:?}",
+        entrypoints
+            .apps
+            .as_ref()
+            .map(|apps| apps.0.len())
+            .unwrap_or_default(),
         entrypoints
             .libraries
             .as_ref()
-            .map(|ls| ls.0.len())
+            .map(|libraries| libraries.0.len())
             .unwrap_or_default(),
         start.elapsed()
     );

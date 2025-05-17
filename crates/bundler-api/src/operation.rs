@@ -18,6 +18,7 @@ use crate::{endpoints::Endpoint, entrypoints::Entrypoints};
 /// This is needed to call `write_to_disk` which expects an `OperationVc<Endpoint>`.
 #[turbo_tasks::value(shared)]
 pub struct EntrypointsOperation {
+    pub apps: Option<AppOperation>,
     pub libraries: Option<LibraryOperation>,
 }
 
@@ -47,6 +48,15 @@ impl EntrypointsOperation {
         let e = entrypoints.connect().await?;
         let entrypoints = entrypoints_without_collectibles_operation(entrypoints);
         Ok(Self {
+            apps: match e.apps.as_ref() {
+                Some(es) => {
+                    let endpoints: Vec<_> =
+                        es.await?.iter().map(|e| wrap(*e, entrypoints)).collect();
+
+                    Some(AppOperation(endpoints))
+                }
+                None => None,
+            },
             libraries: match e.libraries.as_ref() {
                 Some(es) => {
                     let endpoints: Vec<_> =
@@ -85,3 +95,16 @@ fn wrap(
     NonLocalValue,
 )]
 pub struct LibraryOperation(pub Vec<OperationVc<Box<dyn Endpoint>>>);
+
+#[derive(
+    TraceRawVcs,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    ValueDebugFormat,
+    Clone,
+    Debug,
+    NonLocalValue,
+)]
+pub struct AppOperation(pub Vec<OperationVc<Box<dyn Endpoint>>>);

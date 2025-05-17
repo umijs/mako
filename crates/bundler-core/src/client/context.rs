@@ -6,13 +6,14 @@ use turbo_tasks::{FxIndexMap, ResolvedVc, Value, Vc};
 use turbo_tasks_env::EnvMap;
 use turbo_tasks_fs::FileSystemPath;
 use turbopack::{
+    css::chunk::CssChunkType,
     module_options::{
         CssOptionsContext, EcmascriptOptionsContext, JsxTransformOptions, ModuleOptionsContext,
         ModuleRule, TypeofWindow, TypescriptTransformOptions,
     },
     resolve_options_context::ResolveOptionsContext,
 };
-use turbopack_browser::BrowserChunkingContext;
+use turbopack_browser::{BrowserChunkingContext, CurrentChunkMethod};
 use turbopack_core::{
     chunk::{
         module_id_strategies::ModuleIdStrategy, ChunkingConfig, ChunkingContext, MangleType,
@@ -397,6 +398,7 @@ pub async fn get_client_resolve_options_context(
     .cell())
 }
 
+/// TODO: avoid so many arguments
 #[turbo_tasks::function]
 pub async fn get_client_chunking_context(
     root_path: ResolvedVc<FileSystemPath>,
@@ -408,6 +410,8 @@ pub async fn get_client_chunking_context(
     minify: Vc<bool>,
     source_maps: Vc<bool>,
     no_mangling: Vc<bool>,
+    filename: Vc<Option<RcStr>>,
+    chunk_filename: Vc<Option<RcStr>>,
 ) -> Result<Vc<Box<dyn ChunkingContext>>> {
     let mode = mode.await?;
     let mut builder = BrowserChunkingContext::builder(
@@ -415,8 +419,8 @@ pub async fn get_client_chunking_context(
         client_root,
         client_root_to_root_path,
         client_root,
-        client_root.join("dist".into()).to_resolved().await?,
-        client_root.join("dist".into()).to_resolved().await?,
+        client_root,
+        client_root,
         environment,
         mode.runtime_type(),
     )
@@ -432,7 +436,16 @@ pub async fn get_client_chunking_context(
     } else {
         SourceMapsType::None
     })
+    .current_chunk_method(CurrentChunkMethod::DocumentCurrentScript)
     .module_id_strategy(module_id_strategy);
+
+    if let Some(filename) = filename.owned().await? {
+        builder = builder.filename(filename);
+    }
+
+    if let Some(chunk_filename) = chunk_filename.owned().await? {
+        builder = builder.chunk_filename(chunk_filename);
+    }
 
     if mode.is_development() {
         builder = builder.hot_module_replacement().use_file_source_map_uris();
@@ -445,7 +458,14 @@ pub async fn get_client_chunking_context(
                 max_merge_chunk_size: 200_000,
                 ..Default::default()
             },
-        )
+        );
+        builder = builder.chunking_config(
+            Vc::<CssChunkType>::default().to_resolved().await?,
+            ChunkingConfig {
+                max_merge_chunk_size: 100_000,
+                ..Default::default()
+            },
+        );
     }
 
     Ok(Vc::upcast(builder.build()))
