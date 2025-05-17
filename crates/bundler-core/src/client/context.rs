@@ -6,13 +6,14 @@ use turbo_tasks::{FxIndexMap, ResolvedVc, Value, Vc};
 use turbo_tasks_env::EnvMap;
 use turbo_tasks_fs::FileSystemPath;
 use turbopack::{
+    css::chunk::CssChunkType,
     module_options::{
         CssOptionsContext, EcmascriptOptionsContext, JsxTransformOptions, ModuleOptionsContext,
         ModuleRule, TypeofWindow, TypescriptTransformOptions,
     },
     resolve_options_context::ResolveOptionsContext,
 };
-use turbopack_browser::BrowserChunkingContext;
+use turbopack_browser::{BrowserChunkingContext, CurrentChunkMethod};
 use turbopack_core::{
     chunk::{
         module_id_strategies::ModuleIdStrategy, ChunkingConfig, ChunkingContext, MangleType,
@@ -415,8 +416,8 @@ pub async fn get_client_chunking_context(
         client_root,
         client_root_to_root_path,
         client_root,
-        client_root.join("dist".into()).to_resolved().await?,
-        client_root.join("dist".into()).to_resolved().await?,
+        client_root,
+        client_root,
         environment,
         mode.runtime_type(),
     )
@@ -432,6 +433,7 @@ pub async fn get_client_chunking_context(
     } else {
         SourceMapsType::None
     })
+    .current_chunk_method(CurrentChunkMethod::DocumentCurrentScript)
     .module_id_strategy(module_id_strategy);
 
     if mode.is_development() {
@@ -445,7 +447,14 @@ pub async fn get_client_chunking_context(
                 max_merge_chunk_size: 200_000,
                 ..Default::default()
             },
-        )
+        );
+        builder = builder.chunking_config(
+            Vc::<CssChunkType>::default().to_resolved().await?,
+            ChunkingConfig {
+                max_merge_chunk_size: 100_000,
+                ..Default::default()
+            },
+        );
     }
 
     Ok(Vc::upcast(builder.build()))

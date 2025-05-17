@@ -42,7 +42,6 @@ use crate::{
 pub struct Library {
     pub name: RcStr,
     pub import: RcStr,
-    // TODO: support filename template like webpack to handle hash
     pub filename: Option<RcStr>,
     pub runtime_root: RcStr,
     pub runtime_export: Option<Vec<RcStr>>,

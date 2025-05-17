@@ -265,6 +265,7 @@ export interface Project {
 }
 
 export interface RawEntrypoints {
+  appss?: Endpoint[];
   libraries?: Endpoint[];
 }
 

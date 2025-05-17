@@ -12,6 +12,7 @@ use crate::{
 
 #[turbo_tasks::value(shared)]
 pub struct Entrypoints {
+    pub apps: Option<ResolvedVc<Endpoints>>,
     pub libraries: Option<ResolvedVc<Endpoints>>,
 }
 

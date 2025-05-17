@@ -4,10 +4,9 @@
   "config": {
     "entry": [
       {
+        "name": "with-antd",
         "import": "./src/index.tsx",
-        "library": {
-          "name": "with-antd"
-        }
+        "filename": "[name].[contenthash:8].js"
       }
     ],
     "output": {

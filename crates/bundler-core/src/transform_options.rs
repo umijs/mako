@@ -7,7 +7,6 @@ use turbopack::{
     },
     resolve_options_context::ResolveOptionsContext,
 };
-use turbopack_browser::react_refresh::assert_can_resolve_react_refresh;
 use turbopack_core::{
     file_source::FileSource,
     resolve::{find_context_file, node::node_cjs_resolve_options, FindContextFileResult},
@@ -15,7 +14,7 @@ use turbopack_core::{
 };
 use turbopack_ecmascript::typescript::resolve::{read_from_tsconfigs, read_tsconfigs, tsconfig};
 
-use crate::{config::Config, mode::Mode};
+use crate::{client::react_refresh::assert_can_resolve_react_refresh, config::Config, mode::Mode};
 
 async fn get_typescript_options(
     project_path: Vc<FileSystemPath>,
