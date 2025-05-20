@@ -4,14 +4,17 @@
   "config": {
     "entry": [
       {
-        "import": "./src/index.tsx",
-        "library": {
-          "name": "with-antd"
-        }
+        "import": "./src/index.tsx"
       }
     ],
     "output": {
-      "path": "./dist"
+      "path": "./dist",
+      "filename": "[name].[contenthash:6].js",
+      "chunkFilename": "[name].[contenthash:8].js"
+    },
+    "optimization": {
+      "moduleIds": "named",
+      "minify": false
     }
   }
 }

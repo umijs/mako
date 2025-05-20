@@ -4,6 +4,7 @@
 #![feature(arbitrary_self_types_pointers)]
 #![feature(iter_intersperse)]
 
+pub mod app;
 pub mod endpoints;
 pub mod entrypoints;
 pub mod hmr;

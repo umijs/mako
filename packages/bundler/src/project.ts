@@ -261,6 +261,7 @@ export function projectFactory() {
       type NapiEndpoint = { __napiType: "Endpoint" };
 
       type NapiEntrypoints = {
+        apps?: NapiEndpoint[];
         libraries?: NapiEndpoint[];
       };
 
@@ -381,14 +382,14 @@ export function projectFactory() {
   }
 
   function napiEntrypointsToRawEntrypoints(
-    entrypoints: TurbopackResult<{ libraries?: { __napiType: "Endpoint" }[] }>,
+    entrypoints: TurbopackResult<{
+      apps?: { __napiType: "Endpoint" }[];
+      libraries?: { __napiType: "Endpoint" }[];
+    }>,
   ) {
-    const libraries = [];
-    for (const library of entrypoints.libraries || []) {
-      libraries.push(new EndpointImpl(library));
-    }
     return {
-      libraries,
+      apps: (entrypoints.apps || []).map((e) => new EndpointImpl(e)),
+      libraries: (entrypoints.libraries || []).map((e) => new EndpointImpl(e)),
       issues: entrypoints.issues,
       diagnostics: entrypoints.diagnostics,
     };

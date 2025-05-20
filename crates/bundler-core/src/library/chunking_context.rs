@@ -1,9 +1,7 @@
 use anyhow::{bail, Context, Result};
 use qstring::QString;
-use regex::Regex;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use std::{cmp::min, sync::LazyLock};
 use tracing::Instrument;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{
@@ -12,6 +10,10 @@ use turbo_tasks::{
 };
 use turbo_tasks_fs::FileSystemPath;
 use turbo_tasks_hash::{encode_hex, DeterministicHash, Xxh3Hash64Hasher};
+use turbopack_browser::chunking_context::{
+    ident_to_output_filename, match_content_hash_placeholder, match_name_placeholder,
+    replace_content_hash_placeholder, replace_name_placeholder,
+};
 use turbopack_core::{
     asset::Asset,
     chunk::{
@@ -106,6 +108,11 @@ impl LibraryChunkingContextBuilder {
         self
     }
 
+    pub fn filename(mut self, filename: RcStr) -> Self {
+        self.chunking_context.filename = Some(filename);
+        self
+    }
+
     pub fn build(self) -> Vc<LibraryChunkingContext> {
         LibraryChunkingContext::new(Value::new(self.chunking_context))
     }
@@ -143,6 +150,8 @@ pub struct LibraryChunkingContext {
     source_maps_type: SourceMapsType,
     /// The module id strategy to use
     module_id_strategy: ResolvedVc<Box<dyn ModuleIdStrategy>>,
+    /// Evaluate chunk filename template
+    filename: Option<RcStr>,
 }
 
 impl LibraryChunkingContext {
@@ -167,6 +176,7 @@ impl LibraryChunkingContext {
                 minify_type: MinifyType::NoMinify,
                 source_maps_type: SourceMapsType::Full,
                 module_id_strategy: ResolvedVc::upcast(DevModuleIdStrategy::new_resolved()),
+                filename: Default::default(),
                 runtime_root,
                 runtime_export,
             },
@@ -236,17 +246,17 @@ impl LibraryChunkingContext {
         ident: Vc<AssetIdent>,
         ecmascript_chunk: Vc<EcmascriptChunk>,
     ) -> Result<Vc<AssetIdent>> {
-        let root = ident.path().root();
+        let root = self.chunk_root_path();
         let query = QString::from(ident.query().await?.as_str());
         let Some(name) = query.get("name") else {
             bail!("Failed to get name for entry")
         };
-        if let Some(filename) = query.get("filename") {
+        if let Some(filename) = self.await?.filename.as_ref() {
             let mut filename = filename.to_string();
-            if NAME_PLACEHOLDER_REGEX.is_match(&filename) {
+            if match_name_placeholder(&filename) {
                 filename = replace_name_placeholder(&filename, name);
             }
-            if CONTENT_HASH_PLACEHOLDER_REGEX.is_match(&filename) {
+            if match_content_hash_placeholder(&filename) {
                 let content_hash = self.ecmascript_chunk_content_hash(ecmascript_chunk).await?;
                 filename = replace_content_hash_placeholder(&filename, &content_hash);
             };
@@ -339,7 +349,7 @@ impl ChunkingContext for LibraryChunkingContext {
         extension: RcStr,
     ) -> Result<Vc<FileSystemPath>> {
         let root_path = self.output_root;
-        let name = output_name(ident, *self.root_path, extension.clone())
+        let name = ident_to_output_filename(ident, *self.root_path, extension.clone())
             .owned()
             .await?;
 
@@ -518,54 +528,4 @@ impl ChunkingContext for LibraryChunkingContext {
     ) -> Result<Vc<ModuleId>> {
         bail!("Library chunking context does not support async loader chunk item id")
     }
-}
-
-#[turbo_tasks::function]
-pub async fn output_name(
-    ident: Vc<AssetIdent>,
-    context_path: Vc<FileSystemPath>,
-    expected_extension: RcStr,
-) -> Result<Vc<RcStr>> {
-    let ident = &*ident.await?;
-    let path = &*ident.path.await?;
-    let mut name = if let Some(inner) = context_path.await?.get_path_to(path) {
-        clean_separators(inner)
-    } else {
-        clean_separators(&ident.path.to_string().await?)
-    };
-    let removed_extension = name.ends_with(&*expected_extension);
-    if removed_extension {
-        name.truncate(name.len() - expected_extension.len());
-    }
-    name += &expected_extension;
-    Ok(Vc::cell(name.into()))
-}
-
-fn clean_separators(s: &str) -> String {
-    static SEPARATOR_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r".*[/#?]").unwrap());
-    SEPARATOR_REGEX.replace_all(s, "").to_string()
-}
-
-static NAME_PLACEHOLDER_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[name\]").unwrap());
-
-fn replace_name_placeholder(s: &str, name: &str) -> String {
-    NAME_PLACEHOLDER_REGEX.replace_all(s, name).to_string()
-}
-
-static CONTENT_HASH_PLACEHOLDER_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\[contenthash(?::(?P<len>\d+))?\]").unwrap());
-
-fn replace_content_hash_placeholder(s: &str, hash: &str) -> String {
-    CONTENT_HASH_PLACEHOLDER_REGEX
-        .replace_all(s, |caps: &regex::Captures| {
-            let len = caps.name("len").map(|m| m.as_str()).unwrap_or("");
-            let len = if len.is_empty() {
-                hash.len()
-            } else {
-                len.parse().unwrap_or(hash.len())
-            };
-            let len = min(len, hash.len());
-            hash[..len].to_string()
-        })
-        .to_string()
 }

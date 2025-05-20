@@ -131,6 +131,7 @@ export declare function projectOnExit(project: { __napiType: "Project" }): Promi
  */
 export declare function projectShutdown(project: { __napiType: "Project" }): Promise<void>
 export interface NapiEntrypoints {
+  apps?: Array<ExternalObject<ExternalEndpoint>>
   libraries?: Array<ExternalObject<ExternalEndpoint>>
 }
 export declare function projectWriteAllEntrypointsToDisk(project: { __napiType: "Project" }): Promise<TurbopackResult>

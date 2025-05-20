@@ -42,8 +42,6 @@ use crate::{
 pub struct Library {
     pub name: RcStr,
     pub import: RcStr,
-    // TODO: support filename template like webpack to handle hash
-    pub filename: Option<RcStr>,
     pub runtime_root: RcStr,
     pub runtime_export: Option<Vec<RcStr>>,
 }
@@ -87,7 +85,6 @@ impl LibraryProject {
                     project,
                     name: l.name.clone(),
                     import: l.import.clone(),
-                    filename: l.filename.clone(),
                     runtime_root: l.runtime_root.clone(),
                     runtime_export: l.runtime_export.clone().unwrap_or_default(),
                 }
@@ -105,7 +102,6 @@ pub struct LibraryEndpoint {
     project: ResolvedVc<Project>,
     name: RcStr,
     import: RcStr,
-    filename: Option<RcStr>,
     runtime_root: RcStr,
     runtime_export: Vec<RcStr>,
 }
@@ -252,6 +248,7 @@ impl LibraryEndpoint {
             project.no_mangling(),
             runtime_root,
             runtime_export,
+            Vc::cell(project.config().output().await?.filename.clone()),
         ))
     }
 
@@ -269,16 +266,7 @@ impl LibraryEndpoint {
 
             let module_graph = self.library_module_graph();
 
-            let query = QString::new(
-                [
-                    ("name", Some(this.name.clone()).as_ref()),
-                    ("filename", this.filename.as_ref()),
-                ]
-                .into_iter()
-                .filter_map(|s| s.1.map(|v| (s.0, v.as_str())))
-                .collect(),
-            )
-            .to_string();
+            let query = QString::new(vec![("name", this.name.as_str())]).to_string();
 
             let library_chunk_group = library_chunking_context.evaluated_chunk_group(
                 AssetIdent::from_path(project.project_root().join(this.import.clone()))

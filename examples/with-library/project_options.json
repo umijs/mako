@@ -4,16 +4,17 @@
   "config": {
     "entry": [
       {
+        "name": "library",
         "import": "./src/index.ts",
         "library": {
           "name": "MyLibrary",
           "export": ["default", "value"]
-        },
-        "filename": "[name].[contenthash:8].js"
+        }
       }
     ],
     "output": {
-      "path": "./dist"
+      "path": "./dist",
+      "filename": "[name].[contenthash:8].js"
     },
     "optimization": {
       "moduleIds": "named",

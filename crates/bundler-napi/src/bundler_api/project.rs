@@ -428,6 +428,7 @@ pub async fn project_shutdown(
 
 #[napi(object)]
 pub struct NapiEntrypoints {
+    pub apps: Option<Vec<External<ExternalEndpoint>>>,
     pub libraries: Option<Vec<External<ExternalEndpoint>>>,
 }
 
@@ -436,15 +437,21 @@ impl NapiEntrypoints {
         entrypoints: &EntrypointsOperation,
         turbo_tasks: &BundlerTurboTasks,
     ) -> Result<Self> {
-        let libraries = entrypoints.libraries.as_ref().map(|libraries| {
-            libraries
-                .0
-                .iter()
-                .map(|e| External::new(ExternalEndpoint(VcArc::new(turbo_tasks.clone(), *e))))
-                .collect()
-        });
-
-        Ok(NapiEntrypoints { libraries })
+        Ok(NapiEntrypoints {
+            apps: entrypoints.apps.as_ref().map(|apps| {
+                apps.0
+                    .iter()
+                    .map(|e| External::new(ExternalEndpoint(VcArc::new(turbo_tasks.clone(), *e))))
+                    .collect()
+            }),
+            libraries: entrypoints.libraries.as_ref().map(|libraries| {
+                libraries
+                    .0
+                    .iter()
+                    .map(|e| External::new(ExternalEndpoint(VcArc::new(turbo_tasks.clone(), *e))))
+                    .collect()
+            }),
+        })
     }
 }
 

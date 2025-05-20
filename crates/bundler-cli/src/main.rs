@@ -95,7 +95,7 @@ fn main() {
 
             let turbo_tasks = TurboTasks::new(TurboTasksBackend::new(
                 BackendOptions {
-                    dependency_tracking: false,
+                    dependency_tracking: true,
                     storage_mode: None,
                     ..Default::default()
                 },
