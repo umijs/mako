@@ -2,8 +2,9 @@ import { nanoid } from "nanoid";
 import { projectFactory } from "./project";
 import fs from "fs";
 import path from "path";
-import { formatIssue, isRelevantWarning, processIssues } from "./util";
+import { formatIssue, isRelevantWarning } from "./util";
 import { ProjectOptions } from "./types";
+import { xcodeProfilingReady } from "./xcodeProfile";
 
 // ref:
 // https://github.com/vercel/next.js/pull/51883
@@ -21,6 +22,10 @@ function blockStdout() {
 
 export async function build(dir?: string) {
   blockStdout();
+
+  if (process.env.XCODE_PROFILE) {
+    await xcodeProfilingReady();
+  }
 
   const cwd = dir || process.cwd();
 
