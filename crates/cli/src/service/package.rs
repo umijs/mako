@@ -1,12 +1,12 @@
 use crate::helper::compatibility::{is_cpu_compatible, is_os_compatible};
 use crate::helper::package::parse_package_name;
 use crate::model::package::{PackageInfo, Scripts};
+use crate::util::json::{load_package_json, load_package_json_from_path, load_package_lock_json};
 use crate::util::logger::{
     finish_progress_bar, log_info, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
 };
 use anyhow::{Context, Result};
 use serde_json::Value;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::script::ScriptService;
@@ -15,10 +15,7 @@ pub struct PackageService;
 
 impl PackageService {
     pub async fn process_project_hooks() -> Result<()> {
-        let content = fs::read_to_string("package.json").context("Failed to read package.json")?;
-
-        let data: Value = serde_json::from_str(&content)
-            .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
+        let data = load_package_json()?;
 
         let binding = serde_json::Map::new();
         let scripts = data
@@ -102,11 +99,7 @@ impl PackageService {
 
     pub fn collect_packages() -> Result<Vec<PackageInfo>> {
         log_verbose("Collecting packages...");
-        let lock_file =
-            fs::read_to_string("package-lock.json").context("Failed to load package-lock.json")?;
-
-        let lock_data: Value = serde_json::from_str(&lock_file)
-            .map_err(|e| anyhow::anyhow!("Failed to parse package-lock.json: {}", e))?;
+        let lock_data = load_package_lock_json()?;
 
         let mut packages = Vec::new();
         if let Some(deps) = lock_data.get("packages").and_then(|v| v.as_object()) {
@@ -254,11 +247,7 @@ impl PackageService {
     }
 
     fn read_package_scripts(package_path: &Path) -> Result<Scripts> {
-        let package_json_path = package_path.join("package.json");
-        let content =
-            fs::read_to_string(package_json_path).context("Failed to read package.json")?;
-        let data: Value = serde_json::from_str(&content)
-            .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
+        let data = load_package_json_from_path(&package_path)?;
 
         let default_scripts = serde_json::Map::new();
         let scripts = data
