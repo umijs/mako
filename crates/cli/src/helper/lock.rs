@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::{collections::HashMap, fs};
 
 use crate::util::config::get_legacy_peer_deps;
-use crate::util::json::read_json_value;
+use crate::util::json::{load_package_json, load_package_lock_json};
 use crate::util::logger::{log_verbose, log_warning};
 use crate::util::node::Overrides;
 use crate::util::registry::resolve;
@@ -246,17 +246,12 @@ pub fn path_to_pkg_name(path_str: &str) -> Option<&str> {
 }
 
 pub async fn validate_deps() -> Result<()> {
-    let path = PathBuf::from(".");
-    let lock_path = path.join("package-lock.json");
-    let pkg_path = path.join("package.json");
-
     // Read package.json for overrides
-    let pkg_file = read_json_value(&pkg_path)?;
-
+    let pkg_file = load_package_json()?;
     // Initialize overrides
     let overrides = Overrides::new(pkg_file.clone()).parse(pkg_file.clone());
 
-    let lock_file = read_json_value(&lock_path)?;
+    let lock_file = load_package_lock_json()?;
 
     // check package-lock.json packages and package.json dependencies are the same
     let pkg_in_pkg_lock = lock_file
