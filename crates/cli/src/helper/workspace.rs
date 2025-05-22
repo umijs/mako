@@ -36,11 +36,11 @@ pub async fn find_workspaces(root_path: &Path) -> Result<Vec<(String, PathBuf, V
                             match entry {
                                 Ok(path) => {
                                     // load package.json in workspace
-                                    let workspace_pkg = read_json_file::<Value>(&path)
-                                    .context(format!(
-                                        "Failed to parse workspace package.json at {}",
-                                        path.display()
-                                    ))?;
+                                    let workspace_pkg =
+                                        read_json_file::<Value>(&path).context(format!(
+                                            "Failed to parse workspace package.json at {}",
+                                            path.display()
+                                        ))?;
 
                                     // load workspace name
                                     let name =
