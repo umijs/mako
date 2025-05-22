@@ -275,7 +275,7 @@ pub async fn validate_deps() -> Result<()> {
 
                         // Collect parent chain information
                         let mut parent_chain = Vec::new();
- let mut current_path = String::from(pkg_path);
+                        let mut current_path = String::from(pkg_path);
 
                         while !current_path.is_empty() {
                             if let Some(pkg_info) = packages.get(&current_path) {
@@ -313,11 +313,7 @@ pub async fn validate_deps() -> Result<()> {
                         };
 
                         // find the actual version of the dependency
-                        let mut current_path = if pkg_path.is_empty() {
-                            String::new()
-                        } else {
-                            pkg_path.to_string()
-                        };
+                        let mut current_path = String::from(pkg_path);
                         let mut dep_info = None;
 
                         // until root or found
