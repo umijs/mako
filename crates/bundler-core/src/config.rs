@@ -13,6 +13,7 @@ use turbopack::module_options::{
     module_options_context::MdxTransformOptions, LoaderRuleItem, OptionWebpackRules,
 };
 use turbopack_core::{
+    chunk::ChunkingConfig,
     issue::{Issue, IssueSeverity, IssueStage, OptionStyledString, StyledString},
     resolve::ResolveAliasMap,
 };
@@ -99,6 +100,7 @@ pub struct Config {
     entry: Vec<EntryOptions>,
     module: Option<ModuleConfig>,
     resolve: Option<ResolveConfig>,
+    externals: Option<FxIndexMap<RcStr, ExternalConfig>>,
     output: Option<OutputConfig>,
     target: Option<RcStr>,
     source_maps: Option<bool>,
@@ -110,7 +112,6 @@ pub struct Config {
     experimental: ExperimentalConfig,
     persistent_caching: Option<bool>,
     cache_handler: Option<RcStr>,
-    externals: Option<FxIndexMap<RcStr, ExternalConfig>>,
 }
 
 #[derive(
@@ -213,6 +214,8 @@ pub struct OptimizationConfig {
     pub modularize_imports: Option<FxIndexMap<String, ModularizeImportPackageConfig>>,
     pub transpile_packages: Option<Vec<RcStr>>,
     pub remove_console: Option<RemoveConsoleConfig>,
+    #[serde(default)]
+    pub split_chunks: FxIndexMap<RcStr, SplitChunkConfig>,
 }
 
 #[turbo_tasks::value(eq = "manual")]
@@ -549,6 +552,62 @@ impl RemoveConsoleConfig {
     }
 }
 
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TraceRawVcs,
+    NonLocalValue,
+    OperationValue,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct SplitChunkConfig {
+    /// Try to avoid creating more than 1 chunk smaller than this size.
+    /// It merges multiple small chunks into bigger ones to avoid that.
+    #[serde(default = "default_min_chunk_size")]
+    pub min_chunk_size: usize,
+
+    /// Try to avoid creating more than this number of chunks per group.
+    /// It merges multiple chunks into bigger ones to avoid that.
+    #[serde(default = "default_max_chunk_count_per_group")]
+    pub max_chunk_count_per_group: usize,
+
+    /// Never merges chunks bigger than this size with other chunks.
+    /// This makes sure that code in big chunks is not duplicated in multiple chunks.
+    #[serde(default = "default_max_merge_chunk_size")]
+    pub max_merge_chunk_size: usize,
+}
+
+impl From<&SplitChunkConfig> for ChunkingConfig {
+    fn from(value: &SplitChunkConfig) -> Self {
+        ChunkingConfig {
+            min_chunk_size: value.min_chunk_size,
+            max_chunk_count_per_group: value.max_chunk_count_per_group,
+            max_merge_chunk_size: value.max_merge_chunk_size,
+            ..Default::default()
+        }
+    }
+}
+
+pub fn default_min_chunk_size() -> usize {
+    50_000
+}
+
+pub fn default_max_chunk_count_per_group() -> usize {
+    40
+}
+
+pub fn default_max_merge_chunk_size() -> usize {
+    200_000
+}
+
+#[turbo_tasks::value(transparent)]
+pub struct SplitChunksConfig(FxIndexMap<RcStr, SplitChunkConfig>);
+
 #[turbo_tasks::value(transparent)]
 pub struct ResolveExtensions(Option<Vec<RcStr>>);
 
@@ -590,11 +649,7 @@ impl Config {
 
     #[turbo_tasks::function]
     pub fn externals_config(&self) -> Vc<ExternalsConfig> {
-        let externals = self
-            .externals
-            .as_ref()
-            .map(|ext| ext.clone())
-            .unwrap_or_default();
+        let externals = self.externals.clone().unwrap_or_default();
 
         ExternalsConfig(externals).cell()
     }

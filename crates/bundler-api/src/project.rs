@@ -859,11 +859,8 @@ impl Project {
             self.client_compile_time_info().environment(),
             self.mode(),
             self.module_ids(),
-            self.config().minify(self.mode()),
-            self.config().source_maps(),
             self.no_mangling(),
-            Vc::cell(self.config().output().await?.filename.clone()),
-            Vc::cell(self.config().output().await?.chunk_filename.clone()),
+            self.config(),
         ))
     }
 
@@ -1218,10 +1215,8 @@ fn clean_directory(dist_path: &Path) -> Result<()> {
                 if let Err(e) = fs::remove_dir_all(&path) {
                     tracing::warn!("Failed to remove directory {}: {}", path.display(), e);
                 }
-            } else {
-                if let Err(e) = fs::remove_file(&path) {
-                    tracing::warn!("Failed to remove file {}: {}", path.display(), e);
-                }
+            } else if let Err(e) = fs::remove_file(&path) {
+                tracing::warn!("Failed to remove file {}: {}", path.display(), e);
             }
         }
 

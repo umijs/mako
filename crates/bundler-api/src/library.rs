@@ -243,12 +243,10 @@ impl LibraryEndpoint {
             project.client_compile_time_info().environment(),
             project.mode(),
             project.module_ids(),
-            project.config().minify(project.mode()),
-            project.config().source_maps(),
             project.no_mangling(),
             runtime_root,
             runtime_export,
-            Vc::cell(project.config().output().await?.filename.clone()),
+            project.config(),
         ))
     }
 

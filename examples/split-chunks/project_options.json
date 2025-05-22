@@ -4,21 +4,19 @@
   "config": {
     "entry": [
       {
-        "import": "./src/index.tsx"
+        "import": "./index.js"
       }
     ],
     "output": {
       "path": "./dist",
-      "filename": "[name].[contenthash:8].js",
-      "chunkFilename": "[name].[contenthash:8].js",
       "clean": true
     },
     "optimization": {
       "splitChunks": {
         "js": {
-          "minChunkSize": 50000,
-          "maxChunkCountPerGroup": 40,
-          "maxMergeChunkSize": 200000
+          "minChunkSize": 2000,
+          "maxChunkCountPerGroup": 1,
+          "maxMergeChunkSize": 20000
         }
       }
     }
