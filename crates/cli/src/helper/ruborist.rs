@@ -9,6 +9,7 @@ use tokio::sync::Semaphore;
 
 use crate::helper::workspace::find_workspaces;
 use crate::util::config::get_legacy_peer_deps;
+use crate::util::json::load_package_json;
 use crate::util::logger::{
     finish_progress_bar, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
 };
@@ -291,13 +292,7 @@ impl Ruborist {
 
     async fn init_tree(&mut self) -> Result<Arc<Node>> {
         // load package.json
-        let pkg_path = self.path.join("package.json");
-        let pkg_content = std::fs::read_to_string(&pkg_path).context(format!(
-            "Failed to read package.json at {}",
-            pkg_path.display()
-        ))?;
-        let pkg: Value = serde_json::from_str(&pkg_content)
-            .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
+        let pkg = load_package_json()?;
 
         // create root node
         let root = Node::new_root(

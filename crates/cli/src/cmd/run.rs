@@ -3,10 +3,9 @@ use crate::helper::workspace::find_workspace_path;
 use crate::model::package::{PackageInfo, Scripts};
 use crate::service::script::ScriptService;
 use crate::util::logger::log_info;
+use crate::util::json::{load_package_json, load_package_json_from_path};
 use anyhow::{Context, Result};
 use serde_json::Value;
-use std::fs;
-use std::path::Path;
 
 pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<()> {
     let pkg = if let Some(workspace_name) = &workspace {
@@ -90,21 +89,6 @@ pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<
     }
 
     Ok(())
-}
-
-fn load_package_json() -> Result<Value> {
-    let content = fs::read_to_string("package.json").context("Failed to read package.json")?;
-
-    serde_json::from_str(&content)
-        .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))
-}
-
-fn load_package_json_from_path(path: &Path) -> Result<Value> {
-    let package_json_path = path.join("package.json");
-    let content = fs::read_to_string(package_json_path).context("Failed to read package.json")?;
-
-    serde_json::from_str(&content)
-        .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))
 }
 
 #[cfg(test)]

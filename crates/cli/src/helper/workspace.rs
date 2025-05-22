@@ -3,19 +3,11 @@ use glob::glob;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 
-use crate::util::logger::log_verbose;
+use crate::util::{json::{load_package_json, load_package_json_from_path}, logger::log_verbose};
 
 pub async fn find_workspaces(root_path: &Path) -> Result<Vec<(String, PathBuf, Value)>> {
     let mut workspaces = Vec::new();
-
-    // load package.json
-    let pkg_path = root_path.join("package.json");
-    let pkg_content = std::fs::read_to_string(&pkg_path).context(format!(
-        "Failed to read package.json at {}",
-        pkg_path.display()
-    ))?;
-    let pkg: Value = serde_json::from_str(&pkg_content)
-        .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
+    let pkg = load_package_json()?;
 
     // load workspaces config
     if let Some(workspaces_config) = pkg.get("workspaces") {
@@ -39,14 +31,7 @@ pub async fn find_workspaces(root_path: &Path) -> Result<Vec<(String, PathBuf, V
                             match entry {
                                 Ok(path) => {
                                     // load package.json in workspace
-                                    let workspace_content = std::fs::read_to_string(&path)
-                                        .context(format!(
-                                            "Failed to read workspace package.json at {}",
-                                            path.display()
-                                        ))?;
-                                    let workspace_pkg: Value = serde_json::from_str(
-                                        &workspace_content,
-                                    )
+                                    let workspace_pkg = load_package_json_from_path(&path)
                                     .context(format!(
                                         "Failed to parse workspace package.json at {}",
                                         path.display()

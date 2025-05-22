@@ -1,4 +1,5 @@
 use crate::util::config::get_registry;
+use crate::util::json::load_package_json_from_path;
 use crate::util::logger::log_info;
 use crate::util::semver::matches;
 use anyhow::{Context, Result};
@@ -243,12 +244,7 @@ pub async fn update_package_binary(dir: &Path, name: &str) -> Result<()> {
 
         // Read package.json
         let pkg_path = dir.join("package.json");
-        let content = fs::read_to_string(&pkg_path)
-            .await
-            .context("Failed to read package.json")?;
-
-        let mut pkg: Value = serde_json::from_str(&content)
-            .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
+        let mut pkg = load_package_json_from_path(&pkg_path)?;
 
         // has install script and not replaceHostFiles
         let should_update_binary = if let Some(scripts) = pkg["scripts"].as_object() {

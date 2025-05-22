@@ -12,6 +12,7 @@ use crate::util::save_type::{PackageAction, SaveType};
 use crate::util::semver;
 use crate::util::{cache::parse_pattern, cloner::clone, downloader::download};
 use crate::{cmd::deps::build_deps, util::logger::log_info};
+use crate::util::json::read_json_value;
 
 use super::workspace::find_workspace_path;
 
@@ -301,16 +302,12 @@ pub async fn validate_deps() -> Result<()> {
     let pkg_path = path.join("package.json");
 
     // Read package.json for overrides
-    let pkg_content = fs::read_to_string(pkg_path).context("Failed to read package.json")?;
-    let pkg_file: serde_json::Value = serde_json::from_str(&pkg_content)
-        .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
+    let pkg_file = read_json_value(&pkg_path)?;
 
     // Initialize overrides
     let overrides = Overrides::new(pkg_file.clone()).parse(pkg_file.clone());
 
-    let lock_content = fs::read_to_string(lock_path).context("Failed to read package-lock.json")?;
-    let lock_file: serde_json::Value = serde_json::from_str(&lock_content)
-        .map_err(|e| anyhow::anyhow!("Failed to parse package-lock.json: {}", e))?;
+    let lock_file = read_json_value(&lock_path)?;
 
     // check package-lock.json packages and package.json dependencies are the same
     let pkg_in_pkg_lock = lock_file.get("packages").and_then(|p| p.as_object()).and_then(|p| p.get(""));

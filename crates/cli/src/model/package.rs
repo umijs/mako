@@ -4,6 +4,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::util::json::load_package_json_from_path;
 use crate::{
     service::script::ScriptService,
     util::{linker::link, logger::log_verbose},
@@ -78,11 +79,7 @@ impl PackageInfo {
 
     pub fn from_path(path: &Path) -> Result<Self> {
         // Read package.json
-        let package_json_path = path.join("package.json");
-        let content =
-            fs::read_to_string(&package_json_path).context("Failed to read package.json")?;
-        let data: Value = serde_json::from_str(&content)
-            .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
+        let data = load_package_json_from_path(&path)?;
 
         // Parse package name
         let name = data["name"]
