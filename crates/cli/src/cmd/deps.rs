@@ -6,7 +6,6 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 
-
 pub async fn build_deps() -> Result<()> {
     let path = PathBuf::from(".");
     let mut ruborist = Ruborist::new(path.clone());

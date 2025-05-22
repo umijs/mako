@@ -1,7 +1,5 @@
 use anyhow::{Context, Result};
-use serde_json::Value;
 use std::env;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::util::json::load_package_json_from_path;

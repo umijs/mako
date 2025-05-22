@@ -1,13 +1,12 @@
 use crate::helper::compatibility::{is_cpu_compatible, is_os_compatible};
 use crate::helper::package::parse_package_name;
 use crate::model::package::{PackageInfo, Scripts};
-use crate::util::json::{load_package_json, load_package_lock_json, read_json_file};
+use crate::util::json::{load_package_json, load_package_json_from_path, load_package_lock_json};
 use crate::util::logger::{
     finish_progress_bar, log_info, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
 };
 use anyhow::{Context, Result};
 use serde_json::Value;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::script::ScriptService;

@@ -1,10 +1,11 @@
-use anyhow::{anyhow, Result, Context};
+use anyhow::{anyhow, Result};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::{collections::HashMap, fs};
 
 use crate::util::config::get_legacy_peer_deps;
+use crate::util::json::read_json_value;
 use crate::util::logger::{log_verbose, log_warning};
 use crate::util::node::Overrides;
 use crate::util::registry::resolve;
@@ -12,7 +13,6 @@ use crate::util::save_type::{PackageAction, SaveType};
 use crate::util::semver;
 use crate::util::{cache::parse_pattern, cloner::clone, downloader::download};
 use crate::{cmd::deps::build_deps, util::logger::log_info};
-use crate::util::json::read_json_value;
 
 use super::workspace::find_workspace_path;
 
@@ -245,57 +245,6 @@ pub fn path_to_pkg_name(path_str: &str) -> Option<&str> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_version_to_write() {
-        // Test cases for different version specifications
-        let test_cases = vec![
-            ("1.2.3", "", "^1.2.3"),
-            ("1.2.3", "*", "^1.2.3"),
-            ("1.2.3", "latest", "^1.2.3"),
-            ("1.2.3", "^1.2.0", "^1.2.0"),
-            ("1.2.3", "~1.2.0", "~1.2.0"),
-            ("1.2.3", "1.2.3", "1.2.3"),
-        ];
-
-        for (version, spec, expected) in test_cases {
-            let version_to_write = match spec {
-                spec if spec.is_empty() || spec == "*" || spec == "latest" => {
-                    format!("^{}", version)
-                }
-                spec => spec.to_string(),
-            };
-            assert_eq!(
-                version_to_write, expected,
-                "Failed for version: {}, spec: {}",
-                version, spec
-            );
-        }
-    }
-
-    #[test]
-    fn test_path_to_pkg_name() {
-        // Normal nested package
-        assert_eq!(
-            super::path_to_pkg_name("/root/node_modules/a/node_modules/b"),
-            Some("b")
-        );
-        // Top-level package
-        assert_eq!(super::path_to_pkg_name("/root/node_modules/a"), Some("a"));
-
-        assert_eq!(
-            super::path_to_pkg_name("/root/node_modules/@a/b"),
-            Some("@a/b")
-        );
-        // Deep invalid path (should be None)
-        assert_eq!(
-            super::path_to_pkg_name("/root/node_modules/@a/b/node_modules/b/c/d"),
-            None
-        );
-    }
-}
-
 pub async fn validate_deps() -> Result<()> {
     let path = PathBuf::from(".");
     let lock_path = path.join("package-lock.json");
@@ -310,7 +259,10 @@ pub async fn validate_deps() -> Result<()> {
     let lock_file = read_json_value(&lock_path)?;
 
     // check package-lock.json packages and package.json dependencies are the same
-    let pkg_in_pkg_lock = lock_file.get("packages").and_then(|p| p.as_object()).and_then(|p| p.get(""));
+    let pkg_in_pkg_lock = lock_file
+        .get("packages")
+        .and_then(|p| p.as_object())
+        .and_then(|p| p.get(""));
     if let Some(root_pkg) = pkg_in_pkg_lock {
         for (dep_field, _is_optional) in get_dep_types() {
             if root_pkg.get(dep_field) != pkg_file.get(dep_field) {
@@ -440,7 +392,6 @@ pub async fn validate_deps() -> Result<()> {
     Ok(())
 }
 
-
 fn get_dep_types() -> Vec<(&'static str, bool)> {
     let legacy_peer_deps = get_legacy_peer_deps();
 
@@ -457,5 +408,56 @@ fn get_dep_types() -> Vec<(&'static str, bool)> {
             ("optionalDependencies", true),
             ("devDependencies", false),
         ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_version_to_write() {
+        // Test cases for different version specifications
+        let test_cases = vec![
+            ("1.2.3", "", "^1.2.3"),
+            ("1.2.3", "*", "^1.2.3"),
+            ("1.2.3", "latest", "^1.2.3"),
+            ("1.2.3", "^1.2.0", "^1.2.0"),
+            ("1.2.3", "~1.2.0", "~1.2.0"),
+            ("1.2.3", "1.2.3", "1.2.3"),
+        ];
+
+        for (version, spec, expected) in test_cases {
+            let version_to_write = match spec {
+                spec if spec.is_empty() || spec == "*" || spec == "latest" => {
+                    format!("^{}", version)
+                }
+                spec => spec.to_string(),
+            };
+            assert_eq!(
+                version_to_write, expected,
+                "Failed for version: {}, spec: {}",
+                version, spec
+            );
+        }
+    }
+
+    #[test]
+    fn test_path_to_pkg_name() {
+        // Normal nested package
+        assert_eq!(
+            super::path_to_pkg_name("/root/node_modules/a/node_modules/b"),
+            Some("b")
+        );
+        // Top-level package
+        assert_eq!(super::path_to_pkg_name("/root/node_modules/a"), Some("a"));
+
+        assert_eq!(
+            super::path_to_pkg_name("/root/node_modules/@a/b"),
+            Some("@a/b")
+        );
+        // Deep invalid path (should be None)
+        assert_eq!(
+            super::path_to_pkg_name("/root/node_modules/@a/b/node_modules/b/c/d"),
+            None
+        );
     }
 }

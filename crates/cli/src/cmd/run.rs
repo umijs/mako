@@ -2,8 +2,8 @@ use crate::helper::package::parse_package_name;
 use crate::helper::workspace::find_workspace_path;
 use crate::model::package::{PackageInfo, Scripts};
 use crate::service::script::ScriptService;
-use crate::util::logger::log_info;
 use crate::util::json::{load_package_json, load_package_json_from_path};
+use crate::util::logger::log_info;
 use anyhow::{Context, Result};
 use serde_json::Value;
 

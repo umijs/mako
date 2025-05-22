@@ -3,11 +3,16 @@ use glob::glob;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 
-use crate::util::{json::{load_package_json, load_package_json_from_path}, logger::log_verbose};
+use crate::util::{
+    json::{load_package_json_from_path, read_json_file},
+    logger::log_verbose,
+};
 
 pub async fn find_workspaces(root_path: &Path) -> Result<Vec<(String, PathBuf, Value)>> {
     let mut workspaces = Vec::new();
-    let pkg = load_package_json()?;
+    let pkg = load_package_json_from_path(&root_path)?;
+
+    println!("pkg: {:?}", pkg);
 
     // load workspaces config
     if let Some(workspaces_config) = pkg.get("workspaces") {
@@ -31,7 +36,7 @@ pub async fn find_workspaces(root_path: &Path) -> Result<Vec<(String, PathBuf, V
                             match entry {
                                 Ok(path) => {
                                     // load package.json in workspace
-                                    let workspace_pkg = load_package_json_from_path(&path)
+                                    let workspace_pkg = read_json_file::<Value>(&path)
                                     .context(format!(
                                         "Failed to parse workspace package.json at {}",
                                         path.display()
@@ -135,6 +140,13 @@ mod tests {
     async fn test_find_workspace_by_absolute_path() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
         let workspace_path = root_path.join("packages").join("test-workspace");
+        let workspaces = match find_workspaces(&root_path).await {
+            Ok(ws) => ws,
+            Err(e) => {
+                println!("Error finding workspaces: {:?}", e);
+                panic!("Failed to find workspaces");
+            }
+        };
         let result = find_workspace_path(&root_path, &workspace_path.to_string_lossy()).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), workspace_path);
