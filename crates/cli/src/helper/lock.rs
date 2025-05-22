@@ -68,8 +68,8 @@ pub async fn ensure_package_lock() -> Result<()> {
         // load package-lock.json directly if exists
         log_info("Loading package-lock.json from current project for dependency download");
         // Validate dependencies to ensure package-lock.json is in sync with package.json
-        if let Err(_e) = validate_deps().await {
-            log_info("package-lock.json is out of sync with package.json, rebuilding dependencies");
+        if let Err(e) = validate_deps().await {
+            log_info(&format!("package-lock.json is outdated, {}", e));
             build_deps().await?;
         }
         Ok(())
@@ -306,11 +306,21 @@ pub async fn validate_deps() -> Result<()> {
         .map_err(|e| anyhow::anyhow!("Failed to parse package.json: {}", e))?;
 
     // Initialize overrides
-    let overrides = Overrides::new(pkg_file.clone()).parse(pkg_file);
+    let overrides = Overrides::new(pkg_file.clone()).parse(pkg_file.clone());
 
     let lock_content = fs::read_to_string(lock_path).context("Failed to read package-lock.json")?;
     let lock_file: serde_json::Value = serde_json::from_str(&lock_content)
         .map_err(|e| anyhow::anyhow!("Failed to parse package-lock.json: {}", e))?;
+
+    // check package-lock.json packages and package.json dependencies are the same
+    let pkg_in_pkg_lock = lock_file.get("packages").and_then(|p| p.as_object()).and_then(|p| p.get(""));
+    if let Some(root_pkg) = pkg_in_pkg_lock {
+        for (dep_field, _is_optional) in get_dep_types() {
+            if root_pkg.get(dep_field) != pkg_file.get(dep_field) {
+                return Err(anyhow::anyhow!("{} changed", dep_field));
+            }
+        }
+    }
 
     if let Some(packages) = lock_file.get("packages").and_then(|p| p.as_object()) {
         for (pkg_path, pkg_info) in packages {
@@ -402,7 +412,6 @@ pub async fn validate_deps() -> Result<()> {
                             if let Some(actual_version) =
                                 dep_info.get("version").and_then(|v| v.as_str())
                             {
-                                println!("effective_req_version: {} actual_version: {}", effective_req_version, actual_version);
                                 if !semver::matches(&effective_req_version, actual_version) {
                                     log_warning(&format!(
                                         "Package {} {} dependency {} (required version: {}, effective version: {}) does not match actual version {}@{}",
