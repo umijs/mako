@@ -244,7 +244,7 @@ pub async fn update_package_binary(dir: &Path, name: &str) -> Result<()> {
 
         // Read package.json
         let pkg_path = dir.join("package.json");
-        let mut pkg = load_package_json_from_path(&pkg_path)?;
+        let mut pkg = load_package_json_from_path(dir)?;
 
         // has install script and not replaceHostFiles
         let should_update_binary = if let Some(scripts) = pkg["scripts"].as_object() {

@@ -12,8 +12,6 @@ pub async fn find_workspaces(root_path: &Path) -> Result<Vec<(String, PathBuf, V
     let mut workspaces = Vec::new();
     let pkg = load_package_json_from_path(&root_path)?;
 
-    println!("pkg: {:?}", pkg);
-
     // load workspaces config
     if let Some(workspaces_config) = pkg.get("workspaces") {
         match workspaces_config {
