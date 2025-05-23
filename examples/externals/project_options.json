@@ -1,0 +1,19 @@
+{
+  "rootPath": "../../",
+  "projectPath": "./",
+  "config": {
+    "entry": [
+      {
+        "import": "./index.js"       
+      }
+    ],
+    "output": {
+      "path": "./dist"
+    },
+    "optimization": {
+      "moduleIds": "named",
+      "minify": false
+    },
+    "externals": ["opted-out-external-package", "esm-package-1/entry"]
+  }
+}

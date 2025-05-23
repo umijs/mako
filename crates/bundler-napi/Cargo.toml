@@ -86,7 +86,6 @@ turbo-tasks-backend = { workspace = true }
 turbo-tasks-fs = { workspace = true }
 bundler-api = { workspace = true }
 bundler-core = { workspace = true }
-mdxjs = { version = "0.3", features = ["serializable"] }
 turbo-tasks-malloc = { workspace = true, default-features = false, features = [
   "custom_allocator",
 ] }

@@ -110,6 +110,7 @@ pub struct Config {
     experimental: ExperimentalConfig,
     persistent_caching: Option<bool>,
     cache_handler: Option<RcStr>,
+    externals: Option<Vec<RcStr>>,
 }
 
 #[turbo_tasks::value(eq = "manual")]
@@ -547,6 +548,18 @@ impl Config {
     #[turbo_tasks::function]
     pub fn cache_handler(&self) -> Vc<Option<RcStr>> {
         Vc::cell(self.cache_handler.clone())
+    }
+
+    #[turbo_tasks::function]
+    pub fn externals(&self) -> Vc<Vec<RcStr>> {
+        Vc::cell(
+            self.externals
+                .as_ref()
+                .cloned()
+                .unwrap_or_default()
+                .into_iter()
+                .collect(),
+        )
     }
 
     #[turbo_tasks::function]
