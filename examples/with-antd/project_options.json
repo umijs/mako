@@ -14,7 +14,19 @@
     },
     "optimization": {
       "moduleIds": "named",
-      "minify": false
+      "minify": false,
+      "splitChunks": {
+        "js": {
+          "minChunkSize": 100,
+          "maxChunkCountPerGroup": 10,
+          "maxMergeChunkSize": 1000
+        },
+        "css": {
+          "minChunkSize": 100,
+          "maxChunkCountPerGroup": 20,
+          "maxMergeChunkSize": 1000
+        }
+      }
     }
   }
 }

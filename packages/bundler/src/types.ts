@@ -105,6 +105,14 @@ export interface ConfigComplete {
     moduleIds?: "named" | "deterministic";
     minify?: boolean;
     treeShaking?: boolean;
+    splitChunks?: Record<
+      "js" | "css",
+      {
+        minChunkSize?: number;
+        maxChunkCountPerGroup?: number;
+        maxMergeChunkSize?: number;
+      }
+    >;
     modularizeImports?: Record<
       string,
       {
@@ -115,7 +123,6 @@ export interface ConfigComplete {
     >;
     packageImports?: string[];
     transpilePackages?: string[];
-
     removeConsole?:
       | boolean
       | {

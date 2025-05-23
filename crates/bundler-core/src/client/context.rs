@@ -34,7 +34,10 @@ use turbopack_node::{
 
 use crate::{
     client::runtime_entry::RuntimeEntries,
-    config::Config,
+    config::{
+        default_max_chunk_count_per_group, default_max_merge_chunk_size, default_min_chunk_size,
+        Config, SplitChunksConfig,
+    },
     import_map::{
         get_client_fallback_import_map, get_client_import_map, get_client_resolved_map,
         get_postcss_package_mapping,
@@ -412,6 +415,7 @@ pub async fn get_client_chunking_context(
     no_mangling: Vc<bool>,
     filename: Vc<Option<RcStr>>,
     chunk_filename: Vc<Option<RcStr>>,
+    split_chunks: Vc<SplitChunksConfig>,
 ) -> Result<Vc<Box<dyn ChunkingContext>>> {
     let mode = mode.await?;
     let mut builder = BrowserChunkingContext::builder(
@@ -450,21 +454,39 @@ pub async fn get_client_chunking_context(
     if mode.is_development() {
         builder = builder.hot_module_replacement().use_file_source_map_uris();
     } else {
-        builder = builder.chunking_config(
-            Vc::<EcmascriptChunkType>::default().to_resolved().await?,
+        let split_chunks = split_chunks.await?;
+
+        let ecmascript_chunking_config = split_chunks.get("js").map_or(
             ChunkingConfig {
-                min_chunk_size: 50_000,
-                max_chunk_count_per_group: 40,
-                max_merge_chunk_size: 200_000,
+                min_chunk_size: default_min_chunk_size(),
+                max_chunk_count_per_group: default_max_chunk_count_per_group(),
+                max_merge_chunk_size: default_max_merge_chunk_size(),
                 ..Default::default()
             },
+            Into::into,
         );
-        builder = builder.chunking_config(
-            Vc::<CssChunkType>::default().to_resolved().await?,
+
+        let css_chunking_config = split_chunks.get("css").map_or(
             ChunkingConfig {
                 max_merge_chunk_size: 100_000,
                 ..Default::default()
             },
+            Into::into,
+        );
+
+        tracing::debug!(
+            "client chunking with js chunking config {:?}\n css chunking {:?}\n",
+            ecmascript_chunking_config,
+            css_chunking_config
+        );
+
+        builder = builder.chunking_config(
+            Vc::<EcmascriptChunkType>::default().to_resolved().await?,
+            ecmascript_chunking_config,
+        );
+        builder = builder.chunking_config(
+            Vc::<CssChunkType>::default().to_resolved().await?,
+            css_chunking_config,
         );
     }
 
