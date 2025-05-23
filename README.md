@@ -1,3 +1,6 @@
+## ⚠️ Notice: we are working on mako a better bundler on top of Turbopack, see https://github.com/umijs/mako/issues/1872.
+
+
 <div align="center">
 
 <img src="https://img.alicdn.com/imgextra/i2/O1CN01kdmA7X1FVqCPcRi3L_!!6000000000493-2-tps-584-584.png" alt="Mako logo" width="160" height="160" />
