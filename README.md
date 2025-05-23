@@ -1,4 +1,4 @@
-## ⚠️ Notice: we are working on mako a better bundler on top of Turbopack, see https://github.com/umijs/mako/issues/1872.
+> ⚠️ Notice: we are working on mako a better bundler on top of Turbopack, see https://github.com/umijs/mako/issues/1872.
 
 
 <div align="center">
