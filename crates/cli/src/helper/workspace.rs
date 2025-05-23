@@ -12,8 +12,6 @@ pub async fn find_workspaces(root_path: &Path) -> Result<Vec<(String, PathBuf, V
     let mut workspaces = Vec::new();
     let pkg = load_package_json_from_path(&root_path)?;
 
-    println!("pkg: {:?}", pkg);
-
     // load workspaces config
     if let Some(workspaces_config) = pkg.get("workspaces") {
         match workspaces_config {
@@ -140,7 +138,7 @@ mod tests {
     async fn test_find_workspace_by_absolute_path() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
         let workspace_path = root_path.join("packages").join("test-workspace");
-        let workspaces = match find_workspaces(&root_path).await {
+        match find_workspaces(&root_path).await {
             Ok(ws) => ws,
             Err(e) => {
                 println!("Error finding workspaces: {:?}", e);
