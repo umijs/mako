@@ -453,4 +453,34 @@ mod tests {
             "Content should not contain original prepend calls"
         );
     }
+
+    #[tokio::test]
+    async fn test_update_package_binary_fsevents() {
+        // Create a temporary directory for testing
+        let temp_dir = tempdir().unwrap();
+        let dir = temp_dir.path();
+
+        // Create package.json
+        let pkg_json = json!({
+            "name": "fsevents",
+            "version": "2.3.3",
+            "scripts": {
+                "install": "node-gyp rebuild"
+            }
+        });
+
+        let pkg_path = dir.join("package.json");
+        std::fs::write(&pkg_path, pkg_json.to_string()).unwrap();
+
+        // Call the function
+        update_package_binary(dir, "fsevents").await.unwrap();
+
+        // Read the updated package.json
+        let updated_pkg: Value =
+            serde_json::from_str(&std::fs::read_to_string(pkg_path).unwrap()).unwrap();
+
+        // Should not change version
+        assert_eq!(updated_pkg["name"], "fsevents");
+        assert_eq!(updated_pkg["version"], "2.3.3");
+    }
 }

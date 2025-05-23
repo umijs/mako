@@ -138,7 +138,7 @@ mod tests {
     async fn test_find_workspace_by_absolute_path() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
         let workspace_path = root_path.join("packages").join("test-workspace");
-        let workspaces = match find_workspaces(&root_path).await {
+        match find_workspaces(&root_path).await {
             Ok(ws) => ws,
             Err(e) => {
                 println!("Error finding workspaces: {:?}", e);
