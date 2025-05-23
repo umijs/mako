@@ -1,6 +1,6 @@
 > ⚠️ Notice: we are working on making a better bundler on top of Turbopack, see https://github.com/umijs/mako/issues/1872.
 >
-> If you encountered some critical problems when using current Mako, you can report issues in the [Mako 0.x Feedback in discussions](https://github.com/umijs/mako/discussions/categories/mako-0-x-feedback).
+> If you encountered some critical problems when using current Mako, you can report issues at [Mako 0.x Feedback in discussions](https://github.com/umijs/mako/discussions/categories/mako-0-x-feedback).
 
 
 <div align="center">
