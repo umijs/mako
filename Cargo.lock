@@ -282,7 +282,6 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "auto-hash-map"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "hashbrown 0.14.5",
  "rustc-hash 2.1.1",
@@ -394,6 +393,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "781dd20c3aff0bd194fe7d2a977dd92f21c173891f3a03b677359e5fa457e5d5"
 dependencies = [
  "simd-abstraction",
+]
+
+[[package]]
+name = "base64-simd"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "339abbe78e73178762e23bea9dfd08e697eb3f3301cd4be981c0f78ba5859195"
+dependencies = [
+ "outref 0.5.2",
+ "vsimd",
 ]
 
 [[package]]
@@ -616,7 +625,6 @@ dependencies = [
  "bundler-core",
  "console-subscriber",
  "dhat",
- "mdxjs",
  "napi",
  "napi-build",
  "napi-derive",
@@ -785,7 +793,7 @@ version = "8.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "031718ddb8f78aa5def78a09e90defe30151d1f6c672f937af4dd916429ed996"
 dependencies = [
- "semver 1.0.26",
+ "semver",
  "serde",
  "toml 0.5.11",
  "url",
@@ -808,7 +816,7 @@ checksum = "2d886547e41f740c616ae73108f6eb70afe6d940c7bc697cb30f13daec073037"
 dependencies = [
  "camino",
  "cargo-platform",
- "semver 1.0.26",
+ "semver",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -822,7 +830,7 @@ checksum = "dd5eb614ed4c27c5d706420e4320fbe3216ab31fa1c33cd8246ac36dae4479ba"
 dependencies = [
  "camino",
  "cargo-platform",
- "semver 1.0.26",
+ "semver",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
@@ -2455,7 +2463,7 @@ checksum = "cdc6457c0eb62c71aac4bc17216026d8410337c4126773b9c5daba343f17964f"
 dependencies = [
  "atomic-polyfill",
  "hash32",
- "rustc_version 0.4.1",
+ "rustc_version",
  "serde",
  "spin 0.9.8",
  "stable_deref_trait",
@@ -3336,9 +3344,9 @@ dependencies = [
 
 [[package]]
 name = "lightningcss"
-version = "1.0.0-alpha.65"
+version = "1.0.0-alpha.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c84f971730745f4aaac013b6cf4328baf1548efc973c0d95cfd843a3c1ca07af"
+checksum = "9a73ffa17de66534e4b527232f44aa0a89fad22c4f4e0735f9be35494f058e54"
 dependencies = [
  "ahash 0.8.11",
  "bitflags 2.9.0",
@@ -3537,7 +3545,6 @@ checksum = "e150eac3f8b1537b1c07216679b289ee7b5b7503e09fce87b8c1001269bf1447"
 dependencies = [
  "markdown",
  "rustc-hash 2.1.1",
- "serde",
  "swc_core",
 ]
 
@@ -3792,7 +3799,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
- "semver 1.0.26",
+ "semver",
  "syn 2.0.100",
 ]
 
@@ -4059,6 +4066,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f222829ae9293e33a9f5e9f440c6760a3d450a64affe1846486b140db81c1f4"
 
 [[package]]
+name = "outref"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a80800c0488c3a21695ea981a54918fbb37abf04f4d0720c453632255e2ff0e"
+
+[[package]]
 name = "overload"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4098,9 +4111,9 @@ dependencies = [
 
 [[package]]
 name = "parcel_selectors"
-version = "0.28.1"
+version = "0.28.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dccbc6fb560df303a44e511618256029410efbc87779018f751ef12c488271fe"
+checksum = "54fd03f1ad26cb6b3ec1b7414fa78a3bd639e7dbb421b1a60513c96ce886a196"
 dependencies = [
  "bitflags 2.9.0",
  "cssparser",
@@ -4120,7 +4133,7 @@ version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "485b74d7218068b2b7c0e3ff12fbc61ae11d57cb5d8224f525bd304c6be05bbb"
 dependencies = [
- "base64-simd",
+ "base64-simd 0.7.0",
  "data-url",
  "rkyv 0.7.45",
  "serde",
@@ -4467,7 +4480,7 @@ dependencies = [
  "from_variant",
  "once_cell",
  "rustc-hash 2.1.1",
- "semver 1.0.26",
+ "semver",
  "serde",
  "st-map",
  "tracing",
@@ -5123,20 +5136,11 @@ checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
 
 [[package]]
 name = "rustc_version"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
-dependencies = [
- "semver 0.9.0",
-]
-
-[[package]]
-name = "rustc_version"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfcb3a22ef46e85b45de6ee7e79d063319ebb6594faafcf1c225ea92ab6e9b92"
 dependencies = [
- "semver 1.0.26",
+ "semver",
 ]
 
 [[package]]
@@ -5362,27 +5366,12 @@ checksum = "0f7d95a54511e0c7be3f51e8867aa8cf35148d7b9445d44de2f943e2b206e749"
 
 [[package]]
 name = "semver"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
-dependencies = [
- "semver-parser",
-]
-
-[[package]]
-name = "semver"
 version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56e6fa9c48d24d85fb3de5ad847117517440f6beceb7798af16b4a87d616b8d0"
 dependencies = [
  "serde",
 ]
-
-[[package]]
-name = "semver-parser"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
@@ -5651,7 +5640,7 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9cadb29c57caadc51ff8346233b5cec1d240b68ce55cf1afc764818791876987"
 dependencies = [
- "outref",
+ "outref 0.1.0",
 ]
 
 [[package]]
@@ -5752,17 +5741,16 @@ dependencies = [
 
 [[package]]
 name = "sourcemap"
-version = "9.1.2"
+version = "9.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27c4ea7042fd1a155ad95335b5d505ab00d5124ea0332a06c8390d200bb1a76a"
+checksum = "bdee719193ae5c919a3ee43f64c2c0dd87f9b9a451d67918a2a5ec2e3c70561c"
 dependencies = [
- "base64-simd",
+ "base64-simd 0.8.0",
  "bitvec",
  "data-encoding",
  "debugid",
  "if_chain",
- "rustc-hash 1.1.0",
- "rustc_version 0.2.3",
+ "rustc-hash 2.1.1",
  "serde",
  "serde_json",
  "unicode-id-start",
@@ -6785,7 +6773,7 @@ dependencies = [
  "once_cell",
  "preset_env_base",
  "rustc-hash 2.1.1",
- "semver 1.0.26",
+ "semver",
  "serde",
  "serde_json",
  "st-map",
@@ -7287,9 +7275,9 @@ dependencies = [
 
 [[package]]
 name = "swc_trace_macro"
-version = "2.0.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c78717a841565df57f811376a3d19c9156091c55175e12d378f3a522de70cef"
+checksum = "559185db338f1bcb50297aafd4f79c0956c84dc71a66da4cffb57acf9d93fd88"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8008,7 +7996,6 @@ dependencies = [
 [[package]]
 name = "turbo-persistence"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -8029,12 +8016,10 @@ dependencies = [
 [[package]]
 name = "turbo-prehash"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 
 [[package]]
 name = "turbo-rcstr"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "new_debug_unreachable",
  "serde",
@@ -8046,7 +8031,6 @@ dependencies = [
 [[package]]
 name = "turbo-tasks"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8086,7 +8070,6 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-backend"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -8123,7 +8106,6 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-build"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "cargo-lock",
@@ -8137,7 +8119,6 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-bytes"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "bytes",
@@ -8151,7 +8132,6 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-env"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "dotenvs",
@@ -8166,7 +8146,6 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-fetch"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "reqwest",
@@ -8182,7 +8161,6 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-fs"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "auto-hash-map",
@@ -8220,7 +8198,6 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-hash"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "turbo-tasks-macros",
  "twox-hash 1.6.3",
@@ -8229,7 +8206,6 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-macros"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "either",
  "proc-macro-error",
@@ -8244,7 +8220,6 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-macros-shared"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8254,7 +8229,6 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-malloc"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "mimalloc",
 ]
@@ -8262,7 +8236,6 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-memory"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "auto-hash-map",
@@ -8289,7 +8262,6 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-testing"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "auto-hash-map",
@@ -8303,7 +8275,6 @@ dependencies = [
 [[package]]
 name = "turbopack"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "indexmap 2.9.0",
@@ -8336,10 +8307,10 @@ dependencies = [
 [[package]]
 name = "turbopack-browser"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "either",
+ "futures",
  "indexmap 2.9.0",
  "indoc",
  "qstring",
@@ -8364,7 +8335,6 @@ dependencies = [
 [[package]]
 name = "turbopack-cli-utils"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "clap",
@@ -8382,7 +8352,6 @@ dependencies = [
 [[package]]
 name = "turbopack-core"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8421,7 +8390,6 @@ dependencies = [
 [[package]]
 name = "turbopack-css"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "indexmap 2.9.0",
@@ -8451,7 +8419,6 @@ dependencies = [
 [[package]]
 name = "turbopack-dev-server"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "async-compression",
@@ -8489,7 +8456,6 @@ dependencies = [
 [[package]]
 name = "turbopack-ecmascript"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8529,7 +8495,6 @@ dependencies = [
 [[package]]
 name = "turbopack-ecmascript-hmr-protocol"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "serde",
  "serde_json",
@@ -8540,7 +8505,6 @@ dependencies = [
 [[package]]
 name = "turbopack-ecmascript-plugins"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8567,7 +8531,6 @@ dependencies = [
 [[package]]
 name = "turbopack-ecmascript-runtime"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "indoc",
@@ -8584,7 +8547,6 @@ dependencies = [
 [[package]]
 name = "turbopack-env"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "indexmap 2.9.0",
@@ -8601,7 +8563,6 @@ dependencies = [
 [[package]]
 name = "turbopack-image"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "base64 0.21.7",
@@ -8621,7 +8582,6 @@ dependencies = [
 [[package]]
 name = "turbopack-json"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "serde",
@@ -8637,7 +8597,6 @@ dependencies = [
 [[package]]
 name = "turbopack-mdx"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "markdown",
@@ -8654,7 +8613,6 @@ dependencies = [
 [[package]]
 name = "turbopack-node"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -8692,7 +8650,6 @@ dependencies = [
 [[package]]
 name = "turbopack-nodejs"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "either",
@@ -8716,7 +8673,6 @@ dependencies = [
 [[package]]
 name = "turbopack-resolve"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "indexmap 2.9.0",
@@ -8735,7 +8691,6 @@ dependencies = [
 [[package]]
 name = "turbopack-static"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "serde",
@@ -8752,7 +8707,6 @@ dependencies = [
 [[package]]
 name = "turbopack-swc-utils"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "parking_lot",
@@ -8766,7 +8720,6 @@ dependencies = [
 [[package]]
 name = "turbopack-trace-server"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "either",
@@ -8787,7 +8740,6 @@ dependencies = [
 [[package]]
 name = "turbopack-trace-utils"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
@@ -8807,7 +8759,6 @@ dependencies = [
 [[package]]
 name = "turbopack-wasm"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#52c956d2cafbe746b24961f2bfe6bcc5135b55b4"
 dependencies = [
  "anyhow",
  "indexmap 2.9.0",
@@ -9243,6 +9194,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65dd7eed29412da847b0f78bcec0ac98588165988a8cfe41d4ea1d429f8ccfff"
 
 [[package]]
+name = "vsimd"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c3082ca00d5a5ef149bb8b555a72ae84c9c59f7250f013ac822ac2e49b19c64"
+
+[[package]]
 name = "wai-bindgen-gen-core"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9539,7 +9496,7 @@ dependencies = [
  "hex",
  "indexmap 2.9.0",
  "schemars",
- "semver 1.0.26",
+ "semver",
  "serde",
  "serde_json",
  "serde_yml",
@@ -9561,7 +9518,7 @@ dependencies = [
  "hex",
  "indexmap 2.9.0",
  "schemars",
- "semver 1.0.26",
+ "semver",
  "serde",
  "serde_json",
  "serde_yml",
@@ -9620,7 +9577,7 @@ dependencies = [
  "ciborium",
  "flate2",
  "insta",
- "semver 1.0.26",
+ "semver",
  "serde",
  "serde_json",
  "sha2",
@@ -9646,7 +9603,7 @@ dependencies = [
  "ciborium",
  "flate2",
  "insta",
- "semver 1.0.26",
+ "semver",
  "serde",
  "serde_json",
  "sha2",
@@ -9742,7 +9699,7 @@ dependencies = [
  "rand 0.8.5",
  "rkyv 0.8.10",
  "rusty_pool",
- "semver 1.0.26",
+ "semver",
  "serde",
  "serde_derive",
  "serde_json",
@@ -9806,7 +9763,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1dfcdb72d96f01e6c85b6bf20102e7423bdbaad5c337301bab2bbf253d26413c"
 dependencies = [
  "indexmap 2.9.0",
- "semver 1.0.26",
+ "semver",
 ]
 
 [[package]]
@@ -9819,7 +9776,7 @@ dependencies = [
  "bitflags 2.9.0",
  "hashbrown 0.14.5",
  "indexmap 2.9.0",
- "semver 1.0.26",
+ "semver",
 ]
 
 [[package]]
@@ -9830,7 +9787,7 @@ checksum = "4abf1132c1fdf747d56bbc1bb52152400c70f336870f968b85e89ea422198ae3"
 dependencies = [
  "bitflags 2.9.0",
  "indexmap 2.9.0",
- "semver 1.0.26",
+ "semver",
 ]
 
 [[package]]

@@ -151,6 +151,8 @@ fn main() {
                 dev,
             };
 
+            // dbg!(&project_options);
+
             let result = main_inner(&turbo_tasks, project_options).await;
             let memory = TurboMalloc::memory_usage();
             tracing::info!("memory usage: {} MiB", memory / 1024 / 1024);

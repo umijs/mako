@@ -41,6 +41,7 @@ use crate::{
     },
     mode::Mode,
     shared::{
+        resolve::ExternalModulesResolvePlugin,
         transforms::{
             dynamic_import_to_require::get_dynamic_import_to_require_rule,
             emotion::get_emotion_transform_rule, remove_console::get_remove_console_transform_rule,
@@ -186,6 +187,8 @@ pub async fn get_client_module_options_context(
     dynamic_import_to_require: Vc<bool>,
 ) -> Result<Vc<ModuleOptionsContext>> {
     let mode_ref = mode.await?;
+
+    // resolve context
     let resolve_options_context =
         get_client_resolve_options_context(*project_path, mode, config, *execution_context);
 
@@ -272,6 +275,7 @@ pub async fn get_client_module_options_context(
             } else {
                 SourceMapsType::None
             },
+            import_externals: *config.import_externals().await?,
             ..Default::default()
         },
         css: CssOptionsContext {
@@ -371,6 +375,19 @@ pub async fn get_client_resolve_options_context(
     let client_resolved_map = get_client_resolved_map(*project_path, project_path, *mode.await?)
         .to_resolved()
         .await?;
+
+    let external_packages = *config.externals().to_resolved().await?;
+
+    let external_packages_plugins = ExternalModulesResolvePlugin::new(
+        *project_path,
+        project_path.root(),
+        external_packages,
+        *config.import_externals().await?,
+    )
+    .to_resolved()
+    .await?;
+
+
     let custom_conditions = vec![mode.await?.condition().into()];
     let resolve_options_context = ResolveOptionsContext {
         enable_node_modules: Some(project_path.root().to_resolved().await?),
@@ -381,7 +398,7 @@ pub async fn get_client_resolve_options_context(
         browser: true,
         module: true,
         before_resolve_plugins: vec![],
-        after_resolve_plugins: vec![],
+        after_resolve_plugins: vec![ResolvedVc::upcast(external_packages_plugins)],
         ..Default::default()
     };
     Ok(ResolveOptionsContext {
