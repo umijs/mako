@@ -18,7 +18,7 @@ export function createParallelLoader<T>(renderPath: string) {
     recordTiming: false,
     useAtomics: false,
     maxThreads:
-      // when cpus is less than "4", the worker pool may lead to panic on linux
-      os.platform() === 'linux' ? Math.max(os.cpus().length - 3, 1) : undefined,
+      // strange panic on docker linux
+      os.platform() === 'linux' ? (os.cpus().length > 4 ? 2 : 1) : undefined,
   });
 }
