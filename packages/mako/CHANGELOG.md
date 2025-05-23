@@ -2,15 +2,8 @@
 
 `2025-05-23`
 
-- Update README.md by [xusd320](https://github.com/xusd320)
-- Update README.md by [xusd320](https://github.com/xusd320)
-- docs: update README.md by [xusd320](https://github.com/xusd320) in [#1907](https://github.com/umijs/mako/pull/1907)
 - fix: less resolve alias by [xusd320](https://github.com/xusd320) in [#1906](https://github.com/umijs/mako/pull/1906)
-- Update PULL_REQUEST_TEMPLATE.md by [xusd320](https://github.com/xusd320)
-- Update PULL_REQUEST_TEMPLATE.md by [xusd320](https://github.com/xusd320)
-- chore: update changelog for v0.11.11 by [xusd320](https://github.com/xusd320)
-- fix: package-lock.json by [xusd320](https://github.com/xusd320)
-- release: [umijs/mako@0.11.11 by @xusd320](https://github.com/umijs/mako@0.11.11 by @xusd320)
+
 
 
 ## 0.11.11

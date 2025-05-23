@@ -1,3 +1,10 @@
+## 0.11.12
+
+`2025-05-23`
+
+- fix: 修复 less resolve alias 问题 by [xusd320](https://github.com/xusd320) in [#1906](https://github.com/umijs/mako/pull/1906)
+
+
 ## 0.11.11
 
 `2025-05-09`
