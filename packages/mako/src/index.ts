@@ -99,7 +99,9 @@ export async function build(params: BuildParams) {
   const resolveAlias =
     params.config.resolve?.alias?.reduce(
       (accumulator: Record<string, string>, currentValue) => {
-        accumulator[currentValue[0]] = currentValue[1];
+        accumulator[currentValue[0]] = currentValue[1]?.startsWith(params.root)
+          ? currentValue[1]
+          : path.join(params.root, currentValue[1]);
         return accumulator;
       },
       {},
