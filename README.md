@@ -66,3 +66,10 @@ This project is inspired by:
 ## LICENSE
 
 [MIT](./LICENSE)
+
+
+## 🤝 Contributing 
+
+<a href="https://openomy.app/github/umijs/mako" target="_blank" style="display: block; width: 100%;" align="center">
+  <img src="https://www.openomy.app/svg?repo=umijs/mako&chart=bubble&latestMonth=3" target="_blank" alt="Contribution Leaderboard" style="display: block; width: 100%;" />
+</a>
