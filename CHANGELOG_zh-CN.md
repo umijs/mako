@@ -1,3 +1,9 @@
+## 0.11.13
+
+`2025-05-26`
+
+- fix: panic on docker linux by [xusd320](https://github.com/xusd320) in [#1909](https://github.com/umijs/mako/pull/1909)
+
 ## 0.11.12
 
 `2025-05-23`

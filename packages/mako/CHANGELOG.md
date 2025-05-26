@@ -2,11 +2,7 @@
 
 `2025-05-26`
 
-- doc: add openomy by [kiner-tang（星河）](https://github.com/kiner-tang（星河）) in [#1910](https://github.com/umijs/mako/pull/1910)
 - fix: panic on docker linux by [xusd320](https://github.com/xusd320) in [#1909](https://github.com/umijs/mako/pull/1909)
-- chore: update changelog for v0.11.12 by [xusd320](https://github.com/xusd320)
-- feat: update pnpm log by [xusd320](https://github.com/xusd320)
-- release: [umijs/mako@0.11.12 by @xusd320](https://github.com/umijs/mako@0.11.12 by @xusd320)
 
 
 ## 0.11.12
