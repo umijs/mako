@@ -30,7 +30,7 @@ async fn build_deps(root: Arc<Node>) -> Result<()> {
     let legacy_peer_deps = get_legacy_peer_deps();
     log_verbose(&format!(
         "going to build deps for {}, legacy_peer_deps: {}",
-        root.name, legacy_peer_deps
+        root, legacy_peer_deps
     ));
     let current_level = Arc::new(Mutex::new(vec![root.clone()]));
 
@@ -66,7 +66,7 @@ async fn build_deps(root: Arc<Node>) -> Result<()> {
                         return Ok(());
                     }
 
-                    log_verbose(&format!("going to build deps {}@{} from [{}]", edge.name, edge.spec, edge.from.name));
+                    log_verbose(&format!("going to build deps {}@{} from [{}]", edge.name, edge.spec, edge.from));
 
                     match find_compatible_node(&edge.from, &edge.name, &edge.spec) {
                         FindResult::Reuse(existing_node) => {
@@ -251,14 +251,14 @@ fn find_compatible_node(from: &Arc<Node>, name: &str, version_spec: &str) -> Fin
             if child.name == name {
                 if matches(version_spec, &child.version) {
                     log_verbose(&format!(
-                        "found existing deps {}@{} got {}",
-                        name, version_spec, child.version
+                        "found existing deps {}@{} got {}, place {}",
+                        name, version_spec, child.version, child
                     ));
                     return FindResult::Reuse(child.clone());
                 } else {
                     log_verbose(&format!(
-                        "found conflict deps {}@{} got {}",
-                        name, version_spec, child.version
+                        "found conflict deps {}@{} got {}, place {}",
+                        name, version_spec, child.version, child
                     ));
                     return FindResult::Conflict(current.clone());
                 }
