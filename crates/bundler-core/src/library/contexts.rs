@@ -14,6 +14,8 @@ use crate::mode::Mode;
 
 use super::LibraryChunkingContext;
 /// TODO: avoid so many arguments
+/// TODO: seems like turbo_tasks:function onlt accept 12 arguments, so chunk_filename is not supported here temporarily.
+/// maybe need to store filename and chunk_filename in the context struct.
 #[turbo_tasks::function]
 pub async fn get_library_chunking_context(
     root_path: ResolvedVc<FileSystemPath>,
