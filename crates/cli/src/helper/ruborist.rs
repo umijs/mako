@@ -26,7 +26,7 @@ use once_cell::sync::Lazy;
 // concurrency limit default to 100
 static CONCURRENCY_LIMITER: Lazy<Arc<Semaphore>> = Lazy::new(|| Arc::new(Semaphore::new(100)));
 
-async fn build_deps(root: Arc<Node>) -> Result<()> {
+pub async fn build_deps(root: Arc<Node>) -> Result<()> {
     let legacy_peer_deps = get_legacy_peer_deps();
     log_verbose(&format!(
         "going to build deps for {}, legacy_peer_deps: {}",

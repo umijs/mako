@@ -1,5 +1,6 @@
 use crate::helper::lock::validate_deps;
 use crate::helper::{package::serialize_tree_to_packages, ruborist::Ruborist};
+use crate::util::node::Node;
 use anyhow::{Context, Result};
 use serde_json::json;
 use std::collections::HashSet;
@@ -33,7 +34,33 @@ pub async fn build_deps() -> Result<()> {
             .context("Failed to rename temporary package-lock.json")?;
     }
 
-    validate_deps().await?;
+    let invalid_deps = validate_deps().await?;
+    if !invalid_deps.is_empty() {
+        println!("Invalid dependencies found:");
+        for dep in invalid_deps {
+            println!("Package path: {}", dep.package_path);
+            println!("Dependency name: {}", dep.dependency_name);
+
+            // Try to fix the dependency
+            if let Some(ideal_tree) = &ruborist.ideal_tree {
+                if let Err(e) = Node::fix_dep_path(ideal_tree, &dep.package_path, &dep.dependency_name).await {
+                    println!("Failed to fix dependency: {}", e);
+                } else {
+                    println!("Successfully fixed dependency");
+                }
+            }
+        }
+    }
+
+    let invalid_deps = validate_deps().await?;
+    if !invalid_deps.is_empty() {
+        println!("Invalid dependencies found:");
+        for dep in invalid_deps {
+            println!("Package path: {}", dep.package_path);
+            println!("Dependency name: {}", dep.dependency_name);
+        }
+    }
+
     Ok(())
 }
 

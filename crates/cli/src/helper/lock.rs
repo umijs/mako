@@ -245,7 +245,14 @@ pub fn path_to_pkg_name(path_str: &str) -> Option<&str> {
     }
 }
 
-pub async fn validate_deps() -> Result<()> {
+#[derive(Debug)]
+pub struct InvalidDependency {
+    pub package_path: String,
+    pub dependency_name: String,
+}
+
+pub async fn validate_deps() -> Result<Vec<InvalidDependency>> {
+    let mut invalid_deps = Vec::new();
     // Read package.json for overrides
     let pkg_file = load_package_json()?;
     // Initialize overrides
@@ -258,10 +265,11 @@ pub async fn validate_deps() -> Result<()> {
         .get("packages")
         .and_then(|p| p.as_object())
         .and_then(|p| p.get(""));
+
     if let Some(root_pkg) = pkg_in_pkg_lock {
         for (dep_field, _is_optional) in get_dep_types() {
             if root_pkg.get(dep_field) != pkg_file.get(dep_field) {
-                return Err(anyhow::anyhow!("{} changed", dep_field));
+                return Ok(invalid_deps);
             }
         }
     }
@@ -353,9 +361,10 @@ pub async fn validate_deps() -> Result<()> {
                                         "Package {} {} dependency {} (required version: {}, effective version: {}) does not match actual version {}@{}",
                                         pkg_path, dep_field, dep_name, req_version_str, effective_req_version, current_path, actual_version
                                     ));
-                                    anyhow::bail!("Package {} {} dependency {} (required version: {}, effective version: {}) does not match actual version {}@{}",
-                                        pkg_path, dep_field, dep_name, req_version_str, effective_req_version, current_path, actual_version
-                                    );
+                                    invalid_deps.push(InvalidDependency {
+                                        package_path: pkg_path.clone(),
+                                        dependency_name: dep_name.clone(),
+                                    });
                                 }
                             }
                         } else if !is_optional {
@@ -363,12 +372,10 @@ pub async fn validate_deps() -> Result<()> {
                                 "pkg_path {} dep_field {} dep_name {} not found",
                                 pkg_path, dep_field, dep_name
                             ));
-                            anyhow::bail!(
-                                "Package {} {} dependency {} not found",
-                                pkg_path,
-                                dep_field,
-                                dep_name
-                            );
+                            invalid_deps.push(InvalidDependency {
+                                package_path: pkg_path.clone(),
+                                dependency_name: dep_name.clone(),
+                            });
                         }
                     }
                 }
@@ -376,7 +383,7 @@ pub async fn validate_deps() -> Result<()> {
         }
     }
 
-    Ok(())
+    Ok(invalid_deps)
 }
 
 fn get_dep_types() -> Vec<(&'static str, bool)> {

@@ -1,10 +1,12 @@
 use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
+use anyhow::Result;
 
 use super::logger::log_verbose;
 use super::registry::resolve;
 use super::semver::is_valid_version;
+use crate::helper::ruborist::build_deps;
 use crate::util::semver::matches;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -315,6 +317,62 @@ impl Node {
                 }
             }
         }
+    }
+
+    pub async fn fix_dep_path(node: &Arc<Node>, pkg_path: &str, pkg_name: &str) -> Result<()> {
+        // Split the path by node_modules to get the package hierarchy
+        let path_parts: Vec<&str> = pkg_path
+            .trim_end_matches('/')  // Remove trailing slash
+            .split("node_modules/")
+            .filter(|s| !s.is_empty())
+            .map(|s| s.trim_end_matches('/'))  // Remove trailing slash from each part
+            .collect();
+
+        // Start from the root node
+        let mut current_node = node.clone();
+
+        // Navigate through the node_modules hierarchy
+        for part in path_parts {
+            let mut found = false;
+            let next_node = {
+                let children = current_node.children.read().unwrap();
+                let mut result = None;
+
+                // Look for the next node in the hierarchy
+                for child in children.iter() {
+                    if child.name == part {
+                        result = Some(child.clone());
+                        found = true;
+                        break;
+                    }
+                }
+                result
+            };
+
+
+            if !found {
+                return Err(anyhow::anyhow!(
+                    "Could not find package at path {}",
+                    pkg_path
+                ));
+            }
+
+            println!("next_node: {}", next_node.as_ref().unwrap());
+            current_node = next_node.unwrap();
+
+        }
+
+        // Now we have the target node, find and fix the dependency
+        let edges = current_node.edges_out.read().unwrap();
+        for edge in edges.iter() {
+            if edge.name == pkg_name {
+                println!("edge: {}", edge.name);
+                *edge.valid.write().unwrap() = false;
+                build_deps(current_node.clone()).await?;
+            }
+        }
+
+        Ok(())
     }
 }
 
