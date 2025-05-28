@@ -4,12 +4,11 @@ use turbo_rcstr::RcStr;
 use turbo_tasks::{ResolvedVc, Vc};
 use turbo_tasks_fs::FileSystemPath;
 use turbopack::module_options::WebpackLoadersOptions;
-use turbopack_core::resolve::options::ImportMapping;
+use turbopack_core::resolve::{options::ImportMapping, ExternalTraced, ExternalType};
 
 use self::less::maybe_add_less_loader;
 use self::sass::maybe_add_sass_loader;
 use crate::config::Config;
-use crate::import_map::get_bundler_package;
 
 pub(crate) mod less;
 pub(crate) mod sass;
@@ -44,14 +43,13 @@ pub async fn webpack_loader_options(
 
 #[turbo_tasks::function]
 async fn loader_runner_package_mapping(
-    project_path: ResolvedVc<FileSystemPath>,
+    _project_path: ResolvedVc<FileSystemPath>,
 ) -> Result<Vc<ImportMapping>> {
-    Ok(
-        ImportMapping::Alternatives(vec![ImportMapping::PrimaryAlternative(
-            "@utoo/loader-runner".into(),
-            Some(get_bundler_package(*project_path).to_resolved().await?),
-        )
-        .resolved_cell()])
-        .cell(),
+    Ok(ImportMapping::Alternatives(vec![ImportMapping::External(
+        Some("@utoo/loader-runner".into()),
+        ExternalType::CommonJs,
+        ExternalTraced::Untraced,
     )
+    .resolved_cell()])
+    .cell())
 }
