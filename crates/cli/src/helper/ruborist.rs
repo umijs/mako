@@ -641,3 +641,82 @@ async fn add_dependency_edge(node: &Arc<Node>, field: &str, edge_type: EdgeType)
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+    use crate::util::node::Node;
+
+    #[tokio::test]
+    async fn test_fix_dep_path() {
+        // Create a mock root node
+        let root = Node::new_root(
+            "test-package".to_string(),
+            PathBuf::from("."),
+            json!({
+                "name": "test-package",
+                "version": "1.0.0",
+                "dependencies": {
+                    "lodash": "^4.17.20"
+                }
+            })
+        );
+
+        // Create a child node
+        let child = Node::new(
+            "lodash".to_string(),
+            PathBuf::from("node_modules/lodash"),
+            json!({
+                "name": "lodash",
+                "version": "4.17.20"
+            })
+        );
+
+        // Add child to root
+        {
+            let mut children = root.children.write().unwrap();
+            children.push(child.clone());
+        }
+
+        // Create Ruborist instance
+        let mut ruborist = Ruborist::new(PathBuf::from("."));
+        ruborist.ideal_tree = Some(root.clone());
+
+        // Test fixing dependency path
+        let result = ruborist.fix_dep_path("", "lodash").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_fix_dep_path_with_invalid_path() {
+        // Create a mock root node
+        let root = Node::new_root(
+            "test-package".to_string(),
+            PathBuf::from("."),
+            json!({
+                "name": "test-package",
+                "version": "1.0.0"
+            })
+        );
+
+        // Create Ruborist instance
+        let mut ruborist = Ruborist::new(PathBuf::from("."));
+        ruborist.ideal_tree = Some(root.clone());
+
+        // Test fixing non-existent dependency path
+        let result = ruborist.fix_dep_path("invalid/path", "lodash").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_fix_dep_path_without_ideal_tree() {
+        // Create Ruborist instance without ideal tree
+        let ruborist = Ruborist::new(PathBuf::from("."));
+
+        // Test fixing dependency path without ideal tree
+        let result = ruborist.fix_dep_path("", "lodash").await;
+        assert!(result.is_err());
+    }
+}

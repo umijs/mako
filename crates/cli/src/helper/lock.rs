@@ -581,6 +581,9 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::util::node::Node;
+
     #[test]
     fn test_version_to_write() {
         // Test cases for different version specifications
@@ -627,5 +630,90 @@ mod tests {
             super::path_to_pkg_name("/root/node_modules/@a/b/node_modules/b/c/d"),
             None
         );
+    }
+
+    #[tokio::test]
+    async fn test_validate_deps_with_invalid_dependencies() {
+        // Create a mock package.json
+        let pkg_file = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "dependencies": {
+                "lodash": "^4.17.20"
+            }
+        });
+
+        // Create a mock package-lock.json structure
+        let pkgs_in_pkg_lock = json!({
+            "": {
+                "name": "test-package",
+                "version": "1.0.0",
+                "dependencies": {
+                    "lodash": "^4.17.20"
+                }
+            },
+            "node_modules/lodash": {
+                "name": "lodash",
+                "version": "3.17.20",
+                "resolved": "https://registry.npmjs.org/lodash/-/lodash-3.17.20.tgz"
+            }
+        });
+
+        let invalid_deps = validate_deps(&pkg_file, &pkgs_in_pkg_lock).await.unwrap();
+        assert!(!invalid_deps.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_validate_deps_with_valid_dependencies() {
+        // Create a mock package.json
+        let pkg_file = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "dependencies": {
+                "lodash": "^4.17.20"
+            }
+        });
+
+        // Create a mock package-lock.json structure
+        let pkgs_in_pkg_lock = json!({
+            "": {
+                "name": "test-package",
+                "version": "1.0.0",
+                "dependencies": {
+                    "lodash": "^4.17.20"
+                }
+            },
+            "node_modules/lodash": {
+                "name": "lodash",
+                "version": "4.17.20",
+                "resolved": "https://registry.npmjs.org/lodash/-/lodash-4.17.20.tgz"
+            }
+        });
+
+        let invalid_deps = validate_deps(&pkg_file, &pkgs_in_pkg_lock).await.unwrap();
+        assert!(invalid_deps.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_write_ideal_tree_to_lock_file() {
+        // Create a mock ideal tree
+        let root = Node::new(
+            "test-package".to_string(),
+            PathBuf::from("."),
+            json!({
+                "name": "test-package",
+                "version": "1.0.0",
+                "dependencies": {
+                    "lodash": "^4.17.20"
+                }
+            })
+        );
+
+        // Test writing the ideal tree to lock file
+        let result = write_ideal_tree_to_lock_file(&root).await;
+        assert!(result.is_ok());
+
+        // Clean up the test file
+        let _ = std::fs::remove_file("package-lock.json");
     }
 }
