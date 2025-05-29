@@ -102,11 +102,13 @@ pub async fn build_deps(root: Arc<Node>) -> Result<()> {
                             let new_node = place_deps(edge.name.clone(), resolved, &install_parent)
                                 .with_context(|| format!("Failed to place dependencies for {}@{} in conflict case", edge.name, edge.spec))?;
 
+
                             {
                                 let mut parent = new_node.parent.write().unwrap();
                                 *parent = Some(install_parent.clone());
                                 let mut children = install_parent.children.write().unwrap();
                                 children.push(new_node.clone());
+
 
                                 let mut to = edge.to.write().unwrap();
                                 *to = Some(new_node.clone());
@@ -609,8 +611,10 @@ impl Ruborist {
         let edges = current_node.edges_out.read().unwrap();
         for edge in edges.iter() {
             if edge.name == pkg_name {
-                let to_guard = edge.to.read().unwrap();
-                let to_node = to_guard.as_ref().unwrap();
+                let to_node = {
+                    let to_guard = edge.to.read().unwrap();
+                    to_guard.as_ref().unwrap().clone()
+                };
                 log_verbose(&format!(
                     "Fixing dependency: {}, from: {}, to: {}",
                     edge.name, edge.from, to_node

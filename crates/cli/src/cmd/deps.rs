@@ -1,7 +1,7 @@
 use crate::helper::lock::{serialize_tree_to_packages, validate_deps, write_ideal_tree_to_lock_file};
 use crate::helper::ruborist::Ruborist;
 use crate::util::json::load_package_json;
-use crate::util::logger::log_verbose;
+use crate::util::logger::{log_info, log_verbose};
 use anyhow::{Context, Result};
 use serde_json::json;
 use std::collections::HashSet;
@@ -18,10 +18,15 @@ pub async fn build_deps() -> Result<()> {
     let mut retry_count = 0;
 
     loop {
-        let pkgs_in_tree = serialize_tree_to_packages(ruborist.ideal_tree.as_ref().unwrap());
+        let pkgs_in_tree = {
+            let to_guard = ruborist.ideal_tree.as_ref().unwrap();
+            serialize_tree_to_packages(to_guard)
+        };
+
         let invalid_deps = validate_deps(&pkg_file, &pkgs_in_tree).await?;
 
         if invalid_deps.is_empty() {
+            log_verbose("No invalid dependencies found");
             break;
         }
 
@@ -31,7 +36,7 @@ pub async fn build_deps() -> Result<()> {
 
         for dep in invalid_deps {
             log_verbose(&format!(
-                "Invalid dependency found: {}/{}",
+                "Fixing dependency: {}/{}",
                 dep.package_path, dep.dependency_name
             ));
             // Try to fix the dependency
@@ -41,15 +46,16 @@ pub async fn build_deps() -> Result<()> {
             {
                 log_verbose(&format!("Failed to fix dependency: {}", e));
                 return Err(anyhow::anyhow!("Failed to fix dependency: {}", e));
+            } else {
+                log_verbose(&format!("Fixed dependency: {}/{}", dep.package_path, dep.dependency_name));
             }
         }
 
         retry_count += 1;
     }
 
-    if let Some(ideal_tree) = &ruborist.ideal_tree {
-        write_ideal_tree_to_lock_file(ideal_tree).await?;
-    }
+    let tree = ruborist.ideal_tree.unwrap();
+    write_ideal_tree_to_lock_file(&tree).await?;
 
     Ok(())
 }
