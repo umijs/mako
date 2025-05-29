@@ -846,6 +846,8 @@ impl Project {
     pub(super) async fn client_chunking_context(
         self: Vc<Self>,
     ) -> Result<Vc<Box<dyn ChunkingContext>>> {
+        let output = self.config().output().await?;
+        let optimization = self.config().optimization().await?;
         Ok(get_client_chunking_context(
             self.project_root(),
             self.client_root(),
@@ -856,8 +858,9 @@ impl Project {
             self.config().minify(self.mode()),
             self.config().source_maps(),
             self.no_mangling(),
-            Vc::cell(self.config().output().await?.filename.clone()),
-            Vc::cell(self.config().output().await?.chunk_filename.clone()),
+            Vc::cell(output.filename.clone()),
+            Vc::cell(output.chunk_filename.clone()),
+            Vc::cell(optimization.split_chunks.clone()),
         ))
     }
 
