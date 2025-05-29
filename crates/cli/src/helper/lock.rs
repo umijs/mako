@@ -1,13 +1,14 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::{collections::HashMap, fs};
 
 use crate::util::config::get_legacy_peer_deps;
 use crate::util::json::{load_package_json, load_package_lock_json};
 use crate::util::logger::{log_verbose, log_warning};
-use crate::util::node::Overrides;
+use crate::util::node::{Node, Overrides};
 use crate::util::registry::resolve;
 use crate::util::save_type::{PackageAction, SaveType};
 use crate::util::semver;
@@ -69,8 +70,7 @@ pub async fn ensure_package_lock() -> Result<()> {
         // load package-lock.json directly if exists
         log_info("Loading package-lock.json from current project for dependency download");
         // Validate dependencies to ensure package-lock.json is in sync with package.json
-        if let Err(e) = validate_deps().await {
-            log_info(&format!("package-lock.json is outdated, {}", e));
+        if is_pkg_lock_outdated().await? {
             build_deps().await?;
         }
         Ok(())
@@ -245,28 +245,44 @@ pub fn path_to_pkg_name(path_str: &str) -> Option<&str> {
     }
 }
 
-pub async fn validate_deps() -> Result<()> {
-    // Read package.json for overrides
+#[derive(Debug)]
+pub struct InvalidDependency {
+    pub package_path: String,
+    pub dependency_name: String,
+}
+
+pub async fn is_pkg_lock_outdated() -> Result<bool> {
     let pkg_file = load_package_json()?;
-    // Initialize overrides
-    let overrides = Overrides::new(pkg_file.clone()).parse(pkg_file.clone());
-
     let lock_file = load_package_lock_json()?;
-
     // check package-lock.json packages and package.json dependencies are the same
     let pkg_in_pkg_lock = lock_file
         .get("packages")
         .and_then(|p| p.as_object())
         .and_then(|p| p.get(""));
+
     if let Some(root_pkg) = pkg_in_pkg_lock {
         for (dep_field, _is_optional) in get_dep_types() {
             if root_pkg.get(dep_field) != pkg_file.get(dep_field) {
-                return Err(anyhow::anyhow!("{} changed", dep_field));
+                log_warning(&format!(
+                    "package-lock.json is outdated, {} changed",
+                    dep_field
+                ));
+                return Ok(false);
             }
         }
     }
+    Ok(true)
+}
 
-    if let Some(packages) = lock_file.get("packages").and_then(|p| p.as_object()) {
+pub async fn validate_deps(
+    pkg_file: &Value,
+    pkgs_in_pkg_lock: &Value,
+) -> Result<Vec<InvalidDependency>> {
+    let mut invalid_deps = Vec::new();
+    // Initialize overrides
+    let overrides = Overrides::new(pkg_file.clone()).parse(pkg_file.clone());
+
+    if let Some(packages) = pkgs_in_pkg_lock.as_object() {
         for (pkg_path, pkg_info) in packages {
             for (dep_field, is_optional) in get_dep_types() {
                 if let Some(dependencies) = pkg_info.get(dep_field).and_then(|d| d.as_object()) {
@@ -353,22 +369,21 @@ pub async fn validate_deps() -> Result<()> {
                                         "Package {} {} dependency {} (required version: {}, effective version: {}) does not match actual version {}@{}",
                                         pkg_path, dep_field, dep_name, req_version_str, effective_req_version, current_path, actual_version
                                     ));
-                                    anyhow::bail!("Package {} {} dependency {} (required version: {}, effective version: {}) does not match actual version {}@{}",
-                                        pkg_path, dep_field, dep_name, req_version_str, effective_req_version, current_path, actual_version
-                                    );
+                                    invalid_deps.push(InvalidDependency {
+                                        package_path: pkg_path.clone(),
+                                        dependency_name: dep_name.clone(),
+                                    });
                                 }
                             }
                         } else if !is_optional {
-                            log_warning(&format!(
+                            log_verbose(&format!(
                                 "pkg_path {} dep_field {} dep_name {} not found",
                                 pkg_path, dep_field, dep_name
                             ));
-                            anyhow::bail!(
-                                "Package {} {} dependency {} not found",
-                                pkg_path,
-                                dep_field,
-                                dep_name
-                            );
+                            invalid_deps.push(InvalidDependency {
+                                package_path: pkg_path.clone(),
+                                dependency_name: dep_name.clone(),
+                            });
                         }
                     }
                 }
@@ -376,7 +391,7 @@ pub async fn validate_deps() -> Result<()> {
         }
     }
 
-    Ok(())
+    Ok(invalid_deps)
 }
 
 fn get_dep_types() -> Vec<(&'static str, bool)> {
@@ -398,8 +413,183 @@ fn get_dep_types() -> Vec<(&'static str, bool)> {
     }
 }
 
+pub async fn write_ideal_tree_to_lock_file(ideal_tree: &Arc<Node>) -> Result<()> {
+    let path = PathBuf::from(".");
+    let lock_file = json!({
+        "name": ideal_tree.name,  // Direct field access
+        "version": ideal_tree.version,  // Direct field access
+        "lockfileVersion": 3,
+        "requires": true,
+        "packages": serialize_tree_to_packages(ideal_tree),
+    });
+
+    // Write to temporary file first, then atomically move to target location
+    let temp_path = path.join("package-lock.json.tmp");
+    let target_path = path.join("package-lock.json");
+
+    fs::write(&temp_path, serde_json::to_string_pretty(&lock_file)?)
+        .context("Failed to write temporary package-lock.json")?;
+
+    fs::rename(temp_path, target_path).context("Failed to rename temporary package-lock.json")?;
+
+    Ok(())
+}
+
+pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
+    let mut packages = json!({});
+    let mut stack = vec![(node.clone(), String::new())];
+    let mut total_packages = 0;
+
+    while let Some((current, prefix)) = stack.pop() {
+        let children = current.children.read().unwrap();
+        let mut name_count = HashMap::new();
+        for child in children.iter() {
+            if !child.is_link {
+                *name_count.entry(child.name.as_str()).or_insert(0) += 1;
+            }
+        }
+        for (name, count) in name_count {
+            if count > 1 {
+                log_warning(&format!(
+                    "Found {} duplicate dependencies named '{}' under '{}'",
+                    count, name, current.name
+                ));
+            }
+        }
+        let mut pkg_info = if current.is_root {
+            json!({
+                "name": current.name,
+                "version": current.version,
+            })
+        } else {
+            let mut info = json!({
+                "name": current.package.get("name"),
+            });
+
+            if current.is_workspace {
+            } else if current.is_link {
+                // update resolved field
+                info["link"] = json!(true);
+                // resolvd => targetNode#path
+                info["resolved"] = json!(current
+                    .target
+                    .read()
+                    .unwrap()
+                    .as_ref()
+                    .unwrap()
+                    .path
+                    .to_string_lossy());
+            } else {
+                info["version"] = json!(current.package.get("version"));
+                info["resolved"] = json!(current
+                    .package
+                    .get("dist")
+                    .unwrap_or(&json!(""))
+                    .get("tarball"));
+                info["integrity"] = json!(current
+                    .package
+                    .get("dist")
+                    .unwrap_or(&json!(""))
+                    .get("integrity"));
+                total_packages += 1;
+            }
+
+            if *current.is_peer.read().unwrap() == Some(true) {
+                info["peer"] = json!(true);
+            }
+
+            let is_dev = *current.is_dev.read().unwrap() == Some(true);
+            let is_optional = *current.is_optional.read().unwrap() == Some(true);
+
+            if is_dev && is_optional {
+                info["devOptional"] = json!(true);
+            } else if is_dev {
+                info["dev"] = json!(true);
+            } else if is_optional {
+                info["optional"] = json!(true);
+            }
+
+            // hasBin
+            if current.package.get("hasInstallScript") == Some(&json!(true)) {
+                info["hasInstallScript"] = json!(true);
+            }
+
+            info
+        };
+
+        // add dependencies field
+        let fields = if current.is_link {
+            vec![]
+        } else if current.is_root || current.is_workspace {
+            vec![
+                "dependencies",
+                "devDependencies",
+                "peerDependencies",
+                "optionalDependencies",
+            ]
+        } else {
+            vec![
+                "dependencies",
+                "peerDependencies",
+                "optionalDependencies",
+                "bin",
+                "license",
+                "engines",
+                "os",
+                "cpu",
+            ]
+        };
+
+        for field in fields.iter() {
+            if let Some(deps) = current.package.get(field) {
+                if deps.is_object() {
+                    if !deps.as_object().unwrap().is_empty() {
+                        pkg_info[field] = deps.clone();
+                    }
+                } else {
+                    // compatible for string type
+                    pkg_info[field] = deps.clone();
+                }
+            }
+        }
+
+        // use "" for root node
+        let key = if prefix.is_empty() {
+            "".to_string()
+        } else {
+            prefix.clone()
+        };
+        packages[key] = pkg_info;
+
+        // process children
+        let children = current.children.read().unwrap();
+
+        for child in children.iter() {
+            let child_prefix = if prefix.is_empty() {
+                if child.is_workspace {
+                    format!("{}", child.path.to_string_lossy())
+                } else {
+                    format!("node_modules/{}", child.name)
+                }
+            } else {
+                format!("{}/node_modules/{}", &prefix, child.name)
+            };
+            stack.push((child.clone(), child_prefix));
+        }
+    }
+
+    log_info(&format!(
+        "Total {} dependencies after merging",
+        total_packages
+    ));
+    packages
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::util::node::Node;
+
     #[test]
     fn test_version_to_write() {
         // Test cases for different version specifications
@@ -446,5 +636,90 @@ mod tests {
             super::path_to_pkg_name("/root/node_modules/@a/b/node_modules/b/c/d"),
             None
         );
+    }
+
+    #[tokio::test]
+    async fn test_validate_deps_with_invalid_dependencies() {
+        // Create a mock package.json
+        let pkg_file = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "dependencies": {
+                "lodash": "^4.17.20"
+            }
+        });
+
+        // Create a mock package-lock.json structure
+        let pkgs_in_pkg_lock = json!({
+            "": {
+                "name": "test-package",
+                "version": "1.0.0",
+                "dependencies": {
+                    "lodash": "^4.17.20"
+                }
+            },
+            "node_modules/lodash": {
+                "name": "lodash",
+                "version": "3.17.20",
+                "resolved": "https://registry.npmjs.org/lodash/-/lodash-3.17.20.tgz"
+            }
+        });
+
+        let invalid_deps = validate_deps(&pkg_file, &pkgs_in_pkg_lock).await.unwrap();
+        assert!(!invalid_deps.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_validate_deps_with_valid_dependencies() {
+        // Create a mock package.json
+        let pkg_file = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "dependencies": {
+                "lodash": "^4.17.20"
+            }
+        });
+
+        // Create a mock package-lock.json structure
+        let pkgs_in_pkg_lock = json!({
+            "": {
+                "name": "test-package",
+                "version": "1.0.0",
+                "dependencies": {
+                    "lodash": "^4.17.20"
+                }
+            },
+            "node_modules/lodash": {
+                "name": "lodash",
+                "version": "4.17.20",
+                "resolved": "https://registry.npmjs.org/lodash/-/lodash-4.17.20.tgz"
+            }
+        });
+
+        let invalid_deps = validate_deps(&pkg_file, &pkgs_in_pkg_lock).await.unwrap();
+        assert!(invalid_deps.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_write_ideal_tree_to_lock_file() {
+        // Create a mock ideal tree
+        let root = Node::new(
+            "test-package".to_string(),
+            PathBuf::from("."),
+            json!({
+                "name": "test-package",
+                "version": "1.0.0",
+                "dependencies": {
+                    "lodash": "^4.17.20"
+                }
+            }),
+        );
+
+        // Test writing the ideal tree to lock file
+        let result = write_ideal_tree_to_lock_file(&root).await;
+        assert!(result.is_ok());
+
+        // Clean up the test file
+        let _ = std::fs::remove_file("package-lock.json");
     }
 }

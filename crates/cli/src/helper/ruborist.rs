@@ -12,7 +12,7 @@ use crate::util::json::load_package_json;
 use crate::util::logger::{
     finish_progress_bar, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
 };
-use crate::util::node::{Edge, EdgeType, Node};
+use crate::util::node::{get_node_from_root_by_path, Edge, EdgeType, Node};
 use crate::util::registry::{load_cache, resolve, store_cache, ResolvedPackage};
 use crate::util::semver::matches;
 
@@ -26,11 +26,11 @@ use once_cell::sync::Lazy;
 // concurrency limit default to 100
 static CONCURRENCY_LIMITER: Lazy<Arc<Semaphore>> = Lazy::new(|| Arc::new(Semaphore::new(100)));
 
-async fn build_deps(root: Arc<Node>) -> Result<()> {
+pub async fn build_deps(root: Arc<Node>) -> Result<()> {
     let legacy_peer_deps = get_legacy_peer_deps();
     log_verbose(&format!(
         "going to build deps for {}, legacy_peer_deps: {}",
-        root.name, legacy_peer_deps
+        root, legacy_peer_deps
     ));
     let current_level = Arc::new(Mutex::new(vec![root.clone()]));
 
@@ -66,7 +66,7 @@ async fn build_deps(root: Arc<Node>) -> Result<()> {
                         return Ok(());
                     }
 
-                    log_verbose(&format!("going to build deps {}@{} from [{}]", edge.name, edge.spec, edge.from.name));
+                    log_verbose(&format!("going to build deps {}@{} from [{}]", edge.name, edge.spec, edge.from));
 
                     match find_compatible_node(&edge.from, &edge.name, &edge.spec) {
                         FindResult::Reuse(existing_node) => {
@@ -90,23 +90,25 @@ async fn build_deps(root: Arc<Node>) -> Result<()> {
                                 .await?;
                             PROGRESS_BAR.inc(1);
                             log_progress(&format!(
-                                "resolved deps {}@{} => {} (conflict), need to fork, conflict_node: {:?}",
-                                edge.name, &edge.spec, resolved.version, conflict_node.name
+                                "resolved deps {}@{} => {} (conflict), need to fork, conflict_node: {}",
+                                edge.name, &edge.spec, resolved.version, conflict_node
                             ));
                             log_verbose(&format!(
-                                "resolved deps {}@{} => {} (conflict), need to fork, conflict_node: {:?}",
-                                edge.name, &edge.spec, resolved.version, conflict_node.name
+                                "resolved deps {}@{} => {} (conflict), need to fork, conflict_node: {}",
+                                edge.name, &edge.spec, resolved.version, conflict_node
                             ));
                             // process conflict node
                             let install_parent = conflict_node;
                             let new_node = place_deps(edge.name.clone(), resolved, &install_parent)
                                 .with_context(|| format!("Failed to place dependencies for {}@{} in conflict case", edge.name, edge.spec))?;
 
+
                             {
                                 let mut parent = new_node.parent.write().unwrap();
                                 *parent = Some(install_parent.clone());
                                 let mut children = install_parent.children.write().unwrap();
                                 children.push(new_node.clone());
+
 
                                 let mut to = edge.to.write().unwrap();
                                 *to = Some(new_node.clone());
@@ -251,14 +253,14 @@ fn find_compatible_node(from: &Arc<Node>, name: &str, version_spec: &str) -> Fin
             if child.name == name {
                 if matches(version_spec, &child.version) {
                     log_verbose(&format!(
-                        "found existing deps {}@{} got {}",
-                        name, version_spec, child.version
+                        "found existing deps {}@{} got {}, place {}",
+                        name, version_spec, child.version, child
                     ));
                     return FindResult::Reuse(child.clone());
                 } else {
                     log_verbose(&format!(
-                        "found conflict deps {}@{} got {}",
-                        name, version_spec, child.version
+                        "found conflict deps {}@{} got {}, place {}",
+                        name, version_spec, child.version, child
                     ));
                     return FindResult::Conflict(current.clone());
                 }
@@ -596,6 +598,34 @@ impl Ruborist {
 
         Ok(())
     }
+
+    pub async fn fix_dep_path(&self, pkg_path: &str, pkg_name: &str) -> Result<()> {
+        let root = self
+            .ideal_tree
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Ideal tree not initialized"))?;
+
+        let current_node = get_node_from_root_by_path(root, pkg_path).await?;
+
+        // Now we have the target node, find and fix the dependency
+        let edges = current_node.edges_out.read().unwrap();
+        for edge in edges.iter() {
+            if edge.name == pkg_name {
+                let to_node = {
+                    let to_guard = edge.to.read().unwrap();
+                    to_guard.as_ref().unwrap().clone()
+                };
+                log_verbose(&format!(
+                    "Fixing dependency: {}, from: {}, to: {}",
+                    edge.name, edge.from, to_node
+                ));
+                *edge.valid.write().unwrap() = false;
+                build_deps(current_node.clone()).await?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 async fn add_dependency_edge(node: &Arc<Node>, field: &str, edge_type: EdgeType) {
@@ -609,5 +639,84 @@ async fn add_dependency_edge(node: &Arc<Node>, field: &str, edge_type: EdgeType)
                 node.add_edge(dep_edge).await;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+    use crate::util::node::Node;
+
+    #[tokio::test]
+    async fn test_fix_dep_path() {
+        // Create a mock root node
+        let root = Node::new_root(
+            "test-package".to_string(),
+            PathBuf::from("."),
+            json!({
+                "name": "test-package",
+                "version": "1.0.0",
+                "dependencies": {
+                    "lodash": "^4.17.20"
+                }
+            }),
+        );
+
+        // Create a child node
+        let child = Node::new(
+            "lodash".to_string(),
+            PathBuf::from("node_modules/lodash"),
+            json!({
+                "name": "lodash",
+                "version": "4.17.20"
+            }),
+        );
+
+        // Add child to root
+        {
+            let mut children = root.children.write().unwrap();
+            children.push(child.clone());
+        }
+
+        // Create Ruborist instance
+        let mut ruborist = Ruborist::new(PathBuf::from("."));
+        ruborist.ideal_tree = Some(root.clone());
+
+        // Test fixing dependency path
+        let result = ruborist.fix_dep_path("", "lodash").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_fix_dep_path_with_invalid_path() {
+        // Create a mock root node
+        let root = Node::new_root(
+            "test-package".to_string(),
+            PathBuf::from("."),
+            json!({
+                "name": "test-package",
+                "version": "1.0.0"
+            }),
+        );
+
+        // Create Ruborist instance
+        let mut ruborist = Ruborist::new(PathBuf::from("."));
+        ruborist.ideal_tree = Some(root.clone());
+
+        // Test fixing non-existent dependency path
+        let result = ruborist.fix_dep_path("invalid/path", "lodash").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_fix_dep_path_without_ideal_tree() {
+        // Create Ruborist instance without ideal tree
+        let ruborist = Ruborist::new(PathBuf::from("."));
+
+        // Test fixing dependency path without ideal tree
+        let result = ruborist.fix_dep_path("", "lodash").await;
+        assert!(result.is_err());
     }
 }

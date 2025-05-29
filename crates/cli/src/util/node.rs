@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
@@ -510,6 +511,48 @@ impl Overrides {
     }
 }
 
+pub async fn get_node_from_root_by_path(root: &Arc<Node>, pkg_path: &str) -> Result<Arc<Node>> {
+    // Split the path by node_modules to get the package hierarchy
+    let path_parts: Vec<&str> = pkg_path
+        .trim_end_matches('/') // Remove trailing slash
+        .split("node_modules/")
+        .filter(|s| !s.is_empty())
+        .map(|s| s.trim_end_matches('/')) // Remove trailing slash from each part
+        .collect();
+
+    // Start from the root node
+    let mut current_node = root.clone();
+
+    // Navigate through the node_modules hierarchy
+    for part in path_parts {
+        let mut found = false;
+        let next_node = {
+            let children = current_node.children.read().unwrap();
+            let mut result = None;
+
+            // Look for the next node in the hierarchy
+            for child in children.iter() {
+                if child.name == part {
+                    result = Some(child.clone());
+                    found = true;
+                    break;
+                }
+            }
+            result
+        };
+
+        if !found {
+            return Err(anyhow::anyhow!(
+                "Could not find package at path {}",
+                pkg_path
+            ));
+        }
+
+        current_node = next_node.unwrap();
+    }
+    Ok(current_node)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -714,5 +757,128 @@ mod tests {
         // assert!(overrides.matches_rule(rule, "c", ">=3.0.0", &[]).await);
         assert!(overrides.matches_rule(rule, "c", "3.1.0", &[]).await);
         assert!(!overrides.matches_rule(rule, "c", "2.9.0", &[]).await);
+    }
+
+    #[tokio::test]
+    async fn test_get_node_from_root_by_path() {
+        // Create a mock root node
+        let root = Node::new_root(
+            "test-package".to_string(),
+            PathBuf::from("."),
+            json!({
+                "name": "test-package",
+                "version": "1.0.0"
+            }),
+        );
+
+        // Create child nodes
+        let child1 = Node::new(
+            "lodash".to_string(),
+            PathBuf::from("node_modules/lodash"),
+            json!({
+                "name": "lodash",
+                "version": "4.17.20"
+            }),
+        );
+
+        let child2 = Node::new(
+            "express".to_string(),
+            PathBuf::from("node_modules/express"),
+            json!({
+                "name": "express",
+                "version": "4.17.1"
+            }),
+        );
+
+        // Add children to root
+        {
+            let mut children = root.children.write().unwrap();
+            children.push(child1.clone());
+            children.push(child2.clone());
+        }
+
+        // Test finding existing package
+        let result = get_node_from_root_by_path(&root, "node_modules/lodash").await;
+        assert!(result.is_ok());
+        let node = result.unwrap();
+        assert_eq!(node.name, "lodash");
+        assert_eq!(node.version, "4.17.20");
+
+        // Test finding package with trailing slash
+        let result = get_node_from_root_by_path(&root, "node_modules/express/").await;
+        assert!(result.is_ok());
+        let node = result.unwrap();
+        assert_eq!(node.name, "express");
+        assert_eq!(node.version, "4.17.1");
+
+        // Test finding non-existent package
+        let result = get_node_from_root_by_path(&root, "node_modules/non-existent").await;
+        assert!(result.is_err());
+
+        // Test empty path
+        let result = get_node_from_root_by_path(&root, "").await;
+        assert!(result.is_ok());
+        let node = result.unwrap();
+        assert_eq!(node.name, "test-package");
+    }
+
+    #[tokio::test]
+    async fn test_get_node_from_root_by_path_with_nested_modules() {
+        // Create a mock root node
+        let root = Node::new_root(
+            "test-package".to_string(),
+            PathBuf::from("."),
+            json!({
+                "name": "test-package",
+                "version": "1.0.0"
+            }),
+        );
+
+        // Create nested structure: root -> lodash -> express
+        let lodash = Node::new(
+            "lodash".to_string(),
+            PathBuf::from("node_modules/lodash"),
+            json!({
+                "name": "lodash",
+                "version": "4.17.20"
+            }),
+        );
+
+        let express = Node::new(
+            "express".to_string(),
+            PathBuf::from("node_modules/lodash/node_modules/express"),
+            json!({
+                "name": "express",
+                "version": "4.17.1"
+            }),
+        );
+
+        // Set up parent-child relationships
+        {
+            let mut children = root.children.write().unwrap();
+            children.push(lodash.clone());
+        }
+        {
+            let mut children = lodash.children.write().unwrap();
+            children.push(express.clone());
+        }
+        {
+            let mut parent = express.parent.write().unwrap();
+            *parent = Some(lodash.clone());
+        }
+
+        // Test finding deeply nested package
+        let result =
+            get_node_from_root_by_path(&root, "node_modules/lodash/node_modules/express").await;
+        assert!(result.is_ok());
+        let node = result.unwrap();
+        assert_eq!(node.name, "express");
+        assert_eq!(node.version, "4.17.1");
+
+        // Test finding non-existent nested package
+        let result =
+            get_node_from_root_by_path(&root, "node_modules/lodash/node_modules/non-existent")
+                .await;
+        assert!(result.is_err());
     }
 }
