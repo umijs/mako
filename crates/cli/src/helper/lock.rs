@@ -406,7 +406,6 @@ fn get_dep_types() -> Vec<(&'static str, bool)> {
     }
 }
 
-
 pub async fn write_ideal_tree_to_lock_file(ideal_tree: &Arc<Node>) -> Result<()> {
     let path = PathBuf::from(".");
     let lock_file = json!({
@@ -424,8 +423,7 @@ pub async fn write_ideal_tree_to_lock_file(ideal_tree: &Arc<Node>) -> Result<()>
     fs::write(&temp_path, serde_json::to_string_pretty(&lock_file)?)
         .context("Failed to write temporary package-lock.json")?;
 
-    fs::rename(temp_path, target_path)
-        .context("Failed to rename temporary package-lock.json")?;
+    fs::rename(temp_path, target_path).context("Failed to rename temporary package-lock.json")?;
 
     Ok(())
 }

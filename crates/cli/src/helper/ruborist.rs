@@ -598,7 +598,9 @@ impl Ruborist {
     }
 
     pub async fn fix_dep_path(&self, pkg_path: &str, pkg_name: &str) -> Result<()> {
-        let root = self.ideal_tree.as_ref()
+        let root = self
+            .ideal_tree
+            .as_ref()
             .ok_or_else(|| anyhow::anyhow!("Ideal tree not initialized"))?;
 
         let current_node = get_node_from_root_by_path(root, pkg_path).await?;
@@ -609,7 +611,10 @@ impl Ruborist {
             if edge.name == pkg_name {
                 let to_guard = edge.to.read().unwrap();
                 let to_node = to_guard.as_ref().unwrap();
-                log_verbose(&format!("Fixing dependency: {}, from: {}, to: {}", edge.name, edge.from, to_node));
+                log_verbose(&format!(
+                    "Fixing dependency: {}, from: {}, to: {}",
+                    edge.name, edge.from, to_node
+                ));
                 *edge.valid.write().unwrap() = false;
                 build_deps(current_node.clone()).await?;
             }

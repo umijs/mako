@@ -21,10 +21,15 @@ pub async fn build_deps() -> Result<()> {
     let invalid_deps = validate_deps().await?;
     if !invalid_deps.is_empty() {
         for dep in invalid_deps {
-            log_verbose(&format!("Invalid dependency found: {}/{}", dep.package_path, dep.dependency_name));
+            log_verbose(&format!(
+                "Invalid dependency found: {}/{}",
+                dep.package_path, dep.dependency_name
+            ));
             // Try to fix the dependency
             if let Some(ideal_tree) = &ruborist.ideal_tree {
-                if let Err(e) = ruborist.fix_dep_path(&dep.package_path, &dep.dependency_name).await
+                if let Err(e) = ruborist
+                    .fix_dep_path(&dep.package_path, &dep.dependency_name)
+                    .await
                 {
                     log_verbose(&format!("Failed to fix dependency: {}", e));
                     return Err(anyhow::anyhow!("Failed to fix dependency: {}", e));
