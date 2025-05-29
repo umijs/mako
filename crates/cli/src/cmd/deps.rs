@@ -1,4 +1,6 @@
-use crate::helper::lock::{serialize_tree_to_packages, validate_deps, write_ideal_tree_to_lock_file};
+use crate::helper::lock::{
+    serialize_tree_to_packages, validate_deps, write_ideal_tree_to_lock_file,
+};
 use crate::helper::ruborist::Ruborist;
 use crate::util::json::load_package_json;
 use crate::util::logger::log_verbose;
@@ -31,7 +33,10 @@ pub async fn build_deps() -> Result<()> {
         }
 
         if retry_count >= MAX_RETRIES {
-            return Err(anyhow::anyhow!("Failed to fix dependencies after {} retries", MAX_RETRIES));
+            return Err(anyhow::anyhow!(
+                "Failed to fix dependencies after {} retries",
+                MAX_RETRIES
+            ));
         }
 
         for dep in invalid_deps {
@@ -47,7 +52,10 @@ pub async fn build_deps() -> Result<()> {
                 log_verbose(&format!("Failed to fix dependency: {}", e));
                 return Err(anyhow::anyhow!("Failed to fix dependency: {}", e));
             } else {
-                log_verbose(&format!("Fixed dependency: {}/{}", dep.package_path, dep.dependency_name));
+                log_verbose(&format!(
+                    "Fixed dependency: {}/{}",
+                    dep.package_path, dep.dependency_name
+                ));
             }
         }
 

@@ -661,7 +661,7 @@ mod tests {
                 "dependencies": {
                     "lodash": "^4.17.20"
                 }
-            })
+            }),
         );
 
         // Create a child node
@@ -671,7 +671,7 @@ mod tests {
             json!({
                 "name": "lodash",
                 "version": "4.17.20"
-            })
+            }),
         );
 
         // Add child to root
@@ -698,7 +698,7 @@ mod tests {
             json!({
                 "name": "test-package",
                 "version": "1.0.0"
-            })
+            }),
         );
 
         // Create Ruborist instance

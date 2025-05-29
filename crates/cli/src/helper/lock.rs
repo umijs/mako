@@ -263,7 +263,10 @@ pub async fn is_pkg_lock_outdated() -> Result<bool> {
     if let Some(root_pkg) = pkg_in_pkg_lock {
         for (dep_field, _is_optional) in get_dep_types() {
             if root_pkg.get(dep_field) != pkg_file.get(dep_field) {
-                log_warning(&format!("package-lock.json is outdated, {} changed", dep_field));
+                log_warning(&format!(
+                    "package-lock.json is outdated, {} changed",
+                    dep_field
+                ));
                 return Ok(false);
             }
         }
@@ -271,7 +274,10 @@ pub async fn is_pkg_lock_outdated() -> Result<bool> {
     Ok(true)
 }
 
-pub async fn validate_deps(pkg_file: &Value, pkgs_in_pkg_lock: &Value) -> Result<Vec<InvalidDependency>> {
+pub async fn validate_deps(
+    pkg_file: &Value,
+    pkgs_in_pkg_lock: &Value,
+) -> Result<Vec<InvalidDependency>> {
     let mut invalid_deps = Vec::new();
     // Initialize overrides
     let overrides = Overrides::new(pkg_file.clone()).parse(pkg_file.clone());
@@ -706,7 +712,7 @@ mod tests {
                 "dependencies": {
                     "lodash": "^4.17.20"
                 }
-            })
+            }),
         );
 
         // Test writing the ideal tree to lock file
