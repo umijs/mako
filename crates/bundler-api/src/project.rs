@@ -1210,11 +1210,14 @@ fn normalize_chunk_base_path(path: &RcStr) -> RcStr {
 }
 
 fn clean_directory(dist_path: &Path) -> Result<()> {
-    if dist_path.exists() {
-        tracing::info!("Cleaning dist directory: {}", dist_path.display());
+    let canonical_path = fs::canonicalize(dist_path)
+        .with_context(|| format!("Failed to canonicalize path: {}", dist_path.display()))?;
+
+    if canonical_path.exists() {
+        tracing::info!("Cleaning dist directory: {}", canonical_path.display());
 
         // Read directory entries
-        for entry in fs::read_dir(dist_path)? {
+        for entry in fs::read_dir(&canonical_path)? {
             let entry = entry?;
             let path = entry.path();
 
