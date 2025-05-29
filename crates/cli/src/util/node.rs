@@ -868,14 +868,17 @@ mod tests {
         }
 
         // Test finding deeply nested package
-        let result = get_node_from_root_by_path(&root, "node_modules/lodash/node_modules/express").await;
+        let result =
+            get_node_from_root_by_path(&root, "node_modules/lodash/node_modules/express").await;
         assert!(result.is_ok());
         let node = result.unwrap();
         assert_eq!(node.name, "express");
         assert_eq!(node.version, "4.17.1");
 
         // Test finding non-existent nested package
-        let result = get_node_from_root_by_path(&root, "node_modules/lodash/node_modules/non-existent").await;
+        let result =
+            get_node_from_root_by_path(&root, "node_modules/lodash/node_modules/non-existent")
+                .await;
         assert!(result.is_err());
     }
 }

@@ -376,7 +376,7 @@ pub async fn validate_deps(
                                 }
                             }
                         } else if !is_optional {
-                            log_warning(&format!(
+                            log_verbose(&format!(
                                 "pkg_path {} dep_field {} dep_name {} not found",
                                 pkg_path, dep_field, dep_name
                             ));
