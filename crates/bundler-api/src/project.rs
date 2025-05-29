@@ -1,8 +1,3 @@
-use std::{
-    path::{Path, PathBuf, MAIN_SEPARATOR},
-    time::Duration,
-    fs
-};
 use anyhow::{bail, Context, Result};
 use bundler_core::{
     all_assets_from_entries,
@@ -13,6 +8,11 @@ use bundler_core::{
     util::Runtime,
 };
 use serde::{Deserialize, Serialize};
+use std::{
+    fs,
+    path::{Path, PathBuf, MAIN_SEPARATOR},
+    time::Duration,
+};
 use tracing::Instrument;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{
@@ -951,7 +951,7 @@ impl Project {
                     tracing::warn!("Failed to clean dist directory: {}", e);
                 }
             }
-            
+
             let all_output_assets = all_assets_from_entries_operation(output_assets);
 
             let client_root = self.client_root();
