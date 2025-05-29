@@ -1,8 +1,8 @@
 use std::{
-    path::{PathBuf, MAIN_SEPARATOR},
+    path::{Path, PathBuf, MAIN_SEPARATOR},
     time::Duration,
+    fs
 };
-
 use anyhow::{bail, Context, Result};
 use bundler_core::{
     all_assets_from_entries,
@@ -939,6 +939,19 @@ impl Project {
     ) -> Result<()> {
         let span = tracing::info_span!("emitting");
         async move {
+            // clean dist director if configured
+            if self.config().output().await?.clean.is_some_and(|c| c) {
+                let this = self.await?;
+                let dist_dir = self.dist_dir().await?;
+
+                // Construct the complete absolute path by combining project_path and dist_dir
+                let dist_path = Path::new(&this.project_path).join(&*dist_dir);
+
+                if let Err(e) = clean_directory(&dist_path) {
+                    tracing::warn!("Failed to clean dist directory: {}", e);
+                }
+            }
+            
             let all_output_assets = all_assets_from_entries_operation(output_assets);
 
             let client_root = self.client_root();
@@ -1194,4 +1207,32 @@ fn normalize_chunk_base_path(path: &RcStr) -> RcStr {
         });
 
     path.into()
+}
+
+fn clean_directory(dist_path: &Path) -> Result<()> {
+    if dist_path.exists() {
+        tracing::info!("Cleaning dist directory: {}", dist_path.display());
+
+        // Read directory entries
+        for entry in fs::read_dir(dist_path)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_dir() {
+                if let Err(e) = fs::remove_dir_all(&path) {
+                    tracing::warn!("Failed to remove directory {}: {}", path.display(), e);
+                }
+            } else {
+                if let Err(e) = fs::remove_file(&path) {
+                    tracing::warn!("Failed to remove file {}: {}", path.display(), e);
+                }
+            }
+        }
+
+        tracing::info!("Dist directory cleaned successfully");
+    } else {
+        tracing::debug!("Dist directory does not exist, skipping clean");
+    }
+
+    Ok(())
 }

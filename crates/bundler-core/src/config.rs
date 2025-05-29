@@ -189,6 +189,7 @@ pub struct OutputConfig {
     pub chunk_filename: Option<RcStr>,
     // TODO: make sure this is needed
     pub r#type: Option<OutputType>,
+    pub clean: Option<bool>,
 }
 
 #[derive(
