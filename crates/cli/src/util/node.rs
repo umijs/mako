@@ -1,7 +1,7 @@
+use anyhow::Result;
 use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use anyhow::Result;
 
 use super::logger::log_verbose;
 use super::registry::resolve;
@@ -322,10 +322,10 @@ impl Node {
     pub async fn fix_dep_path(node: &Arc<Node>, pkg_path: &str, pkg_name: &str) -> Result<()> {
         // Split the path by node_modules to get the package hierarchy
         let path_parts: Vec<&str> = pkg_path
-            .trim_end_matches('/')  // Remove trailing slash
+            .trim_end_matches('/') // Remove trailing slash
             .split("node_modules/")
             .filter(|s| !s.is_empty())
-            .map(|s| s.trim_end_matches('/'))  // Remove trailing slash from each part
+            .map(|s| s.trim_end_matches('/')) // Remove trailing slash from each part
             .collect();
 
         // Start from the root node
@@ -349,7 +349,6 @@ impl Node {
                 result
             };
 
-
             if !found {
                 return Err(anyhow::anyhow!(
                     "Could not find package at path {}",
@@ -359,7 +358,6 @@ impl Node {
 
             println!("next_node: {}", next_node.as_ref().unwrap());
             current_node = next_node.unwrap();
-
         }
 
         // Now we have the target node, find and fix the dependency

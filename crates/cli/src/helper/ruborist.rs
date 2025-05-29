@@ -90,12 +90,12 @@ pub async fn build_deps(root: Arc<Node>) -> Result<()> {
                                 .await?;
                             PROGRESS_BAR.inc(1);
                             log_progress(&format!(
-                                "resolved deps {}@{} => {} (conflict), need to fork, conflict_node: {:?}",
-                                edge.name, &edge.spec, resolved.version, conflict_node.name
+                                "resolved deps {}@{} => {} (conflict), need to fork, conflict_node: {}",
+                                edge.name, &edge.spec, resolved.version, conflict_node
                             ));
                             log_verbose(&format!(
-                                "resolved deps {}@{} => {} (conflict), need to fork, conflict_node: {:?}",
-                                edge.name, &edge.spec, resolved.version, conflict_node.name
+                                "resolved deps {}@{} => {} (conflict), need to fork, conflict_node: {}",
+                                edge.name, &edge.spec, resolved.version, conflict_node
                             ));
                             // process conflict node
                             let install_parent = conflict_node;
