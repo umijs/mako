@@ -349,9 +349,15 @@ impl ChunkingContext for LibraryChunkingContext {
         extension: RcStr,
     ) -> Result<Vc<FileSystemPath>> {
         let root_path = self.output_root;
-        let name = ident_to_output_filename(ident, *self.root_path, extension.clone())
+        let mut name = ident_to_output_filename(ident, *self.root_path, extension.clone())
             .owned()
             .await?;
+
+        // Check if the name already ends with the extension
+        if !name.ends_with(&*extension) {
+            // If doesn't end with extension, add the provided extension
+            name = format!("{}{}", name, extension).into();
+        }
 
         Ok(root_path.join(name))
     }
