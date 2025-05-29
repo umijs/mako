@@ -1,5 +1,6 @@
-use crate::helper::lock::{validate_deps, write_ideal_tree_to_lock_file};
+use crate::helper::lock::{serialize_tree_to_packages, validate_deps, write_ideal_tree_to_lock_file};
 use crate::helper::ruborist::Ruborist;
+use crate::util::json::load_package_json;
 use crate::util::logger::log_verbose;
 use anyhow::{Context, Result};
 use serde_json::json;
@@ -12,41 +13,42 @@ pub async fn build_deps() -> Result<()> {
     let mut ruborist = Ruborist::new(path.clone());
     ruborist.build_ideal_tree().await?;
 
-    if let Some(ideal_tree) = &ruborist.ideal_tree {
-        // Add reference
-        // Create package-lock.json structure
-        write_ideal_tree_to_lock_file(ideal_tree).await?;
-    }
+    let pkg_file = load_package_json()?;
+    const MAX_RETRIES: u32 = 5;
+    let mut retry_count = 0;
 
-    let invalid_deps = validate_deps().await?;
-    if !invalid_deps.is_empty() {
+    loop {
+        let pkgs_in_tree = serialize_tree_to_packages(ruborist.ideal_tree.as_ref().unwrap());
+        let invalid_deps = validate_deps(&pkg_file, &pkgs_in_tree).await?;
+
+        if invalid_deps.is_empty() {
+            break;
+        }
+
+        if retry_count >= MAX_RETRIES {
+            return Err(anyhow::anyhow!("Failed to fix dependencies after {} retries", MAX_RETRIES));
+        }
+
         for dep in invalid_deps {
             log_verbose(&format!(
                 "Invalid dependency found: {}/{}",
                 dep.package_path, dep.dependency_name
             ));
             // Try to fix the dependency
-            if let Some(ideal_tree) = &ruborist.ideal_tree {
-                if let Err(e) = ruborist
-                    .fix_dep_path(&dep.package_path, &dep.dependency_name)
-                    .await
-                {
-                    log_verbose(&format!("Failed to fix dependency: {}", e));
-                    return Err(anyhow::anyhow!("Failed to fix dependency: {}", e));
-                } else {
-                    write_ideal_tree_to_lock_file(ideal_tree).await?;
-                }
+            if let Err(e) = ruborist
+                .fix_dep_path(&dep.package_path, &dep.dependency_name)
+                .await
+            {
+                log_verbose(&format!("Failed to fix dependency: {}", e));
+                return Err(anyhow::anyhow!("Failed to fix dependency: {}", e));
             }
         }
+
+        retry_count += 1;
     }
 
-    let invalid_deps = validate_deps().await?;
-    if !invalid_deps.is_empty() {
-        println!("Invalid dependencies found:");
-        for dep in invalid_deps {
-            println!("Package path: {}", dep.package_path);
-            println!("Dependency name: {}", dep.dependency_name);
-        }
+    if let Some(ideal_tree) = &ruborist.ideal_tree {
+        write_ideal_tree_to_lock_file(ideal_tree).await?;
     }
 
     Ok(())

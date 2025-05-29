@@ -70,8 +70,7 @@ pub async fn ensure_package_lock() -> Result<()> {
         // load package-lock.json directly if exists
         log_info("Loading package-lock.json from current project for dependency download");
         // Validate dependencies to ensure package-lock.json is in sync with package.json
-        if let Err(e) = validate_deps().await {
-            log_info(&format!("package-lock.json is outdated, {}", e));
+        if is_pkg_lock_outdated().await? {
             build_deps().await?;
         }
         Ok(())
@@ -252,15 +251,9 @@ pub struct InvalidDependency {
     pub dependency_name: String,
 }
 
-pub async fn validate_deps() -> Result<Vec<InvalidDependency>> {
-    let mut invalid_deps = Vec::new();
-    // Read package.json for overrides
+pub async fn is_pkg_lock_outdated() -> Result<bool> {
     let pkg_file = load_package_json()?;
-    // Initialize overrides
-    let overrides = Overrides::new(pkg_file.clone()).parse(pkg_file.clone());
-
     let lock_file = load_package_lock_json()?;
-
     // check package-lock.json packages and package.json dependencies are the same
     let pkg_in_pkg_lock = lock_file
         .get("packages")
@@ -270,12 +263,20 @@ pub async fn validate_deps() -> Result<Vec<InvalidDependency>> {
     if let Some(root_pkg) = pkg_in_pkg_lock {
         for (dep_field, _is_optional) in get_dep_types() {
             if root_pkg.get(dep_field) != pkg_file.get(dep_field) {
-                return Ok(invalid_deps);
+                log_warning(&format!("package-lock.json is outdated, {} changed", dep_field));
+                return Ok(false);
             }
         }
     }
+    Ok(true)
+}
 
-    if let Some(packages) = lock_file.get("packages").and_then(|p| p.as_object()) {
+pub async fn validate_deps(pkg_file: &Value, pkgs_in_pkg_lock: &Value) -> Result<Vec<InvalidDependency>> {
+    let mut invalid_deps = Vec::new();
+    // Initialize overrides
+    let overrides = Overrides::new(pkg_file.clone()).parse(pkg_file.clone());
+
+    if let Some(packages) = pkgs_in_pkg_lock.as_object() {
         for (pkg_path, pkg_info) in packages {
             for (dep_field, is_optional) in get_dep_types() {
                 if let Some(dependencies) = pkg_info.get(dep_field).and_then(|d| d.as_object()) {
