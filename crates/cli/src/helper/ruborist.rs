@@ -12,7 +12,7 @@ use crate::util::json::load_package_json;
 use crate::util::logger::{
     finish_progress_bar, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
 };
-use crate::util::node::{Edge, EdgeType, Node};
+use crate::util::node::{get_node_from_root_by_path, Edge, EdgeType, Node};
 use crate::util::registry::{load_cache, resolve, store_cache, ResolvedPackage};
 use crate::util::semver::matches;
 
@@ -592,6 +592,27 @@ impl Ruborist {
         // 4. rebuild deps
         for from_node in edges_from {
             build_deps(from_node).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn fix_dep_path(&self, pkg_path: &str, pkg_name: &str) -> Result<()> {
+        let root = self.ideal_tree.as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Ideal tree not initialized"))?;
+
+        let current_node = get_node_from_root_by_path(root, pkg_path).await?;
+
+        // Now we have the target node, find and fix the dependency
+        let edges = current_node.edges_out.read().unwrap();
+        for edge in edges.iter() {
+            if edge.name == pkg_name {
+                let to_guard = edge.to.read().unwrap();
+                let to_node = to_guard.as_ref().unwrap();
+                log_verbose(&format!("Fixing dependency: {}, from: {}, to: {}", edge.name, edge.from, to_node));
+                *edge.valid.write().unwrap() = false;
+                build_deps(current_node.clone()).await?;
+            }
         }
 
         Ok(())

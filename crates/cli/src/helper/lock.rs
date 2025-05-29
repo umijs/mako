@@ -1,13 +1,14 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::{collections::HashMap, fs};
 
 use crate::util::config::get_legacy_peer_deps;
 use crate::util::json::{load_package_json, load_package_lock_json};
 use crate::util::logger::{log_verbose, log_warning};
-use crate::util::node::Overrides;
+use crate::util::node::{Node, Overrides};
 use crate::util::registry::resolve;
 use crate::util::save_type::{PackageAction, SaveType};
 use crate::util::semver;
@@ -403,6 +404,180 @@ fn get_dep_types() -> Vec<(&'static str, bool)> {
             ("devDependencies", false),
         ]
     }
+}
+
+
+pub async fn write_ideal_tree_to_lock_file(ideal_tree: &Arc<Node>) -> Result<()> {
+    let path = PathBuf::from(".");
+    let lock_file = json!({
+        "name": ideal_tree.name,  // Direct field access
+        "version": ideal_tree.version,  // Direct field access
+        "lockfileVersion": 3,
+        "requires": true,
+        "packages": serialize_tree_to_packages(ideal_tree),
+    });
+
+    // Write to temporary file first, then atomically move to target location
+    let temp_path = path.join("package-lock.json.tmp");
+    let target_path = path.join("package-lock.json");
+
+    fs::write(&temp_path, serde_json::to_string_pretty(&lock_file)?)
+        .context("Failed to write temporary package-lock.json")?;
+
+    fs::rename(temp_path, target_path)
+        .context("Failed to rename temporary package-lock.json")?;
+
+    Ok(())
+}
+
+pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
+    let mut packages = json!({});
+    let mut stack = vec![(node.clone(), String::new())];
+    let mut total_packages = 0;
+
+    while let Some((current, prefix)) = stack.pop() {
+        let children = current.children.read().unwrap();
+        let mut name_count = HashMap::new();
+        for child in children.iter() {
+            if !child.is_link {
+                *name_count.entry(child.name.as_str()).or_insert(0) += 1;
+            }
+        }
+        for (name, count) in name_count {
+            if count > 1 {
+                log_warning(&format!(
+                    "Found {} duplicate dependencies named '{}' under '{}'",
+                    count, name, current.name
+                ));
+            }
+        }
+        let mut pkg_info = if current.is_root {
+            json!({
+                "name": current.name,
+                "version": current.version,
+            })
+        } else {
+            let mut info = json!({
+                "name": current.package.get("name"),
+            });
+
+            if current.is_workspace {
+            } else if current.is_link {
+                // update resolved field
+                info["link"] = json!(true);
+                // resolvd => targetNode#path
+                info["resolved"] = json!(current
+                    .target
+                    .read()
+                    .unwrap()
+                    .as_ref()
+                    .unwrap()
+                    .path
+                    .to_string_lossy());
+            } else {
+                info["version"] = json!(current.package.get("version"));
+                info["resolved"] = json!(current
+                    .package
+                    .get("dist")
+                    .unwrap_or(&json!(""))
+                    .get("tarball"));
+                info["integrity"] = json!(current
+                    .package
+                    .get("dist")
+                    .unwrap_or(&json!(""))
+                    .get("integrity"));
+                total_packages += 1;
+            }
+
+            if *current.is_peer.read().unwrap() == Some(true) {
+                info["peer"] = json!(true);
+            }
+
+            let is_dev = *current.is_dev.read().unwrap() == Some(true);
+            let is_optional = *current.is_optional.read().unwrap() == Some(true);
+
+            if is_dev && is_optional {
+                info["devOptional"] = json!(true);
+            } else if is_dev {
+                info["dev"] = json!(true);
+            } else if is_optional {
+                info["optional"] = json!(true);
+            }
+
+            // hasBin
+            if current.package.get("hasInstallScript") == Some(&json!(true)) {
+                info["hasInstallScript"] = json!(true);
+            }
+
+            info
+        };
+
+        // add dependencies field
+        let fields = if current.is_link {
+            vec![]
+        } else if current.is_root || current.is_workspace {
+            vec![
+                "dependencies",
+                "devDependencies",
+                "peerDependencies",
+                "optionalDependencies",
+            ]
+        } else {
+            vec![
+                "dependencies",
+                "peerDependencies",
+                "optionalDependencies",
+                "bin",
+                "license",
+                "engines",
+                "os",
+                "cpu",
+            ]
+        };
+
+        for field in fields.iter() {
+            if let Some(deps) = current.package.get(field) {
+                if deps.is_object() {
+                    if !deps.as_object().unwrap().is_empty() {
+                        pkg_info[field] = deps.clone();
+                    }
+                } else {
+                    // compatible for string type
+                    pkg_info[field] = deps.clone();
+                }
+            }
+        }
+
+        // use "" for root node
+        let key = if prefix.is_empty() {
+            "".to_string()
+        } else {
+            prefix.clone()
+        };
+        packages[key] = pkg_info;
+
+        // process children
+        let children = current.children.read().unwrap();
+
+        for child in children.iter() {
+            let child_prefix = if prefix.is_empty() {
+                if child.is_workspace {
+                    format!("{}", child.path.to_string_lossy())
+                } else {
+                    format!("node_modules/{}", child.name)
+                }
+            } else {
+                format!("{}/node_modules/{}", &prefix, child.name)
+            };
+            stack.push((child.clone(), child_prefix));
+        }
+    }
+
+    log_info(&format!(
+        "Total {} dependencies after merging",
+        total_packages
+    ));
+    packages
 }
 
 #[cfg(test)]

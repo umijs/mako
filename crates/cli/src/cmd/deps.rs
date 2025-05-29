@@ -1,7 +1,6 @@
-use crate::helper::lock::validate_deps;
-use crate::helper::{package::serialize_tree_to_packages, ruborist::Ruborist};
+use crate::helper::lock::{validate_deps, write_ideal_tree_to_lock_file};
+use crate::helper::ruborist::Ruborist;
 use crate::util::logger::log_verbose;
-use crate::util::node::Node;
 use anyhow::{Context, Result};
 use serde_json::json;
 use std::collections::HashSet;
@@ -16,56 +15,21 @@ pub async fn build_deps() -> Result<()> {
     if let Some(ideal_tree) = &ruborist.ideal_tree {
         // Add reference
         // Create package-lock.json structure
-        let lock_file = json!({
-            "name": ideal_tree.name,  // Direct field access
-            "version": ideal_tree.version,  // Direct field access
-            "lockfileVersion": 3,
-            "requires": true,
-            "packages": serialize_tree_to_packages(ideal_tree),
-        });
-
-        // Write to temporary file first, then atomically move to target location
-        let temp_path = path.join("package-lock.json.tmp");
-        let target_path = path.join("package-lock.json");
-
-        fs::write(&temp_path, serde_json::to_string_pretty(&lock_file)?)
-            .context("Failed to write temporary package-lock.json")?;
-
-        fs::rename(temp_path, target_path)
-            .context("Failed to rename temporary package-lock.json")?;
+        write_ideal_tree_to_lock_file(ideal_tree).await?;
     }
 
     let invalid_deps = validate_deps().await?;
     if !invalid_deps.is_empty() {
         for dep in invalid_deps {
             log_verbose(&format!("Invalid dependency found: {}/{}", dep.package_path, dep.dependency_name));
-
             // Try to fix the dependency
             if let Some(ideal_tree) = &ruborist.ideal_tree {
-                if let Err(e) =
-                    Node::fix_dep_path(ideal_tree, &dep.package_path, &dep.dependency_name).await
+                if let Err(e) = ruborist.fix_dep_path(&dep.package_path, &dep.dependency_name).await
                 {
                     log_verbose(&format!("Failed to fix dependency: {}", e));
                     return Err(anyhow::anyhow!("Failed to fix dependency: {}", e));
                 } else {
-                    log_verbose("Successfully fixed dependency");
-                    let lock_file = json!({
-                        "name": ideal_tree.name,  // Direct field access
-                        "version": ideal_tree.version,  // Direct field access
-                        "lockfileVersion": 3,
-                        "requires": true,
-                        "packages": serialize_tree_to_packages(ideal_tree),
-                    });
-
-                    // Write to temporary file first, then atomically move to target location
-                    let temp_path = path.join("package-lock.json.tmp");
-                    let target_path = path.join("package-lock.json");
-
-                    fs::write(&temp_path, serde_json::to_string_pretty(&lock_file)?)
-                        .context("Failed to write temporary package-lock.json")?;
-
-                    fs::rename(temp_path, target_path)
-                        .context("Failed to rename temporary package-lock.json")?;
+                    write_ideal_tree_to_lock_file(ideal_tree).await?;
                 }
             }
         }
