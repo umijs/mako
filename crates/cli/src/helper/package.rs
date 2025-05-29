@@ -1,10 +1,3 @@
-use crate::util::{
-    logger::{log_info, log_warning},
-    node::Node,
-};
-use serde_json::{json, Value};
-use std::{collections::HashMap, sync::Arc};
-
 pub fn parse_package_name(path: &str) -> (Option<String>, String, String) {
     let parts: Vec<&str> = path.split('/').collect();
     let len = parts.len();

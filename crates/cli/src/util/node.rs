@@ -6,7 +6,6 @@ use std::sync::{Arc, RwLock};
 use super::logger::log_verbose;
 use super::registry::resolve;
 use super::semver::is_valid_version;
-use crate::helper::ruborist::build_deps;
 use crate::util::semver::matches;
 
 #[derive(Debug, Clone, PartialEq)]

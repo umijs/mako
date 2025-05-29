@@ -1,7 +1,7 @@
 use crate::helper::lock::{serialize_tree_to_packages, validate_deps, write_ideal_tree_to_lock_file};
 use crate::helper::ruborist::Ruborist;
 use crate::util::json::load_package_json;
-use crate::util::logger::{log_info, log_verbose};
+use crate::util::logger::log_verbose;
 use anyhow::{Context, Result};
 use serde_json::json;
 use std::collections::HashSet;
