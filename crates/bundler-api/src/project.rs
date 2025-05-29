@@ -592,14 +592,15 @@ impl Project {
 
     #[turbo_tasks::function]
     pub async fn dist_dir(&self) -> Result<Vc<RcStr>> {
-        Ok(Vc::cell(
-            self.config
-                .output()
-                .await?
-                .path
-                .clone()
-                .unwrap_or("./dist".into()),
-        ))
+        let dist_path = self
+            .config
+            .output()
+            .await?
+            .path
+            .as_ref()
+            .map_or("dist".into(), normalize_chunk_base_path);
+
+        Ok(Vc::cell(dist_path))
     }
 
     #[turbo_tasks::function]
@@ -850,6 +851,7 @@ impl Project {
             self.project_root(),
             self.client_root(),
             Vc::cell("/ROOT".into()),
+            Vc::cell(Some(self.dist_dir().await?.as_str().into())),
             self.client_compile_time_info().environment(),
             self.mode(),
             self.module_ids(),
@@ -1174,4 +1176,22 @@ pub struct ProjectInstance {
     pub turbo_tasks: BundlerTurboTasks,
     pub container: Vc<ProjectContainer>,
     pub exit_receiver: tokio::sync::Mutex<Option<ExitReceiver>>,
+}
+
+fn normalize_chunk_base_path(path: &RcStr) -> RcStr {
+    let path_buff = PathBuf::from(path);
+    let path = path_buff
+        .components()
+        .enumerate()
+        .fold(String::new(), |mut path, (idx, c)| {
+            if let Some(str) = c.as_os_str().to_str() {
+                if !(idx == 0 && str == ".") {
+                    path.push_str(str);
+                    path.push('/');
+                }
+            }
+            path
+        });
+
+    path.into()
 }

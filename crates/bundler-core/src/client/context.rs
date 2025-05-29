@@ -402,8 +402,9 @@ pub async fn get_client_resolve_options_context(
 #[turbo_tasks::function]
 pub async fn get_client_chunking_context(
     root_path: ResolvedVc<FileSystemPath>,
-    client_root: ResolvedVc<FileSystemPath>,
-    client_root_to_root_path: ResolvedVc<RcStr>,
+    output_root: ResolvedVc<FileSystemPath>,
+    output_root_to_root_path: ResolvedVc<RcStr>,
+    chunk_base_path: ResolvedVc<Option<RcStr>>,
     environment: ResolvedVc<Environment>,
     mode: Vc<Mode>,
     module_id_strategy: ResolvedVc<Box<dyn ModuleIdStrategy>>,
@@ -416,11 +417,11 @@ pub async fn get_client_chunking_context(
     let mode = mode.await?;
     let mut builder = BrowserChunkingContext::builder(
         root_path,
-        client_root,
-        client_root_to_root_path,
-        client_root,
-        client_root,
-        client_root,
+        output_root,
+        output_root_to_root_path,
+        output_root,
+        output_root,
+        output_root,
         environment,
         mode.runtime_type(),
     )
@@ -436,6 +437,7 @@ pub async fn get_client_chunking_context(
     } else {
         SourceMapsType::None
     })
+    .chunk_base_path(chunk_base_path)
     .current_chunk_method(CurrentChunkMethod::DocumentCurrentScript)
     .module_id_strategy(module_id_strategy);
 
