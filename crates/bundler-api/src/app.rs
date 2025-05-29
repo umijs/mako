@@ -3,10 +3,11 @@ use bundler_core::client::context::{
     get_client_module_options_context, get_client_resolve_options_context,
     get_client_runtime_entries,
 };
+use futures::stream::{self, StreamExt};
 use qstring::QString;
 use tracing::{info_span, Instrument};
 use turbo_rcstr::RcStr;
-use turbo_tasks::{Completion, JoinIterExt, ResolvedVc, Value, Vc};
+use turbo_tasks::{Completion, JoinIterExt, ResolvedVc, TryJoinIterExt, Value, Vc};
 use turbopack::{
     module_options::ModuleOptionsContext, resolve_options_context::ResolveOptionsContext,
     transition::TransitionOptions, ModuleAssetContext,
@@ -16,6 +17,7 @@ use turbopack_core::{
         availability_info::AvailabilityInfo, ChunkGroupResult, ChunkingContext, EvaluatableAsset,
         EvaluatableAssets,
     },
+    context::AssetContext,
     ident::AssetIdent,
     module::Module,
     module_graph::{
@@ -35,19 +37,13 @@ use crate::{
     project::Project,
 };
 
-#[turbo_tasks::value]
-pub struct App {
-    pub name: RcStr,
-    pub import: RcStr,
-}
-
 #[turbo_tasks::value(transparent)]
-pub struct Apps(pub Vec<App>);
+pub struct AppEntripoints(pub Vec<AppEntrypoint>);
 
 #[turbo_tasks::value]
 pub struct AppProject {
     pub project: ResolvedVc<Project>,
-    pub apps: ResolvedVc<Apps>,
+    pub apps: ResolvedVc<AppEntripoints>,
 }
 
 #[turbo_tasks::value(transparent)]
@@ -56,27 +52,27 @@ pub struct OptionAppProject(Option<ResolvedVc<AppProject>>);
 #[turbo_tasks::value_impl]
 impl AppProject {
     #[turbo_tasks::function]
-    pub fn new(project: ResolvedVc<Project>, apps: ResolvedVc<Apps>) -> Vc<Self> {
+    pub fn new(project: ResolvedVc<Project>, apps: ResolvedVc<AppEntripoints>) -> Vc<Self> {
         Self { project, apps }.cell()
     }
 
     #[turbo_tasks::function]
-    pub fn apps(&self) -> Vc<Apps> {
+    pub fn apps(&self) -> Vc<AppEntripoints> {
         *self.apps
     }
 
     #[turbo_tasks::function]
-    pub async fn get_app_endpoints(self: Vc<Self>) -> Result<Vc<AppEndpoints>> {
+    pub async fn get_app_endpoint(self: Vc<Self>) -> Result<Vc<AppEndpoint>> {
         let this = self.await?;
 
         let project = this.project;
 
-        let endpoints = this
+        let entrypoints = this
             .apps
             .await?
             .iter()
             .map(|a| async move {
-                AppEndpoint {
+                AppEntrypoint {
                     project,
                     name: a.name.clone(),
                     import: a.import.clone(),
@@ -86,25 +82,165 @@ impl AppProject {
             .join()
             .await;
 
-        Ok(AppEndpoints(endpoints).cell())
+        Ok(AppEndpoint {
+            project,
+            entrypoints,
+        }
+        .cell())
+    }
+}
+
+#[turbo_tasks::value]
+pub struct AppEntrypoint {
+    pub project: ResolvedVc<Project>,
+    pub name: RcStr,
+    pub import: RcStr,
+}
+
+#[turbo_tasks::value_impl]
+impl AppEntrypoint {
+    #[turbo_tasks::function]
+    fn project(&self) -> Vc<Project> {
+        *self.project
+    }
+
+    #[turbo_tasks::function]
+    pub async fn entry_module(
+        self: Vc<Self>,
+        asset_context: Vc<Box<dyn AssetContext>>,
+    ) -> Result<Vc<Box<dyn Module>>> {
+        let this = self.await?;
+        let entry_request = Request::relative(
+            Value::new(this.import.clone().into()),
+            Default::default(),
+            Default::default(),
+            false,
+        );
+
+        let project_dir = self.project().await?.project_path.clone();
+
+        let origin = PlainResolveOrigin::new(
+            asset_context,
+            self.project().project_path().join("_".into()),
+        );
+
+        let entry_module = async move {
+            let ty = Value::new(ReferenceType::Entry(EntryReferenceSubType::Undefined));
+
+            let request = entry_request.await?;
+            origin
+                .resolve_asset(entry_request, origin.resolve_options(ty.clone()), ty)
+                .await?
+                .first_module()
+                .await?
+                .with_context(|| {
+                    format!(
+                        "Unable to resolve entry {} from directory {}.",
+                        request.request().unwrap(),
+                        project_dir
+                    )
+                })
+        }
+        .await?;
+
+        Ok(*entry_module)
+    }
+
+    #[turbo_tasks::function]
+    async fn entry_evaluatable_assets(
+        self: Vc<Self>,
+        asset_context: Vc<Box<dyn AssetContext>>,
+        // runtime_entries: Vc<EvaluatableAssets>,
+    ) -> Result<Vc<Box<dyn EvaluatableAsset>>> {
+        let app_main_module = self.entry_module(asset_context);
+
+        let Some(app_main_module) =
+            Vc::try_resolve_sidecast::<Box<dyn EvaluatableAsset>>(app_main_module).await?
+        else {
+            bail!("expected an evaluateable asset");
+        };
+
+        // let evaluatable_assets = runtime_entries.with_entry(app_main_module);
+
+        Ok(app_main_module)
+    }
+
+    #[turbo_tasks::function]
+    async fn module_graph_for_entry(
+        self: Vc<Self>,
+        asset_context: Vc<Box<dyn AssetContext>>,
+    ) -> Result<Vc<ModuleGraph>> {
+        let project = self.project();
+        let evaluatable_asset = self.entry_evaluatable_assets(asset_context);
+        Ok(project.module_graph_for_modules(EvaluatableAssets::many(vec![evaluatable_asset])))
+    }
+
+    #[turbo_tasks::function]
+    async fn chunk_group_for_entry(
+        self: Vc<Self>,
+        asset_context: Vc<Box<dyn AssetContext>>,
+    ) -> Result<Vc<ChunkGroupResult>> {
+        async move {
+            let this = self.await?;
+
+            let project = self.project();
+
+            let app_chunking_context = project.client_chunking_context();
+
+            let module_graph = self.module_graph_for_entry(asset_context);
+
+            let query = QString::new(vec![("name", this.name.as_str())]).to_string();
+
+            let app_chunk_group = app_chunking_context.evaluated_chunk_group(
+                AssetIdent::from_path(project.project_root().join(this.import.clone()))
+                    .with_query(Vc::cell(query.into())),
+                ChunkGroup::Entry(
+                    [self.entry_module(asset_context).to_resolved().await?]
+                        .into_iter()
+                        .collect(),
+                ),
+                module_graph,
+                Value::new(AvailabilityInfo::Root),
+            );
+
+            Ok(app_chunk_group)
+        }
+        .instrument(tracing::info_span!("app chunk rendering"))
+        .await
+    }
+
+    #[turbo_tasks::function]
+    pub async fn output_assets_for_entry(
+        self: Vc<Self>,
+        asset_context: Vc<Box<dyn AssetContext>>,
+    ) -> Result<Vc<OutputAssets>> {
+        let chunk_group_assets = *self.chunk_group_for_entry(asset_context).await?.assets;
+        Ok(chunk_group_assets)
     }
 }
 
 #[turbo_tasks::value]
 pub struct AppEndpoint {
-    project: ResolvedVc<Project>,
-    name: RcStr,
-    import: RcStr,
+    pub project: ResolvedVc<Project>,
+    pub entrypoints: Vec<ResolvedVc<AppEntrypoint>>,
 }
-
-#[turbo_tasks::value(transparent)]
-pub struct AppEndpoints(pub Vec<ResolvedVc<AppEndpoint>>);
 
 #[turbo_tasks::value_impl]
 impl AppEndpoint {
     #[turbo_tasks::function]
     fn project(&self) -> Vc<Project> {
         *self.project
+    }
+
+    #[turbo_tasks::function]
+    async fn app_runtime_entries(self: Vc<Self>) -> Result<Vc<EvaluatableAssets>> {
+        Ok(get_client_runtime_entries(
+            self.project().project_path(),
+            self.project().mode(),
+            self.project().config(),
+            self.project().execution_context(),
+        )
+        .resolve_entries(Vc::upcast(self.app_module_context())))
     }
 
     #[turbo_tasks::function]
@@ -144,139 +280,55 @@ impl AppEndpoint {
             self.project().execution_context(),
         ))
     }
-
-    #[turbo_tasks::function]
-    async fn app_runtime_entries(self: Vc<Self>) -> Result<Vc<EvaluatableAssets>> {
-        Ok(get_client_runtime_entries(
-            self.project().project_path(),
-            self.project().mode(),
-            self.project().config(),
-            self.project().execution_context(),
-        )
-        .resolve_entries(Vc::upcast(self.app_module_context())))
-    }
-
-    #[turbo_tasks::function]
-    pub async fn app_main_module(self: Vc<Self>) -> Result<Vc<Box<dyn Module>>> {
-        let this = self.await?;
-        let entry_request = Request::relative(
-            Value::new(this.import.clone().into()),
-            Default::default(),
-            Default::default(),
-            false,
-        );
-
-        let project_dir = self.project().await?.project_path.clone();
-
-        let asset_context = Vc::upcast(self.app_module_context());
-        let origin = PlainResolveOrigin::new(
-            asset_context,
-            self.project().project_path().join("_".into()),
-        );
-
-        let entry_module = async move {
-            let ty = Value::new(ReferenceType::Entry(EntryReferenceSubType::Undefined));
-
-            let request = entry_request.await?;
-            origin
-                .resolve_asset(entry_request, origin.resolve_options(ty.clone()), ty)
-                .await?
-                .first_module()
-                .await?
-                .with_context(|| {
-                    format!(
-                        "Unable to resolve entry {} from directory {}.",
-                        request.request().unwrap(),
-                        project_dir
-                    )
-                })
-        }
-        .await?;
-
-        Ok(*entry_module)
-    }
-
-    #[turbo_tasks::function]
-    async fn app_evaluatable_assets(self: Vc<Self>) -> Result<Vc<EvaluatableAssets>> {
-        let app_main_module = self.app_main_module();
-
-        let Some(app_main_module) =
-            Vc::try_resolve_sidecast::<Box<dyn EvaluatableAsset>>(app_main_module).await?
-        else {
-            bail!("expected an evaluateable asset");
-        };
-
-        let evaluatable_assets = self.app_runtime_entries().with_entry(app_main_module);
-
-        Ok(evaluatable_assets)
-    }
-
-    #[turbo_tasks::function]
-    async fn app_module_graph(self: Vc<Self>) -> Result<Vc<ModuleGraph>> {
-        let project = self.project();
-        let evaluatable_assets = self.app_evaluatable_assets();
-        Ok(project.module_graph_for_modules(evaluatable_assets))
-    }
-
-    #[turbo_tasks::function]
-    async fn app_chunk(self: Vc<Self>) -> Result<Vc<ChunkGroupResult>> {
-        async move {
-            let this = self.await?;
-
-            let project = self.project();
-
-            let app_chunking_context = project.client_chunking_context();
-
-            let module_graph = self.app_module_graph();
-
-            let query = QString::new(vec![("name", this.name.as_str())]).to_string();
-
-            let app_chunk_group = app_chunking_context.evaluated_chunk_group(
-                AssetIdent::from_path(project.project_root().join(this.import.clone()))
-                    .with_query(Vc::cell(query.into())),
-                ChunkGroup::Entry(
-                    [self.app_main_module().to_resolved().await?]
-                        .into_iter()
-                        .collect(),
-                ),
-                module_graph,
-                Value::new(AvailabilityInfo::Root),
-            );
-
-            Ok(app_chunk_group)
-        }
-        .instrument(tracing::info_span!("app chunk rendering"))
-        .await
-    }
-
-    #[turbo_tasks::function]
-    pub async fn output_assets(self: Vc<Self>) -> Result<Vc<OutputAssets>> {
-        let chunk_group_assets = *self.app_chunk().await?.assets;
-        Ok(chunk_group_assets)
-    }
 }
 
 #[turbo_tasks::value_impl]
 impl Endpoint for AppEndpoint {
     #[turbo_tasks::function]
     async fn entries(self: Vc<Self>) -> Result<Vc<GraphEntries>> {
-        let mut entry_modules: Vec<ResolvedVc<Box<dyn Module>>> = self
-            .app_runtime_entries()
-            .await?
+        let this = self.await?;
+
+        let asset_context = self.app_module_context();
+
+        let mut entries = this
+            .entrypoints
             .iter()
-            .copied()
-            .map(ResolvedVc::upcast)
-            .collect();
-        entry_modules.push(self.app_main_module().to_resolved().await?);
-        Ok(Vc::cell(vec![ChunkGroupEntry::Entry(entry_modules)]))
+            .map(|e| async {
+                let entry_module = (**e)
+                    .entry_module(Vc::upcast(asset_context))
+                    .to_resolved()
+                    .await?;
+                Ok(ChunkGroupEntry::Entry(vec![{ entry_module }]))
+            })
+            .try_join()
+            .await?;
+
+        // TODO: should be in shared referenced chunk, finish this when working on HMR
+        entries.push(ChunkGroupEntry::Entry(
+            self.app_runtime_entries()
+                .await?
+                .iter()
+                .copied()
+                .map(ResolvedVc::upcast)
+                .collect(),
+        ));
+        Ok(Vc::cell(entries))
     }
 
     #[turbo_tasks::function]
     async fn output(self: Vc<Self>) -> Result<Vc<EndpointOutput>> {
         let span = info_span!("app endpoint");
+
+        let asset_context = self.app_module_context();
+
         async move {
             let this = self.await?;
-            let output_assets = self.output_assets();
+            let output_assets = stream::iter(&*self.await?.entrypoints)
+                .fold(OutputAssets::new(vec![]), |acc, e| async move {
+                    acc.concatenate((*e).output_assets_for_entry(Vc::upcast(asset_context)))
+                })
+                .await;
+
             let dist_root = self.project().dist_root().await?;
 
             let (server_paths, client_paths) = (vec![], vec![]);
