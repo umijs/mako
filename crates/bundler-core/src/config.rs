@@ -111,7 +111,6 @@ pub struct Config {
     persistent_caching: Option<bool>,
     cache_handler: Option<RcStr>,
     externals: Option<FxIndexMap<RcStr, ExternalConfig>>,
-    clean_dist_dir: Option<bool>,
 }
 
 #[derive(
@@ -593,8 +592,8 @@ impl Config {
         let externals = self
             .externals
             .as_ref()
-            .unwrap_or(&FxIndexMap::default())
-            .clone();
+            .map(|ext| ext.clone())
+            .unwrap_or_default();
 
         ExternalsConfig(externals).cell()
     }
