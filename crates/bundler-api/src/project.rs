@@ -110,7 +110,7 @@ pub struct ProjectOptions {
     /// A path inside the root_path which contains the app directories.
     pub project_path: RcStr,
 
-    /// The contents of next.config.js, serialized to JSON.
+    /// The contents of bundler config, serialized to JSON.
     pub config: RcStr,
 
     /// A map of environment variables to use when compiling code.
