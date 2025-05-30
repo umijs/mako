@@ -590,13 +590,11 @@ impl Config {
 
     #[turbo_tasks::function]
     pub fn externals_config(&self) -> Vc<ExternalsConfig> {
-        let externals: FxIndexMap<RcStr, ExternalConfig> = self
+        let externals = self
             .externals
             .as_ref()
             .unwrap_or(&FxIndexMap::default())
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
+            .clone();
 
         ExternalsConfig(externals).cell()
     }
