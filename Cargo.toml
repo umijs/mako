@@ -84,3 +84,11 @@ turbopack-dev-server = { git = "https://github.com/umijs/next.js.git", package =
 
 [workspace.lints.clippy]
 too_many_arguments = "allow"
+
+
+# # Uncomment this for Xcode instruments profiling
+# [profile.release]
+# debug = true
+# strip = false
+# # cargo build --release --bin bundler-cli 
+# # xcrun xctrace record --template "Time Profiler" --launch -- ./target/release/bundler-cli --mode build --project-dir ./examples/multiple-entries-heavy --root-dir .

@@ -42,7 +42,6 @@ swc_core = { workspace = true, features = [
   "ecma_transforms_typescript",
   "ecma_utils",
   "ecma_visit",
-  "ecma_visit_serde",
 ] }
 
 turbo-rcstr = { workspace = true }
