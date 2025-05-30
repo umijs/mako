@@ -77,7 +77,7 @@ impl PackageInfo {
 
     pub fn from_path(path: &Path) -> Result<Self> {
         // Read package.json
-        let data = load_package_json_from_path(&path)?;
+        let data = load_package_json_from_path(path)?;
 
         // Parse package name
         let name = data["name"]
