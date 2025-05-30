@@ -54,7 +54,7 @@ use turbopack_nodejs::NodeJsChunkingContext;
 use turbopack_trace_utils::exit::ExitReceiver;
 
 use crate::{
-    app::{App, AppProject, OptionAppProject},
+    app::{AppEntrypoint, AppProject, OptionAppProject},
     endpoints::{Endpoint, Endpoints},
     entrypoints::Entrypoints,
     library::{Library, LibraryProject, OptionLibraryProject},
@@ -536,7 +536,7 @@ impl Project {
     #[turbo_tasks::function]
     pub async fn app_project(self: Vc<Self>) -> Result<Vc<OptionAppProject>> {
         let this = self.await?;
-        let app_vec: Vec<App> = this
+        let app_entrypoints: Vec<AppEntrypoint> = this
             .config
             .entries()
             .await?
@@ -544,26 +544,30 @@ impl Project {
             .filter_map(|e| {
                 e.library.as_ref().map_or_else(
                     || {
-                        Some(App {
-                            name: e.name.clone().unwrap_or(
-                                PathBuf::from(e.import.as_str())
-                                    .file_stem()
-                                    .unwrap()
-                                    .to_string_lossy()
-                                    .into(),
-                            ),
-                            import: e.import.clone(),
+                        Some(async {
+                            Ok(AppEntrypoint {
+                                project: self.to_resolved().await?,
+                                name: e.name.clone().unwrap_or(
+                                    PathBuf::from(e.import.as_str())
+                                        .file_stem()
+                                        .unwrap()
+                                        .to_string_lossy()
+                                        .into(),
+                                ),
+                                import: e.import.clone(),
+                            })
                         })
                     },
                     |_| None,
                 )
             })
-            .collect();
-        if app_vec.is_empty() {
+            .try_join()
+            .await?;
+        if app_entrypoints.is_empty() {
             Ok(Vc::cell(None))
         } else {
             Ok(Vc::cell(Some(
-                AppProject::new(self, Vc::cell(app_vec))
+                AppProject::new(self, Vc::cell(app_entrypoints))
                     .to_resolved()
                     .await?,
             )))
@@ -897,19 +901,12 @@ impl Project {
         let app_project = self.app_project().to_resolved().await?.await?;
         Ok(Entrypoints {
             apps: match *app_project {
-                Some(app) => {
-                    let endpoints = app
-                        .get_app_endpoints()
-                        .await?
-                        .into_iter()
-                        .map(|l| async move {
-                            let endpoint: Vc<Box<dyn Endpoint>> = Vc::upcast(**l);
-                            endpoint.to_resolved().await
-                        })
-                        .try_join()
-                        .await?;
-                    Some(Endpoints(endpoints.to_vec()).resolved_cell())
-                }
+                Some(app) => Some(
+                    Endpoints(vec![ResolvedVc::upcast(
+                        app.get_app_endpoint().to_resolved().await?,
+                    )])
+                    .resolved_cell(),
+                ),
                 None => None,
             },
             libraries: match *library_project {
@@ -1193,18 +1190,14 @@ pub struct ProjectInstance {
 
 fn normalize_chunk_base_path(path: &RcStr) -> RcStr {
     let path_buff = PathBuf::from(path);
-    let path = path_buff
-        .components()
-        .enumerate()
-        .fold(String::new(), |mut path, (idx, c)| {
-            if let Some(str) = c.as_os_str().to_str() {
-                if !(idx == 0 && str == ".") {
-                    path.push_str(str);
-                    path.push('/');
-                }
-            }
-            path
-        });
+
+    let path = path_buff.components().fold(String::new(), |mut path, c| {
+        if let Some(str) = c.as_os_str().to_str() {
+            path.push_str(str);
+            path.push('/');
+        }
+        path
+    });
 
     path.into()
 }
