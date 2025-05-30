@@ -68,7 +68,7 @@ impl BeforeResolvePlugin for ExternalsPlugin {
         if let Some(external_config) = externals_config.get(module_name) {
             let (external_name, external_type) = match external_config {
                 ExternalConfig::Basic(name) => {
-                    // resolve basic config like "foo" or "commonjs foo" or "esm foo"
+                    // resolve basic config like "foo" or "commonjs foo" or "esm foo" or "script https://..."
                     let name_str = name.as_str();
                     if name_str.starts_with("commonjs ") {
                         let actual_name = name_str.strip_prefix("commonjs ").unwrap_or(name_str);
@@ -76,6 +76,9 @@ impl BeforeResolvePlugin for ExternalsPlugin {
                     } else if name_str.starts_with("esm ") {
                         let actual_name = name_str.strip_prefix("esm ").unwrap_or(name_str);
                         (actual_name.into(), ExternalType::EcmaScriptModule)
+                    } else if name_str.starts_with("script ") {
+                        let script_url = name_str.strip_prefix("script ").unwrap_or(name_str);
+                        (script_url.into(), ExternalType::Url)
                     } else {
                         // Default to Global
                         (name.clone(), ExternalType::Global)
@@ -86,7 +89,22 @@ impl BeforeResolvePlugin for ExternalsPlugin {
                     let external_type = match &advanced.r#type {
                         Some(crate::config::ExternalType::CommonJs) => ExternalType::CommonJs,
                         Some(crate::config::ExternalType::ESM) => ExternalType::EcmaScriptModule,
-                        Some(crate::config::ExternalType::Script) => ExternalType::Global,
+                        Some(crate::config::ExternalType::Script) => {
+                            // For script type, use the script URL if provided
+                            let external_name = if let Some(script_url) = &advanced.script {
+                                script_url.clone()
+                            } else {
+                                // TODO: throw an error? now i use root as external name.
+                                advanced.root.clone()
+                            };
+                            return Ok(ResolveResultOption::some(*ResolveResult::primary(
+                                ResolveResultItem::External {
+                                    name: external_name,
+                                    ty: ExternalType::Url,
+                                    traced: ExternalTraced::Traced,
+                                },
+                            )));
+                        }
                         Some(crate::config::ExternalType::Global) => ExternalType::Global,
                         None => ExternalType::Global,
                     };
