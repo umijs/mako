@@ -247,7 +247,7 @@ impl PackageService {
     }
 
     fn read_package_scripts(package_path: &Path) -> Result<Scripts> {
-        let data = load_package_json_from_path(&package_path)?;
+        let data = load_package_json_from_path(package_path)?;
 
         let default_scripts = serde_json::Map::new();
         let scripts = data
