@@ -28,6 +28,12 @@
       "foo_import2": {
         "root": "foo",
         "type": "esm"
+      },
+      "foo_script": "script https://example.com/lib/script.js",
+      "foo_script2": {
+        "root": "bar_script2",
+        "type": "script",
+        "script": "https://example.com/lib/script.js"
       }
     }
   }
