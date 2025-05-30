@@ -1,8 +1,13 @@
+import * as antd from 'antd';
+import * as axios from 'axios';
+import * as lodash from 'lodash';
 import react from 'react';
-react;
 import reactDom from 'react-dom';
-reactDom;
-import three from 'three';
-three;
-import antd from 'antd';
-antd;
+import * as three from 'three';
+
+window.React = react;
+window.ReactDom = reactDom;
+window.Antd = antd;
+window.Three = three;
+window.Lodash = lodash;
+window.Axios = axios;

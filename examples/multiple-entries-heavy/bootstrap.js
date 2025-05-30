@@ -2,12 +2,21 @@ const fs = require('fs');
 const path = require('path');
 
 const total = 20;
-const content = `
-import react from 'react'; react;
-import reactDom from 'react-dom'; reactDom;
-import three from 'three'; three;
-import antd from 'antd'; antd;
+const content = `import react from 'react';
+import reactDom from 'react-dom';
+import * as antd from 'antd';
+import * as three from 'three';
+import * as lodash from 'lodash';
+import * as axios from 'axios';
+
+window.React = react;
+window.ReactDom = reactDom;
+window.Antd = antd;
+window.Three = three;
+window.Lodash = lodash;
+window.Axios = axios;
 `;
+
 const makoConfig = { entry: {} };
 
 for (let i = 0; i < total; i++) {

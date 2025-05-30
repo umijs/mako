@@ -20,5 +20,17 @@
     "entry-17": "entry-17.js",
     "entry-18": "entry-18.js",
     "entry-19": "entry-19.js"
+  },
+  "codeSplitting": {
+    "strategy": "advanced",
+    "options": {
+      "groups": [
+        {
+          "name": "vendors",
+          "allowChunks": "all",
+          "test": "[\\\\/]node_modules[\\\\/]"
+        }
+      ]
+    }
   }
 }
