@@ -1,0 +1,18 @@
+{
+    "name": "externals-example",
+    "version": "1.0.0",
+    "description": "",
+    "keywords": [],
+    "license": "MIT",
+    "scripts": {
+        "build": "utoo-bundler .",
+        "build:tracing": "TURBOPACK_TRACE_SERVER=1 TURBOPACK_TRACING=overview utoo-bundler .",
+        "dev": "utoo-bundler . dev",
+        "serve": "npm run build && node ./genHtml.js && serve ./dist"
+    },
+    "dependencies": {},
+    "devDependencies": {
+        "@utoo/bundler": "*",
+        "serve": "^14.2.4"
+    }
+}

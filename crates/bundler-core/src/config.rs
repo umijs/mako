@@ -110,6 +110,40 @@ pub struct Config {
     experimental: ExperimentalConfig,
     persistent_caching: Option<bool>,
     cache_handler: Option<RcStr>,
+    externals: Option<FxIndexMap<RcStr, ExternalConfig>>,
+}
+
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TraceRawVcs, NonLocalValue, OperationValue,
+)]
+#[serde(untagged)]
+pub enum ExternalConfig {
+    Basic(RcStr),
+    Advanced(ExternalAdvanced),
+}
+
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TraceRawVcs, NonLocalValue, OperationValue,
+)]
+pub enum ExternalType {
+    #[serde(rename = "script")]
+    Script,
+    #[serde(rename = "commonjs")]
+    CommonJs,
+    #[serde(rename = "esm")]
+    ESM,
+    #[serde(rename = "global")]
+    Global,
+}
+
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TraceRawVcs, NonLocalValue, OperationValue,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalAdvanced {
+    pub root: RcStr,
+    #[serde(rename = "type")]
+    pub r#type: Option<ExternalType>,
 }
 
 #[turbo_tasks::value(eq = "manual")]
@@ -526,6 +560,9 @@ pub struct OptionalMdxTransformOptions(Option<ResolvedVc<MdxTransformOptions>>);
 #[turbo_tasks::value(transparent)]
 pub struct OptionServerActions(Option<ServerActions>);
 
+#[turbo_tasks::value(transparent)]
+pub struct ExternalsConfig(FxIndexMap<RcStr, ExternalConfig>);
+
 #[turbo_tasks::value_impl]
 impl Config {
     #[turbo_tasks::function]
@@ -548,6 +585,17 @@ impl Config {
     #[turbo_tasks::function]
     pub fn cache_handler(&self) -> Vc<Option<RcStr>> {
         Vc::cell(self.cache_handler.clone())
+    }
+
+    #[turbo_tasks::function]
+    pub fn externals_config(&self) -> Vc<ExternalsConfig> {
+        let externals = self
+            .externals
+            .as_ref()
+            .map(|ext| ext.clone())
+            .unwrap_or_default();
+
+        ExternalsConfig(externals).cell()
     }
 
     #[turbo_tasks::function]
@@ -1016,5 +1064,54 @@ impl Issue for OutdatedConfigIssue {
         Vc::cell(Some(
             StyledString::Text(self.description.clone()).resolved_cell(),
         ))
+    }
+}
+
+#[test]
+fn test_externals_deserialization() {
+    let json = serde_json::json!({
+        "entry": [{"import": "./index.js"}],
+        "externals": {
+            "foo": "foo",
+            "foo_require": "commonjs foo",
+            "foo_require2": {
+                "root": "foo",
+                "type": "commonjs"
+            },
+            "foo_import": "esm foo",
+            "foo_import2": {
+                "root": "foo",
+                "type": "esm"
+            }
+        }
+    });
+
+    let config: Config = serde_json::from_value(json).unwrap();
+    let externals = config.externals.unwrap();
+
+    // test basic external config
+    assert!(
+        matches!(externals.get("foo"), Some(ExternalConfig::Basic(name)) if name.as_str() == "foo")
+    );
+    assert!(
+        matches!(externals.get("foo_require"), Some(ExternalConfig::Basic(name)) if name.as_str() == "commonjs foo")
+    );
+    assert!(
+        matches!(externals.get("foo_import"), Some(ExternalConfig::Basic(name)) if name.as_str() == "esm foo")
+    );
+
+    // test advanced external config
+    if let Some(ExternalConfig::Advanced(advanced)) = externals.get("foo_require2") {
+        assert_eq!(advanced.root.as_str(), "foo");
+        assert_eq!(advanced.r#type, Some(ExternalType::CommonJs));
+    } else {
+        panic!("Expected ExternalConfig::Advanced for foo_require2");
+    }
+
+    if let Some(ExternalConfig::Advanced(advanced)) = externals.get("foo_import2") {
+        assert_eq!(advanced.root.as_str(), "foo");
+        assert_eq!(advanced.r#type, Some(ExternalType::ESM));
+    } else {
+        panic!("Expected ExternalConfig::Advanced for foo_import2");
     }
 }
