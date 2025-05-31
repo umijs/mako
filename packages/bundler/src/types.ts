@@ -88,11 +88,21 @@ export interface ResolveOptions {
   extensions?: string[];
 }
 
+export type ExternalType = "script" | "commonjs" | "esm" | "global";
+
+export interface ExternalAdvanced {
+  root: string;
+  type?: ExternalType;
+}
+
+export type ExternalConfig = string | ExternalAdvanced;
+
 export interface ConfigComplete {
   entry: EntryOptions[];
   mode?: "production" | "development";
   module?: ModuleOptions;
   resolve?: ResolveOptions;
+  externals?: Record<string, ExternalConfig>;
   output?: {
     path?: string;
     type?: "standalone" | "export";
@@ -203,7 +213,7 @@ export interface ProjectOptions {
   projectPath: string;
 
   /**
-   * The next.config.js contents.
+   * The utoo bundler contents.
    */
   config: ConfigComplete;
 
