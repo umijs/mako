@@ -254,7 +254,7 @@ pub struct InvalidDependency {
 pub async fn is_pkg_lock_outdated() -> Result<bool> {
     let pkg_file = load_package_json()?;
     let lock_file = load_package_lock_json()?;
-    // check package-lock.json packages and package.json dependencies are the same
+    // check package.json dependencies and package-lock.json packages are the same
     let pkg_in_pkg_lock = lock_file
         .get("packages")
         .and_then(|p| p.as_object())
@@ -262,16 +262,16 @@ pub async fn is_pkg_lock_outdated() -> Result<bool> {
 
     if let Some(root_pkg) = pkg_in_pkg_lock {
         for (dep_field, _is_optional) in get_dep_types() {
-            if root_pkg.get(dep_field) != pkg_file.get(dep_field) {
+            if pkg_file.get(dep_field) != root_pkg.get(dep_field) {
                 log_warning(&format!(
                     "package-lock.json is outdated, {} changed",
                     dep_field
                 ));
-                return Ok(false);
+                return Ok(true);
             }
         }
     }
-    Ok(true)
+    Ok(false)
 }
 
 pub async fn validate_deps(
@@ -589,6 +589,9 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
 mod tests {
     use super::*;
     use crate::util::node::Node;
+    use serde_json::json;
+    use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn test_version_to_write() {
@@ -721,5 +724,106 @@ mod tests {
 
         // Clean up the test file
         let _ = std::fs::remove_file("package-lock.json");
+    }
+
+    #[tokio::test]
+    async fn test_is_pkg_lock_outdated() {
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let temp_path = temp_dir.path();
+
+        // Test case 1: package.json and package-lock.json are in sync
+        let pkg_json = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "dependencies": {
+                "lodash": "^4.17.20"
+            },
+            "devDependencies": {
+                "typescript": "^4.9.0"
+            }
+        });
+
+        let pkg_lock = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "lockfileVersion": 3,
+            "requires": true,
+            "packages": {
+                "": {
+                    "name": "test-package",
+                    "version": "1.0.0",
+                    "dependencies": {
+                        "lodash": "^4.17.20"
+                    },
+                    "devDependencies": {
+                        "typescript": "^4.9.0"
+                    }
+                }
+            }
+        });
+
+        // Write test files to temporary directory
+        fs::write(temp_path.join("package.json"), pkg_json.to_string()).unwrap();
+        fs::write(temp_path.join("package-lock.json"), pkg_lock.to_string()).unwrap();
+
+        // Change current directory to temp directory
+        let original_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(temp_path).unwrap();
+
+        // Test that files are in sync
+        assert!(!is_pkg_lock_outdated().await.unwrap());
+
+        // Test case 2: package.json has new dependency
+        let pkg_json_updated = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "dependencies": {
+                "lodash": "^4.17.20",
+                "react": "^18.0.0"  // New dependency
+            },
+            "devDependencies": {
+                "typescript": "^4.9.0"
+            }
+        });
+
+        fs::write(temp_path.join("package.json"), pkg_json_updated.to_string()).unwrap();
+        assert!(is_pkg_lock_outdated().await.unwrap());
+
+        // Test case 3: package.json has updated version
+        let pkg_json_version_updated = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "dependencies": {
+                "lodash": "^4.17.21"  // Updated version
+            },
+            "devDependencies": {
+                "typescript": "^4.9.0"
+            }
+        });
+
+        fs::write(
+            temp_path.join("package.json"),
+            pkg_json_version_updated.to_string(),
+        )
+        .unwrap();
+        assert!(is_pkg_lock_outdated().await.unwrap());
+
+        // Test case 4: package.json has removed dependency
+        let pkg_json_removed = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "dependencies": {
+                "lodash": "^4.17.20"
+            }
+            // Removed devDependencies
+        });
+
+        fs::write(temp_path.join("package.json"), pkg_json_removed.to_string()).unwrap();
+        assert!(is_pkg_lock_outdated().await.unwrap());
+
+        // Restore original directory
+        std::env::set_current_dir(original_dir).unwrap();
+        // TempDir will be automatically cleaned up when it goes out of scope
     }
 }
