@@ -802,7 +802,11 @@ mod tests {
             }
         });
 
-        fs::write(temp_path.join("package.json"), pkg_json_version_updated.to_string()).unwrap();
+        fs::write(
+            temp_path.join("package.json"),
+            pkg_json_version_updated.to_string(),
+        )
+        .unwrap();
         assert!(is_pkg_lock_outdated().await.unwrap());
 
         // Test case 4: package.json has removed dependency
