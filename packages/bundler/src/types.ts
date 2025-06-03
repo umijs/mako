@@ -93,6 +93,7 @@ export type ExternalType = "script" | "commonjs" | "esm" | "global";
 export interface ExternalAdvanced {
   root: string;
   type?: ExternalType;
+  script?: string;
 }
 
 export type ExternalConfig = string | ExternalAdvanced;
