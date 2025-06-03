@@ -87,7 +87,7 @@ fn main() {
                             EnvFilter::new("bundler_cli=info,bundler_api=info")
                         }))
                         .with_timer(tracing_subscriber::fmt::time::SystemTime)
-                        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NEW)
+                        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
                         .init();
 
                     None
