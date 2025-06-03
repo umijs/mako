@@ -144,6 +144,7 @@ pub struct ExternalAdvanced {
     pub root: RcStr,
     #[serde(rename = "type")]
     pub r#type: Option<ExternalType>,
+    pub script: Option<RcStr>,
 }
 
 #[turbo_tasks::value(eq = "manual")]

@@ -68,7 +68,7 @@ impl BeforeResolvePlugin for ExternalsPlugin {
         if let Some(external_config) = externals_config.get(module_name) {
             let (external_name, external_type) = match external_config {
                 ExternalConfig::Basic(name) => {
-                    // resolve basic config like "foo" or "commonjs foo" or "esm foo"
+                    // resolve basic config like "foo" or "commonjs foo" or "esm foo" or "script https://..."
                     let name_str = name.as_str();
                     if name_str.starts_with("commonjs ") {
                         let actual_name = name_str.strip_prefix("commonjs ").unwrap_or(name_str);
@@ -76,6 +76,18 @@ impl BeforeResolvePlugin for ExternalsPlugin {
                     } else if name_str.starts_with("esm ") {
                         let actual_name = name_str.strip_prefix("esm ").unwrap_or(name_str);
                         (actual_name.into(), ExternalType::EcmaScriptModule)
+                    } else if name_str.starts_with("script ") {
+                        let script_content = name_str.strip_prefix("script ").unwrap_or(name_str);
+                        // For script type in basic config, check if script_content already contains '@' separator
+                        let external_name = if script_content.contains('@') {
+                            // If already in root@script format, use it directly
+                            script_content.to_string()
+                        } else {
+                            // Otherwise, concatenate module_name and script URL with '@' separator
+                            // Format: module_name@script_url
+                            format!("{}@{}", module_name, script_content)
+                        };
+                        (external_name.into(), ExternalType::Script)
                     } else {
                         // Default to Global
                         (name.clone(), ExternalType::Global)
@@ -86,7 +98,23 @@ impl BeforeResolvePlugin for ExternalsPlugin {
                     let external_type = match &advanced.r#type {
                         Some(crate::config::ExternalType::CommonJs) => ExternalType::CommonJs,
                         Some(crate::config::ExternalType::ESM) => ExternalType::EcmaScriptModule,
-                        Some(crate::config::ExternalType::Script) => ExternalType::Global,
+                        Some(crate::config::ExternalType::Script) => {
+                            // For script type, concatenate root and script URL with '@' separator
+                            // Format: root@script
+                            let external_name = if let Some(script_url) = &advanced.script {
+                                format!("{}@{}", advanced.root, script_url)
+                            } else {
+                                // If no script URL is provided, just use root
+                                advanced.root.to_string()
+                            };
+                            return Ok(ResolveResultOption::some(*ResolveResult::primary(
+                                ResolveResultItem::External {
+                                    name: external_name.into(),
+                                    ty: ExternalType::Script,
+                                    traced: ExternalTraced::Traced,
+                                },
+                            )));
+                        }
                         Some(crate::config::ExternalType::Global) => ExternalType::Global,
                         None => ExternalType::Global,
                     };
