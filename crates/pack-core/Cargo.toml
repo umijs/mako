@@ -21,6 +21,7 @@ serde_json = { workspace = true }
 mime_guess = "2.0.4"
 indoc = { workspace = true }
 tracing = { workspace = true }
+futures = { workspace = true }
 rustc-hash = { workspace = true }
 remove_console = "0.34.0"
 urlencoding = { workspace = true }

@@ -4,14 +4,14 @@
   "config": {
     "entry": [
       {
-        "import": "./src/index.ts",
-        "library": {
-          "name": "with-sass"
-        }
+        "import": "./src/index.ts"
       }
     ],
     "output": {
-      "path": "./dist"
+      "path": "./dist",
+      "filename": "[name].[contenthash:8]",
+      "chunkFilename": "[name].[contenthash:8]",
+      "clean": true
     }
   }
 }

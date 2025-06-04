@@ -55,10 +55,10 @@
   "scripts": {
     "build:cjs": "rm -rf cjs && tsc -p ./tsconfig.json --module commonjs --outDir cjs && cp src/*.d.ts cjs/",
     "build:esm": "rm -rf esm && tsc -p ./tsconfig.json --module esnext --outDir esm && cp src/*.d.ts esm/",
-    "build:local": "npm run build:binding && npm run build:cjs && cp src/*.node cjs/",
+    "build:local": "npm run build:binding:local && npm run build:cjs && cp src/*.node cjs/",
     "artifacts": "napi artifacts --dir ./src --dist npm",
     "build:binding": "napi build src --platform --release -p pack-napi --cargo-cwd ../../ --cargo-name pack_napi --features plugin --js binding.js --dts binding.d.ts --strip",
-    "build:binding:debug": "napi build src --platform -p pack-napi --cargo-cwd ../../ --cargo-name pack_napi --features plugin --js binding.js --dts binding.d.ts",
+    "build:binding:local": "napi build src --platform --profile release-local -p pack-napi --cargo-cwd ../../ --cargo-name pack_napi --features plugin --js binding.js --dts binding.d.ts",
     "prepublishOnly": "npm run build:esm && npm run build:cjs && napi prepublish -t npm",
     "version": "napi version"
   },

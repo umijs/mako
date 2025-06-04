@@ -159,11 +159,20 @@ impl EcmascriptLibraryEvaluateChunk {
     }
 
     #[turbo_tasks::function]
+    async fn ident_for_path(&self) -> Result<Vc<AssetIdent>> {
+        let mut ident = self.ident.owned().await?;
+
+        ident.add_modifier(modifier().to_resolved().await?);
+
+        Ok(AssetIdent::new(Value::new(ident)))
+    }
+
+    #[turbo_tasks::function]
     async fn source_map(self: Vc<Self>) -> Result<Vc<SourceMapAsset>> {
         let this = self.await?;
         Ok(SourceMapAsset::new(
             Vc::upcast(*this.chunking_context),
-            *this.ident,
+            self.ident_for_path(),
             Vc::upcast(self),
         ))
     }
@@ -182,9 +191,10 @@ impl OutputAsset for EcmascriptLibraryEvaluateChunk {
     #[turbo_tasks::function]
     async fn path(self: Vc<Self>) -> Result<Vc<FileSystemPath>> {
         let this = self.await?;
+        let ident = self.ident_for_path();
         Ok(this
             .chunking_context
-            .chunk_path(Some(Vc::upcast(self)), *this.ident, ".js".into()))
+            .chunk_path(Some(Vc::upcast(self)), ident, ".js".into()))
     }
 
     #[turbo_tasks::function]
@@ -251,4 +261,9 @@ struct EcmascriptBrowserChunkRuntimeParams<'a, T> {
     other_chunks: &'a [T],
     /// List of module IDs that this chunk should instantiate when executed.
     runtime_module_ids: Vec<ReadRef<ModuleId>>,
+}
+
+#[turbo_tasks::function]
+fn modifier() -> Vc<RcStr> {
+    Vc::cell("ecmascript library evaluate chunk".into())
 }
