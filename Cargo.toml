@@ -1,9 +1,9 @@
 [workspace]
 members = [
-  "crates/bundler-cli",
-  "crates/bundler-api",
-  "crates/bundler-core",
-  "crates/bundler-napi",
+  "crates/pack-cli",
+  "crates/pack-api",
+  "crates/pack-core",
+  "crates/pack-napi",
   "crates/cli",
   "crates/core",
 ]
@@ -15,8 +15,8 @@ edition = "2021"
 license = "MIT"
 
 [workspace.dependencies]
-bundler-core = { path = "./crates/bundler-core" }
-bundler-api = { path = "./crates/bundler-api" }
+pack-core = { path = "./crates/pack-core" }
+pack-api = { path = "./crates/pack-api" }
 either = "1.9.0"
 futures = "0.3.31"
 tokio = { version = "1.43.0", features = ["full"] }
@@ -90,5 +90,5 @@ too_many_arguments = "allow"
 # [profile.release]
 # debug = true
 # strip = false
-# # cargo build --release --bin bundler-cli 
-# # xcrun xctrace record --template "Time Profiler" --launch -- ./target/release/bundler-cli --mode build --project-dir ./examples/multiple-entries-heavy --root-dir .
+# # cargo build --release --bin pack-cli 
+# # xcrun xctrace record --template "Time Profiler" --launch -- ./target/release/pack-cli --mode build --project-dir ./examples/multiple-entries-heavy --root-dir .

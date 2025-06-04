@@ -527,139 +527,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bundler-api"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bundler-core",
- "futures",
- "par-core",
- "qstring",
- "rustc-hash 2.1.1",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "turbo-rcstr",
- "turbo-tasks",
- "turbo-tasks-backend",
- "turbo-tasks-build",
- "turbo-tasks-env",
- "turbo-tasks-fs",
- "turbopack",
- "turbopack-browser",
- "turbopack-core",
- "turbopack-node",
- "turbopack-nodejs",
- "turbopack-trace-utils",
- "url",
- "urlencoding",
- "vergen 9.0.6 (git+https://github.com/bgw/vergen.git?branch=bgw%2Fno-optional-locks)",
-]
-
-[[package]]
-name = "bundler-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bundler-api",
- "bundler-core",
- "clap",
- "dunce",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "turbo-rcstr",
- "turbo-tasks",
- "turbo-tasks-backend",
- "turbo-tasks-build",
- "turbo-tasks-malloc",
- "turbopack-trace-utils",
-]
-
-[[package]]
-name = "bundler-core"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "base64 0.22.1",
- "indoc",
- "mime_guess",
- "modularize_imports 0.79.0",
- "qstring",
- "regex",
- "remove_console",
- "rustc-hash 2.1.1",
- "serde",
- "serde_json",
- "swc_core",
- "tracing",
- "turbo-rcstr",
- "turbo-tasks",
- "turbo-tasks-build",
- "turbo-tasks-bytes",
- "turbo-tasks-env",
- "turbo-tasks-fetch",
- "turbo-tasks-fs",
- "turbo-tasks-hash",
- "turbopack",
- "turbopack-browser",
- "turbopack-core",
- "turbopack-ecmascript",
- "turbopack-ecmascript-plugins",
- "turbopack-ecmascript-runtime",
- "turbopack-image",
- "turbopack-node",
- "turbopack-resolve",
- "turbopack-static",
- "turbopack-trace-utils",
- "urlencoding",
-]
-
-[[package]]
-name = "bundler-napi"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bundler-api",
- "bundler-core",
- "console-subscriber",
- "dhat",
- "napi",
- "napi-build",
- "napi-derive",
- "owo-colors 4.2.0",
- "par-core",
- "rand 0.9.0",
- "rustc-hash 2.1.1",
- "serde",
- "serde_json",
- "swc_core",
- "tokio",
- "tracing",
- "tracing-chrome",
- "tracing-subscriber",
- "turbo-rcstr",
- "turbo-tasks",
- "turbo-tasks-backend",
- "turbo-tasks-build",
- "turbo-tasks-fs",
- "turbo-tasks-malloc",
- "turbo-tasks-memory",
- "turbopack",
- "turbopack-core",
- "turbopack-ecmascript-hmr-protocol",
- "turbopack-ecmascript-plugins",
- "turbopack-trace-server",
- "turbopack-trace-utils",
- "urlencoding",
- "vergen-gitcl",
-]
-
-[[package]]
 name = "bytecheck"
 version = "0.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4091,6 +3958,139 @@ name = "owo-colors"
 version = "4.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1036865bb9422d3300cf723f657c2851d0e9ab12567854b1f4eba3d77decf564"
+
+[[package]]
+name = "pack-api"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "futures",
+ "pack-core",
+ "par-core",
+ "qstring",
+ "rustc-hash 2.1.1",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "turbo-rcstr",
+ "turbo-tasks",
+ "turbo-tasks-backend",
+ "turbo-tasks-build",
+ "turbo-tasks-env",
+ "turbo-tasks-fs",
+ "turbopack",
+ "turbopack-browser",
+ "turbopack-core",
+ "turbopack-node",
+ "turbopack-nodejs",
+ "turbopack-trace-utils",
+ "url",
+ "urlencoding",
+ "vergen 9.0.6 (git+https://github.com/bgw/vergen.git?branch=bgw%2Fno-optional-locks)",
+]
+
+[[package]]
+name = "pack-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "dunce",
+ "pack-api",
+ "pack-core",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "turbo-rcstr",
+ "turbo-tasks",
+ "turbo-tasks-backend",
+ "turbo-tasks-build",
+ "turbo-tasks-malloc",
+ "turbopack-trace-utils",
+]
+
+[[package]]
+name = "pack-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64 0.22.1",
+ "indoc",
+ "mime_guess",
+ "modularize_imports 0.79.0",
+ "qstring",
+ "regex",
+ "remove_console",
+ "rustc-hash 2.1.1",
+ "serde",
+ "serde_json",
+ "swc_core",
+ "tracing",
+ "turbo-rcstr",
+ "turbo-tasks",
+ "turbo-tasks-build",
+ "turbo-tasks-bytes",
+ "turbo-tasks-env",
+ "turbo-tasks-fetch",
+ "turbo-tasks-fs",
+ "turbo-tasks-hash",
+ "turbopack",
+ "turbopack-browser",
+ "turbopack-core",
+ "turbopack-ecmascript",
+ "turbopack-ecmascript-plugins",
+ "turbopack-ecmascript-runtime",
+ "turbopack-image",
+ "turbopack-node",
+ "turbopack-resolve",
+ "turbopack-static",
+ "turbopack-trace-utils",
+ "urlencoding",
+]
+
+[[package]]
+name = "pack-napi"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "console-subscriber",
+ "dhat",
+ "napi",
+ "napi-build",
+ "napi-derive",
+ "owo-colors 4.2.0",
+ "pack-api",
+ "pack-core",
+ "par-core",
+ "rand 0.9.0",
+ "rustc-hash 2.1.1",
+ "serde",
+ "serde_json",
+ "swc_core",
+ "tokio",
+ "tracing",
+ "tracing-chrome",
+ "tracing-subscriber",
+ "turbo-rcstr",
+ "turbo-tasks",
+ "turbo-tasks-backend",
+ "turbo-tasks-build",
+ "turbo-tasks-fs",
+ "turbo-tasks-malloc",
+ "turbo-tasks-memory",
+ "turbopack",
+ "turbopack-core",
+ "turbopack-ecmascript-hmr-protocol",
+ "turbopack-ecmascript-plugins",
+ "turbopack-trace-server",
+ "turbopack-trace-utils",
+ "urlencoding",
+ "vergen-gitcl",
+]
 
 [[package]]
 name = "par-core"

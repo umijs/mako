@@ -1,4 +1,0 @@
-bundler.*.node
-esm
-cjs
-node_modules
