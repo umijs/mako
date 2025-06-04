@@ -10,12 +10,10 @@ use turbopack_core::{
     environment::Environment,
 };
 
-use crate::mode::Mode;
+use crate::{config::Config, mode::Mode};
 
 use super::LibraryChunkingContext;
-/// TODO: avoid so many arguments
-/// TODO: seems like turbo_tasks:function onlt accept 12 arguments, so chunk_filename is not supported here temporarily.
-/// maybe need to store filename and chunk_filename in the context struct.
+
 #[turbo_tasks::function]
 pub async fn get_library_chunking_context(
     root_path: ResolvedVc<FileSystemPath>,
@@ -24,13 +22,12 @@ pub async fn get_library_chunking_context(
     environment: ResolvedVc<Environment>,
     mode: Vc<Mode>,
     module_id_strategy: ResolvedVc<Box<dyn ModuleIdStrategy>>,
-    minify: Vc<bool>,
-    source_maps: Vc<bool>,
     no_mangling: Vc<bool>,
     runtime_root: Vc<RcStr>,
     runtime_export: Vc<Vec<RcStr>>,
-    filename: Vc<Option<RcStr>>,
+    config: ResolvedVc<Config>,
 ) -> Result<Vc<Box<dyn ChunkingContext>>> {
+    let minify = config.minify(mode);
     let mode = mode.await?;
     let mut builder = LibraryChunkingContext::builder(
         root_path,
@@ -48,15 +45,15 @@ pub async fn get_library_chunking_context(
     } else {
         MinifyType::NoMinify
     })
-    .source_maps(if *source_maps.await? {
+    .source_maps(if *config.source_maps().await? {
         SourceMapsType::Full
     } else {
         SourceMapsType::None
     })
     .module_id_strategy(module_id_strategy);
 
-    if let Some(filename) = filename.owned().await? {
-        builder = builder.filename(filename);
+    if let Some(filename) = &config.output().await?.filename {
+        builder = builder.filename(filename.clone());
     }
 
     if mode.is_development() {

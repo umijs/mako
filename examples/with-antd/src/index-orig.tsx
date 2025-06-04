@@ -3,11 +3,14 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider, createHashRouter } from "react-router-dom";
 import { Layout } from "./layout";
 import { AntDesignIcons } from "./pages/ant-design-icons";
-import { AntDesignPro } from "./pages/ant-design-pro";
 import { Home } from "./pages/home";
 import { MonacoEditor } from "./pages/monaco-editor";
 import { ReactQuery } from "./pages/react-query";
 import { Todos } from "./pages/todos";
+
+const AntDesignPro = React.lazy(async () => ({
+  default: (await import("./pages/ant-design-pro")).AntDesignPro,
+}));
 
 const router = createHashRouter([
   {
@@ -32,7 +35,11 @@ const router = createHashRouter([
       },
       {
         path: "/ant-design-pro",
-        element: <AntDesignPro />,
+        element: (
+          <React.Suspense fallback="loading">
+            <AntDesignPro />
+          </React.Suspense>
+        ),
       },
       {
         path: "/",

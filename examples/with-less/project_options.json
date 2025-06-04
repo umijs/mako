@@ -10,9 +10,6 @@
         }
       }
     ],
-    "styles": {
-      "inlineCss": {}
-    },
     "output": {
       "path": "./dist",
       "filename": "[name].[contenthash:8].js",

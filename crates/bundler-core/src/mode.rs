@@ -4,6 +4,7 @@ use turbopack_ecmascript_runtime::RuntimeType;
 /// The mode in which Next.js is running.
 #[turbo_tasks::value(shared)]
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Hash, OperationValue)]
+#[serde(rename_all = "camelCase")]
 pub enum Mode {
     Development,
     Production,

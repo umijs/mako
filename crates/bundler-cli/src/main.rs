@@ -5,6 +5,7 @@ use bundler_api::project::{DefineEnv, ProjectOptions, WatchOptions};
 use clap::Parser;
 use dunce::canonicalize;
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use std::{fs::File, path::PathBuf, time::Instant};
 use turbo_rcstr::RcStr;
 
@@ -106,8 +107,18 @@ fn main() {
             let mut project_options_file = File::open(&project_options_path)
                 .unwrap_or_else(|_| panic!("failed to load {}", project_options_path.display()));
 
-            let partial_project_options: PartialProjectOptions =
+            let mut partial_project_options: PartialProjectOptions =
                 serde_json::from_reader(&mut project_options_file).unwrap();
+            let mode = if dev { "development" } else { "production" };
+            partial_project_options.config = partial_project_options.config.as_mut().map_or(
+                Some(json!(format!(r#"{{ "mode": {mode}}}"#,))),
+                |config| {
+                    if let Value::Object(ref mut map) = config {
+                        map.insert("mode".to_string(), mode.into());
+                    }
+                    Some(config.take())
+                },
+            );
             let project_options = ProjectOptions {
                 root_path: root_dir
                     .as_ref()
@@ -127,10 +138,7 @@ fn main() {
                     }))
                     .unwrap_or_else(|| project_path.clone()),
                 project_path,
-                config: partial_project_options
-                    .config
-                    .map(|c| c.to_string().into())
-                    .unwrap_or(r#"{ "env": { },"experimental": { } }"#.into()),
+                config: partial_project_options.config.unwrap().to_string().into(),
                 process_env: partial_project_options.process_env.unwrap_or_default(),
                 process_define_env: partial_project_options
                     .process_define_env

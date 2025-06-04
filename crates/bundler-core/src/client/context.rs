@@ -2,7 +2,7 @@ use std::iter::once;
 
 use anyhow::Result;
 use turbo_rcstr::RcStr;
-use turbo_tasks::{FxIndexMap, ResolvedVc, Value, Vc};
+use turbo_tasks::{FxIndexMap, ResolvedVc, TryJoinIterExt, Value, ValueToString, Vc};
 use turbo_tasks_env::EnvMap;
 use turbo_tasks_fs::FileSystemPath;
 use turbopack::{
@@ -34,7 +34,10 @@ use turbopack_node::{
 
 use crate::{
     client::runtime_entry::RuntimeEntries,
-    config::Config,
+    config::{
+        default_max_chunk_count_per_group, default_max_merge_chunk_size, default_min_chunk_size,
+        Config,
+    },
     import_map::{
         get_client_fallback_import_map, get_client_import_map, get_client_resolved_map,
         get_postcss_package_mapping,
@@ -421,7 +424,6 @@ pub async fn get_client_resolve_options_context(
     .cell())
 }
 
-/// TODO: avoid so many arguments
 #[turbo_tasks::function]
 pub async fn get_client_chunking_context(
     root_path: ResolvedVc<FileSystemPath>,
@@ -431,12 +433,10 @@ pub async fn get_client_chunking_context(
     environment: ResolvedVc<Environment>,
     mode: Vc<Mode>,
     module_id_strategy: ResolvedVc<Box<dyn ModuleIdStrategy>>,
-    minify: Vc<bool>,
-    source_maps: Vc<bool>,
     no_mangling: Vc<bool>,
-    filename: Vc<Option<RcStr>>,
-    chunk_filename: Vc<Option<RcStr>>,
+    config: ResolvedVc<Config>,
 ) -> Result<Vc<Box<dyn ChunkingContext>>> {
+    let minify = config.minify(mode);
     let mode = mode.await?;
     let mut builder = BrowserChunkingContext::builder(
         root_path,
@@ -455,7 +455,7 @@ pub async fn get_client_chunking_context(
     } else {
         MinifyType::NoMinify
     })
-    .source_maps(if *source_maps.await? {
+    .source_maps(if *config.source_maps().await? {
         SourceMapsType::Full
     } else {
         SourceMapsType::None
@@ -464,34 +464,64 @@ pub async fn get_client_chunking_context(
     .current_chunk_method(CurrentChunkMethod::DocumentCurrentScript)
     .module_id_strategy(module_id_strategy);
 
-    if let Some(filename) = filename.owned().await? {
-        builder = builder.filename(filename);
+    let output = config.output().await?;
+
+    if let Some(filename) = &output.filename {
+        builder = builder.filename(filename.clone());
     }
 
-    if let Some(chunk_filename) = chunk_filename.owned().await? {
-        builder = builder.chunk_filename(chunk_filename);
+    if let Some(chunk_filename) = &output.chunk_filename {
+        builder = builder.chunk_filename(chunk_filename.clone());
     }
 
     if mode.is_development() {
         builder = builder.hot_module_replacement().use_file_source_map_uris();
     } else {
+        let split_chunks = &config.optimization().await?.split_chunks;
+
+        let (ecmascript_chunking_config, css_chunking_config) = (
+            split_chunks.get("js").map_or(
+                ChunkingConfig {
+                    min_chunk_size: default_min_chunk_size(),
+                    max_chunk_count_per_group: default_max_chunk_count_per_group(),
+                    max_merge_chunk_size: default_max_merge_chunk_size(),
+                    ..Default::default()
+                },
+                Into::into,
+            ),
+            split_chunks.get("css").map_or(
+                ChunkingConfig {
+                    max_merge_chunk_size: 100_000,
+                    ..Default::default()
+                },
+                Into::into,
+            ),
+        );
+
         builder = builder.chunking_config(
             Vc::<EcmascriptChunkType>::default().to_resolved().await?,
-            ChunkingConfig {
-                min_chunk_size: 50_000,
-                max_chunk_count_per_group: 40,
-                max_merge_chunk_size: 200_000,
-                ..Default::default()
-            },
+            ecmascript_chunking_config,
         );
         builder = builder.chunking_config(
             Vc::<CssChunkType>::default().to_resolved().await?,
-            ChunkingConfig {
-                max_merge_chunk_size: 100_000,
-                ..Default::default()
-            },
+            css_chunking_config,
         );
     }
 
-    Ok(Vc::upcast(builder.build()))
+    let chunking_context = builder.build();
+
+    // TODO: split chunks not worked as we expect now, check the implementation in
+    // turbopack_browser
+    tracing::debug!(
+        "client chunking config {:?}\n",
+        chunking_context
+            .chunking_configs()
+            .await?
+            .iter()
+            .map(|(ty, config)| async { Ok((ty.to_string().await?, config.clone())) })
+            .try_join()
+            .await?,
+    );
+
+    Ok(Vc::upcast(chunking_context))
 }
