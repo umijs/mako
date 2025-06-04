@@ -1,0 +1,18 @@
+{
+  "name": "@utoo/pack-darwin-arm64",
+  "version": "0.0.1",
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "main": "pack.darwin-arm64.node",
+  "files": [
+    "pack.darwin-arm64.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  }
+}

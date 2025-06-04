@@ -6,15 +6,15 @@
   "author": "xusd320",
   "license": "MIT",
   "scripts": {
-    "build": "npx utoo-bundler .",
-    "dev": "npx utoo-bundler . dev",
-    "build-by-native": "../../target/release/bundler-cli build",
-    "dev-by-native": "../../target/release/bundler-cli dev",
+    "build": "npx utoo-pack .",
+    "dev": "npx utoo-pack . dev",
+    "build-by-native": "../../target/release/pack-cli build",
+    "dev-by-native": "../../target/release/pack-cli dev",
     "serve": "rm -rf ./dist && npm run build && node ./genHtml.js && serve ./dist"
   },
   "dependencies": {},
   "devDependencies": {
-    "@utoo/bundler": "*"
+    "@utoo/pack": "*"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

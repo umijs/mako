@@ -7,7 +7,7 @@ Utoo is a modern frontend toolchain that provides a unified command-line interfa
 
 - `ut`: The core toolchain entry point, providing command mounting and configuration management
 - `utoo`: Built-in package manager for dependency resolution and installation
-- `@utoo/bundler`: Optional high-performance bundler (requires separate installation)
+- `@utoo/pack`: Optional high-performance bundler (requires separate installation)
 
 ## 🚀 Installation
 
@@ -24,7 +24,7 @@ npm install -g utoo
 Install the bundler globally if you need build capabilities:
 
 ```bash
-npm install -g @utoo/bundler
+npm install -g @utoo/pack
 ```
 
 ## ✨ Features
@@ -51,7 +51,7 @@ Commands can be configured using the `ut config` command:
 ut config set install.cmd "utoo install" --global
 
 # Set a local command (project-specific)
-ut config set build.cmd "utoo-bundler build"
+ut config set build.cmd "utoo-pack build"
 
 # Set a wildcard command (default behavior)
 ut config set *.cmd "utoo" --global
@@ -73,7 +73,7 @@ utoo install
 
 # Custom command mapping
 ut build
-# Executes: utoo-bundler build
+# Executes: utoo-pack build
 
 # Unknown command with wildcard
 ut unknown-command
@@ -91,7 +91,7 @@ Example configuration:
 ```toml
 [values]
 "install.cmd" = "utoo install"
-"build.cmd" = "utoo-bundler build"
+"build.cmd" = "utoo-pack build"
 "*.cmd" = "utoo"
 ```
 
@@ -324,22 +324,22 @@ ut
 
 ```bash
 # Build local development environment
-cd packages/bundler
+cd packages/pack
 ut build:local
 
 # Build by native
-cargo run --bin bundler-cli -- --mode build  --project-dir examples/with-antd --root-dir .
+cargo run --bin pack-cli -- --mode build  --project-dir examples/with-antd --root-dir .
 ```
 
 ## 📁 Project Structure
 
 ```
 .
-├── crates/           # Rust core libraries
+├── crates/          # Rust core libraries
 │   ├── cli/         # Command line tools
 │   ├── core/        # Core functionality
-│   ├── bundler-*    # Build related modules
-├── packages/         # Package management code
-├── examples/         # Example projects
+│   ├── pack-*       # Build related modules
+├── packages/        # Package management code
+├── examples/        # Example projects
 └── vendor/          # Third-party dependencies
 ```

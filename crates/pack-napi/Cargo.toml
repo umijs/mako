@@ -1,0 +1,114 @@
+[package]
+name = "pack-napi"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+plugin = [
+  "swc_core/plugin_transform_host_native",
+  "swc_core/plugin_transform_host_native_filesystem_cache",
+  "swc_core/plugin_transform_host_native_shared_runtime",
+  "pack-core/plugin",
+  "turbopack-ecmascript-plugins",
+  "turbopack-ecmascript-plugins/swc_ecma_transform_plugin",
+]
+
+# Enable support for the tokio console: https://github.com/tokio-rs/console
+tokio-console = ["dep:console-subscriber"]
+# Enable dhat profiling allocator for heap profiling.
+__internal_dhat-heap = ["dhat"]
+# Enable dhat profiling allocator for ad hoc profiling.
+# [Note]: we do not have any ad hoc event in the codebase yet, so enabling this
+# effectively does nothing.
+__internal_dhat-ad-hoc = ["dhat"]
+
+
+[dependencies]
+anyhow = { workspace = true, features = ["backtrace"] }
+napi = { version = "2", default-features = false, features = [
+  "napi3",
+  "serde-json",
+  "tokio_rt",
+  "error_anyhow",
+  # Lightningcss uses this features
+  "napi4",
+  "napi5",
+  "compat-mode",
+] }
+napi-derive = "2"
+pack-api = { workspace = true }
+pack-core = { workspace = true }
+swc_core = { workspace = true, features = [
+  "base_concurrent",
+  "base_node",
+  "bundler",
+  "bundler_concurrent",
+  "common_concurrent",
+  "ecma_ast",
+  "ecma_ast_serde",
+  "ecma_codegen",
+  "ecma_loader_lru",
+  "ecma_loader_node",
+  "ecma_minifier",
+  "ecma_parser",
+  "ecma_parser_typescript",
+  "ecma_transforms",
+  "ecma_transforms_optimization",
+  "ecma_transforms_react",
+  "ecma_transforms_typescript",
+  "ecma_utils",
+  "ecma_visit",
+] }
+par-core = { workspace = true, features = ["rayon"] }
+turbopack-ecmascript-plugins = { workspace = true, optional = true }
+console-subscriber = { workspace = true, optional = true }
+rand = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+rustc-hash = { workspace = true }
+tracing-chrome = "0.5.0"
+urlencoding = { workspace = true }
+owo-colors = { workspace = true }
+dhat = { version = "0.3.2", optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { workspace = true, features = ["full"] }
+turbo-rcstr = { workspace = true }
+turbo-tasks = { workspace = true }
+turbo-tasks-memory = { workspace = true }
+turbo-tasks-backend = { workspace = true }
+turbo-tasks-fs = { workspace = true }
+pack-api = { workspace = true }
+pack-core = { workspace = true }
+turbo-tasks-malloc = { workspace = true, default-features = false, features = [
+  "custom_allocator",
+] }
+
+turbopack = { workspace = true }
+turbopack-core = { workspace = true }
+turbopack-ecmascript-hmr-protocol = { workspace = true }
+turbopack-trace-utils = { workspace = true }
+turbopack-trace-server = { workspace = true }
+turbopack-ecmascript-plugins = { workspace = true, optional = true }
+
+
+[build-dependencies]
+anyhow = { workspace = true }
+napi-build = "2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+turbo-tasks-build = { workspace = true }
+
+vergen-gitcl = { git = "https://github.com/bgw/vergen.git", branch = "bgw/no-optional-locks", features = [
+  "cargo",
+] }
+
+
+[lints]
+workspace = true
