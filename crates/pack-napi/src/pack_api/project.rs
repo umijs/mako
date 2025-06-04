@@ -7,6 +7,11 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Context, Result};
+use napi::{
+    bindgen_prelude::{within_runtime_if_available, External},
+    threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode},
+    JsFunction, Status,
+};
 use pack_api::{
     entrypoints::get_all_written_entrypoints_with_issues_operation,
     hmr::{
@@ -25,11 +30,6 @@ use pack_api::{
 use pack_core::tracing_presets::{
     TRACING_OVERVIEW_TARGETS, TRACING_TARGETS, TRACING_TURBOPACK_TARGETS,
     TRACING_TURBO_TASKS_TARGETS,
-};
-use napi::{
-    bindgen_prelude::{within_runtime_if_available, External},
-    threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode},
-    JsFunction, Status,
 };
 use tracing::Instrument;
 use tracing_subscriber::{
@@ -319,9 +319,11 @@ pub async fn project_new(
         subscriber.init();
     } else {
         tracing_subscriber::fmt()
-            .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                EnvFilter::new("pack_napi=info,pack_api=info,pack_core=info")
-            }))
+            .with_env_filter(
+                EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                    EnvFilter::new("pack_napi=info,pack_api=info,pack_core=info")
+                }),
+            )
             .with_timer(tracing_subscriber::fmt::time::SystemTime)
             .with_span_events(FmtSpan::CLOSE)
             .init();

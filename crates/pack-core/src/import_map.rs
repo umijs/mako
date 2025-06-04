@@ -208,9 +208,7 @@ fn insert_package_alias(
 }
 
 #[turbo_tasks::function]
-pub async fn get_pack_package(
-    context_directory: Vc<FileSystemPath>,
-) -> Result<Vc<FileSystemPath>> {
+pub async fn get_pack_package(context_directory: Vc<FileSystemPath>) -> Result<Vc<FileSystemPath>> {
     let result = resolve(
         context_directory,
         Value::new(ReferenceType::CommonJs(CommonJsReferenceSubType::Undefined)),
