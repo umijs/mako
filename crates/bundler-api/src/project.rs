@@ -9,8 +9,7 @@ use bundler_core::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    fs,
-    path::{Path, PathBuf, MAIN_SEPARATOR},
+    path::{PathBuf, MAIN_SEPARATOR},
     time::Duration,
 };
 use tracing::Instrument;
@@ -23,7 +22,7 @@ use turbo_tasks::{
     ResolvedVc, State, TaskInput, TransientInstance, TryFlatJoinIterExt, TryJoinIterExt, Vc,
 };
 use turbo_tasks_env::{EnvMap, ProcessEnv};
-use turbo_tasks_fs::{DiskFileSystem, FileSystem, FileSystemPath, VirtualFileSystem};
+use turbo_tasks_fs::{DiskFileSystem, FileContent, FileSystem, FileSystemPath, VirtualFileSystem};
 use turbopack::{
     evaluate_context::node_build_environment, global_module_ids::get_global_module_id_strategy,
 };
@@ -142,6 +141,7 @@ pub struct ProjectOptions {
     Hash,
     TraceRawVcs,
     NonLocalValue,
+    OperationValue,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct PartialProjectOptions {
@@ -936,17 +936,12 @@ impl Project {
     ) -> Result<()> {
         let span = tracing::info_span!("emitting");
         async move {
-            // clean dist director if configured
+            // clean dist directory if configured
             if self.config().output().await?.clean.is_some_and(|c| c) {
-                let this = self.await?;
-                let dist_dir = self.dist_dir().await?;
-
-                // Construct the complete absolute path by combining project_path and dist_dir
-                let dist_path = Path::new(&this.project_path).join(&*dist_dir);
-
-                if let Err(e) = clean_directory(&dist_path) {
-                    tracing::warn!("Failed to clean dist directory: {}", e);
-                }
+                let dist_root = self.dist_root();
+                tracing::info!("Cleaning dist directory: {}", dist_root.await?.path);
+                
+                let _ = clean_directory(dist_root.to_resolved().await?).connect().resolve().await?;
             }
 
             let all_output_assets = all_assets_from_entries_operation(output_assets);
@@ -1077,7 +1072,7 @@ impl Project {
         Ok(Vc::cell(modules))
     }
 
-    /// Gets the module id strategy for the project.
+     /// Gets the module id strategy for the project.
     #[turbo_tasks::function]
     pub async fn module_ids(self: Vc<Self>) -> Result<Vc<Box<dyn ModuleIdStrategy>>> {
         let module_id_strategy = if let Some(module_ids) = &*self.config().module_ids().await? {
@@ -1202,33 +1197,48 @@ fn normalize_chunk_base_path(path: &RcStr) -> RcStr {
     path.into()
 }
 
-fn clean_directory(dist_path: &Path) -> Result<()> {
-    let canonical_path = fs::canonicalize(dist_path)
-        .with_context(|| format!("Failed to canonicalize path: {}", dist_path.display()))?;
-
-    if canonical_path.exists() {
-        tracing::info!("Cleaning dist directory: {}", canonical_path.display());
-
-        // Read directory entries
-        for entry in fs::read_dir(&canonical_path)? {
-            let entry = entry?;
-            let path = entry.path();
-
-            if path.is_dir() {
-                if let Err(e) = fs::remove_dir_all(&path) {
-                    tracing::warn!("Failed to remove directory {}: {}", path.display(), e);
-                }
-            } else {
-                if let Err(e) = fs::remove_file(&path) {
-                    tracing::warn!("Failed to remove file {}: {}", path.display(), e);
-                }
-            }
-        }
-
-        tracing::info!("Dist directory cleaned successfully");
-    } else {
-        tracing::debug!("Dist directory does not exist, skipping clean");
-    }
-
+/// Delete a file using turbo-tasks-fs by writing FileContent::NotFound
+#[turbo_tasks::function(operation)]
+pub async fn delete_file(path: ResolvedVc<FileSystemPath>) -> Result<()> {
+    path.write(FileContent::NotFound.cell()).await?;
     Ok(())
+}
+
+/// Clean a directory using turbo-tasks-fs by recursively deleting all files and subdirectories
+#[turbo_tasks::function(operation)]
+pub async fn clean_directory(path: ResolvedVc<FileSystemPath>) -> Result<()> {
+    let dir_content = path.read_dir().await?;
+    
+    match &*dir_content {
+        turbo_tasks_fs::DirectoryContent::NotFound => Ok(()),
+        turbo_tasks_fs::DirectoryContent::Entries(entries) => {
+            let delete_tasks: Vec<_> = entries
+                .iter()
+                .map(|(name, entry_type)| async move {
+                    let entry_path = path.join(name.clone());
+                    match entry_type {
+                        turbo_tasks_fs::DirectoryEntry::File(_) 
+                        | turbo_tasks_fs::DirectoryEntry::Symlink(_) => {
+                            let _ = delete_file(entry_path.to_resolved().await?).connect().resolve().await?;
+                            Ok::<(), anyhow::Error>(())
+                        }
+                        turbo_tasks_fs::DirectoryEntry::Directory(_) => {
+                            let _ = clean_directory(entry_path.to_resolved().await?).connect().resolve().await?;
+                            Ok::<(), anyhow::Error>(())
+                        }
+                        turbo_tasks_fs::DirectoryEntry::Other(_) => Ok::<(), anyhow::Error>(()),
+                        turbo_tasks_fs::DirectoryEntry::Error => {
+                            tracing::warn!("Error reading directory entry: {}", name);
+                            Ok::<(), anyhow::Error>(())
+                        }
+                    }
+                })
+                .collect();
+            
+            for task in delete_tasks {
+                task.await?;
+            }
+            Ok(())
+        }
+    }
 }
