@@ -1,4 +1,5 @@
 use anyhow::{bail, Context, Result};
+use futures::stream::{self, StreamExt};
 use qstring::QString;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
@@ -348,6 +349,14 @@ impl ChunkingContext for LibraryChunkingContext {
         ident: Vc<AssetIdent>,
         extension: RcStr,
     ) -> Result<Vc<FileSystemPath>> {
+        let evaluate = stream::iter(&ident.await?.modifiers)
+            .any(async |m| m.await.is_ok_and(|m| m.contains("evaluate")))
+            .await;
+
+        if !evaluate {
+            bail!("library should only generate a single evaluate chunk, please enable inline features of styles.inlineCss and images.inlineLimit in config")
+        }
+
         let root_path = self.output_root;
         let mut name = ident_to_output_filename(ident, *self.root_path, extension.clone())
             .owned()

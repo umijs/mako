@@ -52,7 +52,6 @@ indoc = "2.0.0"
 
 # Dependencies from nextjs, should keep the same rev!
 ## Dependencies for common cache and task. See https://github.com/umijs/next.js/blob/canary/turbopack/crates/turbopack/architecture.md
-auto-hash-map = { git = "https://github.com/umijs/next.js.git", package = "auto-hash-map", branch = "utoo-patch-v15.3.2" }
 turbo-tasks = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks", branch = "utoo-patch-v15.3.2" }
 turbo-tasks-fs = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-fs", branch = "utoo-patch-v15.3.2" }
 turbo-tasks-env = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-env", branch = "utoo-patch-v15.3.2" }
@@ -85,10 +84,21 @@ turbopack-dev-server = { git = "https://github.com/umijs/next.js.git", package =
 [workspace.lints.clippy]
 too_many_arguments = "allow"
 
+[profile.release]
+opt-level = 3
+lto = "fat"
+strip = "symbols"
 
-# # Uncomment this for Xcode instruments profiling
-# [profile.release]
-# debug = true
-# strip = false
-# # cargo build --release --bin pack-cli 
-# # xcrun xctrace record --template "Time Profiler" --launch -- ./target/release/pack-cli --mode build --project-dir ./examples/multiple-entries-heavy --root-dir .
+[profile.release-local]
+inherits = "release"
+opt-level = 1
+lto = false
+strip = "none"
+incremental = true
+codegen-units = 256
+
+# cargo build --profile release-instruments --bin pack-cli
+# xcrun xctrace record --template "Time Profiler" --launch -- ./target/release/pack-cli --mode build --project-dir ./examples/multiple-entries-heavy --root-dir .
+[profile.release-instruments]
+inherits = "release-local"
+debug = 2

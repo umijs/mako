@@ -4019,6 +4019,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64 0.22.1",
+ "futures",
  "indoc",
  "mime_guess",
  "modularize_imports 0.79.0",
