@@ -466,12 +466,14 @@ pub async fn get_client_chunking_context(
 
     let output = config.output().await?;
 
-    if let Some(filename) = &output.filename {
-        builder = builder.filename(filename.clone());
-    }
+    if !mode.is_development() {
+        if let Some(filename) = &output.filename {
+            builder = builder.filename(filename.clone());
+        }
 
-    if let Some(chunk_filename) = &output.chunk_filename {
-        builder = builder.chunk_filename(chunk_filename.clone());
+        if let Some(chunk_filename) = &output.chunk_filename {
+            builder = builder.chunk_filename(chunk_filename.clone());
+        }
     }
 
     if mode.is_development() {
