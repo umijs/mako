@@ -76,10 +76,7 @@ mod tests {
         let result = install_runtime(&engines).unwrap();
 
         // Check if all expected dependencies are present
-        assert_eq!(
-            result.get("node-bin-darwin-x64"),
-            Some(&"16.17.0".to_string())
-        );
+        assert_eq!(result.get("node-darwin-x64"), Some(&"16.17.0".to_string()));
         assert_eq!(
             result.get("node-bin-darwin-arm64"),
             Some(&"16.17.0".to_string())
