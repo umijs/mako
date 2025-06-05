@@ -620,20 +620,26 @@ impl Ruborist {
         let current_node = get_node_from_root_by_path(root, pkg_path).await?;
 
         // Now we have the target node, find and fix the dependency
-        let edges = current_node.edges_out.read().unwrap();
-        for edge in edges.iter() {
-            if edge.name == pkg_name {
-                let to_node = {
-                    let to_guard = edge.to.read().unwrap();
-                    to_guard.as_ref().unwrap().clone()
-                };
-                log_verbose(&format!(
-                    "Fixing dependency: {}, from: {}, to: {}",
-                    edge.name, edge.from, to_node
-                ));
-                *edge.valid.write().unwrap() = false;
-                build_deps(current_node.clone()).await?;
-            }
+        let edges_to_fix = {
+            let edges = current_node.edges_out.read().unwrap();
+            edges
+                .iter()
+                .filter(|edge| edge.name == pkg_name)
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+
+        for edge in edges_to_fix {
+            let to_node = {
+                let to_guard = edge.to.read().unwrap();
+                to_guard.as_ref().unwrap().clone()
+            };
+            log_verbose(&format!(
+                "Fixing dependency: {}, from: {}, to: {}",
+                edge.name, edge.from, to_node
+            ));
+            *edge.valid.write().unwrap() = false;
+            build_deps(current_node.clone()).await?;
         }
 
         Ok(())
