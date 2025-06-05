@@ -277,7 +277,7 @@ pub async fn is_pkg_lock_outdated() -> Result<bool> {
 
     if pkg_engines != pkg_lock_engines {
         log_warning(&format!(
-            "package-lock.json is outdated, engines.install-node changed"
+            "package-lock.json is outdated, engines changed"
         ));
         return Ok(true);
     }
@@ -837,6 +837,25 @@ mod tests {
         });
 
         fs::write(temp_path.join("package.json"), pkg_json_removed.to_string()).unwrap();
+        assert!(is_pkg_lock_outdated().await.unwrap());
+
+        // Test case 4: package.json has removed dependency
+        let pkg_json_engines_changed= json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "dependencies": {
+                "lodash": "^4.17.20"
+            },
+            "devDependencies": {
+                "typescript": "^4.9.0"
+            },
+            "engines": {
+                "install-node": "16"
+            }
+            // Removed devDependencies
+        });
+
+        fs::write(temp_path.join("package.json"), pkg_json_engines_changed.to_string()).unwrap();
         assert!(is_pkg_lock_outdated().await.unwrap());
 
         // Restore original directory
