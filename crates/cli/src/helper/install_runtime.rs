@@ -26,10 +26,11 @@ const PLATFORM_ARCHS: &[(&str, &str, &[&str])] = &[
 ];
 
 pub fn install_runtime(engines: &Value) -> Result<HashMap<String, String>> {
-
     // Get node version from engines.install-node or use default
-    let version = engines.get("install-node")
-        .and_then(|v| v.as_str()).unwrap_or("");
+    let version = engines
+        .get("install-node")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
 
     if version.is_empty() {
         return Ok(HashMap::new());
@@ -44,7 +45,6 @@ fn get_node_deps(version: &str) -> Result<HashMap<String, String>> {
     // Iterate through platform and their supported architectures
     for (prefix, platform, archs) in PLATFORM_ARCHS {
         for arch in *archs {
-
             let dep_name: String = format!("{}-{}-{}", prefix, platform, arch);
             optional_deps.insert(dep_name, version.to_string());
         }
@@ -76,8 +76,14 @@ mod tests {
         let result = install_runtime(&engines).unwrap();
 
         // Check if all expected dependencies are present
-        assert_eq!(result.get("node-bin-darwin-x64"), Some(&"16.17.0".to_string()));
-        assert_eq!(result.get("node-bin-darwin-arm64"), Some(&"16.17.0".to_string()));
+        assert_eq!(
+            result.get("node-bin-darwin-x64"),
+            Some(&"16.17.0".to_string())
+        );
+        assert_eq!(
+            result.get("node-bin-darwin-arm64"),
+            Some(&"16.17.0".to_string())
+        );
         assert_eq!(result.get("node-linux-x64"), Some(&"16.17.0".to_string()));
         assert_eq!(result.get("node-linux-arm64"), Some(&"16.17.0".to_string()));
         assert_eq!(result.get("node-win-x64"), Some(&"16.17.0".to_string()));
@@ -108,5 +114,4 @@ mod tests {
         // Check total number of dependencies
         assert_eq!(result.len(), 0);
     }
-
 }

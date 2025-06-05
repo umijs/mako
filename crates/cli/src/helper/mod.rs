@@ -1,9 +1,9 @@
 pub mod auto_update;
 pub mod compatibility;
+pub mod install_runtime;
 pub mod lock;
 pub mod package;
 pub mod ruborist;
 pub mod workspace;
-pub mod install_runtime;
 
 pub use compatibility::{is_cpu_compatible, is_os_compatible};

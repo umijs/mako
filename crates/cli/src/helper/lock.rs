@@ -273,12 +273,13 @@ pub async fn is_pkg_lock_outdated() -> Result<bool> {
     }
 
     let pkg_engines = pkg_file.get("engines");
-    let pkg_lock_engines = lock_file.get("packages").and_then(|p| p.get("")).and_then(|p| p.get("engines"));
+    let pkg_lock_engines = lock_file
+        .get("packages")
+        .and_then(|p| p.get(""))
+        .and_then(|p| p.get("engines"));
 
     if pkg_engines != pkg_lock_engines {
-        log_warning(&format!(
-            "package-lock.json is outdated, engines changed"
-        ));
+        log_warning(&format!("package-lock.json is outdated, engines changed"));
         return Ok(true);
     }
 
@@ -840,7 +841,7 @@ mod tests {
         assert!(is_pkg_lock_outdated().await.unwrap());
 
         // Test case 4: package.json has removed dependency
-        let pkg_json_engines_changed= json!({
+        let pkg_json_engines_changed = json!({
             "name": "test-package",
             "version": "1.0.0",
             "dependencies": {
@@ -855,7 +856,11 @@ mod tests {
             // Removed devDependencies
         });
 
-        fs::write(temp_path.join("package.json"), pkg_json_engines_changed.to_string()).unwrap();
+        fs::write(
+            temp_path.join("package.json"),
+            pkg_json_engines_changed.to_string(),
+        )
+        .unwrap();
         assert!(is_pkg_lock_outdated().await.unwrap());
 
         // Restore original directory
