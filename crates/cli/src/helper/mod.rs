@@ -4,5 +4,6 @@ pub mod lock;
 pub mod package;
 pub mod ruborist;
 pub mod workspace;
+pub mod install_runtime;
 
 pub use compatibility::{is_cpu_compatible, is_os_compatible};
