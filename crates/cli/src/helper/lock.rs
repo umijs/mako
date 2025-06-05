@@ -279,7 +279,7 @@ pub async fn is_pkg_lock_outdated() -> Result<bool> {
         .and_then(|p| p.get("engines"));
 
     if pkg_engines != pkg_lock_engines {
-        log_warning(&format!("package-lock.json is outdated, engines changed"));
+        log_warning("package-lock.json is outdated, engines changed");
         return Ok(true);
     }
 

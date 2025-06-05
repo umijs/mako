@@ -294,7 +294,7 @@ impl Ruborist {
     }
 
     async fn init_runtime(&mut self, root: Arc<Node>) -> Result<()> {
-        let deps = install_runtime(&root.package.get("engines").unwrap_or(&Value::Null))?;
+        let deps = install_runtime(root.package.get("engines").unwrap_or(&Value::Null))?;
         for (name, version) in deps {
             let edge = Edge::new(root.clone(), EdgeType::Optional, name, version);
             root.add_edge(edge).await;

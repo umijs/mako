@@ -36,7 +36,7 @@ pub fn install_runtime(engines: &Value) -> Result<HashMap<String, String>> {
         return Ok(HashMap::new());
     }
 
-    return get_node_deps(version);
+    get_node_deps(version)
 }
 
 fn get_node_deps(version: &str) -> Result<HashMap<String, String>> {
