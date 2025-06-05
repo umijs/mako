@@ -20,7 +20,7 @@ pub async fn build_deps() -> Result<()> {
     let mut retry_count = 0;
 
     loop {
-        let pkgs_in_tree = {
+        let (pkgs_in_tree, _) = {
             let to_guard = ruborist.ideal_tree.as_ref().unwrap();
             serialize_tree_to_packages(to_guard)
         };

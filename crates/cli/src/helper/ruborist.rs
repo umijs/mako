@@ -3,9 +3,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use serde_json::Value;
 use std::sync::Mutex;
 use tokio::sync::Semaphore;
 
+use crate::helper::install_runtime::install_runtime;
 use crate::helper::workspace::find_workspaces;
 use crate::util::config::get_legacy_peer_deps;
 use crate::util::json::load_package_json;
@@ -291,6 +293,15 @@ impl Ruborist {
         }
     }
 
+    async fn init_runtime(&mut self, root: Arc<Node>) -> Result<()> {
+        let deps = install_runtime(root.package.get("engines").unwrap_or(&Value::Null))?;
+        for (name, version) in deps {
+            let edge = Edge::new(root.clone(), EdgeType::Optional, name, version);
+            root.add_edge(edge).await;
+        }
+        Ok(())
+    }
+
     async fn init_tree(&mut self) -> Result<Arc<Node>> {
         // load package.json
         let pkg = load_package_json()?;
@@ -303,6 +314,7 @@ impl Ruborist {
         );
         log_verbose(&format!("root node: {:?}", root));
 
+        self.init_runtime(root.clone()).await?;
         self.init_workspaces(root.clone()).await?;
 
         // collect deps type
@@ -608,20 +620,26 @@ impl Ruborist {
         let current_node = get_node_from_root_by_path(root, pkg_path).await?;
 
         // Now we have the target node, find and fix the dependency
-        let edges = current_node.edges_out.read().unwrap();
-        for edge in edges.iter() {
-            if edge.name == pkg_name {
-                let to_node = {
-                    let to_guard = edge.to.read().unwrap();
-                    to_guard.as_ref().unwrap().clone()
-                };
-                log_verbose(&format!(
-                    "Fixing dependency: {}, from: {}, to: {}",
-                    edge.name, edge.from, to_node
-                ));
-                *edge.valid.write().unwrap() = false;
-                build_deps(current_node.clone()).await?;
-            }
+        let edges_to_fix = {
+            let edges = current_node.edges_out.read().unwrap();
+            edges
+                .iter()
+                .filter(|edge| edge.name == pkg_name)
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+
+        for edge in edges_to_fix {
+            let to_node = {
+                let to_guard = edge.to.read().unwrap();
+                to_guard.as_ref().unwrap().clone()
+            };
+            log_verbose(&format!(
+                "Fixing dependency: {}, from: {}, to: {}",
+                edge.name, edge.from, to_node
+            ));
+            *edge.valid.write().unwrap() = false;
+            build_deps(current_node.clone()).await?;
         }
 
         Ok(())
