@@ -327,10 +327,12 @@ pub async fn validate_deps(
                         let effective_req_version = if let Some(overrides) = &overrides {
                             let mut effective_version = req_version_str.to_string();
                             for rule in &overrides.rules {
-                                if overrides
-                                    .matches_rule(rule, dep_name, req_version_str, &parent_chain)
-                                    .await
-                                {
+                                // Clone the rule to avoid holding the lock across await
+                                let rule = rule.clone();
+                                let matches = overrides
+                                    .matches_rule(&rule, dep_name, req_version_str, &parent_chain)
+                                    .await;
+                                if matches {
                                     effective_version = rule.target_spec.clone();
                                     break;
                                 }
