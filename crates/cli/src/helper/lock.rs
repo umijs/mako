@@ -271,6 +271,17 @@ pub async fn is_pkg_lock_outdated() -> Result<bool> {
             }
         }
     }
+
+    let pkg_engines = pkg_file.get("engines");
+    let pkg_lock_engines = lock_file.get("packages").and_then(|p| p.get("")).and_then(|p| p.get("engines"));
+
+    if pkg_engines != pkg_lock_engines {
+        log_warning(&format!(
+            "package-lock.json is outdated, engines.install-node changed"
+        ));
+        return Ok(true);
+    }
+
     Ok(false)
 }
 
@@ -415,13 +426,19 @@ fn get_dep_types() -> Vec<(&'static str, bool)> {
 
 pub async fn write_ideal_tree_to_lock_file(ideal_tree: &Arc<Node>) -> Result<()> {
     let path = PathBuf::from(".");
+    let (packages, total_packages) = serialize_tree_to_packages(ideal_tree);
     let lock_file = json!({
         "name": ideal_tree.name,  // Direct field access
         "version": ideal_tree.version,  // Direct field access
         "lockfileVersion": 3,
         "requires": true,
-        "packages": serialize_tree_to_packages(ideal_tree),
+        "packages": packages,
     });
+
+    log_info(&format!(
+        "Total {} dependencies after merging",
+        total_packages
+    ));
 
     // Write to temporary file first, then atomically move to target location
     let temp_path = path.join("package-lock.json.tmp");
@@ -435,7 +452,7 @@ pub async fn write_ideal_tree_to_lock_file(ideal_tree: &Arc<Node>) -> Result<()>
     Ok(())
 }
 
-pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
+pub fn serialize_tree_to_packages(node: &Arc<Node>) -> (Value, i32) {
     let mut packages = json!({});
     let mut stack = vec![(node.clone(), String::new())];
     let mut total_packages = 0;
@@ -457,10 +474,14 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
             }
         }
         let mut pkg_info = if current.is_root {
-            json!({
+            let mut info = json!({
                 "name": current.name,
                 "version": current.version,
-            })
+            });
+            if let Some(engines) = current.package.get("engines") {
+                info["engines"] = engines.clone();
+            }
+            info
         } else {
             let mut info = json!({
                 "name": current.package.get("name"),
@@ -578,11 +599,7 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> Value {
         }
     }
 
-    log_info(&format!(
-        "Total {} dependencies after merging",
-        total_packages
-    ));
-    packages
+    (packages, total_packages)
 }
 
 #[cfg(test)]

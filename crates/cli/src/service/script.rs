@@ -27,6 +27,8 @@ impl ScriptService {
                 script
             ));
 
+            println!("> {}", script);
+
             let bin_paths = Self::collect_bin_paths(package);
             let env_path = Self::build_path_env(&bin_paths);
 
