@@ -29,5 +29,6 @@ pub fn register() {
     turbopack_image::register();
     turbopack_ecmascript::register();
     turbopack_ecmascript_plugins::register();
+    turbo_esregex::register();
     include!(concat!(env!("OUT_DIR"), "/register.rs"));
 }

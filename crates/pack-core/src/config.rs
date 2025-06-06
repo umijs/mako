@@ -137,6 +137,67 @@ pub enum ExternalType {
     Global,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, TraceRawVcs, NonLocalValue, OperationValue)]
+pub enum ExternalSubPathTarget {
+    Empty,
+    Tpl(RcStr),
+}
+
+impl serde::Serialize for ExternalSubPathTarget {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            ExternalSubPathTarget::Empty => serializer.serialize_str("$empty"),
+            ExternalSubPathTarget::Tpl(s) => serializer.serialize_str(s.as_str()),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ExternalSubPathTarget {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        if s == "$empty" {
+            Ok(ExternalSubPathTarget::Empty)
+        } else {
+            Ok(ExternalSubPathTarget::Tpl(s.into()))
+        }
+    }
+}
+
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TraceRawVcs, NonLocalValue, OperationValue,
+)]
+#[serde(rename_all = "PascalCase")]
+pub enum ExternalTargetConverter {
+    PascalCase,
+    CamelCase,
+    KebabCase,
+    SnakeCase,
+}
+
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TraceRawVcs, NonLocalValue, OperationValue,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalSubPathRule {
+    pub regex: RcStr,
+    pub target: ExternalSubPathTarget,
+    pub target_converter: Option<ExternalTargetConverter>,
+}
+
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TraceRawVcs, NonLocalValue, OperationValue,
+)]
+pub struct ExternalSubPath {
+    pub exclude: Option<Vec<RcStr>>,
+    pub rules: Vec<ExternalSubPathRule>,
+}
+
 #[derive(
     Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TraceRawVcs, NonLocalValue, OperationValue,
 )]
@@ -146,6 +207,7 @@ pub struct ExternalAdvanced {
     #[serde(rename = "type")]
     pub r#type: Option<ExternalType>,
     pub script: Option<RcStr>,
+    pub sub_path: Option<ExternalSubPath>,
 }
 
 #[turbo_tasks::value(eq = "manual")]
@@ -1138,6 +1200,27 @@ fn test_externals_deserialization() {
             "foo_import2": {
                 "root": "foo",
                 "type": "esm"
+            },
+            "antd": {
+                "root": "antd",
+                "subPath": {
+                    "exclude": ["style"],
+                    "rules": [
+                        {
+                          "regex": "/(version|message|notification)$",
+                          "target": "$1"
+                        },
+                        {
+                          "regex": "/locale/.+$",
+                          "target": "$empty"
+                        },
+                        {
+                          "regex": "/es\\/([^\\/]+)(?:\\/.*)?$/",
+                          "target": "$1",
+                          "targetConverter": "PascalCase"
+                        }
+                    ]
+                }
             }
         }
     });
@@ -1169,5 +1252,28 @@ fn test_externals_deserialization() {
         assert_eq!(advanced.r#type, Some(ExternalType::ESM));
     } else {
         panic!("Expected ExternalConfig::Advanced for foo_import2");
+    }
+
+    if let Some(ExternalConfig::Advanced(advanced)) = externals.get("antd") {
+        assert_eq!(advanced.root.as_str(), "antd");
+        assert_eq!(advanced.sub_path.as_ref().unwrap().rules.len(), 3);
+
+        let rule1 = &advanced.sub_path.as_ref().unwrap().rules[0];
+        assert_eq!(rule1.regex.as_str(), "/(version|message|notification)$");
+        assert_eq!(rule1.target, ExternalSubPathTarget::Tpl("$1".into()));
+
+        let rule2 = &advanced.sub_path.as_ref().unwrap().rules[1];
+        assert_eq!(rule2.regex.as_str(), "/locale/.+$");
+        assert_eq!(rule2.target, ExternalSubPathTarget::Empty);
+
+        let rule3 = &advanced.sub_path.as_ref().unwrap().rules[2];
+        assert_eq!(rule3.regex.as_str(), "/es\\/([^\\/]+)(?:\\/.*)?$/");
+        assert_eq!(rule3.target, ExternalSubPathTarget::Tpl("$1".into()));
+        assert_eq!(
+            rule3.target_converter,
+            Some(ExternalTargetConverter::PascalCase)
+        );
+    } else {
+        panic!("Expected ExternalConfig::Advanced for antd");
     }
 }

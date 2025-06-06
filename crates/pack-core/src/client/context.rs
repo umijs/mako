@@ -389,14 +389,6 @@ pub async fn get_client_resolve_options_context(
             .to_resolved()
             .await?;
 
-    // let external_packages_plugins = AfterResolveExternalPlugin::new(
-    //     *project_path,
-    //     project_path.root(),
-    //     external_packages,
-    // )
-    // .to_resolved()
-    // .await?;
-
     let custom_conditions = vec![mode.await?.condition().into()];
     let resolve_options_context = ResolveOptionsContext {
         enable_node_modules: Some(project_path.root().to_resolved().await?),
@@ -407,7 +399,7 @@ pub async fn get_client_resolve_options_context(
         browser: true,
         module: true,
         before_resolve_plugins: vec![ResolvedVc::upcast(externals_plugin)],
-        after_resolve_plugins: vec![],
+        after_resolve_plugins: vec![ResolvedVc::upcast(externals_plugin)],
         ..Default::default()
     };
     Ok(ResolveOptionsContext {
