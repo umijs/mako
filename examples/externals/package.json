@@ -10,7 +10,9 @@
         "dev": "utoo-pack . dev",
         "serve": "npm run build && node ./genHtml.js && serve ./dist"
     },
-    "dependencies": {},
+    "dependencies": {
+        "antd": "^5.12.2"
+    },
     "devDependencies": {
         "@utoo/pack": "*",
         "serve": "^14.2.4"

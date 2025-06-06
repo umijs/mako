@@ -282,7 +282,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "auto-hash-map"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "hashbrown 0.14.5",
  "rustc-hash 2.1.1",
@@ -1968,6 +1968,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
+name = "foldhash"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
+
+[[package]]
 name = "foreign-types"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2311,6 +2317,11 @@ name = "hashbrown"
 version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
+dependencies = [
+ "allocator-api2",
+ "equivalent",
+ "foldhash",
+]
 
 [[package]]
 name = "hdrhistogram"
@@ -4025,12 +4036,14 @@ dependencies = [
  "modularize_imports 0.79.0",
  "qstring",
  "regex",
+ "regress",
  "remove_console",
  "rustc-hash 2.1.1",
  "serde",
  "serde_json",
  "swc_core",
  "tracing",
+ "turbo-esregex",
  "turbo-rcstr",
  "turbo-tasks",
  "turbo-tasks-build",
@@ -4931,6 +4944,16 @@ dependencies = [
  "libc",
  "mach2",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "regress"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78ef7fa9ed0256d64a688a3747d0fef7a88851c18a5e1d57f115f38ec2e09366"
+dependencies = [
+ "hashbrown 0.15.2",
+ "memchr",
 ]
 
 [[package]]
@@ -7998,9 +8021,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "turbo-esregex"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "regex",
+ "regress",
+ "serde",
+ "turbo-tasks",
+ "turbo-tasks-build",
+]
+
+[[package]]
 name = "turbo-persistence"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -8021,12 +8056,12 @@ dependencies = [
 [[package]]
 name = "turbo-prehash"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 
 [[package]]
 name = "turbo-rcstr"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "new_debug_unreachable",
  "serde",
@@ -8038,7 +8073,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8078,7 +8113,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-backend"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -8115,7 +8150,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-build"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "cargo-lock",
@@ -8129,7 +8164,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-bytes"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "bytes",
@@ -8143,7 +8178,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-env"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "dotenvs",
@@ -8158,7 +8193,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-fetch"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "reqwest",
@@ -8174,7 +8209,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-fs"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "auto-hash-map",
@@ -8212,7 +8247,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-hash"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "turbo-tasks-macros",
  "twox-hash 1.6.3",
@@ -8221,7 +8256,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-macros"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "either",
  "proc-macro-error",
@@ -8236,7 +8271,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-macros-shared"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8246,7 +8281,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-malloc"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "mimalloc",
 ]
@@ -8254,7 +8289,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-memory"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "auto-hash-map",
@@ -8281,7 +8316,7 @@ dependencies = [
 [[package]]
 name = "turbo-tasks-testing"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "auto-hash-map",
@@ -8295,7 +8330,7 @@ dependencies = [
 [[package]]
 name = "turbopack"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "indexmap 2.9.0",
@@ -8328,7 +8363,7 @@ dependencies = [
 [[package]]
 name = "turbopack-browser"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "either",
@@ -8357,7 +8392,7 @@ dependencies = [
 [[package]]
 name = "turbopack-cli-utils"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "clap",
@@ -8375,7 +8410,7 @@ dependencies = [
 [[package]]
 name = "turbopack-core"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8414,7 +8449,7 @@ dependencies = [
 [[package]]
 name = "turbopack-css"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "indexmap 2.9.0",
@@ -8444,7 +8479,7 @@ dependencies = [
 [[package]]
 name = "turbopack-dev-server"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "async-compression",
@@ -8482,7 +8517,7 @@ dependencies = [
 [[package]]
 name = "turbopack-ecmascript"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8522,7 +8557,7 @@ dependencies = [
 [[package]]
 name = "turbopack-ecmascript-hmr-protocol"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "serde",
  "serde_json",
@@ -8533,7 +8568,7 @@ dependencies = [
 [[package]]
 name = "turbopack-ecmascript-plugins"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8560,7 +8595,7 @@ dependencies = [
 [[package]]
 name = "turbopack-ecmascript-runtime"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "indoc",
@@ -8577,7 +8612,7 @@ dependencies = [
 [[package]]
 name = "turbopack-env"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "indexmap 2.9.0",
@@ -8594,7 +8629,7 @@ dependencies = [
 [[package]]
 name = "turbopack-image"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "base64 0.21.7",
@@ -8614,7 +8649,7 @@ dependencies = [
 [[package]]
 name = "turbopack-json"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "serde",
@@ -8630,7 +8665,7 @@ dependencies = [
 [[package]]
 name = "turbopack-mdx"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "markdown",
@@ -8647,7 +8682,7 @@ dependencies = [
 [[package]]
 name = "turbopack-node"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -8685,7 +8720,7 @@ dependencies = [
 [[package]]
 name = "turbopack-nodejs"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "either",
@@ -8709,7 +8744,7 @@ dependencies = [
 [[package]]
 name = "turbopack-resolve"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "indexmap 2.9.0",
@@ -8728,7 +8763,7 @@ dependencies = [
 [[package]]
 name = "turbopack-static"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "serde",
@@ -8745,7 +8780,7 @@ dependencies = [
 [[package]]
 name = "turbopack-swc-utils"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "parking_lot",
@@ -8759,7 +8794,7 @@ dependencies = [
 [[package]]
 name = "turbopack-trace-server"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "either",
@@ -8780,7 +8815,7 @@ dependencies = [
 [[package]]
 name = "turbopack-trace-utils"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
@@ -8800,7 +8835,7 @@ dependencies = [
 [[package]]
 name = "turbopack-wasm"
 version = "0.1.0"
-source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#745c66272da6af61863c26c5a2c9bf043577d316"
+source = "git+https://github.com/umijs/next.js.git?branch=utoo-patch-v15.3.2#c7f27ae04d955273f0016a9253af094b25d9276a"
 dependencies = [
  "anyhow",
  "indexmap 2.9.0",
