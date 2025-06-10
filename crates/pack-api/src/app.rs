@@ -18,6 +18,7 @@ use turbopack_core::{
         EvaluatableAssets,
     },
     context::AssetContext,
+    ident::AssetIdent,
     module::Module,
     module_graph::{
         chunk_group_info::{ChunkGroup, ChunkGroupEntry},
@@ -111,11 +112,7 @@ impl AppEntrypoint {
         let this = self.await?;
         let entry_request = Request::relative(
             Value::new(this.import.clone().into()),
-            Vc::cell(
-                QString::new(vec![("name", this.name.as_str())])
-                    .to_string()
-                    .into(),
-            ),
+            Default::default(),
             Default::default(),
             false,
         );
@@ -188,17 +185,24 @@ impl AppEntrypoint {
         runtime_entries: Vc<EvaluatableAssets>,
     ) -> Result<Vc<ChunkGroupResult>> {
         async move {
+            let this = self.await?;
+
             let project = self.project();
 
             let app_chunking_context = project.client_chunking_context();
 
             let module_graph = self.module_graph_for_entry(asset_context, runtime_entries);
 
-            let main_module = self.main_module(asset_context);
+            let query = QString::new(vec![("name", this.name.as_str())]).to_string();
 
             let app_chunk_group = app_chunking_context.evaluated_chunk_group(
-                main_module.ident(),
-                ChunkGroup::Entry([main_module.to_resolved().await?].into_iter().collect()),
+                AssetIdent::from_path(project.project_root().join(this.import.clone()))
+                    .with_query(Vc::cell(query.into())),
+                ChunkGroup::Entry(
+                    [self.main_module(asset_context).to_resolved().await?]
+                        .into_iter()
+                        .collect(),
+                ),
                 module_graph,
                 Value::new(AvailabilityInfo::Root),
             );
