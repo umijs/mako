@@ -3,23 +3,29 @@
 #![feature(arbitrary_self_types)]
 #![feature(arbitrary_self_types_pointers)]
 
-use std::time::Instant;
+use std::sync::Arc;
 
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
-use pack_api::{
-    entrypoints::get_all_written_entrypoints_with_issues_operation,
-    issues::EntrypointsWithIssues,
-    project::{ProjectContainer, ProjectOptions},
+use pack_api::project::{DefineEnv, ProjectContainer, ProjectOptions, WatchOptions};
+use serde::{Deserialize, Serialize};
+use turbo_rcstr::RcStr;
+use turbo_tasks::{ResolvedVc, TurboTasks};
+use turbo_tasks_backend::{
+    noop_backing_storage, BackendOptions, NoopBackingStorage, TurboTasksBackend,
 };
-use turbo_tasks::{ReadConsistency, TransientInstance, TurboTasks, Vc};
-use turbo_tasks_backend::{NoopBackingStorage, TurboTasksBackend};
+
+pub mod build;
+pub mod serve;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Command {
     #[arg(short, long)]
     pub mode: Mode,
+
+    #[arg(short, long)]
+    pub watch: Option<bool>,
 
     #[arg(short, long)]
     pub project_dir: String,
@@ -34,21 +40,51 @@ pub enum Mode {
     Dev,
 }
 
-pub async fn main_inner(
-    turbo_tasks: &TurboTasks<TurboTasksBackend<NoopBackingStorage>>,
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PartialProjectOptions {
+    /// A root path from which all files must be nested under. Trying to access
+    /// a file outside this root will fail. Think of this as a chroot.
+    pub root_path: Option<RcStr>,
+
+    /// A path inside the root_path which contains the app/pages directories.
+    pub project_path: Option<RcStr>,
+
+    /// The contents of next.config.js, serialized to JSON.
+    pub config: Option<serde_json::Value>,
+
+    /// A map of environment variables to use when compiling code.
+    pub process_env: Option<Vec<(RcStr, RcStr)>>,
+
+    /// A map of environment variables which should get injected at compile
+    /// time.
+    pub process_define_env: Option<DefineEnv>,
+
+    /// Filesystem watcher options.
+    pub watch: Option<WatchOptions>,
+
+    /// The build id.
+    pub build_id: Option<RcStr>,
+}
+
+pub async fn initialize_project_container(
     options: ProjectOptions,
-) -> Result<()> {
-    register();
-
-    let dev = options.dev;
-
-    tracing::info!(
-        "bundling with {} mode",
-        if dev { "development" } else { "production" }
-    );
-
-    let start = Instant::now();
-
+    dev: bool,
+) -> Result<
+    (
+        Arc<TurboTasks<TurboTasksBackend<NoopBackingStorage>>>,
+        ResolvedVc<ProjectContainer>,
+    ),
+    anyhow::Error,
+> {
+    let turbo_tasks = TurboTasks::new(TurboTasksBackend::new(
+        BackendOptions {
+            dependency_tracking: true,
+            storage_mode: None,
+            ..Default::default()
+        },
+        noop_backing_storage(),
+    ));
     let project_container = turbo_tasks
         .run_once(async move {
             let project_container = ProjectContainer::new("utoo-pack-cli".into(), dev);
@@ -58,82 +94,7 @@ pub async fn main_inner(
         })
         .await?;
 
-    let (entrypoints, _issues, _diagnostics) = turbo_tasks
-        .run_once(async move {
-            let entrypoints_with_issues_op =
-                get_all_written_entrypoints_with_issues_operation(project_container);
-
-            let EntrypointsWithIssues {
-                entrypoints,
-                issues,
-                diagnostics,
-                effects,
-            } = &*entrypoints_with_issues_op
-                .read_strongly_consistent()
-                .await?;
-            effects.apply().await?;
-
-            Ok((entrypoints.clone(), issues.clone(), diagnostics.clone()))
-        })
-        .await?;
-
-    tracing::info!("all project entrypoints wrote to disk.");
-
-    tracing::info!(
-        "pack tasks with {} apps {} libraries finished in {:?}",
-        entrypoints
-            .apps
-            .as_ref()
-            .map(|apps| apps.0.len())
-            .unwrap_or_default(),
-        entrypoints
-            .libraries
-            .as_ref()
-            .map(|libraries| libraries.0.len())
-            .unwrap_or_default(),
-        start.elapsed()
-    );
-
-    if dev {
-        hmr_once(turbo_tasks, *project_container).await?;
-    }
-
-    Ok(())
-}
-
-async fn hmr_once(
-    turbo_tasks: &TurboTasks<TurboTasksBackend<NoopBackingStorage>>,
-    project_container: Vc<ProjectContainer>,
-) -> Result<()> {
-    tracing::info!("HMR...");
-    let session = TransientInstance::new(());
-    let idents = turbo_tasks
-        .run_once(async move { project_container.hmr_identifiers().await })
-        .await?;
-    let start = Instant::now();
-    for ident in idents {
-        if !ident.ends_with(".js") {
-            continue;
-        }
-        let session = session.clone();
-        let start = Instant::now();
-        let task = turbo_tasks.spawn_root_task(move || {
-            let session = session.clone();
-            async move {
-                let project = project_container.project();
-                let state = project.hmr_version_state(ident.clone(), session);
-                project.hmr_update(ident.clone(), state).await?;
-                Ok(Vc::<()>::cell(()))
-            }
-        });
-        turbo_tasks
-            .wait_task_completion(task, ReadConsistency::Strong)
-            .await?;
-        tracing::info!("HMR: {:?} {:?}", ident, start.elapsed());
-    }
-    tracing::info!("HMR {:?}", start.elapsed());
-
-    Ok(())
+    Ok((turbo_tasks, project_container))
 }
 
 pub fn register() {

@@ -418,9 +418,9 @@ pub struct Project {
     pub project_path: RcStr,
 
     /// Filesystem watcher options.
-    watch: WatchOptions,
+    pub watch: WatchOptions,
 
-    /// Next config.
+    /// Config.
     config: ResolvedVc<Config>,
 
     /// A map of environment variables to use when compiling code.
@@ -848,9 +848,7 @@ impl Project {
     }
 
     #[turbo_tasks::function]
-    pub(super) async fn client_chunking_context(
-        self: Vc<Self>,
-    ) -> Result<Vc<Box<dyn ChunkingContext>>> {
+    pub async fn client_chunking_context(self: Vc<Self>) -> Result<Vc<Box<dyn ChunkingContext>>> {
         Ok(get_client_chunking_context(
             self.project_root(),
             self.client_root(),

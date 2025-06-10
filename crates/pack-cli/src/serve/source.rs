@@ -1,0 +1,133 @@
+use anyhow::{anyhow, Result};
+use pack_api::project::Project;
+use rustc_hash::FxHashSet;
+use turbo_tasks::{trace::TraceRawVcs, NonLocalValue, OperationVc, ResolvedVc, TryJoinIterExt, Vc};
+
+use turbopack_core::chunk::{ChunkableModule, EvaluatableAsset};
+use turbopack_dev_server::{
+    html::{DevHtmlAsset, DevHtmlEntry},
+    introspect::IntrospectionSource,
+    source::{
+        asset_graph::AssetGraphContentSource, combined::CombinedContentSource,
+        router::PrefixedRouterContentSource, ContentSource,
+    },
+    SourceProvider,
+};
+
+#[turbo_tasks::function]
+pub async fn create_web_entry_source(
+    project: ResolvedVc<Project>,
+) -> Result<Vc<Box<dyn ContentSource>>> {
+    let entries = match &*project.app_project().await? {
+        Some(app_project) => {
+            let app_endpoint = app_project.get_app_endpoint();
+
+            let asset_context = Vc::upcast(app_endpoint.app_module_context());
+
+            let runtime_entries = app_endpoint.app_runtime_entries();
+
+            let chunking_context = app_endpoint
+                .project()
+                .client_chunking_context()
+                .to_resolved()
+                .await?;
+
+            app_endpoint
+                .await?
+                .entrypoints
+                .iter()
+                .map(async |app| {
+                    let module_graph = app
+                        .module_graph_for_entry(asset_context, runtime_entries)
+                        .to_resolved()
+                        .await?;
+
+                    let entry_module = app
+                        .main_module(Vc::upcast(asset_context))
+                        .to_resolved()
+                        .await?;
+
+                    if let (Some(chunkable_module), Some(entry)) = (
+                        ResolvedVc::try_sidecast::<Box<dyn ChunkableModule>>(entry_module),
+                        ResolvedVc::try_sidecast::<Box<dyn EvaluatableAsset>>(entry_module),
+                    ) {
+                        Ok(DevHtmlEntry {
+                            chunkable_module,
+                            module_graph,
+                            chunking_context,
+                            runtime_entries: Some(
+                                runtime_entries.with_entry(*entry).to_resolved().await?,
+                            ),
+                        })
+                    } else if let Some(chunkable_module) =
+                        ResolvedVc::try_sidecast::<Box<dyn ChunkableModule>>(entry_module)
+                    {
+                        // TODO this is missing runtime code, so it's probably broken and we should also
+                        // add an ecmascript chunk with the runtime code
+                        Ok(DevHtmlEntry {
+                            chunkable_module,
+                            module_graph,
+                            chunking_context,
+                            runtime_entries: None,
+                        })
+                    } else {
+                        Err(anyhow!(
+                            "Entry module is not chunkable, so it can't be used to bootstrap the \
+                     application"
+                        ))
+                    }
+                })
+                .try_join()
+                .await?
+        }
+        None => vec![],
+    };
+
+    let client_root = project.client_root();
+
+    let entry_asset = Vc::upcast(DevHtmlAsset::new_with_body(
+        client_root.join("index.html".into()).to_resolved().await?,
+        entries,
+        // Just add this root node for test
+        r#"<div id="root"></div>"#.into(),
+    ));
+
+    let graph = Vc::upcast(AssetGraphContentSource::new_lazy(client_root, entry_asset));
+
+    Ok(graph)
+}
+
+#[turbo_tasks::function(operation)]
+async fn source(
+    web_source: ResolvedVc<Box<dyn ContentSource>>,
+) -> Result<Vc<Box<dyn ContentSource>>> {
+    let main_source = CombinedContentSource::new(vec![web_source])
+        .to_resolved()
+        .await?;
+
+    let introspect = ResolvedVc::upcast(
+        IntrospectionSource {
+            roots: FxHashSet::from_iter([ResolvedVc::upcast(main_source)]),
+        }
+        .resolved_cell(),
+    );
+
+    let main_source = ResolvedVc::upcast(main_source);
+
+    Ok(Vc::upcast(PrefixedRouterContentSource::new(
+        Default::default(),
+        vec![("__turbopack__".into(), introspect)],
+        *main_source,
+    )))
+}
+
+#[derive(Clone, TraceRawVcs, NonLocalValue)]
+pub struct ServerSourceProvider {
+    pub web_source: ResolvedVc<Box<dyn ContentSource>>,
+}
+
+impl SourceProvider for ServerSourceProvider {
+    fn get_source(&self) -> OperationVc<Box<dyn ContentSource>> {
+        source(self.web_source)
+    }
+}

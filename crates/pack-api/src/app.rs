@@ -18,7 +18,6 @@ use turbopack_core::{
         EvaluatableAssets,
     },
     context::AssetContext,
-    ident::AssetIdent,
     module::Module,
     module_graph::{
         chunk_group_info::{ChunkGroup, ChunkGroupEntry},
@@ -105,14 +104,18 @@ impl AppEntrypoint {
     }
 
     #[turbo_tasks::function]
-    pub async fn entry_module(
+    pub async fn main_module(
         self: Vc<Self>,
         asset_context: Vc<Box<dyn AssetContext>>,
     ) -> Result<Vc<Box<dyn Module>>> {
         let this = self.await?;
         let entry_request = Request::relative(
             Value::new(this.import.clone().into()),
-            Default::default(),
+            Vc::cell(
+                QString::new(vec![("name", this.name.as_str())])
+                    .to_string()
+                    .into(),
+            ),
             Default::default(),
             false,
         );
@@ -147,12 +150,12 @@ impl AppEntrypoint {
     }
 
     #[turbo_tasks::function]
-    async fn entry_evaluatable_assets(
+    pub async fn entry_evaluatable_assets(
         self: Vc<Self>,
         asset_context: Vc<Box<dyn AssetContext>>,
-        // runtime_entries: Vc<EvaluatableAssets>,
-    ) -> Result<Vc<Box<dyn EvaluatableAsset>>> {
-        let app_main_module = self.entry_module(asset_context);
+        runtime_entries: Vc<EvaluatableAssets>,
+    ) -> Result<Vc<EvaluatableAssets>> {
+        let app_main_module = self.main_module(asset_context);
 
         let Some(app_main_module) =
             Vc::try_resolve_sidecast::<Box<dyn EvaluatableAsset>>(app_main_module).await?
@@ -160,45 +163,42 @@ impl AppEntrypoint {
             bail!("expected an evaluateable asset");
         };
 
-        // let evaluatable_assets = runtime_entries.with_entry(app_main_module);
+        let evaluatable_assets = runtime_entries.with_entry(app_main_module);
 
-        Ok(app_main_module)
+        Ok(evaluatable_assets)
     }
 
     #[turbo_tasks::function]
-    async fn module_graph_for_entry(
+    pub async fn module_graph_for_entry(
         self: Vc<Self>,
         asset_context: Vc<Box<dyn AssetContext>>,
+        runtime_entries: Vc<EvaluatableAssets>,
     ) -> Result<Vc<ModuleGraph>> {
         let project = self.project();
-        let evaluatable_asset = self.entry_evaluatable_assets(asset_context);
-        Ok(project.module_graph_for_modules(EvaluatableAssets::many(vec![evaluatable_asset])))
+
+        let evaluatable_asset = self.entry_evaluatable_assets(asset_context, runtime_entries);
+
+        Ok(project.module_graph_for_modules(evaluatable_asset))
     }
 
     #[turbo_tasks::function]
     async fn chunk_group_for_entry(
         self: Vc<Self>,
         asset_context: Vc<Box<dyn AssetContext>>,
+        runtime_entries: Vc<EvaluatableAssets>,
     ) -> Result<Vc<ChunkGroupResult>> {
         async move {
-            let this = self.await?;
-
             let project = self.project();
 
             let app_chunking_context = project.client_chunking_context();
 
-            let module_graph = self.module_graph_for_entry(asset_context);
+            let module_graph = self.module_graph_for_entry(asset_context, runtime_entries);
 
-            let query = QString::new(vec![("name", this.name.as_str())]).to_string();
+            let main_module = self.main_module(asset_context);
 
             let app_chunk_group = app_chunking_context.evaluated_chunk_group(
-                AssetIdent::from_path(project.project_root().join(this.import.clone()))
-                    .with_query(Vc::cell(query.into())),
-                ChunkGroup::Entry(
-                    [self.entry_module(asset_context).to_resolved().await?]
-                        .into_iter()
-                        .collect(),
-                ),
+                main_module.ident(),
+                ChunkGroup::Entry([main_module.to_resolved().await?].into_iter().collect()),
                 module_graph,
                 Value::new(AvailabilityInfo::Root),
             );
@@ -213,38 +213,43 @@ impl AppEntrypoint {
     pub async fn output_assets_for_entry(
         self: Vc<Self>,
         asset_context: Vc<Box<dyn AssetContext>>,
+        runtime_entries: Vc<EvaluatableAssets>,
     ) -> Result<Vc<OutputAssets>> {
-        let chunk_group_assets = *self.chunk_group_for_entry(asset_context).await?.assets;
+        let chunk_group_assets = *self
+            .chunk_group_for_entry(asset_context, runtime_entries)
+            .await?
+            .assets;
         Ok(chunk_group_assets)
     }
 }
 
 #[turbo_tasks::value]
 pub struct AppEndpoint {
-    pub project: ResolvedVc<Project>,
+    project: ResolvedVc<Project>,
     pub entrypoints: Vec<ResolvedVc<AppEntrypoint>>,
 }
 
 #[turbo_tasks::value_impl]
 impl AppEndpoint {
     #[turbo_tasks::function]
-    fn project(&self) -> Vc<Project> {
+    pub fn project(&self) -> Vc<Project> {
         *self.project
     }
 
     #[turbo_tasks::function]
-    async fn app_runtime_entries(self: Vc<Self>) -> Result<Vc<EvaluatableAssets>> {
+    pub async fn app_runtime_entries(self: Vc<Self>) -> Result<Vc<EvaluatableAssets>> {
         Ok(get_client_runtime_entries(
             self.project().project_path(),
             self.project().mode(),
             self.project().config(),
             self.project().execution_context(),
+            Vc::cell(self.project().await?.watch.enable),
         )
         .resolve_entries(Vc::upcast(self.app_module_context())))
     }
 
     #[turbo_tasks::function]
-    async fn app_module_context(self: Vc<Self>) -> Result<Vc<ModuleAssetContext>> {
+    pub async fn app_module_context(self: Vc<Self>) -> Result<Vc<ModuleAssetContext>> {
         Ok(ModuleAssetContext::new(
             // FIXME:
             TransitionOptions {
@@ -268,6 +273,7 @@ impl AppEndpoint {
             self.project().config(),
             self.project().no_mangling(),
             Vc::cell(true),
+            Vc::cell(self.project().await?.watch.enable),
         ))
     }
 
@@ -290,28 +296,26 @@ impl Endpoint for AppEndpoint {
 
         let asset_context = self.app_module_context();
 
-        let mut entries = this
+        let runtime_entries = self.app_runtime_entries();
+
+        let entries = this
             .entrypoints
             .iter()
             .map(|e| async {
-                let entry_module = (**e)
-                    .entry_module(Vc::upcast(asset_context))
-                    .to_resolved()
-                    .await?;
-                Ok(ChunkGroupEntry::Entry(vec![{ entry_module }]))
+                let evaluatable_assets =
+                    e.entry_evaluatable_assets(Vc::upcast(asset_context), runtime_entries);
+                let entry_modules: Vec<ResolvedVc<Box<dyn Module>>> = evaluatable_assets
+                    .await?
+                    .iter()
+                    .copied()
+                    .map(ResolvedVc::upcast)
+                    .collect();
+
+                Ok(ChunkGroupEntry::Entry(entry_modules))
             })
             .try_join()
             .await?;
 
-        // TODO: should be in shared referenced chunk, finish this when working on HMR
-        entries.push(ChunkGroupEntry::Entry(
-            self.app_runtime_entries()
-                .await?
-                .iter()
-                .copied()
-                .map(ResolvedVc::upcast)
-                .collect(),
-        ));
         Ok(Vc::cell(entries))
     }
 
@@ -321,11 +325,15 @@ impl Endpoint for AppEndpoint {
 
         let asset_context = self.app_module_context();
 
+        let runtime_entries = self.app_runtime_entries();
+
         async move {
             let this = self.await?;
             let output_assets = stream::iter(&*self.await?.entrypoints)
                 .fold(OutputAssets::new(vec![]), |acc, e| async move {
-                    acc.concatenate((*e).output_assets_for_entry(Vc::upcast(asset_context)))
+                    acc.concatenate(
+                        (*e).output_assets_for_entry(Vc::upcast(asset_context), runtime_entries),
+                    )
                 })
                 .await;
 

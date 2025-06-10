@@ -25,7 +25,7 @@ use pack_api::{
         WatchOptions,
     },
     source_map::{get_source_map, get_source_map_rope},
-    tasks::BundlerTurboTasks,
+    tasks::{BundlerTurboTasks, RootTask},
 };
 use pack_core::tracing_presets::{
     TRACING_OVERVIEW_TARGETS, TRACING_TARGETS, TRACING_TURBOPACK_TARGETS,
@@ -52,9 +52,7 @@ use turbopack_trace_utils::{
 
 use super::{
     endpoint::ExternalEndpoint,
-    utils::{
-        create_turbo_tasks, subscribe, NapiDiagnostic, NapiIssue, RootTask, TurbopackResult, VcArc,
-    },
+    utils::{create_turbo_tasks, subscribe, NapiDiagnostic, NapiIssue, TurbopackResult, VcArc},
 };
 use crate::{register, util::DhatProfilerGuard};
 

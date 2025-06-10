@@ -3,10 +3,9 @@
 
 use clap::Parser;
 use dunce::canonicalize;
-use pack_api::project::{DefineEnv, ProjectOptions, WatchOptions};
-use serde::{Deserialize, Serialize};
+use pack_api::project::{ProjectOptions, WatchOptions};
 use serde_json::{json, Value};
-use std::{fs::File, path::PathBuf, time::Instant};
+use std::{fs::File, path::PathBuf};
 use turbo_rcstr::RcStr;
 
 use pack_core::tracing_presets::{
@@ -14,22 +13,24 @@ use pack_core::tracing_presets::{
     TRACING_TURBO_TASKS_TARGETS,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
-use turbo_tasks::TurboTasks;
-use turbo_tasks_backend::{noop_backing_storage, BackendOptions, TurboTasksBackend};
 use turbo_tasks_malloc::TurboMalloc;
 use turbopack_trace_utils::{
     exit::ExitGuard, filter_layer::FilterLayer, raw_trace::RawTraceLayer, trace_writer::TraceWriter,
 };
 
-use pack_cli::{main_inner, Command, Mode};
+use pack_cli::{build, register, serve, Command, Mode, PartialProjectOptions};
 
 #[global_allocator]
 static ALLOC: TurboMalloc = TurboMalloc;
 
 fn main() {
+    register();
+
     let args = Command::parse();
 
     let dev = matches!(args.mode, Mode::Dev);
+
+    let watch = dev && args.watch.is_some_and(|watch| watch);
 
     let project_path: RcStr = canonicalize(args.project_dir)
         .unwrap()
@@ -94,15 +95,6 @@ fn main() {
                 None
             };
 
-            let turbo_tasks = TurboTasks::new(TurboTasksBackend::new(
-                BackendOptions {
-                    dependency_tracking: true,
-                    storage_mode: None,
-                    ..Default::default()
-                },
-                noop_backing_storage(),
-            ));
-
             let project_options_path = PathBuf::from(&project_path).join("project_options.json");
             let mut project_options_file = File::open(&project_options_path)
                 .unwrap_or_else(|_| panic!("failed to load {}", project_options_path.display()));
@@ -144,55 +136,19 @@ fn main() {
                     .process_define_env
                     .unwrap_or_default(),
 
-                watch: if dev {
-                    WatchOptions {
-                        enable: true,
-                        ..Default::default()
-                    }
-                } else {
-                    WatchOptions {
-                        enable: false,
-                        ..Default::default()
-                    }
+                watch: WatchOptions {
+                    enable: watch,
+                    ..Default::default()
                 },
                 build_id: partial_project_options.build_id.unwrap_or_default(),
                 dev,
             };
 
-            let result = main_inner(&turbo_tasks, project_options).await;
-            let memory = TurboMalloc::memory_usage();
-            tracing::info!("memory usage: {} MiB", memory / 1024 / 1024);
-            let start = Instant::now();
-            drop(turbo_tasks);
-            tracing::info!("drop {:?}", start.elapsed());
-            result
+            if watch {
+                serve::run(project_options).await
+            } else {
+                build::run(project_options).await
+            }
         })
         .unwrap();
-}
-
-#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct PartialProjectOptions {
-    /// A root path from which all files must be nested under. Trying to access
-    /// a file outside this root will fail. Think of this as a chroot.
-    pub root_path: Option<RcStr>,
-
-    /// A path inside the root_path which contains the app/pages directories.
-    pub project_path: Option<RcStr>,
-
-    /// The contents of next.config.js, serialized to JSON.
-    pub config: Option<serde_json::Value>,
-
-    /// A map of environment variables to use when compiling code.
-    pub process_env: Option<Vec<(RcStr, RcStr)>>,
-
-    /// A map of environment variables which should get injected at compile
-    /// time.
-    pub process_define_env: Option<DefineEnv>,
-
-    /// Filesystem watcher options.
-    pub watch: Option<WatchOptions>,
-
-    /// The build id.
-    pub build_id: Option<RcStr>,
 }

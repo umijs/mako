@@ -3,3 +3,4 @@ target
 .idea
 .DS_Store
 *.trace
+rustc-ice*.txt

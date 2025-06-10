@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use rustc_hash::FxHashMap;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{FxIndexMap, ResolvedVc, Value, Vc};
-use turbo_tasks_fs::FileSystemPath;
+use turbo_tasks_fs::{FileSystem, FileSystemPath};
 use turbopack_core::{
     reference_type::{CommonJsReferenceSubType, ReferenceType},
     resolve::{
@@ -84,28 +84,20 @@ async fn insert_shared_aliases(
     _execution_context: Vc<ExecutionContext>,
     _config: Vc<Config>,
 ) -> Result<()> {
-    // let pack_package = get_pack_package(*project_path).to_resolved().await?;
-    // import_map.insert_singleton_alias("@swc/helpers", pack_package);
-    // import_map.insert_singleton_alias("styled-jsx", pack_package);
+    let pack_package = get_pack_package(*project_path).to_resolved().await?;
+    import_map.insert_singleton_alias("@swc/helpers", pack_package);
+    import_map.insert_singleton_alias("styled-jsx", pack_package);
     import_map.insert_singleton_alias("react", project_path);
     import_map.insert_singleton_alias("react-dom", project_path);
 
-    // insert_package_alias(
-    //     import_map,
-    //     "@utoo/turbopack-ecmascript-runtime/",
-    //     turbopack_ecmascript_runtime::embed_fs()
-    //         .root()
-    //         .to_resolved()
-    //         .await?,
-    // );
-    // insert_package_alias(
-    //     import_map,
-    //     "@utoo/turbopack-node/",
-    //     turbopack_node::embed_js::embed_fs()
-    //         .root()
-    //         .to_resolved()
-    //         .await?,
-    // );
+    insert_package_alias(
+        import_map,
+        "@vercel/turbopack-ecmascript-runtime/",
+        turbopack_ecmascript_runtime::embed_fs()
+            .root()
+            .to_resolved()
+            .await?,
+    );
 
     Ok(())
 }

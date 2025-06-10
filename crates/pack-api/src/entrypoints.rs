@@ -49,7 +49,7 @@ pub async fn all_entrypoints_write_to_disk_operation(
 }
 
 #[turbo_tasks::function(operation)]
-async fn all_output_assets_operation(
+pub async fn all_output_assets_operation(
     container: ResolvedVc<ProjectContainer>,
 ) -> Result<Vc<OutputAssets>> {
     let endpoint_assets = container

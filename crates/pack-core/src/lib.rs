@@ -5,7 +5,7 @@ pub mod client;
 pub mod config;
 pub mod embed_js;
 pub mod emit;
-pub mod hmr_entry;
+// pub mod hmr_entry;
 pub mod import_map;
 pub mod library;
 pub mod mode;

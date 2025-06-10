@@ -108,3 +108,17 @@ impl BundlerTurboTasks {
         }
     }
 }
+
+/// The root of our turbopack computation.
+pub struct RootTask {
+    #[allow(dead_code)]
+    pub turbo_tasks: BundlerTurboTasks,
+    #[allow(dead_code)]
+    pub task_id: Option<TaskId>,
+}
+
+impl Drop for RootTask {
+    fn drop(&mut self) {
+        // TODO stop the root task
+    }
+}
