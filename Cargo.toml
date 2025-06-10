@@ -4,6 +4,7 @@ members = [
   "crates/pack-api",
   "crates/pack-core",
   "crates/pack-napi",
+  "crates/pack-schema",
   "crates/cli",
   "crates/core",
   "crates/turbo-esregex",
@@ -19,6 +20,8 @@ license = "MIT"
 pack-core = { path = "./crates/pack-core" }
 pack-api = { path = "./crates/pack-api" }
 turbo-esregex = { path = "./crates/turbo-esregex" }
+schemars = "0.8"
+insta = "1.0"
 either = "1.9.0"
 futures = "0.3.31"
 tokio = { version = "1.43.0", features = ["full"] }
