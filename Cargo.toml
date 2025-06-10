@@ -83,6 +83,7 @@ turbopack-node = { git = "https://github.com/umijs/next.js.git", package = "turb
 turbopack-nodejs = { git = "https://github.com/umijs/next.js.git", package = "turbopack-nodejs", branch = "utoo-patch-v15.3.2" }
 turbopack-static = { git = "https://github.com/umijs/next.js.git", package = "turbopack-static", branch = "utoo-patch-v15.3.2" }
 turbopack-dev-server = { git = "https://github.com/umijs/next.js.git", package = "turbopack-dev-server", branch = "utoo-patch-v15.3.2" }
+turbopack-cli-utils = { git = "https://github.com/umijs/next.js.git", package = "turbopack-cli-utils", branch = "utoo-patch-v15.3.2" }
 
 [workspace.lints.clippy]
 too_many_arguments = "allow"

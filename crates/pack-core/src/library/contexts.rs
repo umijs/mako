@@ -38,7 +38,7 @@ pub async fn get_library_chunking_context(
         (*runtime_root.await?).clone(),
         (*runtime_export.await?).clone(),
     )
-    .minify_type(if *minify.await? {
+    .minify_type(if mode.is_production() && *minify.await? {
         MinifyType::Minify {
             mangle: (!*no_mangling.await?).then_some(MangleType::OptimalSize),
         }

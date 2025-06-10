@@ -122,11 +122,12 @@ pub async fn get_jsx_transform_options(
     resolve_options_context: Option<Vc<ResolveOptionsContext>>,
     is_rsc_context: bool,
     config: Vc<Config>,
+    watch: Vc<bool>,
 ) -> Result<Vc<JsxTransformOptions>> {
     let tsconfig = get_typescript_options(project_path).await?;
 
     let is_react_development = mode.await?.is_react_development();
-    let enable_react_refresh = if is_react_development {
+    let enable_react_refresh = if *watch.await? && is_react_development {
         if let Some(resolve_options_context) = resolve_options_context {
             assert_can_resolve_react_refresh(project_path, resolve_options_context)
                 .await?

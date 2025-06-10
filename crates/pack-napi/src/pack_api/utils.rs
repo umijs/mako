@@ -6,10 +6,10 @@ use napi::{
     threadsafe_function::{ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode},
     JsFunction, JsObject, JsUnknown, NapiRaw, NapiValue, Status,
 };
-use pack_api::tasks::BundlerTurboTasks;
+use pack_api::tasks::{BundlerTurboTasks, RootTask};
 use rustc_hash::FxHashMap;
 use serde::Serialize;
-use turbo_tasks::{OperationVc, TaskId, TurboTasks, Vc};
+use turbo_tasks::{OperationVc, TurboTasks, Vc};
 use turbo_tasks_backend::{default_backing_storage, noop_backing_storage, GitVersionInfo};
 use turbo_tasks_fs::FileContent;
 use turbopack_core::{
@@ -85,20 +85,6 @@ impl<T> Deref for VcArc<T> {
 
     fn deref(&self) -> &Self::Target {
         &self.vc
-    }
-}
-
-/// The root of our turbopack computation.
-pub struct RootTask {
-    #[allow(dead_code)]
-    turbo_tasks: BundlerTurboTasks,
-    #[allow(dead_code)]
-    task_id: Option<TaskId>,
-}
-
-impl Drop for RootTask {
-    fn drop(&mut self) {
-        // TODO stop the root task
     }
 }
 

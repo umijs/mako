@@ -24,6 +24,7 @@ use turbopack_core::{
         FreeVarReferences,
     },
     environment::{BrowserEnvironment, Environment, ExecutionEnvironment},
+    file_source::FileSource,
     free_var_references,
 };
 use turbopack_ecmascript::chunk::EcmascriptChunkType;
@@ -38,16 +39,14 @@ use crate::{
         default_max_chunk_count_per_group, default_max_merge_chunk_size, default_min_chunk_size,
         Config,
     },
+    embed_js::embed_file_path,
     import_map::{
         get_client_fallback_import_map, get_client_import_map, get_client_resolved_map,
         get_postcss_package_mapping,
     },
     mode::Mode,
     shared::{
-        resolve::{
-            // after_resolve_external_plugin::AfterResolveExternalPlugin,
-            externals_plugin::ExternalsPlugin,
-        },
+        resolve::externals_plugin::ExternalsPlugin,
         transforms::{
             dynamic_import_to_require::get_dynamic_import_to_require_rule,
             emotion::get_emotion_transform_rule, remove_console::get_remove_console_transform_rule,
@@ -154,12 +153,15 @@ pub async fn get_client_runtime_entries(
     mode: Vc<Mode>,
     config: Vc<Config>,
     execution_context: Vc<ExecutionContext>,
+    watch: Vc<bool>,
 ) -> Result<Vc<RuntimeEntries>> {
     let mut runtime_entries = vec![];
     let resolve_options_context =
         get_client_resolve_options_context(project_root, mode, config, execution_context);
 
-    if mode.await?.is_development() {
+    let watch = *watch.await?;
+
+    if watch && mode.await?.is_development() {
         let enable_react_refresh =
             assert_can_resolve_react_refresh(project_root, resolve_options_context)
                 .await?
@@ -177,6 +179,17 @@ pub async fn get_client_runtime_entries(
                 .resolved_cell(),
             )
         };
+
+        if watch {
+            runtime_entries.push(
+                RuntimeEntry::Source(ResolvedVc::upcast(
+                    FileSource::new(embed_file_path("hmr/bootstrap.ts".into()))
+                        .to_resolved()
+                        .await?,
+                ))
+                .resolved_cell(),
+            );
+        }
     }
 
     Ok(Vc::cell(runtime_entries))
@@ -191,6 +204,7 @@ pub async fn get_client_module_options_context(
     config: Vc<Config>,
     no_mangling: Vc<bool>,
     dynamic_import_to_require: Vc<bool>,
+    watch: Vc<bool>,
 ) -> Result<Vc<ModuleOptionsContext>> {
     let mode_ref = mode.await?;
 
@@ -209,6 +223,7 @@ pub async fn get_client_module_options_context(
         Some(resolve_options_context),
         false,
         config,
+        watch,
     )
     .to_resolved()
     .await?;
@@ -440,7 +455,7 @@ pub async fn get_client_chunking_context(
         environment,
         mode.runtime_type(),
     )
-    .minify_type(if *minify.await? {
+    .minify_type(if mode.is_production() && *minify.await? {
         MinifyType::Minify {
             mangle: (!*no_mangling.await?).then_some(MangleType::OptimalSize),
         }

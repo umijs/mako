@@ -10,8 +10,7 @@
     "output": {
       "path": "./dist",
       "filename": "[name].[contenthash:8].js",
-      "chunkFilename": "[name].[contenthash:8].js",
-      "clean": true
+      "chunkFilename": "[name].[contenthash:8].js"
     },
     "optimization": {
       "splitChunks": {

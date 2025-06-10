@@ -31,13 +31,50 @@ DEALINGS IN THE SOFTWARE.
 #![feature(arbitrary_self_types)]
 #![feature(arbitrary_self_types_pointers)]
 
-use std::sync::Once;
+use std::{cell::OnceCell, sync::Once};
+
+use tokio::runtime::Runtime;
 
 #[macro_use]
 extern crate napi_derive;
 
 pub mod pack_api;
 pub mod util;
+
+#[cfg(not(any(feature = "__internal_dhat-heap", feature = "__internal_dhat-ad-hoc")))]
+#[global_allocator]
+static ALLOC: turbo_tasks_malloc::TurboMalloc = turbo_tasks_malloc::TurboMalloc;
+
+#[cfg(feature = "__internal_dhat-heap")]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
+
+#[cfg(not(target_arch = "wasm32"))]
+#[napi::module_init]
+
+fn init() {
+    use tokio::runtime::Builder;
+    use turbo_tasks_malloc::TurboMalloc;
+
+    let rt = Builder::new_multi_thread()
+        .enable_all()
+        .on_thread_stop(|| {
+            TurboMalloc::thread_stop();
+        })
+        .disable_lifo_slot()
+        .build()
+        .unwrap();
+    create_custom_tokio_runtime(rt);
+}
+
+static mut USER_DEFINED_RT: OnceCell<Option<Runtime>> = OnceCell::new();
+
+pub fn create_custom_tokio_runtime(rt: Runtime) {
+    unsafe {
+        #[allow(static_mut_refs)]
+        USER_DEFINED_RT.get_or_init(move || Some(rt));
+    }
+}
 
 static REGISTER_ONCE: Once = Once::new();
 

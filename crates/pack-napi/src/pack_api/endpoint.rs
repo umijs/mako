@@ -8,13 +8,14 @@ use pack_api::{
     },
     issues::EndpointIssuesAndDiags,
     paths::ServerPath,
+    tasks::RootTask,
     utils::{endpoint_client_changed_operation, subscribe_issues_and_diags_operation},
 };
 use tracing::Instrument;
 use turbo_tasks::ReadRef;
 use turbopack_core::error::PrettyPrintError;
 
-use super::utils::{subscribe, NapiDiagnostic, NapiIssue, RootTask, TurbopackResult, VcArc};
+use super::utils::{subscribe, NapiDiagnostic, NapiIssue, TurbopackResult, VcArc};
 
 #[napi(object)]
 #[derive(Default)]

@@ -12,7 +12,7 @@ use turbo_tasks::{
 use turbo_tasks_fs::FileSystemPath;
 use turbo_tasks_hash::{encode_hex, DeterministicHash, Xxh3Hash64Hasher};
 use turbopack_browser::chunking_context::{
-    ident_to_output_filename, match_content_hash_placeholder, match_name_placeholder,
+    clean_separators, match_content_hash_placeholder, match_name_placeholder,
     replace_content_hash_placeholder, replace_name_placeholder,
 };
 use turbopack_core::{
@@ -543,4 +543,24 @@ impl ChunkingContext for LibraryChunkingContext {
     ) -> Result<Vc<ModuleId>> {
         bail!("Library chunking context does not support async loader chunk item id")
     }
+}
+
+#[turbo_tasks::function]
+async fn ident_to_output_filename(
+    ident: Vc<AssetIdent>,
+    context_path: Vc<FileSystemPath>,
+    expected_extension: RcStr,
+) -> Result<Vc<RcStr>> {
+    let ident = &*ident.await?;
+    let path = &*ident.path.await?;
+    let mut name = if let Some(inner) = context_path.await?.get_path_to(path) {
+        clean_separators(inner)
+    } else {
+        clean_separators(&ident.path.to_string().await?)
+    };
+    let removed_extension = name.ends_with(&*expected_extension);
+    if removed_extension {
+        name.truncate(name.len() - expected_extension.len());
+    }
+    Ok(Vc::cell(name.into()))
 }
