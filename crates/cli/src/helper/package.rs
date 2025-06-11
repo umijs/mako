@@ -40,9 +40,9 @@ pub fn parse_package_name(path: &str) -> (Option<String>, String, String) {
 // ```
 pub fn parse_package_spec(spec: &str) -> (&str, &str) {
     // Handle scoped packages
-    if spec.starts_with('@') {
+    if let Some(stripped) = spec.strip_prefix('@') {
         // Find the second @ symbol for version spec
-        if let Some(idx) = spec[1..].find('@') {
+        if let Some(idx) = stripped.find('@') {
             // Add 1 to account for the first @ we skipped
             let idx = idx + 1;
             (&spec[..idx], &spec[idx + 1..])
