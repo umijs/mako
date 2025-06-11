@@ -12,7 +12,8 @@
     "./esm/*.js",
     "./esm/*.d.ts",
     "./bin/cli.js",
-    "./global.d.ts"
+    "./global.d.ts",
+    "./config_schema.json"
   ],
   "napi": {
     "name": "pack",

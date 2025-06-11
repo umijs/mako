@@ -4113,6 +4113,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pack-schema"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "pack-core",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "par-core"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
