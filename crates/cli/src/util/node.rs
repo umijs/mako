@@ -713,7 +713,11 @@ mod tests {
         );
 
         let rule = &overrides.rules[0];
-        assert!(overrides.matches_rule(rule, "@scoped/pkg", "^1.0.0", &[]).await);
+        assert!(
+            overrides
+                .matches_rule(rule, "@scoped/pkg", "^1.0.0", &[])
+                .await
+        );
 
         // Test with wrong parent versions
         // let parent_chain = vec![
