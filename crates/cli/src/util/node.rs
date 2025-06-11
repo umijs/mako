@@ -6,6 +6,7 @@ use std::sync::{Arc, RwLock};
 use super::logger::log_verbose;
 use super::registry::resolve;
 use super::semver::is_valid_version;
+use crate::helper::package::parse_package_spec;
 use crate::util::semver::matches;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -390,8 +391,7 @@ impl Overrides {
                 }
 
                 // Parse name@spec format
-                let (name, spec) = Self::parse_name_spec(key);
-
+                let (name, spec) = parse_package_spec(key);
                 if value.is_object() {
                     // Nested rules with parent relationship
                     let parent_rule = Box::new(OverrideRule {
@@ -413,13 +413,6 @@ impl Overrides {
                 }
             }
         }
-    }
-
-    // Split name@spec format
-    fn parse_name_spec(key: &str) -> (&str, &str) {
-        key.rfind('@')
-            .map(|idx| (&key[..idx], &key[idx + 1..]))
-            .unwrap_or((key, "*"))
     }
 
     // Resolve target spec with reference syntax
@@ -692,12 +685,13 @@ mod tests {
                     "b@2.0.0": {
                         "c": "3.0.0"
                     }
-                }
+                },
+                "@scoped/pkg": "1.0.0"
             }
         });
 
         let overrides = Overrides::new(pkg.clone()).parse(pkg).unwrap();
-        let rule = &overrides.rules[0];
+        let rule = &overrides.rules[1];
 
         // Test with complete parent chain
         let parent_chain = vec![
@@ -715,6 +709,13 @@ mod tests {
         assert!(
             !overrides
                 .matches_rule(rule, "c", "3.0.0", &parent_chain)
+                .await
+        );
+
+        let rule = &overrides.rules[0];
+        assert!(
+            overrides
+                .matches_rule(rule, "@scoped/pkg", "^1.0.0", &[])
                 .await
         );
 
@@ -754,7 +755,6 @@ mod tests {
 
         // Test greater than or equal version spec
         let rule = &overrides.rules[2];
-        // assert!(overrides.matches_rule(rule, "c", ">=3.0.0", &[]).await);
         assert!(overrides.matches_rule(rule, "c", "3.1.0", &[]).await);
         assert!(!overrides.matches_rule(rule, "c", "2.9.0", &[]).await);
     }

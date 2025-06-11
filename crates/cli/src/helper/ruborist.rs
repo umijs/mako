@@ -207,10 +207,11 @@ pub async fn build_deps(root: Arc<Node>) -> Result<()> {
         futures::future::try_join_all(level_tasks)
             .await
             .map_err(|e| {
-                let mut err_msg = String::new();
-                for err in e.chain() {
-                    err_msg.push_str(&format!("  {}\n", err));
-                }
+                let err_msg = e
+                    .chain()
+                    .map(|err| format!("  {}", err))
+                    .collect::<Vec<_>>()
+                    .join("\n");
                 anyhow::anyhow!(err_msg)
             })?;
 
@@ -361,9 +362,14 @@ impl Ruborist {
     }
 
     pub async fn init_workspaces(&mut self, root: Arc<Node>) -> Result<()> {
-        let workspaces = find_workspaces(&self.path)
-            .await
-            .context("Failed to find workspaces")?;
+        let workspaces = find_workspaces(&self.path).await.map_err(|e| {
+            let err_msg = e
+                .chain()
+                .map(|err| format!("  {}", err))
+                .collect::<Vec<_>>()
+                .join("\n");
+            anyhow::anyhow!(err_msg)
+        })?;
 
         // Process each workspace member
         for (name, path, pkg) in workspaces {
