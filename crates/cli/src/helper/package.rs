@@ -47,7 +47,8 @@ pub fn parse_package_spec(spec: &str) -> (&str, &str) {
             (spec, "*")
         }
     } else {
-        spec.rfind('@').map_or((spec, "*"), |pos| (&spec[..pos], &spec[pos + 1..]))
+        spec.rfind('@')
+            .map_or((spec, "*"), |pos| (&spec[..pos], &spec[pos + 1..]))
     }
 }
 
