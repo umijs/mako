@@ -25,3 +25,69 @@ pub fn parse_package_name(path: &str) -> (Option<String>, String, String) {
         (None, path.to_string(), path.to_string())
     }
 }
+
+// Parse a package name with version specification into (name, version) tuple.
+//
+// # Examples
+// ```
+// let (name, version) = parse_package_spec("@a/b@1.0.0");
+// assert_eq!(name, "@a/b");
+// assert_eq!(version, "1.0.0");
+//
+// let (name, version) = parse_package_spec("lodash@^4.17.20");
+// assert_eq!(name, "lodash");
+// assert_eq!(version, "^4.17.20");
+// ```
+pub fn parse_package_spec(spec: &str) -> (&str, &str) {
+    // Handle scoped packages
+    if spec.starts_with('@') {
+        // Find the second @ symbol for version spec
+        if let Some(idx) = spec[1..].find('@') {
+            // Add 1 to account for the first @ we skipped
+            let idx = idx + 1;
+            (&spec[..idx], &spec[idx + 1..])
+        } else {
+            // For scoped packages without version, return the full name
+            (spec, "*")
+        }
+    } else {
+        // Handle regular packages
+        spec.rfind('@')
+            .map(|idx| (&spec[..idx], &spec[idx + 1..]))
+            .unwrap_or((spec, "*"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_package_spec() {
+        // Test scoped packages
+        let (name, version) = parse_package_spec("@a/b@1.0.0");
+        assert_eq!(name, "@a/b");
+        assert_eq!(version, "1.0.0");
+
+        let (name, version) = parse_package_spec("@scope/pkg@^2.0.0");
+        assert_eq!(name, "@scope/pkg");
+        assert_eq!(version, "^2.0.0");
+
+        let (name, version) = parse_package_spec("@a/b");
+        assert_eq!(name, "@a/b");
+        assert_eq!(version, "*");
+
+        // Test regular packages
+        let (name, version) = parse_package_spec("lodash@4.17.20");
+        assert_eq!(name, "lodash");
+        assert_eq!(version, "4.17.20");
+
+        let (name, version) = parse_package_spec("express@^4.17.1");
+        assert_eq!(name, "express");
+        assert_eq!(version, "^4.17.1");
+
+        let (name, version) = parse_package_spec("react");
+        assert_eq!(name, "react");
+        assert_eq!(version, "*");
+    }
+}
