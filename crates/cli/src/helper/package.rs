@@ -39,20 +39,15 @@ pub fn parse_package_name(path: &str) -> (Option<String>, String, String) {
 // assert_eq!(version, "^4.17.20");
 // ```
 pub fn parse_package_spec(spec: &str) -> (&str, &str) {
-    // Handle scoped packages
     if let Some(stripped) = spec.strip_prefix('@') {
-        // Find the second @ symbol for version spec
         if let Some(idx) = stripped.find('@') {
-            // Add 1 to account for the first @ we skipped
             let idx = idx + 1;
             (&spec[..idx], &spec[idx + 1..])
         } else {
-            // For scoped packages without version, return the full name
             (spec, "*")
         }
     } else {
-        // Handle regular packages
- spec.rfind('@').map_or((spec, "*"), |pos| (&spec[..pos], &spec[pos + 1..]))
+        spec.rfind('@').map_or((spec, "*"), |pos| (&spec[..pos], &spec[pos + 1..]))
     }
 }
 
