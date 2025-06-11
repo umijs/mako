@@ -52,9 +52,7 @@ pub fn parse_package_spec(spec: &str) -> (&str, &str) {
         }
     } else {
         // Handle regular packages
-        spec.rfind('@')
-            .map(|idx| (&spec[..idx], &spec[idx + 1..]))
-            .unwrap_or((spec, "*"))
+ spec.rfind('@').map_or((spec, "*"), |pos| (&spec[..pos], &spec[pos + 1..]))
     }
 }
 
