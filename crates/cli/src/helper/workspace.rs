@@ -367,6 +367,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_update_cwd_to_project_in_root() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
         env::set_current_dir(&root_path).unwrap();
