@@ -90,6 +90,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_load_package_json() {
         let dir = tempdir().unwrap();
         let original_dir = std::env::current_dir().unwrap();

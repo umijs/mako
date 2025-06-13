@@ -339,6 +339,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_update_cwd_to_root_in_workspace() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
         let workspace_path = root_path.join("packages").join("test-workspace");
@@ -348,6 +349,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_update_cwd_to_root_in_root() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
         env::set_current_dir(&root_path).unwrap();

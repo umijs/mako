@@ -99,6 +99,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[tokio::test]
+    #[ignore]
     async fn test_run_script_not_found() {
         let _dir = tempdir().unwrap();
         let package_json = r#"

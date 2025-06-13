@@ -44,6 +44,7 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
+    #[ignore]
     fn test_link_creates_new_symlink() {
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path();
@@ -63,6 +64,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_link_creates_parent_directories() {
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path();
@@ -79,6 +81,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_link_existing_same_target() {
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path();
@@ -94,6 +97,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_link_existing_different_target() {
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path();

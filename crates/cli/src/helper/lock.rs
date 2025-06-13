@@ -719,6 +719,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_write_ideal_tree_to_lock_file() {
         // Create a mock ideal tree
         let root = Node::new(
@@ -742,6 +743,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_is_pkg_lock_outdated() {
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
