@@ -98,6 +98,91 @@ pub async fn find_workspace_path(cwd: &PathBuf, workspace: &str) -> Result<PathB
     anyhow::bail!("Workspace '{}' not found", workspace)
 }
 
+/// Check if a directory is a workspace root by examining its package.json
+async fn is_workspace_root(pkg: &Value) -> bool {
+    pkg.get("workspaces").is_some()
+}
+
+/// Check if a directory is within a workspace pattern
+async fn is_in_workspace(cwd: &Path, root: &Path, pattern: &str) -> Result<bool> {
+    let workspace_path = root.join(pattern);
+    let glob_pattern = workspace_path.to_str().ok_or_else(|| {
+        anyhow::anyhow!("Invalid path encoding: {}", workspace_path.display())
+    })?;
+
+    if let Ok(entries) = glob(glob_pattern) {
+        for entry in entries {
+            if let Ok(path) = entry {
+                if cwd.starts_with(path) {
+                    return Ok(true);
+                }
+            }
+        }
+    }
+    Ok(false)
+}
+
+/// Find the closest directory containing package.json by traversing up
+async fn find_closest_parent_pkg(start_dir: &Path) -> Result<Option<(PathBuf, Value)>> {
+    let mut current = start_dir.to_path_buf();
+
+    while let Some(parent) = current.parent() {
+        let package_json_path = parent.join("package.json");
+        if package_json_path.exists() {
+            let pkg = read_json_file::<Value>(&package_json_path)
+                .context("Failed to read package.json")?;
+            return Ok(Some((parent.to_path_buf(), pkg)));
+        }
+        current = parent.to_path_buf();
+    }
+
+    Ok(None)
+}
+
+/// Find the project root path by traversing up the directory tree
+///
+/// Rules:
+/// 1. If no package.json is found, return current directory as root
+/// 2. If package.json is found but has no workspaces field, return its directory as root
+/// 3. If package.json is found with workspaces field and current directory matches workspace pattern,
+///    return the package.json directory as root
+pub async fn find_root_path() -> Result<PathBuf> {
+    let cwd = std::env::current_dir().context("Failed to get current directory")?;
+
+    // First find the closest package.json
+    // If no package.json is found, return current directory as root
+    let (pkg_dir, pkg) = match find_closest_parent_pkg(&cwd).await? {
+        Some((dir, pkg)) => (dir, pkg),
+        None => return Ok(cwd),
+    };
+
+    // Check if it's a workspace root
+    if !is_workspace_root(&pkg).await {
+        return Ok(pkg_dir);
+    }
+
+    // If it's a workspace root, check if current directory is in workspace patterns
+    let patterns = match pkg.get("workspaces") {
+        Some(Value::Array(patterns)) => patterns,
+        _ => return Ok(pkg_dir),
+    };
+
+    for pattern in patterns {
+        let pattern_str = match pattern.as_str() {
+            Some(s) => s,
+            None => continue,
+        };
+
+        if is_in_workspace(&cwd, &pkg_dir, pattern_str).await? {
+            log_verbose(&format!("Found workspace root at: {}", pkg_dir.display()));
+            return Ok(pkg_dir);
+        }
+    }
+
+    // If current directory is not in workspace patterns, return the package directory
+    Ok(pkg_dir)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
