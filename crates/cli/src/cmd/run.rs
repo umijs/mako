@@ -8,7 +8,7 @@ use anyhow::{Context, Result};
 use serde_json::Value;
 
 pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<()> {
-    update_cwd_to_project(false).await?;
+    update_cwd_to_project().await?;
     let pkg = if let Some(workspace_name) = &workspace {
         let workspace_dir = find_workspace_path(
             &std::env::current_dir().context("Failed to get current directory")?,
