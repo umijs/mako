@@ -10,7 +10,7 @@ use crate::helper::lock::update_package_json;
 use crate::helper::lock::{
     ensure_package_lock, group_by_depth, prepare_global_package_json, PackageLock,
 };
-use crate::helper::workspace::update_cwd;
+use crate::helper::workspace::update_cwd_to_root;
 use crate::model::package::PackageInfo;
 use crate::service::install::install_packages;
 use crate::util::cache::get_cache_dir;
@@ -40,7 +40,7 @@ pub async fn update_package(
         .context("Failed to update package.json")?;
 
     // 2. Update working directory to project root (if in workspace)
-    update_cwd(false).await?;
+    update_cwd_to_root(false).await?;
 
     // 3. Rebuild Deps
     build_deps()
@@ -56,7 +56,7 @@ pub async fn update_package(
 
 pub async fn install(ignore_scripts: bool) -> Result<()> {
     // Update working directory to project root
-    update_cwd(false).await?;
+    update_cwd_to_root(false).await?;
 
     // Package lock prerequisite check
     ensure_package_lock().await?;

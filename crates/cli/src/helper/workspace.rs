@@ -130,7 +130,7 @@ async fn find_closest_parent_pkg(start_dir: &Path) -> Result<Option<(PathBuf, Va
         let package_json_path = parent.join("package.json");
         if package_json_path.exists() {
             let pkg = read_json_file::<Value>(&package_json_path)
-                .context("Failed to read package.json")?;
+                .map_err(|e| anyhow::anyhow!("Failed to read package.json at {}: {}", package_json_path.display(), e))?;
             return Ok(Some((parent.to_path_buf(), pkg)));
         }
         current = parent.to_path_buf();
@@ -179,8 +179,30 @@ pub async fn find_root_path(force: bool) -> Result<PathBuf> {
 
 static ROOT_DIR: OnceLock<PathBuf> = OnceLock::new();
 
-/// Update current working directory to project root if needed
-pub async fn update_cwd(force: bool) -> Result<()> {
+/// Find the closest directory containing package.json by traversing up
+pub async fn find_project_path(force: bool) -> Result<PathBuf> {
+    if !force {
+        if let Some(cached) = ROOT_DIR.get() {
+            return Ok(cached.clone());
+        }
+    }
+    let cwd = std::env::current_dir().context("Failed to get current directory")?;
+
+    // First check if current directory has package.json
+    let current_package_json = cwd.join("package.json");
+    if current_package_json.exists() {
+        return Ok(cwd);
+    }
+
+    // If not, traverse up
+    match find_closest_parent_pkg(&cwd).await? {
+        Some((dir, _)) => Ok(dir),
+        None => Ok(cwd),
+    }
+}
+
+/// Update current working directory to project root (with workspaces)
+pub async fn update_cwd_to_root(force: bool) -> Result<()> {
     let root_dir = find_root_path(force).await?;
     let current_dir = env::current_dir().context("Failed to get current directory")?;
     if !compare_paths(&current_dir, &root_dir) {
@@ -192,6 +214,23 @@ pub async fn update_cwd(force: bool) -> Result<()> {
     }
     if !force {
         let _ = ROOT_DIR.set(root_dir);
+    }
+    Ok(())
+}
+
+/// Update current working directory to project directory (closest package.json)
+pub async fn update_cwd_to_project(force: bool) -> Result<()> {
+    let project_dir = find_project_path(force).await?;
+    let current_dir = env::current_dir().context("Failed to get current directory")?;
+    if !compare_paths(&current_dir, &project_dir) {
+        log_info(&format!(
+            "Changing directory to project: {}",
+            project_dir.display()
+        ));
+        env::set_current_dir(&project_dir).context("Failed to change to project directory")?;
+    }
+    if !force {
+        let _ = ROOT_DIR.set(project_dir);
     }
     Ok(())
 }
@@ -298,36 +337,70 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_cwd_in_workspace() {
+    async fn test_find_project_path_in_workspace() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
         let workspace_path = root_path.join("packages").join("test-workspace");
         env::set_current_dir(&workspace_path).unwrap();
-        update_cwd(true).await.unwrap();
-        assert!(compare_paths(&env::current_dir().unwrap(), &root_path));
-        let current_dir = env::current_dir().unwrap();
-        update_cwd(true).await.unwrap();
-        assert!(compare_paths(&env::current_dir().unwrap(), &current_dir));
+        let found_project = find_project_path(true).await.unwrap();
+        assert!(compare_paths(&found_project, &workspace_path));
     }
 
     #[tokio::test]
-    async fn test_update_cwd_in_root() {
+    async fn test_find_project_path_in_root() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
         env::set_current_dir(&root_path).unwrap();
-        update_cwd(true).await.unwrap();
-        assert!(compare_paths(&env::current_dir().unwrap(), &root_path));
+        let found_project = find_project_path(true).await.unwrap();
+        assert!(compare_paths(&found_project, &root_path));
+    }
+
+    #[tokio::test]
+    async fn test_find_project_path_in_project() {
+        let (_temp_dir, project_path) = setup_test_project().await;
+        env::set_current_dir(&project_path).unwrap();
+        let found_project = find_project_path(true).await.unwrap();
+        assert!(compare_paths(&found_project, &project_path));
+    }
+
+    #[tokio::test]
+    async fn test_find_project_path_no_package_json() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_path = temp_dir.path().to_path_buf();
+        env::set_current_dir(&test_path).unwrap();
+        let found_project = find_project_path(true).await.unwrap();
+        assert!(compare_paths(&found_project, &test_path));
+    }
+
+    #[tokio::test]
+    async fn test_update_cwd_to_project_in_workspace() {
+        let (_temp_dir, root_path) = setup_test_workspace().await;
+        let workspace_path = root_path.join("packages").join("test-workspace");
+        env::set_current_dir(&workspace_path).unwrap();
+        update_cwd_to_project(true).await.unwrap();
+        assert!(compare_paths(&env::current_dir().unwrap(), &workspace_path));
         let current_dir = env::current_dir().unwrap();
-        update_cwd(true).await.unwrap();
+        update_cwd_to_project(true).await.unwrap();
         assert!(compare_paths(&env::current_dir().unwrap(), &current_dir));
     }
 
     #[tokio::test]
-    async fn test_update_cwd_in_project() {
+    async fn test_update_cwd_to_project_in_root() {
+        let (_temp_dir, root_path) = setup_test_workspace().await;
+        env::set_current_dir(&root_path).unwrap();
+        update_cwd_to_project(true).await.unwrap();
+        assert!(compare_paths(&env::current_dir().unwrap(), &root_path));
+        let current_dir = env::current_dir().unwrap();
+        update_cwd_to_project(true).await.unwrap();
+        assert!(compare_paths(&env::current_dir().unwrap(), &current_dir));
+    }
+
+    #[tokio::test]
+    async fn test_update_cwd_to_project_in_project() {
         let (_temp_dir, project_path) = setup_test_project().await;
         env::set_current_dir(&project_path).unwrap();
-        update_cwd(true).await.unwrap();
+        update_cwd_to_project(true).await.unwrap();
         assert!(compare_paths(&env::current_dir().unwrap(), &project_path));
         let current_dir = env::current_dir().unwrap();
-        update_cwd(true).await.unwrap();
+        update_cwd_to_project(true).await.unwrap();
         assert!(compare_paths(&env::current_dir().unwrap(), &current_dir));
     }
 }

@@ -1,5 +1,5 @@
 use crate::helper::package::parse_package_name;
-use crate::helper::workspace::{find_workspace_path, update_cwd};
+use crate::helper::workspace::{find_workspace_path, update_cwd_to_project};
 use crate::model::package::{PackageInfo, Scripts};
 use crate::service::script::ScriptService;
 use crate::util::json::{load_package_json, load_package_json_from_path};
@@ -8,7 +8,7 @@ use anyhow::{Context, Result};
 use serde_json::Value;
 
 pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<()> {
-    update_cwd(false).await?;
+    update_cwd_to_project(false).await?;
     let pkg = if let Some(workspace_name) = &workspace {
         let workspace_dir = find_workspace_path(
             &std::env::current_dir().context("Failed to get current directory")?,
