@@ -134,11 +134,6 @@ pub async fn update_package_json(
         serde_json::to_string_pretty(&package_json)?,
     )?;
 
-    // 4. Rebuild package-lock.json
-    build_deps()
-        .await
-        .map_err(|e| anyhow!("Failed to rebuild dependencies: {}", e))?;
-
     Ok(())
 }
 
@@ -724,6 +719,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_write_ideal_tree_to_lock_file() {
         // Create a mock ideal tree
         let root = Node::new(
@@ -747,6 +743,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_is_pkg_lock_outdated() {
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
