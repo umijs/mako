@@ -40,7 +40,7 @@ pub async fn update_package(
         .context("Failed to update package.json")?;
 
     // 2. Update working directory to project root (if in workspace)
-    update_cwd().await?;
+    update_cwd(false).await?;
 
     // 3. Rebuild Deps
     build_deps()
@@ -56,7 +56,7 @@ pub async fn update_package(
 
 pub async fn install(ignore_scripts: bool) -> Result<()> {
     // Update working directory to project root
-    update_cwd().await?;
+    update_cwd(false).await?;
 
     // Package lock prerequisite check
     ensure_package_lock().await?;
