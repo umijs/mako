@@ -2,10 +2,12 @@ use anyhow::{Context, Result};
 use glob::glob;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
+use std::env;
+use std::sync::OnceLock;
 
 use crate::util::{
     json::{load_package_json_from_path, read_json_file},
-    logger::log_verbose,
+    logger::{log_info, log_verbose},
 };
 
 pub async fn find_workspaces(root_path: &Path) -> Result<Vec<(String, PathBuf, Value)>> {
@@ -181,6 +183,30 @@ pub async fn find_root_path() -> Result<PathBuf> {
 
     // If current directory is not in workspace patterns, return the package directory
     Ok(pkg_dir)
+}
+
+static ROOT_DIR: OnceLock<PathBuf> = OnceLock::new();
+
+/// Update current working directory to project root if needed
+pub async fn update_cwd() -> Result<()> {
+    // If we've already found and switched to the root directory, no need to do it again
+    if ROOT_DIR.get().is_some() {
+        return Ok(());
+    }
+
+    let root_dir = find_root_path().await?;
+    let current_dir = env::current_dir().context("Failed to get current directory")?;
+
+    // Only change directory and log if we're not already in the root directory
+    if current_dir != root_dir {
+        log_info(&format!("Changing directory to workspace root: {}", root_dir.display()));
+        env::set_current_dir(&root_dir).context("Failed to change to root directory")?;
+    }
+
+    // Cache the root directory
+    ROOT_DIR.set(root_dir.clone()).expect("Failed to cache root directory");
+
+    Ok(())
 }
 
 #[cfg(test)]

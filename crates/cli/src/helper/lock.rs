@@ -134,11 +134,6 @@ pub async fn update_package_json(
         serde_json::to_string_pretty(&package_json)?,
     )?;
 
-    // 4. Rebuild package-lock.json
-    build_deps()
-        .await
-        .map_err(|e| anyhow!("Failed to rebuild dependencies: {}", e))?;
-
     Ok(())
 }
 

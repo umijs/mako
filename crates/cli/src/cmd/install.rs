@@ -10,7 +10,7 @@ use crate::helper::lock::update_package_json;
 use crate::helper::lock::{
     ensure_package_lock, group_by_depth, prepare_global_package_json, PackageLock,
 };
-use crate::helper::workspace::find_root_path;
+use crate::helper::workspace::update_cwd;
 use crate::model::package::PackageInfo;
 use crate::service::install::install_packages;
 use crate::util::cache::get_cache_dir;
@@ -39,7 +39,10 @@ pub async fn update_package(
         .await
         .context("Failed to update package.json")?;
 
-    // 2. Rebuild Deps
+    // 2. Update working directory to project root (if in workspace)
+    update_cwd().await?;
+
+    // 3. Rebuild Deps
     build_deps()
         .await
         .context("Failed to build package-lock.json")?;
@@ -52,18 +55,11 @@ pub async fn update_package(
 }
 
 pub async fn install(ignore_scripts: bool) -> Result<()> {
+    // Update working directory to project root
+    update_cwd().await?;
+
     // Package lock prerequisite check
     ensure_package_lock().await?;
-
-    // Find the project root and change to it
-    let root_dir = find_root_path().await?;
-    let current_dir = env::current_dir().context("Failed to get current directory")?;
-
-    // Only change directory and log if we're not already in the root directory
-    if current_dir != root_dir {
-        log_info(&format!("Changing directory to workspace root: {}", root_dir.display()));
-        env::set_current_dir(&root_dir).context("Failed to change to root directory")?;
-    }
 
     // load package-lock.json
     let package_lock: PackageLock = serde_json::from_reader(
@@ -88,7 +84,7 @@ pub async fn install(ignore_scripts: bool) -> Result<()> {
     log_verbose(&format!("Setting concurrent limit to {}", concurrent_limit));
     let semaphore = Arc::new(Semaphore::new(concurrent_limit));
 
-    install_packages(&groups, &cache_dir, &root_dir, semaphore)
+    install_packages(&groups, &cache_dir, &env::current_dir()?, semaphore)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to install packages: {}", e))?;
 
