@@ -1,10 +1,10 @@
 use anyhow::{Context, Result};
 use glob::glob;
 use serde_json::Value;
+use std::cell::RefCell;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use std::cell::RefCell;
 use std::thread_local;
 
 use crate::util::{
@@ -131,8 +131,13 @@ async fn find_closest_parent_pkg(start_dir: &Path) -> Result<Option<(PathBuf, Va
     while let Some(parent) = current.parent() {
         let package_json_path = parent.join("package.json");
         if package_json_path.exists() {
-            let pkg = read_json_file::<Value>(&package_json_path)
-                .map_err(|e| anyhow::anyhow!("Failed to read package.json at {}: {}", package_json_path.display(), e))?;
+            let pkg = read_json_file::<Value>(&package_json_path).map_err(|e| {
+                anyhow::anyhow!(
+                    "Failed to read package.json at {}: {}",
+                    package_json_path.display(),
+                    e
+                )
+            })?;
             return Ok(Some((parent.to_path_buf(), pkg)));
         }
         current = parent.to_path_buf();
@@ -142,7 +147,7 @@ async fn find_closest_parent_pkg(start_dir: &Path) -> Result<Option<(PathBuf, Va
 }
 
 thread_local! {
-    static ROOT_DIR: RefCell<Option<PathBuf>> = RefCell::new(None);
+    static ROOT_DIR: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
 }
 
 /// Find the closest directory containing package.json by traversing up
