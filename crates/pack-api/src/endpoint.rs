@@ -122,3 +122,24 @@ pub async fn get_written_endpoint_with_issues_operation(
     }
     .cell())
 }
+
+#[turbo_tasks::value(shared, serialization = "none", eq = "manual")]
+pub struct EndpointIssuesAndDiags {
+    pub changed: Option<ReadRef<Completion>>,
+    pub issues: Arc<Vec<ReadRef<PlainIssue>>>,
+    pub diagnostics: Arc<Vec<ReadRef<PlainDiagnostic>>>,
+    pub effects: Arc<Effects>,
+}
+
+impl PartialEq for EndpointIssuesAndDiags {
+    fn eq(&self, other: &Self) -> bool {
+        (match (&self.changed, &other.changed) {
+            (Some(a), Some(b)) => ReadRef::ptr_eq(a, b),
+            (None, None) => true,
+            (None, Some(_)) | (Some(_), None) => false,
+        }) && self.issues == other.issues
+            && self.diagnostics == other.diagnostics
+    }
+}
+
+impl Eq for EndpointIssuesAndDiags {}
