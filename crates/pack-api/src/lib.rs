@@ -8,7 +8,6 @@ pub mod app;
 pub mod endpoints;
 pub mod entrypoints;
 pub mod hmr;
-pub mod issues;
 pub mod library;
 pub mod ntf_json;
 pub mod operation;
