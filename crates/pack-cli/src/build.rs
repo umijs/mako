@@ -2,8 +2,8 @@ use std::time::Instant;
 
 use anyhow::Result;
 use pack_api::{
-    entrypoints::get_all_written_entrypoints_with_issues_operation, issues::EntrypointsWithIssues,
-    project::ProjectOptions,
+    entrypoint::get_all_written_entrypoints_with_issues_operation,
+    entrypoint::EntrypointsWithIssues, project::ProjectOptions,
 };
 use turbo_tasks_malloc::TurboMalloc;
 
