@@ -55,8 +55,8 @@ use turbopack_trace_utils::exit::ExitReceiver;
 
 use crate::{
     app::{AppEntrypoint, AppProject, OptionAppProject},
-    endpoints::{Endpoint, Endpoints},
-    entrypoints::Entrypoints,
+    endpoint::{Endpoint, Endpoints},
+    entrypoint::Entrypoints,
     library::{Library, LibraryProject, OptionLibraryProject},
     tasks::BundlerTurboTasks,
     versioned_content_map::VersionedContentMap,
