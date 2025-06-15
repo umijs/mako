@@ -1,0 +1,15 @@
+{
+  "name": "with-define",
+  "version": "1.0.0",
+  "description": "Example demonstrating define configuration for compile-time variable replacement",
+  "author": "zoomdong",
+  "license": "MIT",
+  "scripts": {
+    "build": "npx utoo-pack .",
+    "dev": "npx utoo-pack . dev"
+  },
+  "devDependencies": {
+    "@utoo/pack": "*"
+  },
+  "repository": "git@github.com:umijs/mako.git"
+} 
