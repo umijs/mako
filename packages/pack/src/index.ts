@@ -2,7 +2,7 @@ import { nanoid } from "nanoid";
 import { projectFactory } from "./project";
 import fs from "fs";
 import path from "path";
-import { formatIssue, isRelevantWarning } from "./util";
+import { createDefineEnv, formatIssue, isRelevantWarning } from "./util";
 import { ProjectOptions } from "./types";
 import { xcodeProfilingReady } from "./xcodeProfile";
 
@@ -35,23 +35,28 @@ export async function build(dir?: string) {
     }),
   );
 
+  await buildWithOptions(projectOptions, cwd);
+}
+
+export async function buildWithOptions(options: ProjectOptions, cwd?: string) {
+  const workingDir = cwd || process.cwd();
+
   const createProject = projectFactory();
   const project = await createProject(
     {
-      processEnv: projectOptions.processEnv ?? ({} as Record<string, string>),
-      processDefineEnv: projectOptions.processDefineEnv ?? {
-        client: [],
-        nodejs: [],
-        edge: [],
-      },
-      watch: projectOptions.watch ?? {
+      processEnv: options.processEnv ?? ({} as Record<string, string>),
+      processDefineEnv: options.processDefineEnv ?? createDefineEnv({
+        config: options.config,
+        dev: options.dev ?? false,
+      }),
+      watch: options.watch ?? {
         enable: false,
       },
-      dev: projectOptions.dev ?? false,
+      dev: options.dev ?? false,
       buildId: nanoid(),
-      config: projectOptions.config,
-      rootPath: path.resolve(cwd, projectOptions.rootPath),
-      projectPath: path.resolve(cwd, projectOptions.projectPath),
+      config: options.config,
+      rootPath: path.resolve(workingDir, options.rootPath),
+      projectPath: path.resolve(workingDir, options.projectPath),
     },
     {
       persistentCaching: false,

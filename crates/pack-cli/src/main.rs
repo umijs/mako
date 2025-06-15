@@ -102,6 +102,41 @@ fn main() {
             let mut partial_project_options: PartialProjectOptions =
                 serde_json::from_reader(&mut project_options_file).unwrap();
             let mode = if dev { "development" } else { "production" };
+
+            // Extract define config and convert to processDefineEnv
+            let mut process_define_env = partial_project_options
+                .process_define_env
+                .unwrap_or_default();
+
+            // Extract define entries from config and add to all environments
+            if let Some(define_entries) = partial_project_options
+                .config
+                .as_ref()
+                .and_then(|config| config.as_object())
+                .and_then(|config_map| config_map.get("define"))
+                .and_then(|define_value| define_value.as_object())
+                .map(|define_map| {
+                    define_map
+                        .iter()
+                        .map(|(key, value)| {
+                            let value_str = match value {
+                                Value::String(s) => format!("\"{}\"", s),
+                                _ => value.to_string(),
+                            };
+                            (key.as_str().into(), value_str.into())
+                        })
+                        .collect::<Vec<(RcStr, RcStr)>>()
+                })
+            {
+                process_define_env
+                    .client
+                    .extend(define_entries.iter().cloned());
+                process_define_env
+                    .edge
+                    .extend(define_entries.iter().cloned());
+                process_define_env.nodejs.extend(define_entries);
+            }
+
             partial_project_options.config = partial_project_options.config.as_mut().map_or(
                 Some(json!(format!(r#"{{ "mode": {mode}}}"#,))),
                 |config| {
@@ -132,9 +167,7 @@ fn main() {
                 project_path,
                 config: partial_project_options.config.unwrap().to_string().into(),
                 process_env: partial_project_options.process_env.unwrap_or_default(),
-                process_define_env: partial_project_options
-                    .process_define_env
-                    .unwrap_or_default(),
+                process_define_env,
 
                 watch: WatchOptions {
                     enable: watch,
