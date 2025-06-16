@@ -74,7 +74,7 @@ pub async fn find_workspaces(root_path: &Path) -> Result<Vec<(String, PathBuf, V
     Ok(workspaces)
 }
 
-pub async fn find_workspace_path(cwd: &PathBuf, workspace: &str) -> Result<PathBuf> {
+pub async fn find_workspace_path(cwd: &Path, workspace: &str) -> Result<PathBuf> {
     let workspaces = find_workspaces(cwd)
         .await
         .context("Failed to find workspaces")?;
