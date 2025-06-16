@@ -171,7 +171,7 @@ pub async fn find_root_path(cwd: &Path) -> Result<PathBuf> {
 
 /// Update current working directory to project root (with workspaces)
 pub async fn update_cwd_to_root(cwd: &Path) -> Result<PathBuf> {
-    let root_dir = find_root_path(&cwd).await?;
+    let root_dir = find_root_path(cwd).await?;
     if !compare_paths(cwd, &root_dir) {
         log_info(&format!(
             "Changing directory to workspace root: {}",
@@ -184,7 +184,6 @@ pub async fn update_cwd_to_root(cwd: &Path) -> Result<PathBuf> {
 
 /// Update current working directory to project directory (closest package.json)
 pub async fn update_cwd_to_project(cwd: &Path) -> Result<PathBuf> {
-
     let project_dir = find_project_path(cwd).await?;
     if !compare_paths(cwd, &project_dir) {
         log_info(&format!(
