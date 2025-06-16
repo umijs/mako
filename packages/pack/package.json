@@ -3,6 +3,17 @@
   "version": "0.0.1",
   "main": "cjs/index.js",
   "module": "esm/index.js",
+  "exports": {
+    ".": {
+      "import": "./esm/index.js",
+      "require": "./cjs/index.js"
+    },
+    "./cjs/*": "./cjs/*",
+    "./esm/*": "./esm/*",
+    "./global.d.ts": "./global.d.ts",
+    "./config_schema.json": "./config_schema.json",
+    "./package.json": "./package.json"
+  },
   "bin": {
     "utoo-pack": "./bin/cli.js"
   },
