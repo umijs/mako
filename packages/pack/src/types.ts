@@ -241,7 +241,7 @@ export interface ProjectOptions {
   };
 
   /**
-   * The mode in which Next.js is running.
+   * The mode of utoo-pack.
    */
   dev: boolean;
 

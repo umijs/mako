@@ -16,13 +16,13 @@ import {
   Project,
   ProjectOptions,
   RawEntrypoints,
-  RustifiedEnv,
   TurbopackLoaderItem,
   TurbopackRuleConfigItem,
   TurbopackRuleConfigItemOptions,
   TurbopackRuleConfigItemOrShortcut,
   Update,
 } from "./types";
+import { rustifyEnv } from "./util";
 
 export class TurbopackInternalError extends Error {
   name = "TurbopackInternalError";
@@ -114,15 +114,6 @@ async function serializeConfig(config: ConfigComplete): Promise<string> {
   }
 
   return JSON.stringify(configSerializable, null, 2);
-}
-
-function rustifyEnv(env: Record<string, string>): RustifiedEnv {
-  return Object.entries(env)
-    .filter(([_, value]) => value != null)
-    .map(([name, value]) => ({
-      name,
-      value,
-    }));
 }
 
 async function rustifyPartialProjectOptions(
