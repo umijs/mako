@@ -44,7 +44,6 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    #[ignore]
     fn test_link_creates_new_symlink() {
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path();
@@ -52,6 +51,7 @@ mod tests {
         let src_content = "test content";
         let src_path = temp_path.join("source1.txt");
         fs::write(&src_path, src_content).unwrap();
+        env::set_current_dir(temp_path).unwrap();
 
         let dst_path = temp_path.join("dest1.txt");
 
@@ -64,7 +64,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_link_creates_parent_directories() {
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path();
@@ -81,7 +80,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_link_existing_same_target() {
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path();
@@ -91,13 +89,13 @@ mod tests {
 
         let dst_path = temp_path.join("dest3.txt");
 
+        env::set_current_dir(temp_path).unwrap();
         link(&src_path, &dst_path).unwrap();
         let result = link(&src_path, &dst_path);
         assert!(result.is_ok());
     }
 
     #[test]
-    #[ignore]
     fn test_link_existing_different_target() {
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path();
@@ -109,6 +107,7 @@ mod tests {
 
         let dst_path = temp_path.join("dest4.txt");
 
+        env::set_current_dir(temp_path).unwrap();
         link(&src1_path, &dst_path).unwrap();
         let result = link(&src2_path, &dst_path);
         assert!(result.is_ok());

@@ -1,7 +1,14 @@
 use clap::Parser;
 use std::process;
 use utoo_cli::{
-    cmd::install::{install, update_package}, constants::{cmd::INSTALL_ABOUT, APP_VERSION}, helper::workspace::update_cwd_to_root, util::{config::{set_legacy_peer_deps, set_registry}, logger::{log_error, write_verbose_logs_to_file}, save_type::{parse_save_type, PackageAction}}
+    cmd::install::{install, update_package},
+    constants::{cmd::INSTALL_ABOUT, APP_VERSION},
+    helper::workspace::update_cwd_to_root,
+    util::{
+        config::{set_legacy_peer_deps, set_registry},
+        logger::{log_error, write_verbose_logs_to_file},
+        save_type::{parse_save_type, PackageAction},
+    },
 };
 
 #[derive(Parser)]

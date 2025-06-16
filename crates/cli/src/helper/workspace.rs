@@ -1,10 +1,8 @@
 use anyhow::{Context, Result};
 use glob::glob;
 use serde_json::Value;
-use std::cell::RefCell;
 use std::env;
 use std::path::{Path, PathBuf};
-use std::thread_local;
 
 use crate::util::{
     json::{load_package_json_from_path, read_json_file},
@@ -145,15 +143,8 @@ async fn find_closest_parent_pkg(start_dir: &Path) -> Result<Option<(PathBuf, Va
     Ok(None)
 }
 
-thread_local! {
-    static ROOT_DIR: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
-}
-
 /// Find the closest directory containing package.json by traversing up
 pub async fn find_project_path() -> Result<PathBuf> {
-    if let Some(cached) = ROOT_DIR.with(|dir| dir.borrow().clone()) {
-        return Ok(cached);
-    }
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
 
     // First check if current directory has package.json
@@ -171,9 +162,6 @@ pub async fn find_project_path() -> Result<PathBuf> {
 
 /// Find the project root path by traversing up the directory tree
 pub async fn find_root_path() -> Result<PathBuf> {
-    if let Some(cached) = ROOT_DIR.with(|dir| dir.borrow().clone()) {
-        return Ok(cached);
-    }
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
     let (pkg_dir, pkg) = match find_closest_parent_pkg(&cwd).await? {
         Some((dir, pkg)) => (dir, pkg),
@@ -210,12 +198,11 @@ pub async fn update_cwd_to_root() -> Result<PathBuf> {
         ));
         env::set_current_dir(&root_dir).context("Failed to change to root directory")?;
     }
-    ROOT_DIR.with(|dir| *dir.borrow_mut() = Some(root_dir.clone()));
     Ok(root_dir)
 }
 
 /// Update current working directory to project directory (closest package.json)
-pub async fn update_cwd_to_project() -> Result<()> {
+pub async fn update_cwd_to_project() -> Result<PathBuf> {
     let project_dir = find_project_path().await?;
     let current_dir = env::current_dir().context("Failed to get current directory")?;
     if !compare_paths(&current_dir, &project_dir) {
@@ -225,8 +212,7 @@ pub async fn update_cwd_to_project() -> Result<()> {
         ));
         env::set_current_dir(&project_dir).context("Failed to change to project directory")?;
     }
-    ROOT_DIR.with(|dir| *dir.borrow_mut() = Some(project_dir));
-    Ok(())
+    Ok(project_dir)
 }
 
 // Helper function to compare paths
@@ -338,7 +324,6 @@ mod tests {
         assert!(compare_paths(&found_project, &test_path));
     }
 
-
     #[tokio::test]
     async fn test_update_cwd_to_root_in_root() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
@@ -357,7 +342,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn test_update_cwd_to_project_in_root() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
         env::set_current_dir(&root_path).unwrap();

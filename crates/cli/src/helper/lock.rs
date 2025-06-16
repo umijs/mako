@@ -797,7 +797,9 @@ mod tests {
         fs::write(temp_path.join("package-lock.json"), pkg_lock.to_string()).unwrap();
 
         // Test that files are in sync
-        assert!(!is_pkg_lock_outdated(&temp_path.to_path_buf()).await.unwrap());
+        assert!(!is_pkg_lock_outdated(&temp_path.to_path_buf())
+            .await
+            .unwrap());
 
         // Test case 2: package.json has new dependency
         let pkg_json_updated = json!({
@@ -813,7 +815,9 @@ mod tests {
         });
 
         fs::write(temp_path.join("package.json"), pkg_json_updated.to_string()).unwrap();
-        let outdated = is_pkg_lock_outdated(&temp_path.to_path_buf()).await.unwrap();
+        let outdated = is_pkg_lock_outdated(&temp_path.to_path_buf())
+            .await
+            .unwrap();
         assert!(outdated);
 
         // Test case 3: package.json has updated version
@@ -833,7 +837,9 @@ mod tests {
             pkg_json_version_updated.to_string(),
         )
         .unwrap();
-        assert!(is_pkg_lock_outdated(&temp_path.to_path_buf()).await.unwrap());
+        assert!(is_pkg_lock_outdated(&temp_path.to_path_buf())
+            .await
+            .unwrap());
 
         // Test case 4: package.json has removed dependency
         let pkg_json_removed = json!({
@@ -846,7 +852,9 @@ mod tests {
         });
 
         fs::write(temp_path.join("package.json"), pkg_json_removed.to_string()).unwrap();
-        assert!(is_pkg_lock_outdated(&temp_path.to_path_buf()).await.unwrap());
+        assert!(is_pkg_lock_outdated(&temp_path.to_path_buf())
+            .await
+            .unwrap());
 
         // Test case 4: package.json has removed dependency
         let pkg_json_engines_changed = json!({
@@ -869,7 +877,8 @@ mod tests {
             pkg_json_engines_changed.to_string(),
         )
         .unwrap();
-        assert!(is_pkg_lock_outdated(&temp_path.to_path_buf()).await.unwrap());
-
+        assert!(is_pkg_lock_outdated(&temp_path.to_path_buf())
+            .await
+            .unwrap());
     }
 }

@@ -61,7 +61,8 @@ pub async fn install(ignore_scripts: bool, root_path: &PathBuf) -> Result<()> {
 
     // load package-lock.json
     let package_lock: PackageLock = serde_json::from_reader(
-        fs::File::open(root_path.join("package-lock.json")).context("Failed to open package-lock.json")?,
+        fs::File::open(root_path.join("package-lock.json"))
+            .context("Failed to open package-lock.json")?,
     )
     .map_err(|e| anyhow::anyhow!("Failed to parse package-lock.json: {}", e))?;
 

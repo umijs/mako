@@ -108,7 +108,6 @@ mod tests {
         let value = load_package_json_from_path(dir.path()).unwrap();
         assert_eq!(value["name"], "test-package");
         assert_eq!(value["version"], "1.0.0");
-
     }
 
     #[test]

@@ -1,6 +1,6 @@
-use crate::{cmd::install::install, helper::workspace::update_cwd_to_root};
 use crate::service::update::clean_package_lock;
 use crate::util::logger::log_verbose;
+use crate::{cmd::install::install, helper::workspace::update_cwd_to_root};
 use anyhow::{Context, Result};
 
 pub async fn update(ignore_scripts: bool) -> Result<()> {
