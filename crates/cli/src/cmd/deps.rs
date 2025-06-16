@@ -21,7 +21,7 @@ pub async fn build_deps(cwd: &Path) -> Result<()> {
     loop {
         let (pkgs_in_tree, _) = {
             let to_guard = ruborist.ideal_tree.as_ref().unwrap();
-            serialize_tree_to_packages(to_guard)
+            serialize_tree_to_packages(to_guard, cwd)
         };
 
         let invalid_deps = validate_deps(&pkg_file, &pkgs_in_tree).await?;
