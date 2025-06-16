@@ -3,9 +3,12 @@ use std::process;
 use utoo_cli::{
     cmd::install::{install, update_package},
     constants::{cmd::INSTALL_ABOUT, APP_VERSION},
-    util::config::{set_legacy_peer_deps, set_registry},
-    util::logger::{log_error, write_verbose_logs_to_file},
-    util::save_type::{parse_save_type, PackageAction},
+    helper::workspace::update_cwd_to_root,
+    util::{
+        config::{set_legacy_peer_deps, set_registry},
+        logger::{log_error, write_verbose_logs_to_file},
+        save_type::{parse_save_type, PackageAction},
+    },
 };
 
 #[derive(Parser)]
@@ -56,7 +59,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), anyhow::Error> {
     let cli = Cli::parse();
 
     // Set global registry
@@ -82,9 +85,15 @@ async fn main() {
             let _ = write_verbose_logs_to_file();
             process::exit(1);
         }
-    } else if let Err(e) = install(cli.ignore_scripts).await {
-        log_error(&e.to_string());
-        let _ = write_verbose_logs_to_file();
-        process::exit(1);
+    } else {
+        let cwd = std::env::current_dir()?;
+        let root_path = update_cwd_to_root(&cwd).await?;
+        if let Err(e) = install(cli.ignore_scripts, &root_path).await {
+            log_error(&e.to_string());
+            let _ = write_verbose_logs_to_file();
+            process::exit(1);
+        }
     }
+
+    Ok(())
 }

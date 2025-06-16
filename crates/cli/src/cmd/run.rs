@@ -1,5 +1,5 @@
 use crate::helper::package::parse_package_name;
-use crate::helper::workspace::find_workspace_path;
+use crate::helper::workspace::{find_workspace_path, update_cwd_to_project};
 use crate::model::package::{PackageInfo, Scripts};
 use crate::service::script::ScriptService;
 use crate::util::json::{load_package_json, load_package_json_from_path};
@@ -8,6 +8,8 @@ use anyhow::{Context, Result};
 use serde_json::Value;
 
 pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<()> {
+    let cwd = std::env::current_dir().context("Failed to get current directory")?;
+    update_cwd_to_project(&cwd).await?;
     let pkg = if let Some(workspace_name) = &workspace {
         let workspace_dir = find_workspace_path(
             &std::env::current_dir().context("Failed to get current directory")?,
@@ -110,12 +112,10 @@ mod tests {
         }"#;
 
         fs::write(_dir.path().join("package.json"), package_json).unwrap();
-        let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(_dir.path()).unwrap();
 
         let result = run_script("nonexistent", None).await;
 
-        std::env::set_current_dir(original_dir).unwrap();
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
@@ -129,12 +129,10 @@ mod tests {
         let invalid_json = r#"{ "name": "test", "scripts": { "test": 123 } }"#;
 
         fs::write(_dir.path().join("package.json"), invalid_json).unwrap();
-        let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(_dir.path()).unwrap();
 
         let result = run_script("test", None).await;
 
-        std::env::set_current_dir(original_dir).unwrap();
         assert!(result.is_err());
     }
 }

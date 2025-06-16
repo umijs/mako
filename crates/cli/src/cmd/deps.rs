@@ -8,11 +8,10 @@ use anyhow::{Context, Result};
 use serde_json::json;
 use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 
-pub async fn build_deps() -> Result<()> {
-    let path = PathBuf::from(".");
-    let mut ruborist = Ruborist::new(path.clone());
+pub async fn build_deps(cwd: &Path) -> Result<()> {
+    let mut ruborist = Ruborist::new(cwd);
     ruborist.build_ideal_tree().await?;
 
     let pkg_file = load_package_json()?;
@@ -63,14 +62,13 @@ pub async fn build_deps() -> Result<()> {
     }
 
     let tree = ruborist.ideal_tree.unwrap();
-    write_ideal_tree_to_lock_file(&tree).await?;
+    write_ideal_tree_to_lock_file(cwd, &tree).await?;
 
     Ok(())
 }
 
-pub async fn build_workspace() -> Result<()> {
-    let path = PathBuf::from(".");
-    let mut ruborist = Ruborist::new(path.clone());
+pub async fn build_workspace(cwd: &Path) -> Result<()> {
+    let mut ruborist = Ruborist::new(cwd);
     ruborist.build_workspace_tree().await?;
 
     if let Some(ideal_tree) = &ruborist.ideal_tree {
@@ -105,8 +103,8 @@ pub async fn build_workspace() -> Result<()> {
             "edges": edges,
         });
 
-        let temp_path = path.join("workspace.json.tmp");
-        let target_path = path.join("workspace.json");
+        let temp_path = cwd.join("workspace.json.tmp");
+        let target_path = cwd.join("workspace.json");
 
         fs::write(&temp_path, serde_json::to_string_pretty(&workspace_file)?)
             .context("Failed to write temporary workspace.json")?;

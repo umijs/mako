@@ -4,6 +4,7 @@ use std::process;
 use utoo_cli::{
     cmd::deps::{build_deps, build_workspace},
     constants::{cmd::DEPS_ABOUT, APP_VERSION},
+    helper::workspace::update_cwd_to_root,
     util::logger::{log_error, write_verbose_logs_to_file},
 };
 
@@ -27,10 +28,12 @@ struct Cli {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    let cwd = std::env::current_dir()?;
+    let root_path = update_cwd_to_root(&cwd).await?;
     let result = if cli.workspace_only {
-        build_workspace().await
+        build_workspace(&root_path).await
     } else {
-        build_deps().await
+        build_deps(&root_path).await
     };
 
     if let Err(e) = result {

@@ -24,6 +24,7 @@ use crate::constants::cmd::{
     REBUILD_NAME, UNINSTALL_ABOUT, UNINSTALL_NAME, UPDATE_ABOUT,
 };
 use crate::constants::{APP_ABOUT, APP_NAME, APP_VERSION};
+use crate::helper::workspace::update_cwd_to_root;
 
 #[derive(Parser)]
 #[command(name = APP_NAME)]
@@ -202,10 +203,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         process::exit(1);
                     }
                 }
-            } else if let Err(e) = install(ignore_scripts).await {
-                log_error(&e.to_string());
-                let _ = write_verbose_logs_to_file();
-                process::exit(1);
+            } else {
+                let cwd = std::env::current_dir()?;
+                let root_path = update_cwd_to_root(&cwd).await?;
+                if let Err(e) = install(ignore_scripts, &root_path).await {
+                    log_error(&e.to_string());
+                    let _ = write_verbose_logs_to_file();
+                    process::exit(1);
+                }
             }
         }
         Some(Commands::Uninstall {
@@ -241,10 +246,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             log_info("💫 All dependencies rebuild completed");
         }
         Some(Commands::Deps { workspace_only }) => {
+            let cwd = std::env::current_dir()?;
+            let root_path = update_cwd_to_root(&cwd).await?;
             let result = if workspace_only {
-                build_workspace().await
+                build_workspace(&root_path).await
             } else {
-                build_deps().await
+                build_deps(&root_path).await
             };
 
             if let Err(e) = result {
@@ -282,7 +289,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             } else {
                 // Default to install if no arguments
-                if let Err(e) = install(cli.ignore_scripts).await {
+                let cwd = std::env::current_dir()?;
+                let root_path = update_cwd_to_root(&cwd).await?;
+                if let Err(e) = install(cli.ignore_scripts, &root_path).await {
                     log_error(&e.to_string());
                     let _ = write_verbose_logs_to_file();
                     process::exit(1);
