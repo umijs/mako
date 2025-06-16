@@ -103,8 +103,8 @@ pub async fn build_workspace(cwd: &Path) -> Result<()> {
             "edges": edges,
         });
 
-        let temp_path = path.join("workspace.json.tmp");
-        let target_path = path.join("workspace.json");
+        let temp_path = cwd.join("workspace.json.tmp");
+        let target_path = cwd.join("workspace.json");
 
         fs::write(&temp_path, serde_json::to_string_pretty(&workspace_file)?)
             .context("Failed to write temporary workspace.json")?;
