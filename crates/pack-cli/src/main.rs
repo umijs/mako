@@ -109,32 +109,34 @@ fn main() {
                 .unwrap_or_default();
 
             // Extract define entries from config and add to all environments
-            if let Some(define_entries) = partial_project_options
-                .config
-                .as_ref()
-                .and_then(|config| config.as_object())
-                .and_then(|config_map| config_map.get("define"))
-                .and_then(|define_value| define_value.as_object())
-                .map(|define_map| {
-                    define_map
+            // Helper function to extract and apply define entries from config
+            fn apply_define_entries(
+                config: &Value,
+                process_define_env: &mut pack_api::project::DefineEnv,
+            ) {
+                if let Some(define_map) = config
+                    .as_object()
+                    .and_then(|obj| obj.get("define"))
+                    .and_then(|define_value| define_value.as_object())
+                {
+                    // Collect once to avoid multiple iterations over the map
+                    let define_entries: Vec<(RcStr, RcStr)> = define_map
                         .iter()
-                        .map(|(key, value)| {
-                            let value_str = match value {
-                                Value::String(s) => format!("\"{}\"", s),
-                                _ => value.to_string(),
-                            };
-                            (key.as_str().into(), value_str.into())
-                        })
-                        .collect::<Vec<(RcStr, RcStr)>>()
-                })
-            {
-                process_define_env
-                    .client
-                    .extend(define_entries.iter().cloned());
-                process_define_env
-                    .edge
-                    .extend(define_entries.iter().cloned());
-                process_define_env.nodejs.extend(define_entries);
+                        .map(|(key, value)| (key.as_str().into(), value.to_string().into()))
+                        .collect();
+
+                    process_define_env
+                        .client
+                        .extend(define_entries.iter().cloned());
+                    process_define_env
+                        .edge
+                        .extend(define_entries.iter().cloned());
+                    process_define_env.nodejs.extend(define_entries);
+                }
+            }
+
+            if let Some(config) = &partial_project_options.config {
+                apply_define_entries(config, &mut process_define_env);
             }
 
             partial_project_options.config = partial_project_options.config.as_mut().map_or(
