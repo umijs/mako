@@ -263,9 +263,7 @@ pub async fn is_pkg_lock_outdated(root_path: &Path) -> Result<bool> {
     // populate all workspaces
     let workspaces = find_workspaces(root_path).await?;
     for (_, path, workspace_pkg) in workspaces {
-        let target_path = path.strip_prefix(root_path)?
-            .to_string_lossy()
-            .to_string();
+        let target_path = path.strip_prefix(root_path)?.to_string_lossy().to_string();
         pkgs_to_check.push((target_path, workspace_pkg));
     }
 
@@ -296,13 +294,9 @@ pub async fn is_pkg_lock_outdated(root_path: &Path) -> Result<bool> {
         }
 
         // only check engines for root workspace
-        if &path == "" {
-            if pkg.get("engines") != lock.get("engines") {
-                log_warning(&format!(
-                    "package-lock.json is outdated, engines changed"
-                ));
-                return Ok(true);
-            }
+        if path.is_empty() && pkg.get("engines") != lock.get("engines") {
+            log_warning("package-lock.json is outdated, engines changed");
+            return Ok(true);
         }
     }
 
@@ -609,7 +603,9 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>, path: &Path) -> (Value, i32)
             let child_prefix = if prefix.is_empty() {
                 if child.is_workspace {
                     // convert to relative path
-                    child.path.strip_prefix(path)
+                    child
+                        .path
+                        .strip_prefix(path)
                         .map(|p| p.to_string_lossy().to_string())
                         .unwrap_or_else(|_| child.path.to_string_lossy().to_string())
                 } else {
@@ -631,7 +627,8 @@ fn get_relative_target_path(current: &Node, root_path: &Path) -> String {
     let target_node = target.as_ref().unwrap();
 
     // Try to get relative path first
-    target_node.path
+    target_node
+        .path
         .strip_prefix(root_path)
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_else(|_| target_node.path.to_string_lossy().to_string())
