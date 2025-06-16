@@ -826,7 +826,10 @@ mod tests {
 
         // Test build_deps
         let result = build_deps(root.clone()).await;
-        assert!(result.is_ok(), "build_deps should handle workspace cycles successfully");
+        assert!(
+            result.is_ok(),
+            "build_deps should handle workspace cycles successfully"
+        );
 
         // Verify that both workspaces are processed exactly once
         let mut processed_workspaces = std::collections::HashSet::new();
