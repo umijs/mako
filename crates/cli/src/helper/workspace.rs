@@ -338,18 +338,8 @@ mod tests {
         assert!(compare_paths(&found_project, &test_path));
     }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_update_cwd_to_root_in_workspace() {
-        let (_temp_dir, root_path) = setup_test_workspace().await;
-        let workspace_path = root_path.join("packages").join("test-workspace");
-        env::set_current_dir(&workspace_path).unwrap();
-        update_cwd_to_root().await.unwrap();
-        assert!(compare_paths(&env::current_dir().unwrap(), &root_path));
-    }
 
     #[tokio::test]
-    #[ignore]
     async fn test_update_cwd_to_root_in_root() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
         env::set_current_dir(&root_path).unwrap();

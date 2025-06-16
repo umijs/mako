@@ -94,13 +94,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_load_package_json() {
         let dir = tempdir().unwrap();
-        let original_dir = std::env::current_dir().unwrap();
-
-        // Change to temp directory
-        std::env::set_current_dir(&dir).unwrap();
 
         // Create a test package.json
         let test_data = json!({
@@ -108,14 +103,12 @@ mod tests {
             "version": "1.0.0"
         });
 
-        fs::write("package.json", test_data.to_string()).unwrap();
+        fs::write(dir.path().join("package.json"), test_data.to_string()).unwrap();
 
-        let value = load_package_json().unwrap();
+        let value = load_package_json_from_path(dir.path()).unwrap();
         assert_eq!(value["name"], "test-package");
         assert_eq!(value["version"], "1.0.0");
 
-        // Restore original directory
-        std::env::set_current_dir(original_dir).unwrap();
     }
 
     #[test]
