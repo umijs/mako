@@ -1,7 +1,10 @@
 use anyhow::{anyhow, Result};
 use pack_api::project::Project;
 use rustc_hash::FxHashSet;
-use turbo_tasks::{trace::TraceRawVcs, NonLocalValue, OperationVc, ResolvedVc, TryJoinIterExt, Vc};
+use turbo_tasks::{
+    trace::TraceRawVcs, NonLocalValue, OperationVc, ResolvedVc, TryFlatJoinIterExt, TryJoinIterExt,
+    Vc,
+};
 
 use turbopack_core::chunk::{ChunkableModule, EvaluatableAsset};
 use turbopack_dev_server::{
@@ -42,42 +45,48 @@ pub async fn create_web_entry_source(
                         .to_resolved()
                         .await?;
 
-                    let entry_module = app
-                        .main_module(Vc::upcast(asset_context))
-                        .to_resolved()
-                        .await?;
+                    let entry_modules = app
+                        .app_entry_modules(Vc::upcast(asset_context))
+                        .await?
+                        .to_vec();
 
-                    if let (Some(chunkable_module), Some(entry)) = (
-                        ResolvedVc::try_sidecast::<Box<dyn ChunkableModule>>(entry_module),
-                        ResolvedVc::try_sidecast::<Box<dyn EvaluatableAsset>>(entry_module),
-                    ) {
-                        Ok(DevHtmlEntry {
-                            chunkable_module,
-                            module_graph,
-                            chunking_context,
-                            runtime_entries: Some(
-                                runtime_entries.with_entry(*entry).to_resolved().await?,
-                            ),
-                        })
-                    } else if let Some(chunkable_module) =
-                        ResolvedVc::try_sidecast::<Box<dyn ChunkableModule>>(entry_module)
-                    {
-                        // TODO this is missing runtime code, so it's probably broken and we should also
-                        // add an ecmascript chunk with the runtime code
-                        Ok(DevHtmlEntry {
-                            chunkable_module,
-                            module_graph,
-                            chunking_context,
-                            runtime_entries: None,
-                        })
-                    } else {
-                        Err(anyhow!(
+                    entry_modules
+                        .into_iter()
+                        .map(async |m| {
+                            if let (Some(chunkable_module), Some(entry)) = (
+                                ResolvedVc::try_sidecast::<Box<dyn ChunkableModule>>(m),
+                                ResolvedVc::try_sidecast::<Box<dyn EvaluatableAsset>>(m),
+                            ) {
+                                Ok(DevHtmlEntry {
+                                    chunkable_module,
+                                    module_graph,
+                                    chunking_context,
+                                    runtime_entries: Some(
+                                        runtime_entries.with_entry(*entry).to_resolved().await?,
+                                    ),
+                                })
+                            } else if let Some(chunkable_module) =
+                                ResolvedVc::try_sidecast::<Box<dyn ChunkableModule>>(m)
+                            {
+                                // TODO this is missing runtime code, so it's probably broken and we should also
+                                // add an ecmascript chunk with the runtime code
+                                Ok(DevHtmlEntry {
+                                    chunkable_module,
+                                    module_graph,
+                                    chunking_context,
+                                    runtime_entries: None,
+                                })
+                            } else {
+                                Err(anyhow!(
                             "Entry module is not chunkable, so it can't be used to bootstrap the \
                      application"
                         ))
-                    }
+                            }
+                        })
+                        .try_join()
+                        .await
                 })
-                .try_join()
+                .try_flat_join()
                 .await?
         }
         None => vec![],
