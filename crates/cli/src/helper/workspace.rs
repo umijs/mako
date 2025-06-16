@@ -249,23 +249,6 @@ mod tests {
     use std::fs;
     use tempfile::TempDir;
 
-    // Helper function to normalize path for comparison
-    fn normalize_path(path: &Path) -> PathBuf {
-        let path_str = path.to_string_lossy();
-        if path_str.starts_with("/private") {
-            PathBuf::from(path_str.strip_prefix("/private").unwrap())
-        } else {
-            PathBuf::from(path_str.as_ref())
-        }
-    }
-
-    // Helper function to compare paths
-    fn compare_paths(left: &Path, right: &Path) -> bool {
-        let left = normalize_path(left);
-        let right = normalize_path(right);
-        left == right
-    }
-
     async fn setup_test_workspace() -> (TempDir, PathBuf) {
         let temp_dir = TempDir::new().unwrap();
         let root_path = temp_dir.path().to_path_buf();
