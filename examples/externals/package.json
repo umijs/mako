@@ -1,20 +1,19 @@
 {
-    "name": "externals-example",
-    "version": "1.0.0",
-    "description": "",
-    "keywords": [],
-    "license": "MIT",
-    "scripts": {
-        "build": "utoo-pack .",
-        "build:tracing": "TURBOPACK_TRACE_SERVER=1 TURBOPACK_TRACING=overview utoo-pack .",
-        "dev": "utoo-pack . dev",
-        "serve": "npm run build && node ./genHtml.js && serve ./dist"
-    },
-    "dependencies": {
-        "antd": "^5.12.2"
-    },
-    "devDependencies": {
-        "@utoo/pack": "*",
-        "serve": "^14.2.4"
-    }
+  "name": "externals-example",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": [],
+  "license": "MIT",
+  "scripts": {
+    "build": "utoo-pack build -p . -r ../..",
+    "dev": "utoo-pack watch -p . -r ../..",
+    "serve": "npm run build && node ./genHtml.js && serve ./dist"
+  },
+  "dependencies": {
+    "antd": "^5.12.2"
+  },
+  "devDependencies": {
+    "@utoo/pack": "*",
+    "serve": "^14.2.4"
+  }
 }

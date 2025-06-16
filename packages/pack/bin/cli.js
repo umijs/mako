@@ -1,9 +1,32 @@
 #!/usr/bin/env node
-const { build } = require("../cjs/index.js");
+const path = require("path");
+const fs = require("fs");
+const { Command } = require("commander");
+const bundler = require("../cjs/index.js");
 
-console.log(process.argv);
+const program = new Command();
+program
+  .name("utoo-pack")
+  .version(require(path.join(__dirname, "../package.json")).version);
 
-// Get the directory argument, default to current directory
-const dir = process.argv[2] || process.cwd();
+program
+  .argument("<mode>", "build or watch")
+  .option("-p, --project <string>", "project dir")
+  .option("-r, --root <string>", "root dir")
+  .action((mode, { project, root }) => {
+    console.log({ mode, project, root });
+    const cwd = process.cwd();
+    const projectOptions = JSON.parse(
+      fs.readFileSync(path.join(project, "project_options.json"), {
+        encoding: "utf-8",
+      }),
+    );
+    bundler[mode](
+      projectOptions,
+      path.resolve(cwd, project),
+      path.resolve(cwd, root || project),
+      cwd,
+    );
+  });
 
-build(dir);
+program.parse(process.argv);
