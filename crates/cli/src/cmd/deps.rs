@@ -63,7 +63,7 @@ pub async fn build_deps() -> Result<()> {
     }
 
     let tree = ruborist.ideal_tree.unwrap();
-    write_ideal_tree_to_lock_file(&tree).await?;
+    write_ideal_tree_to_lock_file(&path, &tree).await?;
 
     Ok(())
 }

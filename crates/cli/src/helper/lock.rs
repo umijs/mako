@@ -422,8 +422,7 @@ fn get_dep_types() -> Vec<(&'static str, bool)> {
     }
 }
 
-pub async fn write_ideal_tree_to_lock_file(ideal_tree: &Arc<Node>) -> Result<()> {
-    let path = PathBuf::from(".");
+pub async fn write_ideal_tree_to_lock_file(path: &PathBuf, ideal_tree: &Arc<Node>) -> Result<()> {
     let (packages, total_packages) = serialize_tree_to_packages(ideal_tree);
     let lock_file = json!({
         "name": ideal_tree.name,  // Direct field access
@@ -719,12 +718,15 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn test_write_ideal_tree_to_lock_file() {
+        // Create a temporary directory for testing
+        let temp_dir = TempDir::new().unwrap();
+        let temp_path = temp_dir.path();
+
         // Create a mock ideal tree
         let root = Node::new(
             "test-package".to_string(),
-            PathBuf::from("."),
+            temp_path.to_path_buf(),
             json!({
                 "name": "test-package",
                 "version": "1.0.0",
@@ -735,11 +737,22 @@ mod tests {
         );
 
         // Test writing the ideal tree to lock file
-        let result = write_ideal_tree_to_lock_file(&root).await;
+        let result = write_ideal_tree_to_lock_file(&temp_path.to_path_buf(), &root).await;
         assert!(result.is_ok());
 
-        // Clean up the test file
-        let _ = std::fs::remove_file("package-lock.json");
+        // Verify the lock file was created
+        let lock_file_path = temp_path.join("package-lock.json");
+        assert!(lock_file_path.exists());
+
+        // Read and verify the content
+        let content = fs::read_to_string(lock_file_path).unwrap();
+        let lock_data: Value = serde_json::from_str(&content).unwrap();
+
+        assert_eq!(lock_data["name"], "test-package");
+
+        // Verify packages section
+        let packages = lock_data["packages"].as_object().unwrap();
+        assert!(packages.contains_key(""));
     }
 
     #[tokio::test]
