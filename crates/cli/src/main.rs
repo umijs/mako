@@ -204,7 +204,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             } else {
-                let root_path = update_cwd_to_root().await?;
+                let cwd = std::env::current_dir()?;
+                let root_path = update_cwd_to_root(&cwd).await?;
                 if let Err(e) = install(ignore_scripts, &root_path).await {
                     log_error(&e.to_string());
                     let _ = write_verbose_logs_to_file();
@@ -245,7 +246,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             log_info("💫 All dependencies rebuild completed");
         }
         Some(Commands::Deps { workspace_only }) => {
-            let root_path = update_cwd_to_root().await?;
+            let cwd = std::env::current_dir()?;
+            let root_path = update_cwd_to_root(&cwd).await?;
             let result = if workspace_only {
                 build_workspace(&root_path).await
             } else {
@@ -287,7 +289,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             } else {
                 // Default to install if no arguments
-                let root_path = update_cwd_to_root().await?;
+                let cwd = std::env::current_dir()?;
+                let root_path = update_cwd_to_root(&cwd).await?;
                 if let Err(e) = install(cli.ignore_scripts, &root_path).await {
                     log_error(&e.to_string());
                     let _ = write_verbose_logs_to_file();

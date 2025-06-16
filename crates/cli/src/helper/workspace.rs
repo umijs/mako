@@ -143,29 +143,11 @@ async fn find_closest_parent_pkg(start_dir: &Path) -> Result<Option<(PathBuf, Va
     Ok(None)
 }
 
-/// Find the closest directory containing package.json by traversing up
-pub async fn find_project_path() -> Result<PathBuf> {
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
-
-    // First check if current directory has package.json
-    let current_package_json = cwd.join("package.json");
-    if current_package_json.exists() {
-        return Ok(cwd);
-    }
-
-    // If not, traverse up
-    match find_closest_parent_pkg(&cwd).await? {
-        Some((dir, _)) => Ok(dir),
-        None => Ok(cwd),
-    }
-}
-
 /// Find the project root path by traversing up the directory tree
-pub async fn find_root_path() -> Result<PathBuf> {
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
-    let (pkg_dir, pkg) = match find_closest_parent_pkg(&cwd).await? {
+pub async fn find_root_path(cwd: &Path) -> Result<PathBuf> {
+    let (pkg_dir, pkg) = match find_closest_parent_pkg(cwd).await? {
         Some((dir, pkg)) => (dir, pkg),
-        None => return Ok(cwd),
+        None => return Ok(cwd.to_path_buf()),
     };
     if !is_workspace_root(&pkg).await {
         return Ok(pkg_dir);
@@ -179,7 +161,7 @@ pub async fn find_root_path() -> Result<PathBuf> {
             Some(s) => s,
             None => continue,
         };
-        if is_in_workspace(&cwd, &pkg_dir, pattern_str).await? {
+        if is_in_workspace(cwd, &pkg_dir, pattern_str).await? {
             log_verbose(&format!("Found workspace root at: {}", pkg_dir.display()));
             return Ok(pkg_dir);
         }
@@ -188,10 +170,9 @@ pub async fn find_root_path() -> Result<PathBuf> {
 }
 
 /// Update current working directory to project root (with workspaces)
-pub async fn update_cwd_to_root() -> Result<PathBuf> {
-    let root_dir = find_root_path().await?;
-    let current_dir = env::current_dir().context("Failed to get current directory")?;
-    if !compare_paths(&current_dir, &root_dir) {
+pub async fn update_cwd_to_root(cwd: &Path) -> Result<PathBuf> {
+    let root_dir = find_root_path(&cwd).await?;
+    if !compare_paths(cwd, &root_dir) {
         log_info(&format!(
             "Changing directory to workspace root: {}",
             root_dir.display()
@@ -202,10 +183,10 @@ pub async fn update_cwd_to_root() -> Result<PathBuf> {
 }
 
 /// Update current working directory to project directory (closest package.json)
-pub async fn update_cwd_to_project() -> Result<PathBuf> {
-    let project_dir = find_project_path().await?;
-    let current_dir = env::current_dir().context("Failed to get current directory")?;
-    if !compare_paths(&current_dir, &project_dir) {
+pub async fn update_cwd_to_project(cwd: &Path) -> Result<PathBuf> {
+
+    let project_dir = find_project_path(cwd).await?;
+    if !compare_paths(cwd, &project_dir) {
         log_info(&format!(
             "Changing directory to project: {}",
             project_dir.display()
@@ -213,6 +194,37 @@ pub async fn update_cwd_to_project() -> Result<PathBuf> {
         env::set_current_dir(&project_dir).context("Failed to change to project directory")?;
     }
     Ok(project_dir)
+}
+
+/// Find the closest directory containing package.json by traversing up
+pub async fn find_project_path(cwd: &Path) -> Result<PathBuf> {
+    // First check if current directory has package.json
+    let current_package_json = cwd.join("package.json");
+    if current_package_json.exists() {
+        return Ok(cwd.to_path_buf());
+    }
+
+    // If not, traverse up
+    let (pkg_dir, pkg) = match find_closest_parent_pkg(cwd).await? {
+        Some((dir, pkg)) => (dir, pkg),
+        None => return Ok(cwd.to_path_buf()),
+    };
+
+    // If parent is a workspace root, check if we're in a workspace
+    if is_workspace_root(&pkg).await {
+        if let Some(Value::Array(patterns)) = pkg.get("workspaces") {
+            for pattern in patterns {
+                if let Some(pattern_str) = pattern.as_str() {
+                    if is_in_workspace(cwd, &pkg_dir, pattern_str).await? {
+                        // If we're in a workspace, return the workspace directory
+                        return Ok(cwd.to_path_buf());
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(pkg_dir)
 }
 
 // Helper function to compare paths
@@ -294,24 +306,21 @@ mod tests {
     async fn test_find_project_path_in_workspace() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
         let workspace_path = root_path.join("packages").join("test-workspace");
-        env::set_current_dir(&workspace_path).unwrap();
-        let found_project = find_project_path().await.unwrap();
+        let found_project = find_project_path(&workspace_path).await.unwrap();
         assert!(compare_paths(&found_project, &workspace_path));
     }
 
     #[tokio::test]
     async fn test_find_project_path_in_root() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
-        env::set_current_dir(&root_path).unwrap();
-        let found_project = find_project_path().await.unwrap();
+        let found_project = find_project_path(&root_path).await.unwrap();
         assert!(compare_paths(&found_project, &root_path));
     }
 
     #[tokio::test]
     async fn test_find_project_path_in_project() {
         let (_temp_dir, project_path) = setup_test_project().await;
-        env::set_current_dir(&project_path).unwrap();
-        let found_project = find_project_path().await.unwrap();
+        let found_project = find_project_path(&project_path).await.unwrap();
         assert!(compare_paths(&found_project, &project_path));
     }
 
@@ -319,33 +328,34 @@ mod tests {
     async fn test_find_project_path_no_package_json() {
         let temp_dir = TempDir::new().unwrap();
         let test_path = temp_dir.path().to_path_buf();
-        env::set_current_dir(&test_path).unwrap();
-        let found_project = find_project_path().await.unwrap();
+        let found_project = find_project_path(&test_path).await.unwrap();
         assert!(compare_paths(&found_project, &test_path));
     }
 
     #[tokio::test]
     async fn test_update_cwd_to_root_in_root() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
-        env::set_current_dir(&root_path).unwrap();
-        update_cwd_to_root().await.unwrap();
-        assert!(compare_paths(&env::current_dir().unwrap(), &root_path));
+        update_cwd_to_root(&root_path).await.unwrap();
+        let result = update_cwd_to_project(&root_path).await.unwrap();
+        assert!(compare_paths(&result, &root_path));
     }
 
     #[tokio::test]
     async fn test_update_cwd_to_project_in_workspace() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
         let workspace_path = root_path.join("packages").join("test-workspace");
-        env::set_current_dir(&workspace_path).unwrap();
-        update_cwd_to_project().await.unwrap();
-        assert!(compare_paths(&env::current_dir().unwrap(), &workspace_path));
+
+        // Test that update_cwd_to_project correctly handles workspace path
+        let result = update_cwd_to_project(&workspace_path).await.unwrap();
+        assert!(compare_paths(&result, &workspace_path));
     }
 
     #[tokio::test]
     async fn test_update_cwd_to_project_in_root() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
-        env::set_current_dir(&root_path).unwrap();
-        update_cwd_to_project().await.unwrap();
-        assert!(compare_paths(&env::current_dir().unwrap(), &root_path));
+
+        // Test that update_cwd_to_project correctly handles root path
+        let result = update_cwd_to_project(&root_path).await.unwrap();
+        assert!(compare_paths(&result, &root_path));
     }
 }

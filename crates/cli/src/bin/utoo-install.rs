@@ -86,7 +86,8 @@ async fn main() -> Result<(), anyhow::Error> {
             process::exit(1);
         }
     } else {
-        let root_path = update_cwd_to_root().await?;
+        let cwd = std::env::current_dir()?;
+        let root_path = update_cwd_to_root(&cwd).await?;
         if let Err(e) = install(cli.ignore_scripts, &root_path).await {
             log_error(&e.to_string());
             let _ = write_verbose_logs_to_file();

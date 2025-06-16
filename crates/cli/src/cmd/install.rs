@@ -34,6 +34,7 @@ pub async fn update_package(
         "update package: {:?} {:?} {:?} {:?}",
         action, spec, &workspace, ignore_scripts
     ));
+    let cwd = std::env::current_dir().context("Failed to get current directory")?;
 
     // 1. Update package.json and package-lock.json
     update_package_json(&action, spec, &workspace, &save_type)
@@ -41,7 +42,7 @@ pub async fn update_package(
         .context("Failed to update package.json")?;
 
     // 2. Update working directory to project root (if in workspace)
-    let root_path = update_cwd_to_root().await?;
+    let root_path = update_cwd_to_root(&cwd).await?;
 
     // 3. Rebuild Deps
     build_deps(&root_path)

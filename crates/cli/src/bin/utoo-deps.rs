@@ -28,7 +28,8 @@ struct Cli {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let root_path = update_cwd_to_root().await?;
+    let cwd = std::env::current_dir()?;
+    let root_path = update_cwd_to_root(&cwd).await?;
     let result = if cli.workspace_only {
         build_workspace(&root_path).await
     } else {
