@@ -56,7 +56,7 @@ pub fn extract_package_name(path: &str) -> String {
     }
 }
 
-pub async fn ensure_package_lock(root_path: &PathBuf) -> Result<()> {
+pub async fn ensure_package_lock(root_path: &Path) -> Result<()> {
     // check package.json exists in cwd
     if fs::metadata(root_path.join("package.json")).is_err() {
         return Err(anyhow!("package.json not found"));

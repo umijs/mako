@@ -55,7 +55,7 @@ pub async fn update_package(
     Ok(())
 }
 
-pub async fn install(ignore_scripts: bool, root_path: &PathBuf) -> Result<()> {
+pub async fn install(ignore_scripts: bool, root_path: &Path) -> Result<()> {
     // Package lock prerequisite check
     ensure_package_lock(root_path).await?;
 
