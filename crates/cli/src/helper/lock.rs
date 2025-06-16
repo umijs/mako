@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{collections::HashMap, fs};
 
@@ -64,14 +64,14 @@ pub async fn ensure_package_lock(root_path: &PathBuf) -> Result<()> {
     // check package-lock.json exists in cwd
     if fs::metadata(root_path.join("package-lock.json")).is_err() {
         log_info("Resolving dependencies");
-        build_deps(&root_path).await?;
+        build_deps(root_path).await?;
         Ok(())
     } else {
         // load package-lock.json directly if exists
         log_info("Loading package-lock.json from current project for dependency download");
         // Validate dependencies to ensure package-lock.json is in sync with package.json
-        if is_pkg_lock_outdated(&root_path).await? {
-            build_deps(&root_path).await?;
+        if is_pkg_lock_outdated(root_path).await? {
+            build_deps(root_path).await?;
         }
         Ok(())
     }
@@ -246,7 +246,7 @@ pub struct InvalidDependency {
     pub dependency_name: String,
 }
 
-pub async fn is_pkg_lock_outdated(root_path: &PathBuf) -> Result<bool> {
+pub async fn is_pkg_lock_outdated(root_path: &Path) -> Result<bool> {
     let pkg_file = load_package_json_from_path(root_path)?;
     let lock_file = load_package_lock_json_from_path(root_path)?;
     // check package.json dependencies and package-lock.json packages are the same
@@ -422,7 +422,7 @@ fn get_dep_types() -> Vec<(&'static str, bool)> {
     }
 }
 
-pub async fn write_ideal_tree_to_lock_file(path: &PathBuf, ideal_tree: &Arc<Node>) -> Result<()> {
+pub async fn write_ideal_tree_to_lock_file(path: &Path, ideal_tree: &Arc<Node>) -> Result<()> {
     let (packages, total_packages) = serialize_tree_to_packages(ideal_tree);
     let lock_file = json!({
         "name": ideal_tree.name,  // Direct field access
