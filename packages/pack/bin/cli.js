@@ -14,7 +14,6 @@ program
   .option("-p, --project <string>", "project dir")
   .option("-r, --root <string>", "root dir")
   .action((mode, { project, root }) => {
-    console.log({ mode, project, root });
     const cwd = process.cwd();
     const projectOptions = JSON.parse(
       fs.readFileSync(path.join(project, "project_options.json"), {

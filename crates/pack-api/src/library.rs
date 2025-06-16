@@ -283,7 +283,7 @@ impl LibraryEndpoint {
 
             Ok(library_chunk_group)
         }
-        .instrument(tracing::info_span!("library chunk rendering"))
+        .instrument(tracing::trace_span!("library chunk rendering"))
         .await
     }
 

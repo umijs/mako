@@ -209,7 +209,7 @@ impl AppEntrypoint {
 
             Ok(app_chunk_group)
         }
-        .instrument(tracing::info_span!("app chunk rendering"))
+        .instrument(tracing::trace_span!("app chunk rendering"))
         .await
     }
 

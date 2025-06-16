@@ -197,14 +197,21 @@ export async function createHotReloader(
       watch: projectOptions.watch ?? {
         enable: false,
       },
-      dev: projectOptions.dev ?? false,
+      dev: true,
       buildId: nanoid(),
-      config: projectOptions.config,
+      config: {
+        ...projectOptions.config,
+        optimization: {
+          ...projectOptions.config.optimization,
+          minify: false,
+          moduleIds: "named",
+        },
+      },
       projectPath: projectPath,
       rootPath: rootPath || projectPath,
     },
     {
-      persistentCaching: false,
+      persistentCaching: true,
     },
   );
   setBundlerFindSourceMapImplementation(
