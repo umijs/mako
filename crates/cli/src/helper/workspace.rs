@@ -256,9 +256,9 @@ mod tests {
     fn normalize_path(path: &Path) -> PathBuf {
         let path_str = path.to_string_lossy();
         if path_str.starts_with("/private") {
-            PathBuf::from(&path_str[8..])
+            PathBuf::from(path_str.strip_prefix("/private").unwrap())
         } else {
-            path.to_path_buf()
+            PathBuf::from(path_str.as_ref())
         }
     }
 
