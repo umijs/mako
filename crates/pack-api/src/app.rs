@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use futures::stream::{self, StreamExt};
 use pack_core::client::context::{
     get_client_module_options_context, get_client_resolve_options_context,
@@ -7,7 +7,7 @@ use pack_core::client::context::{
 use qstring::QString;
 use tracing::{info_span, Instrument};
 use turbo_rcstr::RcStr;
-use turbo_tasks::{Completion, JoinIterExt, ResolvedVc, TryJoinIterExt, Value, Vc};
+use turbo_tasks::{Completion, JoinIterExt, ResolvedVc, TryJoinIterExt, Value, ValueToString, Vc};
 use turbopack::{
     module_options::ModuleOptionsContext, resolve_options_context::ResolveOptionsContext,
     transition::TransitionOptions, ModuleAssetContext,
@@ -19,7 +19,7 @@ use turbopack_core::{
     },
     context::AssetContext,
     ident::AssetIdent,
-    module::Module,
+    module::{Module, Modules},
     module_graph::{
         chunk_group_info::{ChunkGroup, ChunkGroupEntry},
         GraphEntries, ModuleGraph,
@@ -105,10 +105,10 @@ impl AppEntrypoint {
     }
 
     #[turbo_tasks::function]
-    pub async fn main_module(
+    pub async fn app_entry_modules(
         self: Vc<Self>,
         asset_context: Vc<Box<dyn AssetContext>>,
-    ) -> Result<Vc<Box<dyn Module>>> {
+    ) -> Result<Vc<Modules>> {
         let this = self.await?;
         let entry_request = Request::relative(
             Value::new(this.import.clone().into()),
@@ -117,33 +117,17 @@ impl AppEntrypoint {
             false,
         );
 
-        let project_dir = self.project().await?.project_path.clone();
-
         let origin = PlainResolveOrigin::new(
             asset_context,
             self.project().project_path().join("_".into()),
         );
 
-        let entry_module = async move {
-            let ty = Value::new(ReferenceType::Entry(EntryReferenceSubType::Undefined));
+        let ty = Value::new(ReferenceType::Entry(EntryReferenceSubType::Undefined));
 
-            let request = entry_request.await?;
-            origin
-                .resolve_asset(entry_request, origin.resolve_options(ty.clone()), ty)
-                .await?
-                .first_module()
-                .await?
-                .with_context(|| {
-                    format!(
-                        "Unable to resolve entry {} from directory {}.",
-                        request.request().unwrap(),
-                        project_dir
-                    )
-                })
-        }
-        .await?;
-
-        Ok(*entry_module)
+        Ok(origin
+            .resolve_asset(entry_request, origin.resolve_options(ty.clone()), ty)
+            .await?
+            .primary_modules())
     }
 
     #[turbo_tasks::function]
@@ -152,17 +136,23 @@ impl AppEntrypoint {
         asset_context: Vc<Box<dyn AssetContext>>,
         runtime_entries: Vc<EvaluatableAssets>,
     ) -> Result<Vc<EvaluatableAssets>> {
-        let app_main_module = self.main_module(asset_context);
+        let modules = self.app_entry_modules(asset_context).await?;
 
-        let Some(app_main_module) =
-            Vc::try_resolve_sidecast::<Box<dyn EvaluatableAsset>>(app_main_module).await?
-        else {
-            bail!("expected an evaluateable asset");
-        };
+        let mut all_runtime_entries = Vec::with_capacity(modules.len());
+        for &module in &modules {
+            if let Some(entry) = ResolvedVc::try_downcast::<Box<dyn EvaluatableAsset>>(module) {
+                all_runtime_entries.push(*entry);
+            } else {
+                bail!(
+                    "runtime reference resolved to an asset ({}) that cannot be evaluated",
+                    module.ident().to_string().await?
+                );
+            }
+        }
 
-        let evaluatable_assets = runtime_entries.with_entry(app_main_module);
+        all_runtime_entries.extend(runtime_entries.await?.iter().map(|e| **e));
 
-        Ok(evaluatable_assets)
+        Ok(EvaluatableAssets::many(all_runtime_entries))
     }
 
     #[turbo_tasks::function]
@@ -198,11 +188,7 @@ impl AppEntrypoint {
             let app_chunk_group = app_chunking_context.evaluated_chunk_group(
                 AssetIdent::from_path(project.project_root().join(this.import.clone()))
                     .with_query(Vc::cell(query.into())),
-                ChunkGroup::Entry(
-                    [self.main_module(asset_context).to_resolved().await?]
-                        .into_iter()
-                        .collect(),
-                ),
+                ChunkGroup::Entry(self.app_entry_modules(asset_context).await?.to_vec()),
                 module_graph,
                 Value::new(AvailabilityInfo::Root),
             );
