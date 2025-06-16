@@ -32,6 +32,10 @@ pub fn load_package_json_from_path(path: &Path) -> Result<Value> {
     read_json_value(&path.join("package.json"))
 }
 
+pub fn load_package_lock_json_from_path(path: &Path) -> Result<Value> {
+    read_json_value(&path.join("package-lock.json"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

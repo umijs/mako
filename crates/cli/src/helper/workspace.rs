@@ -200,7 +200,7 @@ pub async fn find_root_path() -> Result<PathBuf> {
 }
 
 /// Update current working directory to project root (with workspaces)
-pub async fn update_cwd_to_root() -> Result<()> {
+pub async fn update_cwd_to_root() -> Result<PathBuf> {
     let root_dir = find_root_path().await?;
     let current_dir = env::current_dir().context("Failed to get current directory")?;
     if !compare_paths(&current_dir, &root_dir) {
@@ -210,8 +210,8 @@ pub async fn update_cwd_to_root() -> Result<()> {
         ));
         env::set_current_dir(&root_dir).context("Failed to change to root directory")?;
     }
-    ROOT_DIR.with(|dir| *dir.borrow_mut() = Some(root_dir));
-    Ok(())
+    ROOT_DIR.with(|dir| *dir.borrow_mut() = Some(root_dir.clone()));
+    Ok(root_dir)
 }
 
 /// Update current working directory to project directory (closest package.json)

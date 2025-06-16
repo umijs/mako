@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::{collections::HashMap, fs};
 
 use crate::util::config::get_legacy_peer_deps;
-use crate::util::json::{load_package_json, load_package_lock_json};
+use crate::util::json::{load_package_json_from_path, load_package_lock_json_from_path};
 use crate::util::logger::{log_verbose, log_warning};
 use crate::util::node::{Node, Overrides};
 use crate::util::registry::resolve;
@@ -56,22 +56,22 @@ pub fn extract_package_name(path: &str) -> String {
     }
 }
 
-pub async fn ensure_package_lock() -> Result<()> {
+pub async fn ensure_package_lock(root_path: &PathBuf) -> Result<()> {
     // check package.json exists in cwd
-    if fs::metadata("package.json").is_err() {
+    if fs::metadata(root_path.join("package.json")).is_err() {
         return Err(anyhow!("package.json not found"));
     }
     // check package-lock.json exists in cwd
-    if fs::metadata("package-lock.json").is_err() {
+    if fs::metadata(root_path.join("package-lock.json")).is_err() {
         log_info("Resolving dependencies");
-        build_deps().await?;
+        build_deps(&root_path).await?;
         Ok(())
     } else {
         // load package-lock.json directly if exists
         log_info("Loading package-lock.json from current project for dependency download");
         // Validate dependencies to ensure package-lock.json is in sync with package.json
-        if is_pkg_lock_outdated().await? {
-            build_deps().await?;
+        if is_pkg_lock_outdated(&root_path).await? {
+            build_deps(&root_path).await?;
         }
         Ok(())
     }
@@ -246,9 +246,9 @@ pub struct InvalidDependency {
     pub dependency_name: String,
 }
 
-pub async fn is_pkg_lock_outdated() -> Result<bool> {
-    let pkg_file = load_package_json()?;
-    let lock_file = load_package_lock_json()?;
+pub async fn is_pkg_lock_outdated(root_path: &PathBuf) -> Result<bool> {
+    let pkg_file = load_package_json_from_path(root_path)?;
+    let lock_file = load_package_lock_json_from_path(root_path)?;
     // check package.json dependencies and package-lock.json packages are the same
     let pkg_in_pkg_lock = lock_file
         .get("packages")
@@ -756,7 +756,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn test_is_pkg_lock_outdated() {
         // Create a temporary directory
         let temp_dir = TempDir::new().unwrap();
@@ -797,12 +796,8 @@ mod tests {
         fs::write(temp_path.join("package.json"), pkg_json.to_string()).unwrap();
         fs::write(temp_path.join("package-lock.json"), pkg_lock.to_string()).unwrap();
 
-        // Change current directory to temp directory
-        let original_dir = std::env::current_dir().unwrap();
-        std::env::set_current_dir(temp_path).unwrap();
-
         // Test that files are in sync
-        assert!(!is_pkg_lock_outdated().await.unwrap());
+        assert!(!is_pkg_lock_outdated(&temp_path.to_path_buf()).await.unwrap());
 
         // Test case 2: package.json has new dependency
         let pkg_json_updated = json!({
@@ -818,7 +813,8 @@ mod tests {
         });
 
         fs::write(temp_path.join("package.json"), pkg_json_updated.to_string()).unwrap();
-        assert!(is_pkg_lock_outdated().await.unwrap());
+        let outdated = is_pkg_lock_outdated(&temp_path.to_path_buf()).await.unwrap();
+        assert!(outdated);
 
         // Test case 3: package.json has updated version
         let pkg_json_version_updated = json!({
@@ -837,7 +833,7 @@ mod tests {
             pkg_json_version_updated.to_string(),
         )
         .unwrap();
-        assert!(is_pkg_lock_outdated().await.unwrap());
+        assert!(is_pkg_lock_outdated(&temp_path.to_path_buf()).await.unwrap());
 
         // Test case 4: package.json has removed dependency
         let pkg_json_removed = json!({
@@ -850,7 +846,7 @@ mod tests {
         });
 
         fs::write(temp_path.join("package.json"), pkg_json_removed.to_string()).unwrap();
-        assert!(is_pkg_lock_outdated().await.unwrap());
+        assert!(is_pkg_lock_outdated(&temp_path.to_path_buf()).await.unwrap());
 
         // Test case 4: package.json has removed dependency
         let pkg_json_engines_changed = json!({
@@ -873,10 +869,7 @@ mod tests {
             pkg_json_engines_changed.to_string(),
         )
         .unwrap();
-        assert!(is_pkg_lock_outdated().await.unwrap());
+        assert!(is_pkg_lock_outdated(&temp_path.to_path_buf()).await.unwrap());
 
-        // Restore original directory
-        std::env::set_current_dir(original_dir).unwrap();
-        // TempDir will be automatically cleaned up when it goes out of scope
     }
 }

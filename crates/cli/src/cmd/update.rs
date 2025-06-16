@@ -1,4 +1,4 @@
-use crate::cmd::install::install;
+use crate::{cmd::install::install, helper::workspace::update_cwd_to_root};
 use crate::service::update::clean_package_lock;
 use crate::util::logger::log_verbose;
 use anyhow::{Context, Result};
@@ -10,13 +10,14 @@ pub async fn update(ignore_scripts: bool) -> Result<()> {
     clean_package_lock()
         .await
         .context("Failed to clean package-lock.json")?;
+    let root_path = update_cwd_to_root().await?;
 
     // // Clean node_modules
     // log_verbose("Cleaning node_modules...");
     // clean_node_modules().await?;
 
     // Install dependencies
-    install(ignore_scripts).await?;
+    install(ignore_scripts, &root_path).await?;
 
     Ok(())
 }

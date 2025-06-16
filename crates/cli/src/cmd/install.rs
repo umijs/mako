@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
-use std::env;
 use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
 use tokio::sync::Semaphore;
@@ -34,36 +34,34 @@ pub async fn update_package(
         "update package: {:?} {:?} {:?} {:?}",
         action, spec, &workspace, ignore_scripts
     ));
+
     // 1. Update package.json and package-lock.json
     update_package_json(&action, spec, &workspace, &save_type)
         .await
         .context("Failed to update package.json")?;
 
     // 2. Update working directory to project root (if in workspace)
-    update_cwd_to_root().await?;
+    let root_path = update_cwd_to_root().await?;
 
     // 3. Rebuild Deps
-    build_deps()
+    build_deps(&root_path)
         .await
         .context("Failed to build package-lock.json")?;
 
-    install(ignore_scripts)
+    install(ignore_scripts, &root_path)
         .await
         .context("Failed to install packages")?;
 
     Ok(())
 }
 
-pub async fn install(ignore_scripts: bool) -> Result<()> {
-    // Update working directory to project root
-    update_cwd_to_root().await?;
-
+pub async fn install(ignore_scripts: bool, root_path: &PathBuf) -> Result<()> {
     // Package lock prerequisite check
-    ensure_package_lock().await?;
+    ensure_package_lock(root_path).await?;
 
     // load package-lock.json
     let package_lock: PackageLock = serde_json::from_reader(
-        fs::File::open("package-lock.json").context("Failed to open package-lock.json")?,
+        fs::File::open(root_path.join("package-lock.json")).context("Failed to open package-lock.json")?,
     )
     .map_err(|e| anyhow::anyhow!("Failed to parse package-lock.json: {}", e))?;
 
@@ -84,7 +82,7 @@ pub async fn install(ignore_scripts: bool) -> Result<()> {
     log_verbose(&format!("Setting concurrent limit to {}", concurrent_limit));
     let semaphore = Arc::new(Semaphore::new(concurrent_limit));
 
-    install_packages(&groups, &cache_dir, &env::current_dir()?, semaphore)
+    install_packages(&groups, &cache_dir, root_path, semaphore)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to install packages: {}", e))?;
 
@@ -111,12 +109,8 @@ pub async fn install_global_package(npm_spec: &str) -> Result<()> {
 
     log_verbose(&format!("Installing global package: {}", npm_spec));
 
-    // Change to package directory
-    let original_dir = env::current_dir().context("Failed to get current directory")?;
-    env::set_current_dir(&package_path).context("Failed to change to package directory")?;
-
     // Install dependencies
-    install(false)
+    install(false, &package_path)
         .await
         .context("Failed to install global package dependencies")?;
 
@@ -135,9 +129,6 @@ pub async fn install_global_package(npm_spec: &str) -> Result<()> {
         )
         .await
         .context("Failed to link binary files to global")?;
-
-    // Change back to original directory
-    env::set_current_dir(original_dir).context("Failed to change back to original directory")?;
 
     Ok(())
 }

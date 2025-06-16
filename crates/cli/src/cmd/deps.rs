@@ -10,9 +10,8 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 
-pub async fn build_deps() -> Result<()> {
-    let path = PathBuf::from(".");
-    let mut ruborist = Ruborist::new(path.clone());
+pub async fn build_deps(cwd: &PathBuf) -> Result<()> {
+    let mut ruborist = Ruborist::new(cwd.clone());
     ruborist.build_ideal_tree().await?;
 
     let pkg_file = load_package_json()?;
@@ -63,7 +62,7 @@ pub async fn build_deps() -> Result<()> {
     }
 
     let tree = ruborist.ideal_tree.unwrap();
-    write_ideal_tree_to_lock_file(&path, &tree).await?;
+    write_ideal_tree_to_lock_file(cwd, &tree).await?;
 
     Ok(())
 }
