@@ -153,7 +153,6 @@ async fn find_closest_parent_pkg(start_dir: &Path) -> Result<Option<(PathBuf, Va
 ///       -d
 /// will return root path
 pub async fn find_root_path(cwd: &Path) -> Result<PathBuf> {
-
     // Find closet package.json location
     let project_path = find_project_path(cwd).await?;
     let project_pkg = load_package_json_from_path(&project_path)?;
@@ -182,7 +181,10 @@ pub async fn find_root_path(cwd: &Path) -> Result<PathBuf> {
             None => continue,
         };
         if is_in_workspace(&project_path, &parent_project_dir, pattern_str).await? {
-            log_verbose(&format!("Found workspace root at: {}", parent_project_dir.display()));
+            log_verbose(&format!(
+                "Found workspace root at: {}",
+                parent_project_dir.display()
+            ));
             return Ok(parent_project_dir);
         }
     }
@@ -365,7 +367,10 @@ mod tests {
     #[tokio::test]
     async fn test_find_root_path_in_workspace_subdir() {
         let (_temp_dir, root_path) = setup_test_workspace().await;
-        let subdir_path = root_path.join("packages").join("test-workspace").join("src");
+        let subdir_path = root_path
+            .join("packages")
+            .join("test-workspace")
+            .join("src");
         fs::create_dir_all(&subdir_path).unwrap();
         let found_root = find_root_path(&subdir_path).await.unwrap();
         assert!(compare_paths(&found_root, &root_path));
@@ -386,5 +391,4 @@ mod tests {
         let found_root = find_root_path(&subdir_path).await.unwrap();
         assert!(compare_paths(&found_root, &project_path));
     }
-
 }
