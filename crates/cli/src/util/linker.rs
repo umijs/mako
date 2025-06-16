@@ -51,11 +51,11 @@ mod tests {
         let src_content = "test content";
         let src_path = temp_path.join("source1.txt");
         fs::write(&src_path, src_content).unwrap();
-        env::set_current_dir(temp_path).unwrap();
 
         let dst_path = temp_path.join("dest1.txt");
 
         assert!(!dst_path.exists());
+        env::set_current_dir(temp_path).unwrap();
         link(&src_path, &dst_path).unwrap();
 
         assert!(dst_path.exists());
@@ -73,6 +73,7 @@ mod tests {
 
         let dst_path = temp_path.join("nested/dir/dest2.txt");
 
+        env::set_current_dir(temp_path).unwrap();
         link(&src_path, &dst_path).unwrap();
 
         assert!(dst_path.exists());
