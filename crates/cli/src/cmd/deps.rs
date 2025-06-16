@@ -11,7 +11,7 @@ use std::fs;
 use std::path::Path;
 
 pub async fn build_deps(cwd: &Path) -> Result<()> {
-    let mut ruborist = Ruborist::new(cwd.clone());
+    let mut ruborist = Ruborist::new(cwd);
     ruborist.build_ideal_tree().await?;
 
     let pkg_file = load_package_json()?;
