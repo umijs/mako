@@ -99,7 +99,6 @@ mod tests {
     use tempfile::tempdir;
 
     #[tokio::test]
-    #[ignore]
     async fn test_run_script_not_found() {
         let _dir = tempdir().unwrap();
         let package_json = r#"
@@ -112,12 +111,10 @@ mod tests {
         }"#;
 
         fs::write(_dir.path().join("package.json"), package_json).unwrap();
-        let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(_dir.path()).unwrap();
 
         let result = run_script("nonexistent", None).await;
 
-        std::env::set_current_dir(original_dir).unwrap();
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
@@ -131,12 +128,10 @@ mod tests {
         let invalid_json = r#"{ "name": "test", "scripts": { "test": 123 } }"#;
 
         fs::write(_dir.path().join("package.json"), invalid_json).unwrap();
-        let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(_dir.path()).unwrap();
 
         let result = run_script("test", None).await;
 
-        std::env::set_current_dir(original_dir).unwrap();
         assert!(result.is_err());
     }
 }
