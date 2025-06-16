@@ -8,9 +8,9 @@ use anyhow::{Context, Result};
 use serde_json::json;
 use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 
-pub async fn build_deps(cwd: &PathBuf) -> Result<()> {
+pub async fn build_deps(cwd: &Path) -> Result<()> {
     let mut ruborist = Ruborist::new(cwd.clone());
     ruborist.build_ideal_tree().await?;
 
@@ -67,9 +67,8 @@ pub async fn build_deps(cwd: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-pub async fn build_workspace() -> Result<()> {
-    let path = PathBuf::from(".");
-    let mut ruborist = Ruborist::new(path.clone());
+pub async fn build_workspace(cwd: &Path) -> Result<()> {
+    let mut ruborist = Ruborist::new(cwd);
     ruborist.build_workspace_tree().await?;
 
     if let Some(ideal_tree) = &ruborist.ideal_tree {

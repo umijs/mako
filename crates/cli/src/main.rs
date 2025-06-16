@@ -247,7 +247,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Commands::Deps { workspace_only }) => {
             let root_path = update_cwd_to_root().await?;
             let result = if workspace_only {
-                build_workspace().await
+                build_workspace(&root_path).await
             } else {
                 build_deps(&root_path).await
             };

@@ -28,10 +28,10 @@ struct Cli {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    let root_path = update_cwd_to_root().await?;
     let result = if cli.workspace_only {
-        build_workspace().await
+        build_workspace(&root_path).await
     } else {
-        let root_path = update_cwd_to_root().await?;
         build_deps(&root_path).await
     };
 
