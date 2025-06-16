@@ -2,11 +2,10 @@ use std::ops::Deref;
 
 use napi::{bindgen_prelude::External, JsFunction};
 use pack_api::{
-    endpoints::{
-        get_written_endpoint_with_issues_operation, Endpoint, EndpointOutputPaths,
-        WrittenEndpointWithIssues,
+    endpoint::{
+        get_written_endpoint_with_issues_operation, Endpoint, EndpointIssuesAndDiags,
+        EndpointOutputPaths, WrittenEndpointWithIssues,
     },
-    issues::EndpointIssuesAndDiags,
     paths::ServerPath,
     tasks::RootTask,
     utils::{endpoint_client_changed_operation, subscribe_issues_and_diags_operation},

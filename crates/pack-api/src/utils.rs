@@ -1,16 +1,15 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use turbo_tasks::{get_effects, Completion, Effects, OperationVc, ReadRef, Vc, VcValueType};
+use turbo_tasks::{
+    get_effects, Completion, Effects, OperationVc, ReadRef, TryJoinIterExt, Vc, VcValueType,
+};
 use turbopack_core::{
-    diagnostics::PlainDiagnostic,
-    issue::{IssueSeverity, PlainIssue},
+    diagnostics::{Diagnostic, DiagnosticContextExt, PlainDiagnostic},
+    issue::{IssueDescriptionExt, IssueSeverity, PlainIssue},
 };
 
-use crate::{
-    endpoints::{endpoint_server_changed_operation, Endpoint},
-    issues::{get_diagnostics, get_issues, EndpointIssuesAndDiags},
-};
+use crate::endpoint::{endpoint_server_changed_operation, Endpoint, EndpointIssuesAndDiags};
 
 #[turbo_tasks::function(operation)]
 pub async fn subscribe_issues_and_diags_operation(
@@ -70,4 +69,29 @@ pub async fn strongly_consistent_catch_collectables<R: VcValueType + Send>(
     };
 
     Ok((result, issues, diagnostics, effects))
+}
+
+pub async fn get_issues<T: Send>(source: OperationVc<T>) -> Result<Arc<Vec<ReadRef<PlainIssue>>>> {
+    let issues = source.peek_issues_with_path().await?;
+    Ok(Arc::new(issues.get_plain_issues().await?))
+}
+
+/// Reads the [turbopack_core::diagnostics::Diagnostic] held
+/// by the given source and returns it as a
+/// [turbopack_core::diagnostics::PlainDiagnostic]. It does
+/// not consume any Diagnostics held by the source.
+pub async fn get_diagnostics<T: Send>(
+    source: OperationVc<T>,
+) -> Result<Arc<Vec<ReadRef<PlainDiagnostic>>>> {
+    let captured_diags = source.peek_diagnostics().await?;
+    let mut diags = captured_diags
+        .diagnostics
+        .iter()
+        .map(|d| d.into_plain())
+        .try_join()
+        .await?;
+
+    diags.sort();
+
+    Ok(Arc::new(diags))
 }

@@ -13,12 +13,14 @@ use napi::{
     JsFunction, Status,
 };
 use pack_api::{
-    entrypoints::get_all_written_entrypoints_with_issues_operation,
+    entrypoint::{
+        get_all_written_entrypoints_with_issues_operation, get_entrypoints_with_issues_operation,
+        EntrypointsWithIssues,
+    },
     hmr::{
         get_hmr_identifiers_with_issues_operation, hmr_update_with_issues_operation,
         HmrIdentifiersWithIssues, HmrUpdateWithIssues,
     },
-    issues::{get_entrypoints_with_issues_operation, EntrypointsWithIssues},
     operation::EntrypointsOperation,
     project::{
         DefineEnv, PartialProjectOptions, ProjectContainer, ProjectInstance, ProjectOptions,

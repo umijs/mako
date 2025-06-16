@@ -6,7 +6,7 @@ use turbo_tasks::{
 };
 use turbopack_core::{diagnostics::Diagnostic, issue::IssueDescriptionExt};
 
-use crate::{endpoints::Endpoint, entrypoints::Entrypoints};
+use crate::{endpoint::Endpoint, entrypoint::Entrypoints};
 
 /// Based on [`Entrypoints`], but with [`OperationVc<Endpoint>`][OperationVc] for every endpoint.
 ///

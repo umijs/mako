@@ -10,8 +10,8 @@ use turbopack_core::{
 };
 
 use crate::{
-    issues::{get_diagnostics, get_issues},
     project::{Project, ProjectContainer},
+    utils::{get_diagnostics, get_issues},
 };
 
 #[turbo_tasks::value(shared, serialization = "none")]

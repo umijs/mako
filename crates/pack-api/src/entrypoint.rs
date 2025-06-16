@@ -1,13 +1,17 @@
 use anyhow::Result;
 use std::sync::Arc;
-use turbo_tasks::{get_effects, FxIndexSet, ResolvedVc, TryJoinIterExt, Vc};
-use turbopack_core::output::{OutputAsset, OutputAssets};
+use turbo_tasks::{get_effects, Effects, FxIndexSet, ReadRef, ResolvedVc, TryJoinIterExt, Vc};
+use turbopack_core::{
+    diagnostics::PlainDiagnostic,
+    issue::PlainIssue,
+    output::{OutputAsset, OutputAssets},
+};
 
 use crate::{
-    endpoints::{Endpoint, Endpoints},
-    issues::{get_diagnostics, get_issues, EntrypointsWithIssues},
+    endpoint::{Endpoint, Endpoints},
     operation::EntrypointsOperation,
     project::ProjectContainer,
+    utils::{get_diagnostics, get_issues},
 };
 
 #[turbo_tasks::value(shared)]
@@ -67,4 +71,40 @@ pub async fn all_output_assets_operation(
     }
 
     Ok(Vc::cell(output_assets.into_iter().collect()))
+}
+
+#[turbo_tasks::value(shared, serialization = "none")]
+pub struct EntrypointsWithIssues {
+    pub entrypoints: ReadRef<EntrypointsOperation>,
+    pub issues: Arc<Vec<ReadRef<PlainIssue>>>,
+    pub diagnostics: Arc<Vec<ReadRef<PlainDiagnostic>>>,
+    pub effects: Arc<Effects>,
+}
+
+#[turbo_tasks::function(operation)]
+pub async fn get_entrypoints_with_issues_operation(
+    container: ResolvedVc<ProjectContainer>,
+) -> Result<Vc<EntrypointsWithIssues>> {
+    let entrypoints_operation =
+        EntrypointsOperation::new(project_container_entrypoints_operation(container));
+    let entrypoints = entrypoints_operation.read_strongly_consistent().await?;
+    let issues = get_issues(entrypoints_operation).await?;
+    let diagnostics = get_diagnostics(entrypoints_operation).await?;
+    let effects = Arc::new(get_effects(entrypoints_operation).await?);
+    Ok(EntrypointsWithIssues {
+        entrypoints,
+        issues,
+        diagnostics,
+        effects,
+    }
+    .cell())
+}
+
+#[turbo_tasks::function(operation)]
+fn project_container_entrypoints_operation(
+    // the container is a long-lived object with internally mutable state, there's no risk of it
+    // becoming stale
+    container: ResolvedVc<ProjectContainer>,
+) -> Vc<Entrypoints> {
+    container.entrypoints()
 }

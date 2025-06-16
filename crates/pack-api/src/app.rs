@@ -33,7 +33,7 @@ use turbopack_core::{
 };
 
 use crate::{
-    endpoints::{Endpoint, EndpointOutput, EndpointOutputPaths},
+    endpoint::{Endpoint, EndpointOutput, EndpointOutputPaths},
     project::Project,
 };
 
