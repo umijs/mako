@@ -45,9 +45,10 @@ export async function buildWithOptions(options: ProjectOptions, cwd?: string) {
   const project = await createProject(
     {
       processEnv: options.processEnv ?? ({} as Record<string, string>),
-      processDefineEnv: options.processDefineEnv ?? createDefineEnv({
+      processDefineEnv: createDefineEnv({
         config: options.config,
         dev: options.dev ?? false,
+        optionDefineEnv: options.processDefineEnv,
       }),
       watch: options.watch ?? {
         enable: false,

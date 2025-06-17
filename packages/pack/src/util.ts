@@ -186,6 +186,7 @@ export function rustifyEnv(env: Record<string, string>): RustifiedEnv {
 interface DefineEnvOptions {
   config: ConfigComplete,
   dev: boolean,
+  optionDefineEnv?: DefineEnv,
   // isClient: boolean,
   // isNodeServer: boolean
 }
@@ -199,7 +200,7 @@ interface SerializedDefineEnv {
 }
 
 export function createDefineEnv(options: DefineEnvOptions): DefineEnv {
-  let defineEnv: DefineEnv = {
+  let defineEnv: DefineEnv = options.optionDefineEnv ?? {
     client: [],
     edge: [],
     nodejs: [],
