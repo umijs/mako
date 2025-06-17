@@ -10,20 +10,14 @@
     },
     "./cjs/*": "./cjs/*",
     "./esm/*": "./esm/*",
-    "./global.d.ts": "./global.d.ts",
     "./config_schema.json": "./config_schema.json",
     "./package.json": "./package.json"
-  },
-  "bin": {
-    "utoo-pack": "./bin/cli.js"
   },
   "files": [
     "./cjs/*.js",
     "./cjs/*.d.ts",
     "./esm/*.js",
     "./esm/*.d.ts",
-    "./bin/cli.js",
-    "./global.d.ts",
     "./config_schema.json"
   ],
   "napi": {
@@ -43,6 +37,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "react-refresh": "^0.12.0",
     "@babel/code-frame": "7.22.5",
     "@utoo/loader-runner": "^1.0.0",
     "@utoo/style-loader": "^1.0.0",
@@ -53,7 +48,8 @@
     "postcss": "8.4.31",
     "resolve-url-loader": "^5.0.0",
     "sass": "1.54.0",
-    "sass-loader": "^13.2.0"
+    "sass-loader": "^13.2.0",
+    "ws": "^8.18.1"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0",
@@ -61,7 +57,9 @@
     "@types/babel__code-frame": "7.0.2",
     "@types/node": "^20.3.0",
     "styled-jsx": "^5.1.6",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "@types/ws": "^8.18.1",
+    "@types/webpack": "^5.28.5"
   },
   "engines": {
     "node": ">= 10"

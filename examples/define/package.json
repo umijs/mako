@@ -5,11 +5,12 @@
   "author": "zoomdong",
   "license": "MIT",
   "scripts": {
-    "build": "npx utoo-pack .",
-    "dev": "npx utoo-pack . dev"
+    "build": "utoo-pack build -p . -r ../..",
+    "dev": "utoo-pack watch -p . -r ../.."
   },
   "devDependencies": {
-    "@utoo/pack": "*"
+    "@utoo/pack-cli": "*"
   },
   "repository": "git@github.com:umijs/mako.git"
-} 
+}
+

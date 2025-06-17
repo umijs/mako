@@ -6,8 +6,8 @@
   "author": "xusd320",
   "license": "MIT",
   "scripts": {
-    "build": "npx utoo-pack .",
-    "dev": "npx utoo-pack . dev",
+    "build": "utoo-pack build -p . -r ../..",
+    "dev": "utoo-pack watch -p . -r ../..",
     "build-by-native": "../../target/release/pack-cli build",
     "dev-by-native": "../../target/release/pack-cli dev",
     "serve": "rm -rf ./dist && npm run build && node ./genHtml.js && serve ./dist"
@@ -32,7 +32,7 @@
     "@types/react-dom": "^18.2.0",
     "@types/lodash": "^4.17.16",
     "@types/styled-components": "^5.1.34",
-    "@utoo/pack": "*"
+    "@utoo/pack-cli": "*"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

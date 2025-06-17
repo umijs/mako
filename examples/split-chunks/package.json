@@ -1,21 +1,12 @@
 {
-  "name": "multiple-entries-heavy",
+  "name": "split-chunks",
   "version": "1.0.0",
   "scripts": {
-    "bootstrap": "node ./bootstrap.js",
     "build": "utoo-pack build -p . -r ../..",
     "dev": "utoo-pack watch -p . -r ../..",
     "build-by-native": "../../target/release/pack-cli build",
     "dev-by-native": "../../target/release/pack-cli dev",
     "serve": "serve ."
-  },
-  "dependencies": {
-    "antd": "^5.12.2",
-    "axios": "^1.3.6",
-    "lodash": "^4.17.21",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "three": "^0.153.0"
   },
   "devdependencies": {
     "@utoo/pack-cli": "*"

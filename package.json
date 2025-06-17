@@ -11,10 +11,18 @@
   "license": "ISC",
   "workspaces": [
     "packages/pack",
+    "packages/pack-cli",
     "packages/loader-runner",
     "packages/style-loader",
-    "examples/*",
     "crates/pack-core/js",
-    "crates/pack/js"
+    "crates/pack/js",
+    "examples/define",
+    "examples/externals",
+    "examples/muilti-entries-heavy",
+    "examples/with-antd",
+    "examples/with-less",
+    "examples/with-library",
+    "examples/with-sass",
+    "examples/with-style-loader"
   ]
 }
