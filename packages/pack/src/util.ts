@@ -186,7 +186,7 @@ export function rustifyEnv(env: Record<string, string>): RustifiedEnv {
 interface DefineEnvOptions {
   config: ConfigComplete;
   dev: boolean;
-  optionDefineEnv?: DefineEnv,
+  optionDefineEnv?: DefineEnv;
   // isClient: boolean,
   // isNodeServer: boolean
 }

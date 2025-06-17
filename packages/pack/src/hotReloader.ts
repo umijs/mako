@@ -188,12 +188,11 @@ export async function createHotReloader(
   const project = await createProject(
     {
       processEnv: projectOptions.processEnv ?? ({} as Record<string, string>),
-      processDefineEnv:
-        projectOptions.processDefineEnv ??
-        createDefineEnv({
-          config: projectOptions.config,
-          dev: projectOptions.dev ?? false,
-        }),
+      processDefineEnv: createDefineEnv({
+        config: projectOptions.config,
+        dev: true,
+        optionDefineEnv: projectOptions.processDefineEnv,
+      }),
       watch: projectOptions.watch ?? {
         enable: false,
       },

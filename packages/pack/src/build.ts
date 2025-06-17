@@ -11,7 +11,7 @@ import { ProjectOptions } from "./types";
 import { xcodeProfilingReady } from "./xcodeProfile";
 
 export async function build(
-  options: Omit<ProjectOptions, "projectPath" | "rootPath">,
+  projectOptions: Omit<ProjectOptions, "projectPath" | "rootPath">,
   projectPath?: string,
   rootPath?: string,
 ) {
@@ -24,19 +24,18 @@ export async function build(
   const createProject = projectFactory();
   const project = await createProject(
     {
-      processEnv: options.processEnv ?? ({} as Record<string, string>),
-      processDefineEnv:
-        options.processDefineEnv ??
-        createDefineEnv({
-          config: options.config,
-          dev: options.dev ?? false,
-        }),
-      watch: options.watch ?? {
+      processEnv: projectOptions.processEnv ?? ({} as Record<string, string>),
+      processDefineEnv: createDefineEnv({
+        config: projectOptions.config,
+        dev: projectOptions.dev ?? false,
+        optionDefineEnv: projectOptions.processDefineEnv,
+      }),
+      watch: projectOptions.watch ?? {
         enable: false,
       },
-      dev: options.dev ?? false,
+      dev: projectOptions.dev ?? false,
       buildId: nanoid(),
-      config: options.config,
+      config: projectOptions.config,
       projectPath: projectPath || process.cwd(),
       rootPath: rootPath || projectPath || process.cwd(),
     },
