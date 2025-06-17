@@ -4,7 +4,7 @@ import * as utooPack from "@utoo/pack";
 import { Command, Flags } from "@oclif/core";
 
 export default class Watch extends Command {
-  static description = "Say hello";
+  static description = "Utoo pack watch";
   static examples = [
     `<%= config.bin %> <%= command.id %> dev --project .`,
     `<%= config.bin %> <%= command.id %> dev --project . --root ../..`,

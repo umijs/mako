@@ -4,7 +4,7 @@ import * as utooPack from "@utoo/pack";
 import { Command, Flags } from "@oclif/core";
 
 export default class Build extends Command {
-  static description = "Say hello";
+  static description = "Utoo pack build";
   static examples = [
     `<%= config.bin %> <%= command.id %> build --project .`,
     `<%= config.bin %> <%= command.id %> build --project . --root ../..`,
