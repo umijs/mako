@@ -565,7 +565,10 @@ async function getMakoConfig(opts) {
   const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
   const tsConfig = getTsConfig(opts);
 
-  const normalizedDevtool = devtool === false ? false : 'source-map';
+  let normalizedDevtool = 'source-map';
+  if ([false, 'inline-source-map'].includes(devtool)) {
+    normalizedDevtool = devtool;
+  }
 
   let makoCodeSplittingConfig =
     codeSplitting === false
