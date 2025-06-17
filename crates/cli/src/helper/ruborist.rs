@@ -35,6 +35,8 @@ pub async fn build_deps(root: Arc<Node>) -> Result<()> {
         root, legacy_peer_deps
     ));
     let current_level = Arc::new(Mutex::new(vec![root.clone()]));
+    // Track processed workspace nodes to prevent cycles
+    let processed_workspace_nodes = Arc::new(Mutex::new(std::collections::HashSet::new()));
 
     while !current_level.lock().unwrap().is_empty() {
         let next_level = Arc::new(Mutex::new(Vec::new()));
@@ -52,19 +54,32 @@ pub async fn build_deps(root: Arc<Node>) -> Result<()> {
             for edge in edges.iter() {
                 let edge = edge.clone();
                 let next_level = next_level.clone();
+                let processed_workspace_nodes = processed_workspace_nodes.clone();
 
                 tasks.push(async move {
                     let _permit = CONCURRENCY_LIMITER.acquire().await.unwrap();
 
                     if *edge.valid.read().unwrap() {
                         log_verbose(&format!("deps {}@{} already resolved", edge.name, edge.spec));
-                        // when the edge.to is workspace, add it to next_level
-                        if let Some(new_node) = edge.to.write().unwrap().as_ref().cloned() {
-                            if new_node.is_workspace {
+
+                        // Only process workspace nodes from root to avoid cycles
+                        if !edge.from.is_root {
+                            return Ok(());
+                        }
+
+                        // Add workspace node to next level if not processed before
+                        if let Some(new_node) = edge.to.read().unwrap().as_ref().cloned() {
+                            if !new_node.is_workspace {
+                                return Ok(());
+                            }
+
+                            let mut processed = processed_workspace_nodes.lock().unwrap();
+                            if !processed.contains(&new_node.name) {
+                                processed.insert(new_node.name.clone());
                                 next_level.lock().unwrap().push(new_node);
                             }
                         }
-                        // processed
+
                         return Ok(());
                     }
 
@@ -669,6 +684,7 @@ async fn add_dependency_edge(node: &Arc<Node>, field: &str, edge_type: EdgeType)
 #[cfg(test)]
 mod tests {
     use serde_json::json;
+    use std::path::PathBuf;
 
     use super::*;
     use crate::util::node::Node;
@@ -742,5 +758,110 @@ mod tests {
         // Test fixing dependency path without ideal tree
         let result = ruborist.fix_dep_path("", "lodash").await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_build_deps_with_workspace_cycle() {
+        // Create a mock root node
+        let root = Node::new_root(
+            "test-monorepo".to_string(),
+            PathBuf::from("."),
+            json!({
+                "name": "test-monorepo",
+                "version": "1.0.0",
+                "workspaces": ["packages/*"]
+            }),
+        );
+
+        // Create workspace A
+        let workspace_a = Node::new_workspace(
+            "workspace-a".to_string(),
+            PathBuf::from("packages/workspace-a"),
+            json!({
+                "name": "workspace-a",
+                "version": "1.0.0",
+                "dependencies": {
+                    "workspace-b": "1.0.0"
+                }
+            }),
+        );
+
+        // Create workspace B
+        let workspace_b = Node::new_workspace(
+            "workspace-b".to_string(),
+            PathBuf::from("packages/workspace-b"),
+            json!({
+                "name": "workspace-b",
+                "version": "1.0.0",
+                "dependencies": {
+                    "workspace-a": "1.0.0"
+                }
+            }),
+        );
+
+        // Add workspaces to root
+        {
+            let mut children = root.children.write().unwrap();
+            children.push(workspace_a.clone());
+            children.push(workspace_b.clone());
+        }
+
+        // Create dependency edges
+        let edge_a_to_b = Edge::new(
+            workspace_a.clone(),
+            EdgeType::Prod,
+            "workspace-b".to_string(),
+            "1.0.0".to_string(),
+        );
+        let edge_b_to_a = Edge::new(
+            workspace_b.clone(),
+            EdgeType::Prod,
+            "workspace-a".to_string(),
+            "1.0.0".to_string(),
+        );
+
+        // Add edges to workspaces
+        workspace_a.add_edge(edge_a_to_b).await;
+        workspace_b.add_edge(edge_b_to_a).await;
+
+        // Test build_deps
+        let result = build_deps(root.clone()).await;
+        assert!(
+            result.is_ok(),
+            "build_deps should handle workspace cycles successfully"
+        );
+
+        // Verify that both workspaces are processed exactly once
+        let mut processed_workspaces = std::collections::HashSet::new();
+        let mut stack = vec![root];
+
+        while let Some(node) = stack.pop() {
+            let children = node.children.read().unwrap();
+            for child in children.iter() {
+                if child.is_workspace {
+                    assert!(
+                        !processed_workspaces.contains(&child.name),
+                        "Workspace {} should only be processed once",
+                        child.name
+                    );
+                    processed_workspaces.insert(child.name.clone());
+                }
+                stack.push(child.clone());
+            }
+        }
+
+        assert_eq!(
+            processed_workspaces.len(),
+            2,
+            "Should process exactly 2 workspaces"
+        );
+        assert!(
+            processed_workspaces.contains("workspace-a"),
+            "Should process workspace-a"
+        );
+        assert!(
+            processed_workspaces.contains("workspace-b"),
+            "Should process workspace-b"
+        );
     }
 }
