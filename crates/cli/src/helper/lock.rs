@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{collections::HashMap, fs};
 
+use crate::helper::workspace::find_workspaces;
 use crate::util::config::get_legacy_peer_deps;
 use crate::util::json::{load_package_json_from_path, load_package_lock_json_from_path};
 use crate::util::logger::{log_verbose, log_warning};
@@ -249,33 +250,54 @@ pub struct InvalidDependency {
 pub async fn is_pkg_lock_outdated(root_path: &Path) -> Result<bool> {
     let pkg_file = load_package_json_from_path(root_path)?;
     let lock_file = load_package_lock_json_from_path(root_path)?;
-    // check package.json dependencies and package-lock.json packages are the same
-    let pkg_in_pkg_lock = lock_file
+
+    // get packages in package-lock.json
+    let packages = lock_file
         .get("packages")
         .and_then(|p| p.as_object())
-        .and_then(|p| p.get(""));
+        .ok_or_else(|| anyhow!("Invalid package-lock.json format"))?;
 
-    if let Some(root_pkg) = pkg_in_pkg_lock {
-        for (dep_field, _is_optional) in get_dep_types() {
-            if pkg_file.get(dep_field) != root_pkg.get(dep_field) {
+    // prepare packages to check
+    let mut pkgs_to_check = vec![("".to_string(), pkg_file.clone())];
+
+    // populate all workspaces
+    let workspaces = find_workspaces(root_path).await?;
+    for (_, path, workspace_pkg) in workspaces {
+        let target_path = path.strip_prefix(root_path)?.to_string_lossy().to_string();
+        pkgs_to_check.push((target_path, workspace_pkg));
+    }
+
+    // new workspace not found
+    for (path, pkg) in pkgs_to_check {
+        let lock = match packages.get(&path) {
+            Some(lock) => lock,
+            None => {
+                let name = if path.is_empty() { "root" } else { &path };
                 log_warning(&format!(
-                    "package-lock.json is outdated, {} changed",
-                    dep_field
+                    "package-lock.json is outdated, new workspace {} not found",
+                    name
+                ));
+                return Ok(true);
+            }
+        };
+
+        // check dependencies whether changed
+        for (dep_field, _is_optional) in get_dep_types() {
+            if pkg.get(dep_field) != lock.get(dep_field) {
+                let name = if path.is_empty() { "root" } else { &path };
+                log_warning(&format!(
+                    "package-lock.json is outdated, {} {} changed",
+                    name, dep_field
                 ));
                 return Ok(true);
             }
         }
-    }
 
-    let pkg_engines = pkg_file.get("engines");
-    let pkg_lock_engines = lock_file
-        .get("packages")
-        .and_then(|p| p.get(""))
-        .and_then(|p| p.get("engines"));
-
-    if pkg_engines != pkg_lock_engines {
-        log_warning("package-lock.json is outdated, engines changed");
-        return Ok(true);
+        // only check engines for root workspace
+        if path.is_empty() && pkg.get("engines") != lock.get("engines") {
+            log_warning("package-lock.json is outdated, engines changed");
+            return Ok(true);
+        }
     }
 
     Ok(false)
@@ -423,7 +445,7 @@ fn get_dep_types() -> Vec<(&'static str, bool)> {
 }
 
 pub async fn write_ideal_tree_to_lock_file(path: &Path, ideal_tree: &Arc<Node>) -> Result<()> {
-    let (packages, total_packages) = serialize_tree_to_packages(ideal_tree);
+    let (packages, total_packages) = serialize_tree_to_packages(ideal_tree, path);
     let lock_file = json!({
         "name": ideal_tree.name,  // Direct field access
         "version": ideal_tree.version,  // Direct field access
@@ -449,7 +471,7 @@ pub async fn write_ideal_tree_to_lock_file(path: &Path, ideal_tree: &Arc<Node>) 
     Ok(())
 }
 
-pub fn serialize_tree_to_packages(node: &Arc<Node>) -> (Value, i32) {
+pub fn serialize_tree_to_packages(node: &Arc<Node>, path: &Path) -> (Value, i32) {
     let mut packages = json!({});
     let mut stack = vec![(node.clone(), String::new())];
     let mut total_packages = 0;
@@ -488,15 +510,10 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> (Value, i32) {
             } else if current.is_link {
                 // update resolved field
                 info["link"] = json!(true);
-                // resolvd => targetNode#path
-                info["resolved"] = json!(current
-                    .target
-                    .read()
-                    .unwrap()
-                    .as_ref()
-                    .unwrap()
-                    .path
-                    .to_string_lossy());
+
+                // Get the target path relative to the root path
+                let target_path = get_relative_target_path(&current, path);
+                info["resolved"] = json!(target_path);
             } else {
                 info["version"] = json!(current.package.get("version"));
                 info["resolved"] = json!(current
@@ -585,7 +602,12 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> (Value, i32) {
         for child in children.iter() {
             let child_prefix = if prefix.is_empty() {
                 if child.is_workspace {
-                    format!("{}", child.path.to_string_lossy())
+                    // convert to relative path
+                    child
+                        .path
+                        .strip_prefix(path)
+                        .map(|p| p.to_string_lossy().to_string())
+                        .unwrap_or_else(|_| child.path.to_string_lossy().to_string())
                 } else {
                     format!("node_modules/{}", child.name)
                 }
@@ -597,6 +619,19 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>) -> (Value, i32) {
     }
 
     (packages, total_packages)
+}
+
+/// Get the relative path of a link target from the root path
+fn get_relative_target_path(current: &Node, root_path: &Path) -> String {
+    let target = current.target.read().unwrap();
+    let target_node = target.as_ref().unwrap();
+
+    // Try to get relative path first
+    target_node
+        .path
+        .strip_prefix(root_path)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|_| target_node.path.to_string_lossy().to_string())
 }
 
 #[cfg(test)]
@@ -880,5 +915,77 @@ mod tests {
         assert!(is_pkg_lock_outdated(&temp_path.to_path_buf())
             .await
             .unwrap());
+    }
+
+    #[test]
+    fn test_get_relative_target_path() {
+        // Create a temporary directory for testing
+        let temp_dir = TempDir::new().unwrap();
+        let root_path = temp_dir.path();
+
+        // Test case 1: Target path is under root path
+        let target_path = root_path.join("packages/pkg-a");
+        let node = Node::new(
+            "test-package".to_string(),
+            root_path.to_path_buf(),
+            json!({
+                "name": "test-package",
+                "version": "1.0.0"
+            }),
+        );
+        node.target.write().unwrap().replace(Node::new(
+            "target-package".to_string(),
+            target_path.clone(),
+            json!({
+                "name": "target-package",
+                "version": "1.0.0"
+            }),
+        ));
+
+        let relative_path = get_relative_target_path(&node, root_path);
+        assert_eq!(relative_path, "packages/pkg-a");
+
+        // Test case 2: Target path is outside root path
+        let outside_path = PathBuf::from("/some/outside/path");
+        let node = Node::new(
+            "test-package".to_string(),
+            root_path.to_path_buf(),
+            json!({
+                "name": "test-package",
+                "version": "1.0.0"
+            }),
+        );
+        node.target.write().unwrap().replace(Node::new(
+            "target-package".to_string(),
+            outside_path.clone(),
+            json!({
+                "name": "target-package",
+                "version": "1.0.0"
+            }),
+        ));
+
+        let relative_path = get_relative_target_path(&node, root_path);
+        assert_eq!(relative_path, "/some/outside/path");
+
+        // Test case 3: Target path is the root path
+        let node = Node::new(
+            "test-package".to_string(),
+            root_path.to_path_buf(),
+            json!({
+                "name": "test-package",
+                "version": "1.0.0"
+            }),
+        );
+        node.target.write().unwrap().replace(Node::new(
+            "target-package".to_string(),
+            root_path.to_path_buf(),
+            json!({
+                "name": "target-package",
+                "version": "1.0.0"
+            }),
+        ));
+
+        let relative_path = get_relative_target_path(&node, root_path);
+        assert_eq!(relative_path, "");
     }
 }
