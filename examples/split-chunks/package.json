@@ -9,6 +9,6 @@
     "serve": "serve ."
   },
   "devdependencies": {
-    "@utoo/pack": "*"
+    "@utoo/pack-cli": "*"
   }
 }

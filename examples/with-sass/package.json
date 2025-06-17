@@ -16,7 +16,7 @@
     "bootstrap": "^5.3.6"
   },
   "devDependencies": {
-    "@utoo/pack": "*"
+    "@utoo/pack-cli": "*"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

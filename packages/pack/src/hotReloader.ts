@@ -180,7 +180,7 @@ export const FAST_REFRESH_RUNTIME_RELOAD =
 
 export async function createHotReloader(
   projectOptions: ProjectOptions,
-  projectPath: string,
+  projectPath?: string,
   rootPath?: string,
 ): Promise<HotReloaderInterface> {
   const createProject = projectFactory();
@@ -207,8 +207,8 @@ export async function createHotReloader(
           moduleIds: "named",
         },
       },
-      projectPath: projectPath,
-      rootPath: rootPath || projectPath,
+      projectPath: projectPath || process.cwd(),
+      rootPath: rootPath || projectPath || process.cwd(),
     },
     {
       persistentCaching: true,

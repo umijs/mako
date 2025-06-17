@@ -10,7 +10,6 @@
     },
     "./cjs/*": "./cjs/*",
     "./esm/*": "./esm/*",
-    "./global.d.ts": "./global.d.ts",
     "./config_schema.json": "./config_schema.json",
     "./package.json": "./package.json"
   },
@@ -22,8 +21,6 @@
     "./cjs/*.d.ts",
     "./esm/*.js",
     "./esm/*.d.ts",
-    "./bin/cli.js",
-    "./global.d.ts",
     "./config_schema.json"
   ],
   "napi": {
@@ -43,6 +40,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "react-refresh": "^0.12.0",
     "@babel/code-frame": "7.22.5",
     "@utoo/loader-runner": "^1.0.0",
     "@utoo/style-loader": "^1.0.0",

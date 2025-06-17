@@ -12,7 +12,7 @@ import { xcodeProfilingReady } from "./xcodeProfile";
 
 export async function build(
   options: Omit<ProjectOptions, "projectPath" | "rootPath">,
-  projectPath: string,
+  projectPath?: string,
   rootPath?: string,
 ) {
   blockStdout();
@@ -37,8 +37,8 @@ export async function build(
       dev: options.dev ?? false,
       buildId: nanoid(),
       config: options.config,
-      projectPath: projectPath,
-      rootPath: rootPath || projectPath,
+      projectPath: projectPath || process.cwd(),
+      rootPath: rootPath || projectPath || process.cwd(),
     },
     {
       persistentCaching: false,

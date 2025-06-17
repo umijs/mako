@@ -7,8 +7,8 @@
   "scripts": {
     "check": "tsc --noEmit"
   },
-  "dependencies": {
-    "react-refresh": "0.12.0"
+  "peerDependencies": {
+    "react-refresh": "^0.12.0"
   },
   "devDependencies": {
     "@types/node": "^18.11.11"

@@ -10,6 +10,6 @@
     "skipLibCheck": true,
     "lib": ["dom", "dom.iterable", "esnext"]
   },
-  "include": ["src", "global.d.ts"],
-  "exclude": ["es"]
+  "include": ["src"],
+  "exclude": ["es", "cjs"]
 }

@@ -16,7 +16,7 @@
     "bootstrap-less-port": "^2.5.1"
   },
   "devDependencies": {
-    "@utoo/pack": "*"
+    "@utoo/pack-cli": "*"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

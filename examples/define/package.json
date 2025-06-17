@@ -9,7 +9,7 @@
     "dev": "utoo-pack watch -p . -r ../.."
   },
   "devDependencies": {
-    "@utoo/pack": "*"
+    "@utoo/pack-cli": "*"
   },
   "repository": "git@github.com:umijs/mako.git"
 }
