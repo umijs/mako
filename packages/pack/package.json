@@ -13,9 +13,6 @@
     "./config_schema.json": "./config_schema.json",
     "./package.json": "./package.json"
   },
-  "bin": {
-    "utoo-pack": "./bin/cli.js"
-  },
   "files": [
     "./cjs/*.js",
     "./cjs/*.d.ts",
