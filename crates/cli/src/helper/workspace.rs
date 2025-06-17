@@ -144,29 +144,51 @@ async fn find_closest_parent_pkg(start_dir: &Path) -> Result<Option<(PathBuf, Va
 }
 
 /// Find the project root path by traversing up the directory tree
+/// root
+///   -a
+///     -package.json
+///   -b
+///     -package.json
+///     -c
+///       -d
+/// will return root path
 pub async fn find_root_path(cwd: &Path) -> Result<PathBuf> {
-    let (pkg_dir, pkg) = match find_closest_parent_pkg(cwd).await? {
-        Some((dir, pkg)) => (dir, pkg),
-        None => return Ok(cwd.to_path_buf()),
-    };
-    if !is_workspace_root(&pkg).await {
-        return Ok(pkg_dir);
+    // Find closet package.json location
+    let project_path = find_project_path(cwd).await?;
+    let project_pkg = load_package_json_from_path(&project_path)?;
+
+    // is workspace root, return project path directly
+    if is_workspace_root(&project_pkg).await {
+        return Ok(project_path);
     }
-    let patterns = match pkg.get("workspaces") {
+
+    let (parent_project_dir, parent_pkg) = match find_closest_parent_pkg(&project_path).await? {
+        Some((dir, pkg)) => (dir, pkg),
+        None => return Ok(project_path),
+    };
+
+    // parent is not workspace root, return project path directly
+    if !is_workspace_root(&parent_pkg).await {
+        return Ok(project_path);
+    }
+    let patterns = match parent_pkg.get("workspaces") {
         Some(Value::Array(patterns)) => patterns,
-        _ => return Ok(pkg_dir),
+        _ => return Ok(parent_project_dir),
     };
     for pattern in patterns {
         let pattern_str = match pattern.as_str() {
             Some(s) => s,
             None => continue,
         };
-        if is_in_workspace(cwd, &pkg_dir, pattern_str).await? {
-            log_verbose(&format!("Found workspace root at: {}", pkg_dir.display()));
-            return Ok(pkg_dir);
+        if is_in_workspace(&project_path, &parent_project_dir, pattern_str).await? {
+            log_verbose(&format!(
+                "Found workspace root at: {}",
+                parent_project_dir.display()
+            ));
+            return Ok(parent_project_dir);
         }
     }
-    Ok(pkg_dir)
+    Ok(project_path)
 }
 
 /// Update current working directory to project root (with workspaces)
@@ -204,24 +226,10 @@ pub async fn find_project_path(cwd: &Path) -> Result<PathBuf> {
     }
 
     // If not, traverse up
-    let (pkg_dir, pkg) = match find_closest_parent_pkg(cwd).await? {
+    let (pkg_dir, _) = match find_closest_parent_pkg(cwd).await? {
         Some((dir, pkg)) => (dir, pkg),
         None => return Ok(cwd.to_path_buf()),
     };
-
-    // If parent is a workspace root, check if we're in a workspace
-    if is_workspace_root(&pkg).await {
-        if let Some(Value::Array(patterns)) = pkg.get("workspaces") {
-            for pattern in patterns {
-                if let Some(pattern_str) = pattern.as_str() {
-                    if is_in_workspace(cwd, &pkg_dir, pattern_str).await? {
-                        // If we're in a workspace, return the workspace directory
-                        return Ok(cwd.to_path_buf());
-                    }
-                }
-            }
-        }
-    }
 
     Ok(pkg_dir)
 }
@@ -339,5 +347,48 @@ mod tests {
         // Test that update_cwd_to_project correctly handles root path
         let result = update_cwd_to_project(&root_path).await.unwrap();
         assert!(compare_paths(&result, &root_path));
+    }
+
+    #[tokio::test]
+    async fn test_find_root_path_in_workspace_root() {
+        let (_temp_dir, root_path) = setup_test_workspace().await;
+        let found_root = find_root_path(&root_path).await.unwrap();
+        assert!(compare_paths(&found_root, &root_path));
+    }
+
+    #[tokio::test]
+    async fn test_find_root_path_in_workspace_package() {
+        let (_temp_dir, root_path) = setup_test_workspace().await;
+        let workspace_path = root_path.join("packages").join("test-workspace");
+        let found_root = find_root_path(&workspace_path).await.unwrap();
+        assert!(compare_paths(&found_root, &root_path));
+    }
+
+    #[tokio::test]
+    async fn test_find_root_path_in_workspace_subdir() {
+        let (_temp_dir, root_path) = setup_test_workspace().await;
+        let subdir_path = root_path
+            .join("packages")
+            .join("test-workspace")
+            .join("src");
+        fs::create_dir_all(&subdir_path).unwrap();
+        let found_root = find_root_path(&subdir_path).await.unwrap();
+        assert!(compare_paths(&found_root, &root_path));
+    }
+
+    #[tokio::test]
+    async fn test_find_root_path_in_independent_project() {
+        let (_temp_dir, project_path) = setup_test_project().await;
+        let found_root = find_root_path(&project_path).await.unwrap();
+        assert!(compare_paths(&found_root, &project_path));
+    }
+
+    #[tokio::test]
+    async fn test_find_root_path_in_project_subdir() {
+        let (_temp_dir, project_path) = setup_test_project().await;
+        let subdir_path = project_path.join("src");
+        fs::create_dir_all(&subdir_path).unwrap();
+        let found_root = find_root_path(&subdir_path).await.unwrap();
+        assert!(compare_paths(&found_root, &project_path));
     }
 }
