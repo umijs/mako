@@ -251,6 +251,8 @@ export interface ProjectOptions {
   buildId: string;
 }
 
+export type BuildOptions = Omit<ProjectOptions, "rootPath" | "projectPath">;
+
 export interface Project {
   update(options: Partial<ProjectOptions>): Promise<void>;
 

@@ -3,7 +3,7 @@ use std::{
     path::PathBuf,
     sync::LazyLock,
     thread::{self, JoinHandle},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -461,6 +461,8 @@ impl NapiEntrypoints {
 pub async fn project_write_all_entrypoints_to_disk(
     #[napi(ts_arg_type = "{ __napiType: \"Project\" }")] project: External<ProjectInstance>,
 ) -> napi::Result<TurbopackResult<NapiEntrypoints>> {
+    let start = Instant::now();
+
     let turbo_tasks = project.turbo_tasks.clone();
     let (entrypoints, issues, diags) = turbo_tasks
         .run_once(async move {
@@ -484,6 +486,21 @@ pub async fn project_write_all_entrypoints_to_disk(
         .map_err(|e| napi::Error::from_reason(PrettyPrintError(&e).to_string()))?;
 
     tracing::info!("all project entrypoints wrote to disk.");
+
+    tracing::info!(
+        "pack tasks with {} apps {} libraries finished in {:?}",
+        entrypoints
+            .apps
+            .as_ref()
+            .map(|apps| apps.0.len())
+            .unwrap_or_default(),
+        entrypoints
+            .libraries
+            .as_ref()
+            .map(|libraries| libraries.0.len())
+            .unwrap_or_default(),
+        start.elapsed()
+    );
 
     Ok(TurbopackResult {
         result: NapiEntrypoints::from_entrypoints_op(&entrypoints, &turbo_tasks)?,

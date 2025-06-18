@@ -41,8 +41,8 @@
     }
   },
   "scripts": {
-    "build": " rm -rf dist && tsc -b",
-    "postpack": "shx rm -f oclif.manifest.json",
+    "build": "rm -rf dist && tsc -b",
+    "postpack": "rm -f oclif.manifest.json",
     "prepack": "oclif manifest && oclif readme"
   },
   "types": "dist/index.d.ts"
