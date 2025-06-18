@@ -1075,13 +1075,15 @@ impl Project {
     /// Gets the module id strategy for the project.
     #[turbo_tasks::function]
     pub async fn module_ids(self: Vc<Self>) -> Result<Vc<Box<dyn ModuleIdStrategy>>> {
-        let module_id_strategy = if let Some(module_ids) = &*self.config().module_ids().await? {
-            *module_ids
-        } else {
-            match *self.mode().await? {
-                Mode::Development => ModuleIdStrategyConfig::Named,
-                Mode::Production => ModuleIdStrategyConfig::Deterministic,
-            }
+        let module_id_strategy = match *self.mode().await? {
+            Mode::Development => ModuleIdStrategyConfig::Named,
+            Mode::Production => self
+                .config()
+                .module_ids()
+                .await?
+                .map_or(ModuleIdStrategyConfig::Deterministic, |module_ids| {
+                    module_ids
+                }),
         };
 
         match module_id_strategy {
