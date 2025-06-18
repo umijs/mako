@@ -1003,8 +1003,10 @@ mod tests {
                 "name": "test-package",
                 "version": "1.0.0",
                 "workspaces": ["packages/*"]
-            }).to_string()
-        ).unwrap();
+            })
+            .to_string(),
+        )
+        .unwrap();
 
         // Create workspace package directory and package.json
         let workspace_path = temp_path.join("packages/workspace-a");
@@ -1018,8 +1020,10 @@ mod tests {
                     "workspace-a": "./bin/index.js",
                     "workspace-a-cli": "./bin/cli.js"
                 }
-            }).to_string()
-        ).unwrap();
+            })
+            .to_string(),
+        )
+        .unwrap();
 
         // Create bin directory and files
         let bin_path = workspace_path.join("bin");
@@ -1065,6 +1069,5 @@ mod tests {
         let bin = workspace_pkg["bin"].as_object().unwrap();
         assert_eq!(bin["workspace-a"], "./bin/index.js");
         assert_eq!(bin["workspace-a-cli"], "./bin/cli.js");
-
     }
 }
