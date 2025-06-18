@@ -182,7 +182,7 @@ pub fn init_custom_trace_subscriber(
     }
 
     let (chrome_layer, guard) = layer.build();
-    
+
     let mut init_success = false;
     TRACING_INIT.call_once(|| {
         if tracing_subscriber::registry()

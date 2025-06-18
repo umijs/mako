@@ -463,7 +463,7 @@ pub async fn project_write_all_entrypoints_to_disk(
     #[napi(ts_arg_type = "{ __napiType: \"Project\" }")] project: External<ProjectInstance>,
 ) -> napi::Result<TurbopackResult<NapiEntrypoints>> {
     let start = Instant::now();
-    
+
     let turbo_tasks = project.turbo_tasks.clone();
     let (entrypoints, issues, diags) = turbo_tasks
         .run_once(async move {
