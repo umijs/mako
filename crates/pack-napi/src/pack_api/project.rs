@@ -316,7 +316,7 @@ pub async fn project_new(
             .unwrap();
         });
 
-        subscriber.try_init().ok();
+        subscriber.init();
     } else {
         tracing_subscriber::fmt()
             .with_env_filter(
@@ -326,8 +326,7 @@ pub async fn project_new(
             )
             .with_timer(tracing_subscriber::fmt::time::SystemTime)
             .with_span_events(FmtSpan::CLOSE)
-            .try_init()
-            .ok();
+            .init();
     }
 
     let memory_limit = turbo_engine_options
