@@ -63,6 +63,8 @@ static SOURCE_MAP_PREFIX: LazyLock<String> =
 static SOURCE_MAP_PREFIX_PROJECT: LazyLock<String> =
     LazyLock::new(|| format!("{}///[{}]/", SOURCE_URL_PROTOCOL, PROJECT_FILESYSTEM_NAME));
 
+static TRACING_INIT: std::sync::Once = std::sync::Once::new();
+
 #[napi(object)]
 #[derive(Clone, Debug)]
 pub struct NapiEnvVar {
@@ -316,17 +318,19 @@ pub async fn project_new(
             .unwrap();
         });
 
-        subscriber.init();
+        TRACING_INIT.call_once(|| {
+            let _ = subscriber.init();
+        });
     } else {
-        tracing_subscriber::fmt()
-            .with_env_filter(
-                EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        TRACING_INIT.call_once(|| {
+            let _ = tracing_subscriber::fmt()
+                .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
                     EnvFilter::new("pack_napi=info,pack_api=info,pack_core=info")
-                }),
-            )
-            .with_timer(tracing_subscriber::fmt::time::SystemTime)
-            .with_span_events(FmtSpan::CLOSE)
-            .init();
+                }))
+                .with_timer(tracing_subscriber::fmt::time::SystemTime)
+                .with_span_events(FmtSpan::CLOSE)
+                .init();
+        });
     }
 
     let memory_limit = turbo_engine_options
@@ -462,7 +466,6 @@ pub async fn project_write_all_entrypoints_to_disk(
     #[napi(ts_arg_type = "{ __napiType: \"Project\" }")] project: External<ProjectInstance>,
 ) -> napi::Result<TurbopackResult<NapiEntrypoints>> {
     let start = Instant::now();
-
     let turbo_tasks = project.turbo_tasks.clone();
     let (entrypoints, issues, diags) = turbo_tasks
         .run_once(async move {
