@@ -32,7 +32,7 @@ use std::{
     fs::OpenOptions,
     io::{self, BufRead, Write},
     path::PathBuf,
-    sync::{LazyLock, Mutex},
+    sync::{LazyLock, Mutex, Once},
     time::Instant,
 };
 
@@ -44,6 +44,7 @@ use tracing_subscriber::{filter, prelude::*, util::SubscriberInitExt, Layer};
 
 static LOG_THROTTLE: Mutex<Option<Instant>> = Mutex::new(None);
 static LOG_DIVIDER: &str = "---------------------------";
+static TRACING_INIT: Once = Once::new();
 static PANIC_LOG: LazyLock<PathBuf> = LazyLock::new(|| {
     let mut path = env::temp_dir();
     path.push(format!("next-panic-{:x}.log", rand::random::<u128>()));
@@ -181,14 +182,21 @@ pub fn init_custom_trace_subscriber(
     }
 
     let (chrome_layer, guard) = layer.build();
-    tracing_subscriber::registry()
-        .with(chrome_layer.with_filter(filter::filter_fn(|metadata| {
-            !metadata.target().contains("cranelift") && !metadata.name().contains("log ")
-        })))
-        .try_init()
-        .expect("Failed to register tracing subscriber");
+    
+    let mut init_success = false;
+    TRACING_INIT.call_once(|| {
+        if tracing_subscriber::registry()
+            .with(chrome_layer.with_filter(filter::filter_fn(|metadata| {
+                !metadata.target().contains("cranelift") && !metadata.name().contains("log ")
+            })))
+            .try_init()
+            .is_ok()
+        {
+            init_success = true;
+        }
+    });
 
-    let guard_cell = RefCell::new(Some(guard));
+    let guard_cell = RefCell::new(if init_success { Some(guard) } else { None });
     Ok(External::new(guard_cell))
 }
 

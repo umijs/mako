@@ -1,17 +1,16 @@
 import { nanoid } from "nanoid";
 import { projectFactory } from "./project";
-import path from "path";
 import {
   blockStdout,
   createDefineEnv,
   formatIssue,
   isRelevantWarning,
 } from "./util";
-import { ProjectOptions } from "./types";
+import { BuildOptions } from "./types";
 import { xcodeProfilingReady } from "./xcodeProfile";
 
 export async function build(
-  projectOptions: Omit<ProjectOptions, "projectPath" | "rootPath">,
+  projectOptions: BuildOptions,
   projectPath?: string,
   rootPath?: string,
 ) {

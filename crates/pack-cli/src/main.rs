@@ -90,7 +90,8 @@ fn main() {
                     )
                     .with_timer(tracing_subscriber::fmt::time::SystemTime)
                     .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
-                    .init();
+                    .try_init()
+                    .ok();
 
                 None
             };
