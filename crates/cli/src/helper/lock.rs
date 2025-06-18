@@ -507,6 +507,7 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>, path: &Path) -> (Value, i32)
             });
 
             if current.is_workspace {
+                info["version"] = json!(current.package.get("version"));
             } else if current.is_link {
                 // update resolved field
                 info["link"] = json!(true);
@@ -555,7 +556,7 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>, path: &Path) -> (Value, i32)
         // add dependencies field
         let fields = if current.is_link {
             vec![]
-        } else if current.is_root || current.is_workspace {
+        } else if current.is_root {
             vec![
                 "dependencies",
                 "devDependencies",
@@ -987,5 +988,86 @@ mod tests {
 
         let relative_path = get_relative_target_path(&node, root_path);
         assert_eq!(relative_path, "");
+    }
+
+    #[test]
+    fn test_serialize_tree_to_packages_with_workspace_bin() {
+        // Create a temporary directory for testing
+        let temp_dir = TempDir::new().unwrap();
+        let temp_path = temp_dir.path();
+
+        // Create root package.json
+        fs::write(
+            temp_path.join("package.json"),
+            json!({
+                "name": "test-package",
+                "version": "1.0.0",
+                "workspaces": ["packages/*"]
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        // Create workspace package directory and package.json
+        let workspace_path = temp_path.join("packages/workspace-a");
+        fs::create_dir_all(&workspace_path).unwrap();
+        fs::write(
+            workspace_path.join("package.json"),
+            json!({
+                "name": "workspace-a",
+                "version": "1.0.0",
+                "bin": {
+                    "workspace-a": "./bin/index.js",
+                    "workspace-a-cli": "./bin/cli.js"
+                }
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        // Create bin directory and files
+        let bin_path = workspace_path.join("bin");
+        fs::create_dir_all(&bin_path).unwrap();
+        fs::write(bin_path.join("index.js"), "console.log('workspace-a');").unwrap();
+        fs::write(bin_path.join("cli.js"), "console.log('workspace-a-cli');").unwrap();
+
+        // Create root node
+        let root = Node::new(
+            "test-package".to_string(),
+            temp_path.to_path_buf(),
+            json!({
+                "name": "test-package",
+                "version": "1.0.0",
+                "workspaces": ["packages/*"]
+            }),
+        );
+
+        // Create workspace node
+        let workspace = Node::new_workspace(
+            "workspace-a".to_string(),
+            workspace_path.clone(),
+            json!({
+                "name": "workspace-a",
+                "version": "1.0.0",
+                "bin": {
+                    "workspace-a": "./bin/index.js",
+                    "workspace-a-cli": "./bin/cli.js"
+                }
+            }),
+        );
+        root.children.write().unwrap().push(workspace);
+
+        // Test serialization
+        let (packages, _) = serialize_tree_to_packages(&root, temp_path);
+
+        // Verify workspace package
+        let workspace_pkg = packages.get("packages/workspace-a").unwrap();
+        println!("workspace_pkg: {:?}", workspace_pkg);
+        assert_eq!(workspace_pkg["name"], "workspace-a");
+
+        // Verify bin configuration
+        let bin = workspace_pkg["bin"].as_object().unwrap();
+        assert_eq!(bin["workspace-a"], "./bin/index.js");
+        assert_eq!(bin["workspace-a-cli"], "./bin/cli.js");
     }
 }
