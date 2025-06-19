@@ -66,8 +66,8 @@ pub async fn all_output_assets_operation(
         .await?;
 
     let output_assets: FxIndexSet<ResolvedVc<Box<dyn OutputAsset>>> = endpoint_assets
-        .into_iter()
-        .flat_map(|assets| assets.into_iter().copied())
+        .iter()
+        .flat_map(|assets| assets.iter().copied())
         .collect();
 
     Ok(Vc::cell(output_assets.into_iter().collect()))
