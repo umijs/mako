@@ -23,7 +23,7 @@ pub async fn get_library_runtime_code(
     runtime_type: Value<RuntimeType>,
     output_root_to_root_path: Vc<RcStr>,
     generate_source_map: bool,
-    runtime_root: Vc<RcStr>,
+    runtime_root: Vc<Option<RcStr>>,
     runtime_export: Vc<Vec<RcStr>>,
 ) -> Result<Vc<Code>> {
     let asset_context = get_runtime_asset_context(environment).await?;
@@ -165,7 +165,6 @@ pub async fn get_library_runtime_code(
     }
 
     let runtime_root = &*runtime_root.await?;
-    let runtime_root = StringifyJs(runtime_root);
     let runtime_export = &*runtime_export.await?;
     let runtime_export = if runtime_export.is_empty() {
         "".to_string()
@@ -189,9 +188,41 @@ pub async fn get_library_runtime_code(
             }} else if(typeof define === 'function' && define.amd) {{
                 define([], factory);
             }} else if (typeof exports === 'object') {{
-                exports[{runtime_root}] = factory(){runtime_export};
+        "#,
+    )?;
+
+    if let Some(runtime_root) = runtime_root {
+        let runtime_root = StringifyJs(runtime_root);
+        writedoc!(
+            code,
+            r#"
+                exports[{}] = factory(){};
             }} else {{
-                globalThis[{runtime_root}] = factory(){runtime_export};
+                globalThis[{}] = factory(){};
+            "#,
+            runtime_root,
+            runtime_export,
+            runtime_root,
+            runtime_export,
+        )?;
+    } else {
+        writedoc!(
+            code,
+            r#"
+                var a = factory();
+                for(var i in a) exports[i] = a[i]{};
+            }} else {{
+                var a = factory();
+                for(var i in a) globalThis[i] = a[i]{};
+            "#,
+            runtime_export,
+            runtime_export,
+        )?;
+    }
+
+    writedoc!(
+        code,
+        r#"
             }}
         "#,
     )?;

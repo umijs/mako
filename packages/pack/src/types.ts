@@ -109,6 +109,7 @@ export interface ConfigComplete {
     type?: "standalone" | "export";
     filename?: string;
     chunkFilename?: string;
+    clean?: boolean;
   };
   target?: string;
   sourceMaps?: boolean;

@@ -126,9 +126,10 @@ pub struct SchemaEntryOptions {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SchemaLibraryOptions {
-    /// Library name
-    #[schemars(description = "Library name")]
-    pub name: String,
+    /// Library name (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Library name (optional)")]
+    pub name: Option<String>,
 
     /// Export configuration
     #[serde(skip_serializing_if = "Option::is_none")]
