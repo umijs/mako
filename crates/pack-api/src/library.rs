@@ -292,23 +292,22 @@ impl LibraryEndpoint {
         self: Vc<Self>,
         import_path: RcStr,
         project_dir_name: RcStr,
-    ) -> Vc<RcStr> {
+    ) -> Result<Vc<RcStr>> {
         if import_path.starts_with(MAIN_SEPARATOR) {
             let pattern = format!("{}{}{}", MAIN_SEPARATOR, project_dir_name, MAIN_SEPARATOR);
-            import_path
-                .find(&pattern)
-                .and_then(|pos| {
-                    let relative_part = &import_path[pos + pattern.len()..];
-                    if !relative_part.is_empty() {
-                        let relative_import = format!(".{}{}", MAIN_SEPARATOR, relative_part);
-                        Some(Vc::cell(relative_import.into()))
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or_else(|| Vc::cell(import_path))
+            if let Some(pos) = import_path.find(&pattern) {
+                let relative_part = &import_path[pos + pattern.len()..];
+                if !relative_part.is_empty() {
+                    let relative_import = format!(".{}{}", MAIN_SEPARATOR, relative_part);
+                    Ok(Vc::cell(relative_import.into()))
+                } else {
+                    bail!("Invalid import path: {}", import_path)
+                }
+            } else {
+                bail!("Invalid import path: {}", import_path)
+            }
         } else {
-            Vc::cell(import_path)
+            Ok(Vc::cell(import_path))
         }
     }
 }
