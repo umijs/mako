@@ -1,0 +1,21 @@
+{
+  "rootPath": "../../",
+  "projectPath": "./",
+  "config": {
+    "entry": [
+      {
+        "import": "./src/index.js"
+      }
+    ],
+    "output": {
+      "path": "./dist",
+      "filename": "[name].[contenthash:8]",
+      "chunkFilename": "[name].[contenthash:8]",
+      "clean": true
+    },
+    "optimization": {
+      "minify": false,
+      "moduleIds": "named"
+    }
+  }
+}
