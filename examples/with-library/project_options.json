@@ -11,6 +11,13 @@
           "name": "MyLibrary",
           "export": ["default", "value"]
         }
+      },
+      {
+        "name": "library-2",
+        "import": "./src/comp2.tsx",
+        "library": {
+          "export": []
+        }
       }
     ],
     "output": {

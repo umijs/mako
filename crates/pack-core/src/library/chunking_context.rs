@@ -71,7 +71,7 @@ impl LibraryChunkingContextBuilder {
         self
     }
 
-    pub fn runtime_root(mut self, runtime_root: RcStr) -> Self {
+    pub fn runtime_root(mut self, runtime_root: Option<RcStr>) -> Self {
         self.chunking_context.runtime_root = runtime_root;
         self
     }
@@ -130,7 +130,7 @@ impl LibraryChunkingContextBuilder {
 pub struct LibraryChunkingContext {
     name: Option<RcStr>,
     /// The library root name
-    runtime_root: RcStr,
+    runtime_root: Option<RcStr>,
     /// The library export subpaths
     runtime_export: Vec<RcStr>,
     /// The root path of the project
@@ -162,7 +162,7 @@ impl LibraryChunkingContext {
         output_root_to_root_path: ResolvedVc<RcStr>,
         environment: ResolvedVc<Environment>,
         runtime_type: RuntimeType,
-        runtime_root: RcStr,
+        runtime_root: Option<RcStr>,
         runtime_export: Vec<RcStr>,
     ) -> LibraryChunkingContextBuilder {
         LibraryChunkingContextBuilder {
@@ -268,7 +268,7 @@ impl LibraryChunkingContext {
     }
 
     #[turbo_tasks::function]
-    pub(crate) fn runtime_root(&self) -> Vc<RcStr> {
+    pub(crate) fn runtime_root(&self) -> Vc<Option<RcStr>> {
         Vc::cell(self.runtime_root.clone())
     }
 

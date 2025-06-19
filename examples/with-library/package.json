@@ -12,7 +12,10 @@
     "dev-by-native": "../../target/release/pack-cli dev",
     "serve": "rm -rf ./dist && npm run build && node ./genHtml.js && serve ./dist"
   },
-  "dependencies": {},
+  "dependencies": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
   "devDependencies": {
     "@utoo/pack-cli": "*"
   },

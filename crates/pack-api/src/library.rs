@@ -44,7 +44,7 @@ use crate::{
 pub struct Library {
     pub name: RcStr,
     pub import: RcStr,
-    pub runtime_root: RcStr,
+    pub runtime_root: Option<RcStr>,
     pub runtime_export: Option<Vec<RcStr>>,
 }
 
@@ -104,7 +104,7 @@ pub struct LibraryEndpoint {
     project: ResolvedVc<Project>,
     name: RcStr,
     import: RcStr,
-    runtime_root: RcStr,
+    runtime_root: Option<RcStr>,
     runtime_export: Vec<RcStr>,
 }
 
@@ -233,7 +233,7 @@ impl LibraryEndpoint {
     #[turbo_tasks::function]
     pub(super) async fn library_chunking_context(
         self: Vc<Self>,
-        runtime_root: Vc<RcStr>,
+        runtime_root: Vc<Option<RcStr>>,
         runtime_export: Vc<Vec<RcStr>>,
     ) -> Result<Vc<Box<dyn ChunkingContext>>> {
         let project = self.project();

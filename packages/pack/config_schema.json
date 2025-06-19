@@ -427,9 +427,6 @@
     "SchemaLibraryOptions": {
       "description": "Library output configuration",
       "type": "object",
-      "required": [
-        "name"
-      ],
       "properties": {
         "export": {
           "description": "Export configuration",
@@ -442,8 +439,11 @@
           }
         },
         "name": {
-          "description": "Library name",
-          "type": "string"
+          "description": "Library name (optional)",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     },

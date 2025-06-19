@@ -23,7 +23,7 @@ pub async fn get_library_chunking_context(
     mode: Vc<Mode>,
     module_id_strategy: ResolvedVc<Box<dyn ModuleIdStrategy>>,
     no_mangling: Vc<bool>,
-    runtime_root: Vc<RcStr>,
+    runtime_root: Vc<Option<RcStr>>,
     runtime_export: Vc<Vec<RcStr>>,
     config: ResolvedVc<Config>,
 ) -> Result<Vc<Box<dyn ChunkingContext>>> {
