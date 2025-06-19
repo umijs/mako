@@ -1,3 +1,5 @@
+use std::path::MAIN_SEPARATOR;
+
 use anyhow::{bail, Result};
 use futures::stream::{self, StreamExt};
 use pack_core::client::context::{
@@ -110,8 +112,16 @@ impl AppEntrypoint {
         asset_context: Vc<Box<dyn AssetContext>>,
     ) -> Result<Vc<Modules>> {
         let this = self.await?;
+
+        // Handle import path: convert absolute path to relative, keep relative path as-is
+        let project_path = self.project().project_path().await?;
+        let project_dir_name = project_path.path.split(MAIN_SEPARATOR).last().unwrap_or("");
+        let relative_import = self
+            .convert_to_relative_import(this.import.clone(), project_dir_name.into())
+            .await?;
+
         let entry_request = Request::relative(
-            Value::new(this.import.clone().into()),
+            Value::new((*relative_import).clone().into()),
             Default::default(),
             Default::default(),
             false,
@@ -210,6 +220,30 @@ impl AppEntrypoint {
             .await?
             .assets;
         Ok(chunk_group_assets)
+    }
+
+    #[turbo_tasks::function]
+    pub fn convert_to_relative_import(
+        self: Vc<Self>,
+        import_path: RcStr,
+        project_dir_name: RcStr,
+    ) -> Result<Vc<RcStr>> {
+        if import_path.starts_with(MAIN_SEPARATOR) {
+            let pattern = format!("{}{}{}", MAIN_SEPARATOR, project_dir_name, MAIN_SEPARATOR);
+            if let Some(pos) = import_path.find(&pattern) {
+                let relative_part = &import_path[pos + pattern.len()..];
+                if !relative_part.is_empty() {
+                    let relative_import = format!(".{}{}", MAIN_SEPARATOR, relative_part);
+                    Ok(Vc::cell(relative_import.into()))
+                } else {
+                    bail!("Invalid import path: {}", import_path)
+                }
+            } else {
+                bail!("Invalid import path: {}", import_path)
+            }
+        } else {
+            Ok(Vc::cell(import_path))
+        }
     }
 }
 
