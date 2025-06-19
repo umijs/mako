@@ -171,8 +171,16 @@ impl LibraryEndpoint {
     #[turbo_tasks::function]
     pub async fn library_entry_modules(self: Vc<Self>) -> Result<Vc<Modules>> {
         let this = self.await?;
+
+        // Handle import path: convert absolute path to relative, keep relative path as-is
+        let project_path = self.project().project_path().await?;
+        let project_dir_name = project_path.path.split('/').last().unwrap_or("");
+        let relative_import = self
+            .convert_to_relative_import(this.import.clone(), project_dir_name.into())
+            .await?;
+
         let entry_request = Request::relative(
-            Value::new(this.import.clone().into()),
+            Value::new((*relative_import).clone().into()),
             Default::default(),
             Default::default(),
             false,
@@ -275,6 +283,31 @@ impl LibraryEndpoint {
     pub async fn output_assets(self: Vc<Self>) -> Result<Vc<OutputAssets>> {
         let chunk_group_assets = *self.library_chunk().await?.assets;
         Ok(chunk_group_assets)
+    }
+
+    #[turbo_tasks::function]
+    pub fn convert_to_relative_import(
+        self: Vc<Self>,
+        import_path: RcStr,
+        project_dir_name: RcStr,
+    ) -> Vc<RcStr> {
+        if import_path.starts_with('/') {
+            let pattern = format!("/{}/", project_dir_name);
+            import_path
+                .find(&pattern)
+                .and_then(|pos| {
+                    let relative_part = &import_path[pos + pattern.len()..];
+                    if !relative_part.is_empty() {
+                        let relative_import = format!("./{}", relative_part);
+                        Some(Vc::cell(relative_import.into()))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| Vc::cell(import_path))
+        } else {
+            Vc::cell(import_path)
+        }
     }
 }
 
