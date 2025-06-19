@@ -1,3 +1,5 @@
+use std::path::MAIN_SEPARATOR;
+
 use anyhow::{bail, Result};
 use pack_core::{
     client::context::{
@@ -174,7 +176,7 @@ impl LibraryEndpoint {
 
         // Handle import path: convert absolute path to relative, keep relative path as-is
         let project_path = self.project().project_path().await?;
-        let project_dir_name = project_path.path.split('/').last().unwrap_or("");
+        let project_dir_name = project_path.path.split(MAIN_SEPARATOR).last().unwrap_or("");
         let relative_import = self
             .convert_to_relative_import(this.import.clone(), project_dir_name.into())
             .await?;
@@ -291,14 +293,14 @@ impl LibraryEndpoint {
         import_path: RcStr,
         project_dir_name: RcStr,
     ) -> Vc<RcStr> {
-        if import_path.starts_with('/') {
-            let pattern = format!("/{}/", project_dir_name);
+        if import_path.starts_with(MAIN_SEPARATOR) {
+            let pattern = format!("{}{}{}", MAIN_SEPARATOR, project_dir_name, MAIN_SEPARATOR);
             import_path
                 .find(&pattern)
                 .and_then(|pos| {
                     let relative_part = &import_path[pos + pattern.len()..];
                     if !relative_part.is_empty() {
-                        let relative_import = format!("./{}", relative_part);
+                        let relative_import = format!(".{}{}", MAIN_SEPARATOR, relative_part);
                         Some(Vc::cell(relative_import.into()))
                     } else {
                         None

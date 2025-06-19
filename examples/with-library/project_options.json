@@ -6,7 +6,7 @@
     "entry": [
       {
         "name": "library",
-        "import": "./src/index.ts",
+        "import": "/Users/zoomdong/mako/examples/with-library/src/index.ts",
         "library": {
           "name": "MyLibrary",
           "export": ["default", "value"]
