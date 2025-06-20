@@ -319,11 +319,11 @@ pub async fn project_new(
         });
 
         TRACING_INIT.call_once(|| {
-            let _ = subscriber.init();
+            subscriber.init();
         });
     } else {
         TRACING_INIT.call_once(|| {
-            let _ = tracing_subscriber::fmt()
+            tracing_subscriber::fmt()
                 .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
                     EnvFilter::new("pack_napi=info,pack_api=info,pack_core=info")
                 }))
