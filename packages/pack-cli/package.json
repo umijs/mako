@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@oclif/core": "^4",
-    "@utoo/pack": "0.0.1"
+    "@utoo/pack": "*"
   },
   "devDependencies": {
     "@types/node": "^18",
