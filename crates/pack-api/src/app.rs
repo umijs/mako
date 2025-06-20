@@ -115,7 +115,11 @@ impl AppEntrypoint {
 
         // Handle import path: convert absolute path to relative, keep relative path as-is
         let project_path = self.project().project_path().await?;
-        let project_dir_name = project_path.path.split(MAIN_SEPARATOR).last().unwrap_or("");
+        let project_dir_name = project_path
+            .path
+            .split(MAIN_SEPARATOR)
+            .next_back()
+            .unwrap_or("");
         let relative_import = self
             .convert_to_relative_import(this.import.clone(), project_dir_name.into())
             .await?;
