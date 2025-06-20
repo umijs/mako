@@ -57,6 +57,7 @@ rustflags = [
 ]
 
 [target.aarch64-unknown-linux-musl]
+# Config need to be mirrowed to .github/workflows/pack-release.yml
 linker = "aarch64-linux-musl-gcc"
 rustflags = [
   "--cfg",
@@ -68,6 +69,7 @@ rustflags = [
 ]
 
 [target.x86_64-unknown-linux-musl]
+# Config need to be mirrowed to .github/workflows/pack-release.yml
 rustflags = [
   "--cfg",
   "tokio_unstable",
