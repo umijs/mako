@@ -4,6 +4,7 @@ use crate::helper::lock::{
 use crate::helper::ruborist::Ruborist;
 use crate::util::json::load_package_json;
 use crate::util::logger::log_verbose;
+use crate::util::relative_path::to_relative_path;
 use anyhow::{Context, Result};
 use serde_json::json;
 use std::collections::HashSet;
@@ -84,7 +85,7 @@ pub async fn build_workspace(cwd: &Path) -> Result<()> {
             workspace_names.insert(name.clone());
             node_list.push(json!({
                 "name": name,
-                "path": child.path.clone(),
+                "path": to_relative_path(&child.path, cwd),
             }));
         }
 
