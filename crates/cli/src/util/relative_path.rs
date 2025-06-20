@@ -7,7 +7,6 @@ pub fn to_relative_path(path: &Path, base: &Path) -> String {
         .to_string()
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -36,5 +35,4 @@ mod tests {
         let relative = to_relative_path(&absolute, &base);
         assert_eq!(relative, "");
     }
-
 }
