@@ -34,13 +34,15 @@ pub async fn get_library_runtime_code(
         generate_source_map,
     );
 
-    let mut runtime_base_code = vec!["browser/runtime/base/runtime-base.ts"];
-    match *runtime_type {
-        RuntimeType::Production => runtime_base_code.push("browser/runtime/base/build-base.ts"),
-        RuntimeType::Development => {
-            runtime_base_code.push("browser/runtime/base/dev-base.ts");
-        }
-    }
+    let runtime_base_code = vec!["browser/runtime/base/runtime-base.ts"];
+
+    // Follwing runtime code is useless for umd output:
+    // match *runtime_type {
+    //     RuntimeType::Production => runtime_base_code.push("browser/runtime/base/build-base.ts"),
+    //     RuntimeType::Development => {
+    //         runtime_base_code.push("browser/runtime/base/dev-base.ts");
+    //     }
+    // }
 
     let chunk_loading = &*asset_context
         .compile_time_info()
@@ -55,7 +57,7 @@ pub async fn get_library_runtime_code(
             runtime_backend_code.push("browser/runtime/edge/dev-backend-edge.ts");
         }
         (ChunkLoading::Edge, RuntimeType::Production) => {
-            runtime_backend_code.push("browser/runtime/edge/runtime-backend-edge.ts");
+            // runtime_backend_code.push("browser/runtime/edge/runtime-backend-edge.ts");
         }
         // This case should never be hit.
         (ChunkLoading::NodeJs, _) => {
