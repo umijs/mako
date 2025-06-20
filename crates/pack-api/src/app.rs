@@ -228,6 +228,12 @@ impl AppEntrypoint {
         import_path: RcStr,
         project_dir_name: RcStr,
     ) -> Result<Vc<RcStr>> {
+        // When project is root, the project_dir_name is empty
+        // In this case, the import path is already relative
+        // TODO: test use polyrepo project.
+        if project_dir_name.is_empty() {
+            return Ok(Vc::cell(import_path));
+        }
         if import_path.starts_with(MAIN_SEPARATOR) {
             let pattern = format!("{}{}{}", MAIN_SEPARATOR, project_dir_name, MAIN_SEPARATOR);
             if let Some(pos) = import_path.find(&pattern) {
