@@ -11,6 +11,7 @@ use crate::util::json::{load_package_json_from_path, load_package_lock_json_from
 use crate::util::logger::{log_verbose, log_warning};
 use crate::util::node::{Node, Overrides};
 use crate::util::registry::resolve;
+use crate::util::relative_path::to_relative_path;
 use crate::util::save_type::{PackageAction, SaveType};
 use crate::util::semver;
 use crate::util::{cache::parse_pattern, cloner::clone, downloader::download};
@@ -263,7 +264,7 @@ pub async fn is_pkg_lock_outdated(root_path: &Path) -> Result<bool> {
     // populate all workspaces
     let workspaces = find_workspaces(root_path).await?;
     for (_, path, workspace_pkg) in workspaces {
-        let target_path = path.strip_prefix(root_path)?.to_string_lossy().to_string();
+        let target_path = to_relative_path(&path, root_path);
         pkgs_to_check.push((target_path, workspace_pkg));
     }
 
