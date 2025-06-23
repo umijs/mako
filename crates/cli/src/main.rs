@@ -53,6 +53,10 @@ struct Cli {
     #[arg(short = 'v', long)]
     version: bool,
 
+    /// Workspace to operate in
+    #[arg(short, long, global = true)]
+    workspace: Option<String>,
+
     script_name: Option<String>,
 }
 
@@ -277,12 +281,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None => {
             // Check if the first argument is a script name
             if let Some(script_name) = std::env::args().nth(1) {
-                // Parse workspace argument if present
-                let workspace = std::env::args()
-                    .position(|arg| arg == "--workspace")
-                    .and_then(|pos| std::env::args().nth(pos + 1));
 
-                if let Err(e) = cmd::run::run_script(&script_name, workspace).await {
+                if let Err(e) = cmd::run::run_script(&script_name, cli.workspace).await {
                     log_error(&e.to_string());
                     let _ = write_verbose_logs_to_file();
                     process::exit(1);
