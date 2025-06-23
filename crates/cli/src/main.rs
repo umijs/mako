@@ -54,7 +54,7 @@ struct Cli {
     version: bool,
 
     /// Workspace to operate in
-    #[arg(short, long, global = true)]
+    #[arg(short, long, global = true, hide = true)]
     workspace: Option<String>,
 
     script_name: Option<String>,
