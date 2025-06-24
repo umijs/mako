@@ -274,7 +274,11 @@ pub async fn load_cache(path: &str) -> Result<()> {
     Ok(())
 }
 
-pub async fn resolve_dependency(name: &str, spec: &str, edge_type: &EdgeType) -> Result<Option<ResolvedPackage>> {
+pub async fn resolve_dependency(
+    name: &str,
+    spec: &str,
+    edge_type: &EdgeType,
+) -> Result<Option<ResolvedPackage>> {
     match resolve(name, spec).await {
         Ok(resolved) => Ok(Some(resolved)),
         Err(e) => {
@@ -379,7 +383,8 @@ mod tests {
     #[tokio::test]
     async fn test_resolve_dependency_optional_not_found() -> Result<()> {
         // Should skip and return Ok(None) for optional dependency not found
-        let result = resolve_dependency("not-exist-package-12345", "1.0.0", &EdgeType::Optional).await?;
+        let result =
+            resolve_dependency("not-exist-package-12345", "1.0.0", &EdgeType::Optional).await?;
         assert!(result.is_none());
         Ok(())
     }
