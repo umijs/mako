@@ -12,6 +12,7 @@
       "filename": "[name].[contenthash:8]",
       "chunkFilename": "[name].[contenthash:8]",
       "clean": true
-    }
+    },
+    "stats": true
   }
 }

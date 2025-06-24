@@ -25,6 +25,7 @@ const projectOptions = {
     output: {
       path: "./dist",
     },
+    stats: true
   },
 };
 
