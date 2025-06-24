@@ -8,6 +8,8 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
 
+use crate::util::node::EdgeType;
+
 use super::config::get_registry;
 use super::logger::log_verbose;
 
@@ -272,6 +274,27 @@ pub async fn load_cache(path: &str) -> Result<()> {
     Ok(())
 }
 
+pub async fn resolve_dependency(
+    name: &str,
+    spec: &str,
+    edge_type: &EdgeType,
+) -> Result<Option<ResolvedPackage>> {
+    match resolve(name, spec).await {
+        Ok(resolved) => Ok(Some(resolved)),
+        Err(e) => {
+            if *edge_type == EdgeType::Optional {
+                log_verbose(&format!(
+                    "skipping optional dependency {}@{} due to resolve error: {}",
+                    name, spec, e
+                ));
+                Ok(None)
+            } else {
+                Err(e)
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -343,6 +366,40 @@ mod tests {
         // Test invalid version spec
         let result = registry.get_package_manifest("lodash", "999.999.999").await;
 
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_resolve_dependency_normal() -> Result<()> {
+        // Test resolving a normal dependency
+        let result = resolve_dependency("lodash", "^4", &EdgeType::Prod).await?;
+        assert!(result.is_some());
+        let pkg = result.unwrap();
+        assert_eq!(pkg.name, "lodash");
+        assert!(pkg.version.starts_with("4"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_resolve_dependency_optional_not_found() -> Result<()> {
+        // Should skip and return Ok(None) for optional dependency not found
+        let result =
+            resolve_dependency("not-exist-package-12345", "1.0.0", &EdgeType::Optional).await?;
+        assert!(result.is_none());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_resolve_dependency_regular_not_found() {
+        // Should return Err for regular dependency not found
+        let result = resolve_dependency("not-exist-package-12345", "1.0.0", &EdgeType::Prod).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_resolve_dependency_invalid_version() {
+        // Should return Err for invalid version
+        let result = resolve_dependency("lodash", "999.999.999", &EdgeType::Prod).await;
         assert!(result.is_err());
     }
 }
