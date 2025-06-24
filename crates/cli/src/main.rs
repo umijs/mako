@@ -288,8 +288,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let args = std::env::args().skip(1).collect::<Vec<String>>();
                 let script_args = parse_script_and_args(&args);
                 let workspace = cli.workspace.as_deref();
-                if let Err(e) = cmd::run::run_script(&script_name, workspace, script_args).await
-                {
+                if let Err(e) = cmd::run::run_script(&script_name, workspace, script_args).await {
                     log_error(&e.to_string());
                     let _ = write_verbose_logs_to_file();
                     process::exit(1);

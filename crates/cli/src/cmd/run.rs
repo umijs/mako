@@ -12,10 +12,6 @@ pub async fn run_script(
     workspace: Option<&str>,
     script_args: Option<Vec<&str>>,
 ) -> Result<()> {
-    println!(
-        "script_name: {:?}, script_args: {:?}",
-        script_name, script_args
-    );
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
     update_cwd_to_project(&cwd).await?;
     let pkg = if let Some(workspace_name) = &workspace {
@@ -42,7 +38,7 @@ pub async fn run_script(
         path: if let Some(workspace_name) = workspace {
             find_workspace_path(
                 &std::env::current_dir().context("Failed to get current directory")?,
-                &workspace_name,
+                workspace_name,
             )
             .await
             .map_err(|e| anyhow::anyhow!("Failed to find workspace path: {}", e))?
