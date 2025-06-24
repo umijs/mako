@@ -163,6 +163,15 @@ impl ScriptService {
         script_name: &str,
         script_content: &str,
     ) -> Result<()> {
+        Self::execute_custom_script_with_args(package, script_name, script_content, vec![]).await
+    }
+
+    pub async fn execute_custom_script_with_args(
+        package: &PackageInfo,
+        script_name: &str,
+        script_content: &str,
+        script_args: Vec<&str>,
+    ) -> Result<()> {
         log_verbose(&format!(
             "Executing custom script for {}: {}",
             package.path.display(),
@@ -172,9 +181,14 @@ impl ScriptService {
         let bin_paths = Self::collect_bin_paths(package);
         let env_path = Self::build_path_env(&bin_paths);
 
+        let cmd_content = match script_args.is_empty() {
+            true => script_content,
+            false => &format!("{} {}", script_content, script_args.join(" ")),
+        };
+
         let mut cmd = Command::new("sh");
         cmd.arg("-c")
-            .arg(script_content)
+            .arg(cmd_content)
             .current_dir(&package.path)
             .env("PATH", env_path)
             .env("npm_lifecycle_event", script_name)

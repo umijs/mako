@@ -24,6 +24,7 @@ use crate::constants::cmd::{
     REBUILD_NAME, UNINSTALL_ABOUT, UNINSTALL_NAME, UPDATE_ABOUT,
 };
 use crate::constants::{APP_ABOUT, APP_NAME, APP_VERSION};
+use crate::helper::cli::parse_script_and_args;
 use crate::helper::workspace::update_cwd_to_root;
 
 #[derive(Parser)]
@@ -52,6 +53,10 @@ struct Cli {
 
     #[arg(short = 'v', long)]
     version: bool,
+
+    /// Workspace to operate in
+    #[arg(short, long, global = true, hide = true)]
+    workspace: Option<String>,
 
     script_name: Option<String>,
 }
@@ -268,7 +273,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Some(Commands::Run { script, workspace }) => {
-            if let Err(e) = cmd::run::run_script(&script, workspace).await {
+            let args = std::env::args().skip(2).collect::<Vec<String>>();
+            let script_args = parse_script_and_args(&args);
+            let workspace = workspace.as_deref();
+            if let Err(e) = cmd::run::run_script(&script, workspace, script_args).await {
                 log_error(&e.to_string());
                 let _ = write_verbose_logs_to_file();
                 process::exit(1);
@@ -277,12 +285,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None => {
             // Check if the first argument is a script name
             if let Some(script_name) = std::env::args().nth(1) {
-                // Parse workspace argument if present
-                let workspace = std::env::args()
-                    .position(|arg| arg == "--workspace")
-                    .and_then(|pos| std::env::args().nth(pos + 1));
-
-                if let Err(e) = cmd::run::run_script(&script_name, workspace).await {
+                let args = std::env::args().skip(1).collect::<Vec<String>>();
+                let script_args = parse_script_and_args(&args);
+                let workspace = cli.workspace.as_deref();
+                if let Err(e) = cmd::run::run_script(&script_name, workspace, script_args).await {
                     log_error(&e.to_string());
                     let _ = write_verbose_logs_to_file();
                     process::exit(1);
