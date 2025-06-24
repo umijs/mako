@@ -150,9 +150,13 @@ impl AppEntrypoint {
         asset_context: Vc<Box<dyn AssetContext>>,
         runtime_entries: Vc<EvaluatableAssets>,
     ) -> Result<Vc<EvaluatableAssets>> {
+        let runtime_entries = runtime_entries.await?;
         let modules = self.app_entry_modules(asset_context).await?;
 
-        let mut all_runtime_entries = Vec::with_capacity(modules.len());
+        let mut all_runtime_entries = Vec::with_capacity(modules.len() + runtime_entries.len());
+
+        all_runtime_entries.extend(runtime_entries.iter().map(|e| **e));
+
         for &module in &modules {
             if let Some(entry) = ResolvedVc::try_downcast::<Box<dyn EvaluatableAsset>>(module) {
                 all_runtime_entries.push(*entry);
@@ -163,8 +167,6 @@ impl AppEntrypoint {
                 );
             }
         }
-
-        all_runtime_entries.extend(runtime_entries.await?.iter().map(|e| **e));
 
         Ok(EvaluatableAssets::many(all_runtime_entries))
     }
@@ -177,9 +179,9 @@ impl AppEntrypoint {
     ) -> Result<Vc<ModuleGraph>> {
         let project = self.project();
 
-        let evaluatable_asset = self.entry_evaluatable_assets(asset_context, runtime_entries);
+        let evaluatable_assets = self.entry_evaluatable_assets(asset_context, runtime_entries);
 
-        Ok(project.module_graph_for_modules(evaluatable_asset))
+        Ok(project.module_graph_for_modules(evaluatable_assets))
     }
 
     #[turbo_tasks::function]
@@ -202,7 +204,13 @@ impl AppEntrypoint {
             let app_chunk_group = app_chunking_context.evaluated_chunk_group(
                 AssetIdent::from_path(project.project_root().join(this.import.clone()))
                     .with_query(Vc::cell(query.into())),
-                ChunkGroup::Entry(self.app_entry_modules(asset_context).await?.to_vec()),
+                ChunkGroup::Entry(
+                    self.entry_evaluatable_assets(asset_context, runtime_entries)
+                        .await?
+                        .iter()
+                        .map(|m| ResolvedVc::upcast(*m))
+                        .collect(),
+                ),
                 module_graph,
                 Value::new(AvailabilityInfo::Root),
             );

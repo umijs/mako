@@ -1,10 +1,20 @@
 import {
   HmrIdentifiers,
+  NapiDiagnostic,
   NapiIssue,
   NapiUpdateMessage,
   NapiWrittenEndpoint,
   StackFrame,
 } from "./binding";
+
+declare global {
+  export type TurbopackResult<T = {}> = T & {
+    issues: NapiIssue[];
+    diagnostics: NapiDiagnostic[];
+  };
+  export type RefCell = { readonly __tag: unique symbol };
+  export type ExternalEndpoint = { readonly __tag: unique symbol };
+}
 
 export interface BaseUpdate {
   resource: {
@@ -252,7 +262,7 @@ export interface ProjectOptions {
   buildId: string;
 }
 
-export type BuildOptions = Omit<ProjectOptions, "rootPath" | "projectPath">;
+export type BundleOptions = Omit<ProjectOptions, "rootPath" | "projectPath">;
 
 export interface Project {
   update(options: Partial<ProjectOptions>): Promise<void>;

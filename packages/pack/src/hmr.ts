@@ -1,9 +1,6 @@
 import ws from "ws";
 import type { Socket } from "net";
-import path, { join } from "path";
-import { pathToFileURL } from "url";
-import { ModernSourceMapPayload } from "./sourceMap";
-import { Project, ProjectOptions, Update as TurbopackUpdate } from "./types";
+import { BundleOptions, Project, Update as TurbopackUpdate } from "./types";
 import type webpack from "webpack";
 import { IncomingMessage } from "http";
 import { Duplex } from "stream";
@@ -14,51 +11,6 @@ import { nanoid } from "nanoid";
 const wsServer = new ws.Server({ noServer: true });
 
 const sessionId = Math.floor(Number.MAX_SAFE_INTEGER * Math.random());
-
-/**
- * Replaces turbopack:///[project] with the specified project in the `source` field.
- */
-function rewriteTurbopackSources(
-  projectRoot: string,
-  sourceMap: ModernSourceMapPayload,
-): void {
-  if ("sections" in sourceMap) {
-    for (const section of sourceMap.sections) {
-      rewriteTurbopackSources(projectRoot, section.map);
-    }
-  } else {
-    for (let i = 0; i < sourceMap.sources.length; i++) {
-      sourceMap.sources[i] = pathToFileURL(
-        join(
-          projectRoot,
-          sourceMap.sources[i].replace(/turbopack:\/\/\/\[project\]/, ""),
-        ),
-      ).toString();
-    }
-  }
-}
-
-function getSourceMapFromTurbopack(
-  project: Project,
-  projectRoot: string,
-  sourceURL: string,
-): ModernSourceMapPayload | undefined {
-  let sourceMapJson: string | null = null;
-
-  try {
-    sourceMapJson = project.getSourceMapSync(sourceURL);
-  } catch (err) {}
-
-  if (sourceMapJson === null) {
-    return undefined;
-  } else {
-    const payload: ModernSourceMapPayload = JSON.parse(sourceMapJson);
-    // The sourcemap from Turbopack is not yet written to disk so its `sources`
-    // are not absolute paths yet. We need to rewrite them to be absolute paths.
-    rewriteTurbopackSources(projectRoot, payload);
-    return payload;
-  }
-}
 
 export const enum HMR_ACTIONS_SENT_TO_BROWSER {
   RELOAD = "reload",
@@ -71,10 +23,6 @@ export const enum HMR_ACTIONS_SENT_TO_BROWSER {
   TURBOPACK_CONNECTED = "turbopack-connected",
 }
 
-export interface TurbopackMessageAction {
-  action: HMR_ACTIONS_SENT_TO_BROWSER.TURBOPACK_MESSAGE;
-  data: TurbopackUpdate | TurbopackUpdate[];
-}
 export interface TurbopackMessageAction {
   action: HMR_ACTIONS_SENT_TO_BROWSER.TURBOPACK_MESSAGE;
   data: TurbopackUpdate | TurbopackUpdate[];
@@ -135,27 +83,12 @@ export interface HotReloaderInterface {
   send(action: HMR_ACTION_TYPES): void;
   onHMR(
     req: IncomingMessage,
-    _socket: Duplex,
+    socket: Duplex,
     head: Buffer,
-    onUpgrade: (client: { send(data: string): void }) => void,
+    onUpgrade?: (client: { send(data: string): void }) => void,
   ): void;
   buildFallbackError(): Promise<void>;
   close(): void;
-}
-
-type FindSourceMapPayload = (
-  sourceURL: string,
-) => ModernSourceMapPayload | undefined;
-// Find a source map using the bundler's API.
-// This is only a fallback for when Node.js fails to due to bugs e.g. https://github.com/nodejs/node/issues/52102
-// TODO: Remove once all supported Node.js versions are fixed.
-// TODO(veil): Set from Webpack as well
-let bundlerFindSourceMapPayload: FindSourceMapPayload = () => undefined;
-
-export function setBundlerFindSourceMapImplementation(
-  findSourceMapImplementation: FindSourceMapPayload,
-): void {
-  bundlerFindSourceMapPayload = findSourceMapImplementation;
 }
 
 export type ChangeSubscriptions = Map<
@@ -179,7 +112,7 @@ export const FAST_REFRESH_RUNTIME_RELOAD =
   "Fast Refresh had to perform a full reload due to a runtime error.";
 
 export async function createHotReloader(
-  projectOptions: ProjectOptions,
+  bundleOptions: BundleOptions,
   projectPath?: string,
   rootPath?: string,
 ): Promise<HotReloaderInterface> {
@@ -187,21 +120,22 @@ export async function createHotReloader(
 
   const project = await createProject(
     {
-      processEnv: projectOptions.processEnv ?? ({} as Record<string, string>),
+      processEnv: bundleOptions.processEnv ?? ({} as Record<string, string>),
       processDefineEnv: createDefineEnv({
-        config: projectOptions.config,
+        config: bundleOptions.config,
         dev: true,
-        optionDefineEnv: projectOptions.processDefineEnv,
+        optionDefineEnv: bundleOptions.processDefineEnv,
       }),
-      watch: projectOptions.watch ?? {
-        enable: false,
+      watch: {
+        enable: true,
       },
       dev: true,
       buildId: nanoid(),
       config: {
-        ...projectOptions.config,
+        ...bundleOptions.config,
+        mode: "development",
         optimization: {
-          ...projectOptions.config.optimization,
+          ...bundleOptions.config.optimization,
           minify: false,
           moduleIds: "named",
         },
@@ -213,9 +147,7 @@ export async function createHotReloader(
       persistentCaching: true,
     },
   );
-  setBundlerFindSourceMapImplementation(
-    getSourceMapFromTurbopack.bind(null, project, projectOptions.projectPath),
-  );
+
   const entrypointsSubscription = project.entrypointsSubscribe();
 
   let currentEntriesHandlingResolve: ((value?: unknown) => void) | undefined;
@@ -257,9 +189,6 @@ export async function createHotReloader(
   const sendEnqueuedMessagesDebounce = debounce(sendEnqueuedMessages, 2);
 
   function sendTurbopackMessage(payload: TurbopackUpdate) {
-    // TODO(PACK-2049): For some reason we end up emitting hundreds of issues messages on bigger apps,
-    //   a lot of which are duplicates.
-    //   They are currently not handled on the client at all, so might as well not send them for now.
     payload.diagnostics = [];
     payload.issues = [];
 
@@ -340,10 +269,9 @@ export async function createHotReloader(
     turbopackProject: project,
     serverStats: null,
 
-    // TODO: Figure out if socket type can match the HotReloaderInterface
     onHMR(req, socket: Socket, head, onUpgrade) {
       wsServer.handleUpgrade(req, socket, head, (client) => {
-        onUpgrade(client);
+        onUpgrade?.(client);
         const subscriptions: Map<string, AsyncIterator<any>> = new Map();
 
         clients.add(client);

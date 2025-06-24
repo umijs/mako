@@ -3,7 +3,7 @@ import path from "path";
 import * as utooPack from "@utoo/pack";
 import { Command, Flags } from "@oclif/core";
 
-export default class Watch extends Command {
+export default class Dev extends Command {
   static description = "Utoo pack watch";
   static examples = [
     `<%= config.bin %> <%= command.id %> dev --project .`,
@@ -25,7 +25,7 @@ export default class Watch extends Command {
   async run(): Promise<void> {
     const {
       flags: { project, root },
-    } = await this.parse(Watch);
+    } = await this.parse(Dev);
 
     const cwd = process.cwd();
 
@@ -38,7 +38,7 @@ export default class Watch extends Command {
       ),
     );
 
-    await utooPack.watch(
+    await utooPack.serve(
       projectOptions,
       path.resolve(cwd, project || cwd),
       path.resolve(cwd, root || project || cwd),

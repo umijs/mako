@@ -5,7 +5,6 @@ pub mod client;
 pub mod config;
 pub mod embed_js;
 pub mod emit;
-// pub mod hmr_entry;
 pub mod import_map;
 pub mod library;
 pub mod mode;
@@ -16,7 +15,7 @@ pub mod tracing_presets;
 pub mod transform_options;
 pub mod util;
 
-pub use emit::{all_assets_from_entries, emit_all_assets, emit_assets};
+pub use emit::{all_assets_from_entries, emit_assets};
 
 pub fn register() {
     turbo_tasks::register();

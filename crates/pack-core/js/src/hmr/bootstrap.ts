@@ -1,5 +1,3 @@
-import { initializeHMR } from "./client";
+import { initHMR } from "./client";
 
-initializeHMR({
-  assetPrefix: "",
-});
+initHMR();
