@@ -7,7 +7,15 @@ use crate::util::logger::log_info;
 use anyhow::{Context, Result};
 use serde_json::Value;
 
-pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<()> {
+pub async fn run_script(
+    script_name: &str,
+    workspace: Option<String>,
+    script_args: Option<Vec<String>>,
+) -> Result<()> {
+    println!(
+        "script_name: {:?}, script_args: {:?}",
+        script_name, script_args
+    );
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
     update_cwd_to_project(&cwd).await?;
     let pkg = if let Some(workspace_name) = &workspace {
@@ -77,9 +85,15 @@ pub async fn run_script(script_name: &str, workspace: Option<String>) -> Result<
     };
 
     log_info(&format!("Executing script: {}", script_name));
-    ScriptService::execute_custom_script(&package, script_name, script_content)
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to execute script: {}", e))?;
+    let script_args = script_args.unwrap_or_default();
+    ScriptService::execute_custom_script_with_args(
+        &package,
+        script_name,
+        script_content,
+        &script_args,
+    )
+    .await
+    .map_err(|e| anyhow::anyhow!("Failed to execute script: {}", e))?;
 
     // Execute post script if exists
     let post_script_name = format!("post{}", script_name);
@@ -114,7 +128,7 @@ mod tests {
         fs::write(_dir.path().join("package.json"), package_json).unwrap();
         std::env::set_current_dir(_dir.path()).unwrap();
 
-        let result = run_script("nonexistent", None).await;
+        let result = run_script("nonexistent", None, None).await;
 
         assert!(result.is_err());
         assert!(result
@@ -131,7 +145,7 @@ mod tests {
         fs::write(_dir.path().join("package.json"), invalid_json).unwrap();
         std::env::set_current_dir(_dir.path()).unwrap();
 
-        let result = run_script("test", None).await;
+        let result = run_script("test", None, None).await;
 
         assert!(result.is_err());
     }
