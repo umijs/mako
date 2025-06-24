@@ -9,8 +9,8 @@ use serde_json::Value;
 
 pub async fn run_script(
     script_name: &str,
-    workspace: Option<String>,
-    script_args: Option<Vec<String>>,
+    workspace: Option<&str>,
+    script_args: Option<Vec<&str>>,
 ) -> Result<()> {
     println!(
         "script_name: {:?}, script_args: {:?}",
@@ -90,7 +90,7 @@ pub async fn run_script(
         &package,
         script_name,
         script_content,
-        &script_args,
+        script_args,
     )
     .await
     .map_err(|e| anyhow::anyhow!("Failed to execute script: {}", e))?;

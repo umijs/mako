@@ -163,14 +163,14 @@ impl ScriptService {
         script_name: &str,
         script_content: &str,
     ) -> Result<()> {
-        Self::execute_custom_script_with_args(package, script_name, script_content, &[]).await
+        Self::execute_custom_script_with_args(package, script_name, script_content,vec![]).await
     }
 
     pub async fn execute_custom_script_with_args(
         package: &PackageInfo,
         script_name: &str,
         script_content: &str,
-        script_args: &[String],
+        script_args: Vec<&str>,
     ) -> Result<()> {
         log_verbose(&format!(
             "Executing custom script for {}: {}",

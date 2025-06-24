@@ -275,6 +275,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Commands::Run { script, workspace }) => {
             let args = std::env::args().skip(2).collect::<Vec<String>>();
             let script_args = parse_script_and_args(&args);
+            let workspace = workspace.as_deref();
             if let Err(e) = cmd::run::run_script(&script, workspace, script_args).await {
                 log_error(&e.to_string());
                 let _ = write_verbose_logs_to_file();
@@ -286,7 +287,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(script_name) = std::env::args().nth(1) {
                 let args = std::env::args().skip(1).collect::<Vec<String>>();
                 let script_args = parse_script_and_args(&args);
-                if let Err(e) = cmd::run::run_script(&script_name, cli.workspace, script_args).await
+                let workspace = cli.workspace.as_deref();
+                if let Err(e) = cmd::run::run_script(&script_name, workspace, script_args).await
                 {
                     log_error(&e.to_string());
                     let _ = write_verbose_logs_to_file();
