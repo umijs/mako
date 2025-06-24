@@ -1,21 +1,19 @@
 // Adapted from https://github.com/vercel/next.js/blob/canary/packages/next/src/client/dev/error-overlay/websocket.ts
 
-import type { WebSocketMessage } from "@vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client";
+type WebSocketMessage =
+  | {
+      type: "turbopack-connected";
+    }
+  | {
+      type: "turbopack-message";
+      data: Record<string, any>;
+    };
 
 let source: WebSocket;
 const eventCallbacks: ((msg: WebSocketMessage) => void)[] = [];
 
-// TODO: add timeout again
-// let lastActivity = Date.now()
-
-function getSocketProtocol(assetPrefix: string): string {
+function getSocketProtocol(): string {
   let protocol = location.protocol;
-
-  try {
-    // assetPrefix is a url
-    protocol = new URL(assetPrefix).protocol;
-  } catch (_) {}
-
   return protocol === "http:" ? "ws" : "wss";
 }
 
@@ -30,60 +28,81 @@ export function sendMessage(data: any) {
 
 export type HMROptions = {
   path: string;
-  assetPrefix: string;
-  timeout?: number;
-  log?: boolean;
 };
+
+let reconnections = 0;
+let reloading = false;
+let serverSessionId: number | null = null;
 
 // This is not used by Next.js, but it is used by the standalone turbopack-cli
 export function connectHMR(options: HMROptions) {
-  const { timeout = 5 * 1000 } = options;
-
   function init() {
     if (source) source.close();
 
     console.log("[HMR] connecting...");
 
     function handleOnline() {
-      const connected = { type: "turbopack-connected" as const };
-      eventCallbacks.forEach((cb) => {
-        cb(connected);
-      });
-
-      if (options.log) console.log("[HMR] connected");
-      // lastActivity = Date.now()
+      reconnections = 0;
+      window.console.log("[HMR] connected");
     }
 
-    function handleMessage(event: MessageEvent) {
-      // lastActivity = Date.now()
+    function handleMessage(event: MessageEvent<string>) {
+      if (reloading) {
+        return;
+      }
 
-      const message = {
-        type: "turbopack-message" as const,
-        data: JSON.parse(event.data),
-      };
-      eventCallbacks.forEach((cb) => {
-        cb(message);
-      });
+      const msg = JSON.parse(event.data);
+
+      if (msg.action === "turbopack-connected") {
+        if (
+          serverSessionId !== null &&
+          serverSessionId !== msg.data.sessionId
+        ) {
+          window.location.reload();
+          reloading = true;
+          return;
+        }
+
+        serverSessionId = msg.data.sessionId;
+      }
+
+      if (msg.action === "reload") {
+        window.location.reload();
+        reloading = true;
+        return;
+      }
+
+      if (["turbopack-connected", "turbopack-message"].includes(msg.action)) {
+        for (const eventCallback of eventCallbacks) {
+          eventCallback({ type: msg.action, data: msg.data });
+        }
+      }
+
+      // TODO: handle rest msg.actions
     }
 
-    // let timer: NodeJS.Timeout
-
+    let timer: ReturnType<typeof setTimeout>;
     function handleDisconnect() {
+      source.onerror = null;
+      source.onclose = null;
       source.close();
-      setTimeout(init, timeout);
+      reconnections++;
+      // After 25 reconnects we'll want to reload the page as it indicates the dev server is no longer running.
+      if (reconnections > 25) {
+        reloading = true;
+        window.location.reload();
+        return;
+      }
+
+      clearTimeout(timer);
+      // Try again after 5 seconds
+      timer = setTimeout(init, reconnections > 5 ? 5000 : 1000);
     }
 
     const { hostname, port } = location;
-    const protocol = getSocketProtocol(options.assetPrefix || "");
-    const assetPrefix = options.assetPrefix.replace(/^\/+/, "");
+    const protocol = getSocketProtocol();
 
-    let url = `${protocol}://${hostname}:${port}${
-      assetPrefix ? `/${assetPrefix}` : ""
-    }`;
-
-    if (assetPrefix.startsWith("http")) {
-      url = `${protocol}://${assetPrefix.split("://")[1]}`;
-    }
+    let url = `${protocol}://${hostname}:${port}`;
 
     source = new window.WebSocket(`${url}${options.path}`);
     source.onopen = handleOnline;

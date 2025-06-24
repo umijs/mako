@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "build": "utoo-pack build -p . -r ../..",
-    "dev": "utoo-pack watch -p . -r ../.."
+    "dev": "utoo-pack dev -p . -r ../.."
   },
   "devDependencies": {
     "@utoo/pack-cli": "*"

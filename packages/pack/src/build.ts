@@ -6,11 +6,11 @@ import {
   formatIssue,
   isRelevantWarning,
 } from "./util";
-import { BuildOptions } from "./types";
+import { BundleOptions } from "./types";
 import { xcodeProfilingReady } from "./xcodeProfile";
 
 export async function build(
-  projectOptions: BuildOptions,
+  projectOptions: BundleOptions,
   projectPath?: string,
   rootPath?: string,
 ) {

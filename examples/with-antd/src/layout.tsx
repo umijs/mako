@@ -1,19 +1,19 @@
-import React from 'react';
-import { Link, Outlet } from 'react-router-dom';
-import styled from 'styled-components';
+import React from "react";
+import { Link, Outlet } from "react-router-dom";
+import styled from "styled-components";
 
 const Wrapper = styled.div`
-	h1 {
-		color: red;
-	}
-	h2 {
-		color: blue;
-	}
-	nav {
-		ul {
-			padding-left: 1rem;
-		}
-	}
+  h1 {
+    color: red;
+  }
+  h2 {
+    color: blue;
+  }
+  nav {
+    ul {
+      padding-left: 1rem;
+    }
+  }
 `;
 
 export function Layout() {
