@@ -15,7 +15,7 @@ use crate::util::logger::{
     finish_progress_bar, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
 };
 use crate::util::node::{get_node_from_root_by_path, Edge, EdgeType, Node};
-use crate::util::registry::{load_cache, resolve, store_cache, ResolvedPackage};
+use crate::util::registry::{load_cache, resolve_dependency, store_cache, ResolvedPackage};
 use crate::util::semver::matches;
 
 pub struct Ruborist {
@@ -103,8 +103,10 @@ pub async fn build_deps(root: Arc<Node>) -> Result<()> {
                             existing_node.update_type();
                         }
                         FindResult::Conflict(conflict_node) => {
-                            let resolved = resolve(&edge.name, &edge.spec)
-                                .await?;
+                            let resolved = match resolve_dependency(&edge.name, &edge.spec, &edge.edge_type).await? {
+                                Some(resolved) => resolved,
+                                None => return Ok(()),
+                            };
                             PROGRESS_BAR.inc(1);
                             log_progress(&format!(
                                 "resolved deps {}@{} => {} (conflict), need to fork, conflict_node: {}",
@@ -168,8 +170,10 @@ pub async fn build_deps(root: Arc<Node>) -> Result<()> {
                             next_level.lock().unwrap().push(new_node);
                         }
                         FindResult::New(install_location) => {
-                            let resolved = resolve(&edge.name, &edge.spec)
-                                .await?;
+                            let resolved = match resolve_dependency(&edge.name, &edge.spec, &edge.edge_type).await? {
+                                Some(resolved) => resolved,
+                                None => return Ok(()),
+                            };
                             PROGRESS_BAR.inc(1);
                             log_progress(&format!(
                                 "resolved deps {}@{} => {} (new)",
