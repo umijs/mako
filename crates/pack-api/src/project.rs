@@ -678,13 +678,8 @@ impl Project {
     }
 
     #[turbo_tasks::function]
-    pub(super) async fn should_create_webpack_stats(&self) -> Result<Vc<bool>> {
-        Ok(Vc::cell(
-            self.process_env
-                .read("TURBOPACK_STATS".into())
-                .await?
-                .is_some(),
-        ))
+    pub fn should_create_webpack_stats(&self) -> Vc<bool> {
+        self.config.stats()
     }
 
     #[turbo_tasks::function]

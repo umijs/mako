@@ -18,7 +18,7 @@
     "crates/pack/js",
     "examples/define",
     "examples/externals",
-    "examples/muilti-entries-heavy",
+    "examples/multi-entries-heavy",
     "examples/with-antd",
     "examples/with-less",
     "examples/with-library",

@@ -65,18 +65,8 @@
       }
     ],
     "output": {
-      "path": "./dist",
-
-      "clean": true
+      "path": "./dist"
     },
-    "optimization": {
-      "splitChunks": {
-        "js": {
-          "minChunkSize": 2000,
-          "maxChunkCountPerGroup": 1,
-          "maxMergeChunkSize": 20000
-        }
-      }
-    }
+    "stats": true
   }
 }
