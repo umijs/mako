@@ -99,7 +99,7 @@ jobs:
         if: ${{ matrix.settings.setup }}
         shell: bash
       - name: Install dependencies
-        run: cd packages/pack && npm install
+        run: npm install
       - name: Setup node x86
         uses: actions/setup-node@v4
       - name: Build in docker
@@ -131,7 +131,7 @@ jobs:
         with:
           node-version: 20
       - name: Install dependencies
-        run: cd packages/pack && npm install
+        run: npm install
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -141,15 +141,24 @@ jobs:
       - name: List packages
         run: cd packages/pack && ls -R ./npm
         shell: bash
+      - name: Setup npm token
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc &&
+        shell: bash
       - name: Get version from release or use alpha version
         id: get_version
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/@utoo/pack-v}" >> $GITHUB_OUTPUT
-      - name: Publish
+      - name: Publish Pack
         run: |
           # npm config set provenance true
           cd packages/pack &&
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc &&
+          npm version "${VERSION}" &&
+          npm publish --access public
+      - name: Publish Pack Cli
+        run: |
+          # npm config set provenance true
+          cd packages/pack-cli &&
           npm version "${VERSION}" &&
           npm publish --access public
         env:
