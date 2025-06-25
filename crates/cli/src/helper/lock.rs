@@ -58,6 +58,19 @@ pub fn extract_package_name(path: &str) -> String {
     }
 }
 
+/// Normalize dependency field: convert empty objects to None for consistent comparison
+fn normalize_deps_field(field: Option<&Value>) -> Option<&Value> {
+    match field {
+        Some(val) if val.as_object().map_or(false, |obj| obj.is_empty()) => None,
+        other => other,
+    }
+}
+
+/// Compare dependency fields, treating empty objects and None as equal
+fn deps_fields_equal(pkg_field: Option<&Value>, lock_field: Option<&Value>) -> bool {
+    normalize_deps_field(pkg_field) == normalize_deps_field(lock_field)
+}
+
 pub async fn ensure_package_lock(root_path: &Path) -> Result<()> {
     // check package.json exists in cwd
     if fs::metadata(root_path.join("package.json")).is_err() {
@@ -284,7 +297,7 @@ pub async fn is_pkg_lock_outdated(root_path: &Path) -> Result<bool> {
 
         // check dependencies whether changed
         for (dep_field, _is_optional) in get_dep_types() {
-            if pkg.get(dep_field) != lock.get(dep_field) {
+            if !deps_fields_equal(pkg.get(dep_field), lock.get(dep_field)) {
                 let name = if path.is_empty() { "root" } else { &path };
                 log_warning(&format!(
                     "package-lock.json is outdated, {} {} changed",
@@ -1306,5 +1319,123 @@ mod tests {
         let invalid_deps = validate_deps(&pkg_file, &pkgs_in_pkg_lock).await.unwrap();
         // All dependencies are valid
         assert_eq!(invalid_deps.len(), 0);
+    }
+
+    #[test]
+    fn test_deps_fields_equal() {
+        // Test case 1: Both None
+        assert!(deps_fields_equal(None, None));
+
+        // Test case 2: Both empty objects
+        let empty_obj = json!({});
+        assert!(deps_fields_equal(Some(&empty_obj), Some(&empty_obj)));
+
+        // Test case 3: None vs empty object
+        assert!(deps_fields_equal(None, Some(&empty_obj)));
+        assert!(deps_fields_equal(Some(&empty_obj), None));
+
+        // Test case 4: Both have same non-empty content
+        let deps1 = json!({
+            "lodash": "^4.17.20",
+            "react": "^18.0.0"
+        });
+        let deps2 = json!({
+            "lodash": "^4.17.20",
+            "react": "^18.0.0"
+        });
+        assert!(deps_fields_equal(Some(&deps1), Some(&deps2)));
+
+        // Test case 5: Different content
+        let deps3 = json!({
+            "lodash": "^4.17.20"
+        });
+        let deps4 = json!({
+            "react": "^18.0.0"
+        });
+        assert!(!deps_fields_equal(Some(&deps3), Some(&deps4)));
+
+        // Test case 6: Non-empty vs None
+        let deps5 = json!({
+            "lodash": "^4.17.20"
+        });
+        assert!(!deps_fields_equal(Some(&deps5), None));
+        assert!(!deps_fields_equal(None, Some(&deps5)));
+
+        // Test case 7: Non-empty vs empty object
+        assert!(!deps_fields_equal(Some(&deps5), Some(&empty_obj)));
+        assert!(!deps_fields_equal(Some(&empty_obj), Some(&deps5)));
+
+        // Test case 8: Non-object values
+        let string_val = json!("some-string");
+        let number_val = json!(123);
+        assert!(deps_fields_equal(Some(&string_val), Some(&string_val)));
+        assert!(!deps_fields_equal(Some(&string_val), Some(&number_val)));
+        assert!(!deps_fields_equal(Some(&string_val), None));
+    }
+
+    #[tokio::test]
+    async fn test_is_pkg_lock_outdated_with_empty_deps() {
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let temp_path = temp_dir.path();
+
+        // Test case: package.json has empty dependencies object, package-lock.json has no dependencies field
+        let pkg_json = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "dependencies": {}  // Empty object
+        });
+
+        let pkg_lock = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "lockfileVersion": 3,
+            "requires": true,
+            "packages": {
+                "": {
+                    "name": "test-package",
+                    "version": "1.0.0"
+                    // No dependencies field
+                }
+            }
+        });
+
+        // Write test files to temporary directory
+        fs::write(temp_path.join("package.json"), pkg_json.to_string()).unwrap();
+        fs::write(temp_path.join("package-lock.json"), pkg_lock.to_string()).unwrap();
+
+        // Test that empty object and missing field are treated as equal
+        assert!(!is_pkg_lock_outdated(&temp_path.to_path_buf())
+            .await
+            .unwrap());
+
+        // Test reverse case: package.json has no dependencies field, package-lock.json has empty dependencies
+        let pkg_json_no_deps = json!({
+            "name": "test-package",
+            "version": "1.0.0"
+            // No dependencies field
+        });
+
+        let pkg_lock_empty_deps = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "lockfileVersion": 3,
+            "requires": true,
+            "packages": {
+                "": {
+                    "name": "test-package",
+                    "version": "1.0.0",
+                    "dependencies": {}  // Empty object
+                }
+            }
+        });
+
+        fs::write(temp_path.join("package.json"), pkg_json_no_deps.to_string()).unwrap();
+        fs::write(temp_path.join("package-lock.json"), pkg_lock_empty_deps.to_string()).unwrap();
+
+        // Test that missing field and empty object are treated as equal
+        assert!(!is_pkg_lock_outdated(&temp_path.to_path_buf())
+            .await
+            .unwrap());
     }
 }
