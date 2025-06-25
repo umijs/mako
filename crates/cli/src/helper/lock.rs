@@ -61,7 +61,7 @@ pub fn extract_package_name(path: &str) -> String {
 /// Normalize dependency field: convert empty objects to None for consistent comparison
 fn normalize_deps_field(field: Option<&Value>) -> Option<&Value> {
     match field {
-        Some(val) if val.as_object().map_or(false, |obj| obj.is_empty()) => None,
+        Some(val) if val.as_object().is_some_and(|obj| obj.is_empty()) => None,
         other => other,
     }
 }
