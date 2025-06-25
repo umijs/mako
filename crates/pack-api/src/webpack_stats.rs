@@ -3,20 +3,17 @@ use std::sync::Arc;
 use anyhow::{Error, Result};
 use parking_lot::Mutex;
 use qstring::QString;
-use serde::Serialize;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{FxIndexMap, FxIndexSet, ResolvedVc, TryJoinIterExt, Vc};
 use turbopack::css::chunk::CssChunk;
 use turbopack_browser::ecmascript::{EcmascriptBrowserChunk, EcmascriptBrowserEvaluateChunk};
 use turbopack_core::{
     chunk::{Chunk, ChunkItem, ChunkableModule},
-    output::OutputAsset,
+    output::{OutputAsset, OutputAssets},
 };
 
-pub async fn generate_webpack_stats<'a, I>(output_assets: I) -> Result<WebpackStats>
-where
-    I: IntoIterator<Item = &'a ResolvedVc<Box<dyn OutputAsset>>>,
-{
+#[turbo_tasks::function]
+pub async fn generate_webpack_stats(output_assets: Vc<OutputAssets>) -> Result<Vc<WebpackStats>> {
     let assets: Arc<Mutex<Vec<WebpackStatsAsset>>> = Arc::new(Mutex::new(vec![]));
     let chunks: Arc<Mutex<Vec<WebpackStatsChunk>>> = Arc::new(Mutex::new(vec![]));
     let chunk_items: Arc<Mutex<FxIndexMap<Vc<Box<dyn ChunkItem>>, FxIndexSet<RcStr>>>> =
@@ -25,8 +22,9 @@ where
     let entrypoints: Arc<Mutex<FxIndexMap<RcStr, WebpackStatsEntrypoint>>> =
         Arc::new(Mutex::new(FxIndexMap::default()));
 
+    let output_assets = &*output_assets.await?;
     output_assets
-        .into_iter()
+        .iter()
         .map(|asset| {
             let chunks = chunks.clone();
             let chunk_items = chunk_items.clone();
@@ -167,7 +165,8 @@ where
         entrypoints: Arc::into_inner(entrypoints).unwrap().into_inner(),
         chunks: Arc::into_inner(chunks).unwrap().into_inner(),
         modules: Arc::into_inner(modules).unwrap().into_inner(),
-    })
+    }
+    .cell())
 }
 
 fn remove_extension_from_str(filename: &str) -> &str {
@@ -179,12 +178,12 @@ fn remove_extension_from_str(filename: &str) -> &str {
     filename
 }
 
-#[derive(Serialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
+#[turbo_tasks::value]
+#[derive(Default)]
 pub struct WebpackStatsAssetInfo {}
 
-#[derive(Serialize, Debug, Default)]
-#[serde(rename_all = "camelCase")]
+#[turbo_tasks::value]
+#[derive(Default)]
 pub struct WebpackStatsAsset {
     #[serde(rename = "type")]
     pub ty: RcStr,
@@ -197,8 +196,8 @@ pub struct WebpackStatsAsset {
     pub chunks: Vec<RcStr>,
 }
 
-#[derive(Serialize, Debug, Default)]
-#[serde(rename_all = "camelCase")]
+#[turbo_tasks::value]
+#[derive(Default)]
 pub struct WebpackStatsChunk {
     pub rendered: bool,
     pub initial: bool,
@@ -210,8 +209,7 @@ pub struct WebpackStatsChunk {
     pub files: Vec<RcStr>,
 }
 
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
+#[turbo_tasks::value]
 pub struct WebpackStatsModule {
     pub name: RcStr,
     pub id: RcStr,
@@ -219,22 +217,19 @@ pub struct WebpackStatsModule {
     pub size: Option<u64>,
 }
 
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
+#[turbo_tasks::value]
 pub struct WebpackStatsEntrypointAssets {
     pub name: RcStr,
 }
 
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
+#[turbo_tasks::value]
 pub struct WebpackStatsEntrypoint {
     pub name: RcStr,
     pub chunks: Vec<RcStr>,
     pub assets: Vec<WebpackStatsEntrypointAssets>,
 }
 
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
+#[turbo_tasks::value]
 pub struct WebpackStats {
     pub assets: Vec<WebpackStatsAsset>,
     pub entrypoints: FxIndexMap<RcStr, WebpackStatsEntrypoint>,
