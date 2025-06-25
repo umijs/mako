@@ -1,8 +1,9 @@
 use crate::service::package::PackageService;
 use anyhow::{Context, Result};
+use std::path::Path;
 
-pub async fn rebuild() -> Result<()> {
-    let packages = PackageService::collect_packages()
+pub async fn rebuild(root_path: &Path) -> Result<()> {
+    let packages = PackageService::collect_packages(root_path)
         .map_err(|e| anyhow::anyhow!("Failed to collect packages: {}", e))?;
 
     let execution_queues = PackageService::create_execution_queues(packages)
@@ -24,7 +25,9 @@ pub async fn rebuild() -> Result<()> {
     //     'postprepare',
     //   ]
 
-    PackageService::process_project_hooks()
+    PackageService::process_project_hooks(root_path)
         .await
-        .context("Failed to process project hooks")
+        .map_err(|e| anyhow::anyhow!("Failed to process project hooks: {}", e))?;
+
+    Ok(())
 }

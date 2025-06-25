@@ -2,7 +2,7 @@ use crate::helper::lock::{
     serialize_tree_to_packages, validate_deps, write_ideal_tree_to_lock_file,
 };
 use crate::helper::ruborist::Ruborist;
-use crate::util::json::load_package_json;
+use crate::util::json::load_package_json_from_path;
 use crate::util::logger::log_verbose;
 use crate::util::relative_path::to_relative_path;
 use anyhow::{Context, Result};
@@ -15,7 +15,8 @@ pub async fn build_deps(cwd: &Path) -> Result<()> {
     let mut ruborist = Ruborist::new(cwd);
     ruborist.build_ideal_tree().await?;
 
-    let pkg_file = load_package_json()?;
+    let pkg_file = load_package_json_from_path(cwd)?;
+
     const MAX_RETRIES: u32 = 5;
     let mut retry_count = 0;
 

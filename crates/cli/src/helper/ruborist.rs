@@ -10,7 +10,7 @@ use tokio::sync::Semaphore;
 use crate::helper::install_runtime::install_runtime;
 use crate::helper::workspace::find_workspaces;
 use crate::util::config::get_legacy_peer_deps;
-use crate::util::json::load_package_json;
+use crate::util::json::load_package_json_from_path;
 use crate::util::logger::{
     finish_progress_bar, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
 };
@@ -324,7 +324,7 @@ impl Ruborist {
 
     async fn init_tree(&mut self) -> Result<Arc<Node>> {
         // load package.json
-        let pkg = load_package_json()?;
+        let pkg = load_package_json_from_path(&self.path)?;
 
         // create root node
         let root = Node::new_root(

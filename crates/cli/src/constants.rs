@@ -14,4 +14,6 @@ pub mod cmd {
     pub const REBUILD_ABOUT: &str = "Rebuild native modules";
     pub const UNINSTALL_NAME: &str = "uninstall";
     pub const UNINSTALL_ABOUT: &str = "Uninstall spec dependencies";
+    pub const EXECUTE_NAME: &str = "execute";
+    pub const EXECUTE_ABOUT: &str = "Execute packages similar to npx";
 }

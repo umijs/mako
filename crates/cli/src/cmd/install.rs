@@ -94,7 +94,7 @@ pub async fn install(ignore_scripts: bool, root_path: &Path) -> Result<()> {
         log_info(
             "Starting to execute dependency hook scripts, you can add --ignore-scripts to skip",
         );
-        rebuild().await?;
+        rebuild(root_path).await?;
         log_info("💫 All dependencies installed successfully");
         Ok(())
     } else {
@@ -114,7 +114,7 @@ pub async fn install_global_package(npm_spec: &str) -> Result<()> {
     // Install dependencies
     install(false, &package_path)
         .await
-        .context("Failed to install global package dependencies")?;
+        .map_err(|e| anyhow::anyhow!("Failed to install global package dependencies: {}", e))?;
 
     // Create package info from path
     let package_info =
