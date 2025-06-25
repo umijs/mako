@@ -9,8 +9,8 @@ use crate::helper::workspace::find_workspaces;
 use crate::util::config::get_legacy_peer_deps;
 use crate::util::json::{load_package_json_from_path, load_package_lock_json_from_path};
 use crate::util::logger::{log_verbose, log_warning};
-use crate::util::node::{Node, Overrides};
-use crate::util::registry::resolve;
+use crate::util::node::{EdgeType, Node, Overrides};
+use crate::util::registry::{resolve, resolve_dependency};
 use crate::util::relative_path::to_relative_path;
 use crate::util::save_type::{PackageAction, SaveType};
 use crate::util::semver;
@@ -56,6 +56,19 @@ pub fn extract_package_name(path: &str) -> String {
     } else {
         path.to_string()
     }
+}
+
+/// Normalize dependency field: convert empty objects to None for consistent comparison
+fn normalize_deps_field(field: Option<&Value>) -> Option<&Value> {
+    match field {
+        Some(val) if val.as_object().is_some_and(|obj| obj.is_empty()) => None,
+        other => other,
+    }
+}
+
+/// Compare dependency fields, treating empty objects and None as equal
+fn deps_fields_equal(pkg_field: Option<&Value>, lock_field: Option<&Value>) -> bool {
+    normalize_deps_field(pkg_field) == normalize_deps_field(lock_field)
 }
 
 pub async fn ensure_package_lock(root_path: &Path) -> Result<()> {
@@ -284,7 +297,7 @@ pub async fn is_pkg_lock_outdated(root_path: &Path) -> Result<bool> {
 
         // check dependencies whether changed
         for (dep_field, _is_optional) in get_dep_types() {
-            if pkg.get(dep_field) != lock.get(dep_field) {
+            if !deps_fields_equal(pkg.get(dep_field), lock.get(dep_field)) {
                 let name = if path.is_empty() { "root" } else { &path };
                 log_warning(&format!(
                     "package-lock.json is outdated, {} {} changed",
@@ -397,6 +410,22 @@ pub async fn validate_deps(
                                 dep_info.get("version").and_then(|v| v.as_str())
                             {
                                 if !semver::matches(&effective_req_version, actual_version) {
+                                    if let Some(resolved_dep) = resolve_dependency(
+                                        dep_name,
+                                        &effective_req_version,
+                                        &EdgeType::Optional,
+                                    )
+                                    .await?
+                                    {
+                                        if resolved_dep.version == actual_version {
+                                            log_verbose(&format!(
+                                                "Package {} {} dependency {} (required version: {}, effective version: {}) hit bug-version {}@{}",
+                                                pkg_path, dep_field, dep_name, req_version_str, effective_req_version, current_path, actual_version
+                                            ));
+                                            continue;
+                                        }
+                                    }
+
                                     log_warning(&format!(
                                         "Package {} {} dependency {} (required version: {}, effective version: {}) does not match actual version {}@{}",
                                         pkg_path, dep_field, dep_name, req_version_str, effective_req_version, current_path, actual_version
@@ -478,149 +507,215 @@ pub fn serialize_tree_to_packages(node: &Arc<Node>, path: &Path) -> (Value, i32)
     let mut total_packages = 0;
 
     while let Some((current, prefix)) = stack.pop() {
-        let children = current.children.read().unwrap();
-        let mut name_count = HashMap::new();
-        for child in children.iter() {
-            if !child.is_link {
-                *name_count.entry(child.name.as_str()).or_insert(0) += 1;
-            }
-        }
-        for (name, count) in name_count {
-            if count > 1 {
-                log_warning(&format!(
-                    "Found {} duplicate dependencies named '{}' under '{}'",
-                    count, name, current.name
-                ));
-            }
-        }
-        let mut pkg_info = if current.is_root {
-            let mut info = json!({
-                "name": current.name,
-                "version": current.version,
-            });
-            if let Some(engines) = current.package.get("engines") {
-                info["engines"] = engines.clone();
-            }
-            info
-        } else {
-            let mut info = json!({
-                "name": current.package.get("name"),
-            });
+        // Check for duplicate dependencies
+        check_duplicate_dependencies(&current);
 
-            if current.is_workspace {
-                info["version"] = json!(current.package.get("version"));
-            } else if current.is_link {
-                // update resolved field
-                info["link"] = json!(true);
+        // Create package info based on node type
+        let pkg_info = create_package_info(&current, path, &mut total_packages);
 
-                // Get the target path relative to the root path
-                let target_path = get_relative_target_path(&current, path);
-                info["resolved"] = json!(target_path);
-            } else {
-                info["version"] = json!(current.package.get("version"));
-                info["resolved"] = json!(current
-                    .package
-                    .get("dist")
-                    .unwrap_or(&json!(""))
-                    .get("tarball"));
-                info["integrity"] = json!(current
-                    .package
-                    .get("dist")
-                    .unwrap_or(&json!(""))
-                    .get("integrity"));
-                total_packages += 1;
-            }
-
-            if *current.is_peer.read().unwrap() == Some(true) {
-                info["peer"] = json!(true);
-            }
-
-            let is_dev = *current.is_dev.read().unwrap() == Some(true);
-            let is_optional = *current.is_optional.read().unwrap() == Some(true);
-
-            if is_dev && is_optional {
-                info["devOptional"] = json!(true);
-            } else if is_dev {
-                info["dev"] = json!(true);
-            } else if is_optional {
-                info["optional"] = json!(true);
-            }
-
-            // hasBin
-            if current.package.get("hasInstallScript") == Some(&json!(true)) {
-                info["hasInstallScript"] = json!(true);
-            }
-
-            info
-        };
-
-        // add dependencies field
-        let fields = if current.is_link {
-            vec![]
-        } else if current.is_root {
-            vec![
-                "dependencies",
-                "devDependencies",
-                "peerDependencies",
-                "optionalDependencies",
-            ]
-        } else {
-            vec![
-                "dependencies",
-                "peerDependencies",
-                "optionalDependencies",
-                "bin",
-                "license",
-                "engines",
-                "os",
-                "cpu",
-            ]
-        };
-
-        for field in fields.iter() {
-            if let Some(deps) = current.package.get(field) {
-                if deps.is_object() {
-                    if !deps.as_object().unwrap().is_empty() {
-                        pkg_info[field] = deps.clone();
-                    }
-                } else {
-                    // compatible for string type
-                    pkg_info[field] = deps.clone();
-                }
-            }
-        }
-
-        // use "" for root node
+        // Use empty string for root node
         let key = if prefix.is_empty() {
-            "".to_string()
+            String::new()
         } else {
             prefix.clone()
         };
         packages[key] = pkg_info;
 
-        // process children
-        let children = current.children.read().unwrap();
-
-        for child in children.iter() {
-            let child_prefix = if prefix.is_empty() {
-                if child.is_workspace {
-                    // convert to relative path
-                    child
-                        .path
-                        .strip_prefix(path)
-                        .map(|p| p.to_string_lossy().to_string())
-                        .unwrap_or_else(|_| child.path.to_string_lossy().to_string())
-                } else {
-                    format!("node_modules/{}", child.name)
-                }
-            } else {
-                format!("{}/node_modules/{}", &prefix, child.name)
-            };
-            stack.push((child.clone(), child_prefix));
-        }
+        // Add children to processing stack
+        add_children_to_stack(&current, &prefix, path, &mut stack);
     }
 
     (packages, total_packages)
+}
+
+/// Check for duplicate dependencies under a node and log warnings
+fn check_duplicate_dependencies(node: &Arc<Node>) {
+    let children = node.children.read().unwrap();
+    let mut name_count = HashMap::new();
+
+    for child in children.iter() {
+        if !child.is_link {
+            *name_count.entry(child.name.as_str()).or_insert(0) += 1;
+        }
+    }
+
+    for (name, count) in name_count {
+        if count > 1 {
+            log_warning(&format!(
+                "Found {} duplicate dependencies named '{}' under '{}'",
+                count, name, node.name
+            ));
+        }
+    }
+}
+
+/// Create package information based on node type
+fn create_package_info(node: &Arc<Node>, root_path: &Path, total_packages: &mut i32) -> Value {
+    let mut pkg_info = if node.is_root {
+        create_root_package_info(node)
+    } else {
+        create_non_root_package_info(node, root_path, total_packages)
+    };
+
+    // Add package fields (dependencies, bin, license, etc.)
+    add_package_fields(&mut pkg_info, node);
+
+    pkg_info
+}
+
+/// Create package info for root node
+fn create_root_package_info(node: &Arc<Node>) -> Value {
+    let mut info = json!({
+        "name": node.name,
+        "version": node.version,
+    });
+
+    if let Some(engines) = node.package.get("engines") {
+        info["engines"] = engines.clone();
+    }
+
+    info
+}
+
+/// Create package info for non-root nodes
+fn create_non_root_package_info(
+    node: &Arc<Node>,
+    root_path: &Path,
+    total_packages: &mut i32,
+) -> Value {
+    let mut info = json!({
+        "name": node.package.get("name"),
+    });
+
+    if node.is_workspace {
+        info["version"] = json!(node.package.get("version"));
+    } else if node.is_link {
+        info["link"] = json!(true);
+        let target_path = get_relative_target_path(node, root_path);
+        info["resolved"] = json!(target_path);
+    } else {
+        // Regular package
+        info["version"] = json!(node.package.get("version"));
+
+        let empty_dist = json!("");
+        let dist = node.package.get("dist").unwrap_or(&empty_dist);
+        info["resolved"] = json!(dist.get("tarball"));
+        info["integrity"] = json!(dist.get("integrity"));
+
+        *total_packages += 1;
+    }
+
+    // Add optional flags
+    add_optional_flags(&mut info, node);
+
+    info
+}
+
+/// Add optional flags (peer, dev, optional, hasInstallScript)
+fn add_optional_flags(info: &mut Value, node: &Arc<Node>) {
+    if *node.is_peer.read().unwrap() == Some(true) {
+        info["peer"] = json!(true);
+    }
+
+    let is_dev = *node.is_dev.read().unwrap() == Some(true);
+    let is_optional = *node.is_optional.read().unwrap() == Some(true);
+
+    match (is_dev, is_optional) {
+        (true, true) => info["devOptional"] = json!(true),
+        (true, false) => info["dev"] = json!(true),
+        (false, true) => info["optional"] = json!(true),
+        _ => {}
+    }
+
+    if node.package.get("hasInstallScript") == Some(&json!(true)) {
+        info["hasInstallScript"] = json!(true);
+    }
+}
+
+/// Add package fields based on node type
+fn add_package_fields(pkg_info: &mut Value, node: &Arc<Node>) {
+    let fields = get_package_fields(node);
+
+    for field in fields {
+        if let Some(field_value) = node.package.get(field) {
+            if should_include_field(field_value) {
+                pkg_info[field] = field_value.clone();
+            }
+        }
+    }
+}
+
+/// Get the list of fields to include based on node type
+fn get_package_fields(node: &Arc<Node>) -> Vec<&'static str> {
+    if node.is_link {
+        vec![]
+    } else if node.is_root {
+        vec![
+            "dependencies",
+            "devDependencies",
+            "peerDependencies",
+            "optionalDependencies",
+        ]
+    } else {
+        let mut fields = vec![
+            "dependencies",
+            "peerDependencies",
+            "optionalDependencies",
+            "bin",
+            "license",
+            "engines",
+            "os",
+            "cpu",
+        ];
+
+        if node.is_workspace {
+            fields.push("devDependencies");
+        }
+
+        fields
+    }
+}
+
+/// Check if a field value should be included in the output
+fn should_include_field(field_value: &Value) -> bool {
+    if field_value.is_object() {
+        !field_value.as_object().unwrap().is_empty()
+    } else {
+        true // Include non-object values (strings, etc.)
+    }
+}
+
+/// Add children to the processing stack
+fn add_children_to_stack(
+    node: &Arc<Node>,
+    prefix: &str,
+    root_path: &Path,
+    stack: &mut Vec<(Arc<Node>, String)>,
+) {
+    let children = node.children.read().unwrap();
+
+    for child in children.iter() {
+        let child_prefix = generate_child_prefix(prefix, child, root_path);
+        stack.push((child.clone(), child_prefix));
+    }
+}
+
+/// Generate the prefix path for a child node
+fn generate_child_prefix(prefix: &str, child: &Arc<Node>, root_path: &Path) -> String {
+    if prefix.is_empty() {
+        if child.is_workspace {
+            // Convert workspace path to relative path
+            child
+                .path
+                .strip_prefix(root_path)
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|_| child.path.to_string_lossy().to_string())
+        } else {
+            format!("node_modules/{}", child.name)
+        }
+    } else {
+        format!("{}/node_modules/{}", prefix, child.name)
+    }
 }
 
 /// Get the relative path of a link target from the root path
@@ -1070,5 +1165,290 @@ mod tests {
         let bin = workspace_pkg["bin"].as_object().unwrap();
         assert_eq!(bin["workspace-a"], "./bin/index.js");
         assert_eq!(bin["workspace-a-cli"], "./bin/cli.js");
+    }
+
+    #[tokio::test]
+    async fn test_validate_deps_with_version_mismatch() {
+        // Create a mock package.json
+        let pkg_file = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "dependencies": {
+                "example-pkg": "^2.0.0"
+            }
+        });
+
+        // Create a mock package-lock.json structure with version mismatch
+        let pkgs_in_pkg_lock = json!({
+            "": {
+                "name": "test-package",
+                "version": "1.0.0",
+                "dependencies": {
+                    "example-pkg": "^2.0.0"
+                }
+            },
+            "node_modules/example-pkg": {
+                "name": "example-pkg",
+                "version": "1.5.0",  // Doesn't match ^2.0.0
+                "resolved": "https://registry.npmjs.org/example-pkg/-/example-pkg-1.5.0.tgz"
+            }
+        });
+
+        let invalid_deps = validate_deps(&pkg_file, &pkgs_in_pkg_lock).await.unwrap();
+        assert_eq!(invalid_deps.len(), 1);
+        assert_eq!(invalid_deps[0].package_path, "");
+        assert_eq!(invalid_deps[0].dependency_name, "example-pkg");
+    }
+
+    #[tokio::test]
+    async fn test_validate_deps_with_optional_dependency_missing() {
+        // Create a mock package.json
+        let pkg_file = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "optionalDependencies": {
+                "optional-pkg": "^1.0.0"
+            }
+        });
+
+        // Create a mock package-lock.json structure with missing optional dependency
+        let pkgs_in_pkg_lock = json!({
+            "": {
+                "name": "test-package",
+                "version": "1.0.0",
+                "optionalDependencies": {
+                    "optional-pkg": "^1.0.0"
+                }
+            }
+            // optional-pkg is missing from node_modules
+        });
+
+        let invalid_deps = validate_deps(&pkg_file, &pkgs_in_pkg_lock).await.unwrap();
+        // Optional dependency missing should not be treated as invalid
+        assert_eq!(invalid_deps.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_validate_deps_with_required_dependency_missing() {
+        // Create a mock package.json
+        let pkg_file = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "dependencies": {
+                "required-pkg": "^1.0.0"
+            }
+        });
+
+        // Create a mock package-lock.json structure with missing required dependency
+        let pkgs_in_pkg_lock = json!({
+            "": {
+                "name": "test-package",
+                "version": "1.0.0",
+                "dependencies": {
+                    "required-pkg": "^1.0.0"
+                }
+            }
+            // required-pkg is missing from node_modules
+        });
+
+        let invalid_deps = validate_deps(&pkg_file, &pkgs_in_pkg_lock).await.unwrap();
+        // Required dependency missing should be treated as invalid
+        assert_eq!(invalid_deps.len(), 1);
+        assert_eq!(invalid_deps[0].package_path, "");
+        assert_eq!(invalid_deps[0].dependency_name, "required-pkg");
+    }
+
+    #[tokio::test]
+    async fn test_validate_deps_with_peer_dependencies() {
+        // Create a mock package.json
+        let pkg_file = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "peerDependencies": {
+                "peer-pkg": "^3.0.0"
+            }
+        });
+
+        // Create a mock package-lock.json structure
+        let pkgs_in_pkg_lock = json!({
+            "": {
+                "name": "test-package",
+                "version": "1.0.0",
+                "peerDependencies": {
+                    "peer-pkg": "^3.0.0"
+                }
+            },
+            "node_modules/peer-pkg": {
+                "name": "peer-pkg",
+                "version": "3.1.0",  // Matches ^3.0.0
+                "resolved": "https://registry.npmjs.org/peer-pkg/-/peer-pkg-3.1.0.tgz"
+            }
+        });
+
+        let invalid_deps = validate_deps(&pkg_file, &pkgs_in_pkg_lock).await.unwrap();
+        // Valid peer dependency should not be treated as invalid
+        assert_eq!(invalid_deps.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_validate_deps_with_nested_dependencies() {
+        // Create a mock package.json
+        let pkg_file = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "dependencies": {
+                "parent-pkg": "^1.0.0"
+            }
+        });
+
+        // Create a mock package-lock.json structure with nested dependencies
+        let pkgs_in_pkg_lock = json!({
+            "": {
+                "name": "test-package",
+                "version": "1.0.0",
+                "dependencies": {
+                    "parent-pkg": "^1.0.0"
+                }
+            },
+            "node_modules/parent-pkg": {
+                "name": "parent-pkg",
+                "version": "1.2.0",
+                "resolved": "https://registry.npmjs.org/parent-pkg/-/parent-pkg-1.2.0.tgz",
+                "dependencies": {
+                    "nested-pkg": "^2.0.0"
+                }
+            },
+            "node_modules/parent-pkg/node_modules/nested-pkg": {
+                "name": "nested-pkg",
+                "version": "2.1.0",  // Matches ^2.0.0
+                "resolved": "https://registry.npmjs.org/nested-pkg/-/nested-pkg-2.1.0.tgz"
+            }
+        });
+
+        let invalid_deps = validate_deps(&pkg_file, &pkgs_in_pkg_lock).await.unwrap();
+        // All dependencies are valid
+        assert_eq!(invalid_deps.len(), 0);
+    }
+
+    #[test]
+    fn test_deps_fields_equal() {
+        // Test case 1: Both None
+        assert!(deps_fields_equal(None, None));
+
+        // Test case 2: Both empty objects
+        let empty_obj = json!({});
+        assert!(deps_fields_equal(Some(&empty_obj), Some(&empty_obj)));
+
+        // Test case 3: None vs empty object
+        assert!(deps_fields_equal(None, Some(&empty_obj)));
+        assert!(deps_fields_equal(Some(&empty_obj), None));
+
+        // Test case 4: Both have same non-empty content
+        let deps1 = json!({
+            "lodash": "^4.17.20",
+            "react": "^18.0.0"
+        });
+        let deps2 = json!({
+            "lodash": "^4.17.20",
+            "react": "^18.0.0"
+        });
+        assert!(deps_fields_equal(Some(&deps1), Some(&deps2)));
+
+        // Test case 5: Different content
+        let deps3 = json!({
+            "lodash": "^4.17.20"
+        });
+        let deps4 = json!({
+            "react": "^18.0.0"
+        });
+        assert!(!deps_fields_equal(Some(&deps3), Some(&deps4)));
+
+        // Test case 6: Non-empty vs None
+        let deps5 = json!({
+            "lodash": "^4.17.20"
+        });
+        assert!(!deps_fields_equal(Some(&deps5), None));
+        assert!(!deps_fields_equal(None, Some(&deps5)));
+
+        // Test case 7: Non-empty vs empty object
+        assert!(!deps_fields_equal(Some(&deps5), Some(&empty_obj)));
+        assert!(!deps_fields_equal(Some(&empty_obj), Some(&deps5)));
+
+        // Test case 8: Non-object values
+        let string_val = json!("some-string");
+        let number_val = json!(123);
+        assert!(deps_fields_equal(Some(&string_val), Some(&string_val)));
+        assert!(!deps_fields_equal(Some(&string_val), Some(&number_val)));
+        assert!(!deps_fields_equal(Some(&string_val), None));
+    }
+
+    #[tokio::test]
+    async fn test_is_pkg_lock_outdated_with_empty_deps() {
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let temp_path = temp_dir.path();
+
+        // Test case: package.json has empty dependencies object, package-lock.json has no dependencies field
+        let pkg_json = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "dependencies": {}  // Empty object
+        });
+
+        let pkg_lock = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "lockfileVersion": 3,
+            "requires": true,
+            "packages": {
+                "": {
+                    "name": "test-package",
+                    "version": "1.0.0"
+                    // No dependencies field
+                }
+            }
+        });
+
+        // Write test files to temporary directory
+        fs::write(temp_path.join("package.json"), pkg_json.to_string()).unwrap();
+        fs::write(temp_path.join("package-lock.json"), pkg_lock.to_string()).unwrap();
+
+        // Test that empty object and missing field are treated as equal
+        assert!(!is_pkg_lock_outdated(&temp_path.to_path_buf())
+            .await
+            .unwrap());
+
+        // Test reverse case: package.json has no dependencies field, package-lock.json has empty dependencies
+        let pkg_json_no_deps = json!({
+            "name": "test-package",
+            "version": "1.0.0"
+            // No dependencies field
+        });
+
+        let pkg_lock_empty_deps = json!({
+            "name": "test-package",
+            "version": "1.0.0",
+            "lockfileVersion": 3,
+            "requires": true,
+            "packages": {
+                "": {
+                    "name": "test-package",
+                    "version": "1.0.0",
+                    "dependencies": {}  // Empty object
+                }
+            }
+        });
+
+        fs::write(temp_path.join("package.json"), pkg_json_no_deps.to_string()).unwrap();
+        fs::write(
+            temp_path.join("package-lock.json"),
+            pkg_lock_empty_deps.to_string(),
+        )
+        .unwrap();
+
+        // Test that missing field and empty object are treated as equal
+        assert!(!is_pkg_lock_outdated(&temp_path.to_path_buf())
+            .await
+            .unwrap());
     }
 }
