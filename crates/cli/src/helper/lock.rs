@@ -410,8 +410,13 @@ pub async fn validate_deps(
                                 dep_info.get("version").and_then(|v| v.as_str())
                             {
                                 if !semver::matches(&effective_req_version, actual_version) {
-
-                                    if let Some(resolved_dep) = resolve_dependency(&dep_name, &effective_req_version, &EdgeType::Optional).await? {
+                                    if let Some(resolved_dep) = resolve_dependency(
+                                        dep_name,
+                                        &effective_req_version,
+                                        &EdgeType::Optional,
+                                    )
+                                    .await?
+                                    {
                                         if resolved_dep.version == actual_version {
                                             log_verbose(&format!(
                                                 "Package {} {} dependency {} (required version: {}, effective version: {}) hit bug-version {}@{}",
@@ -573,7 +578,11 @@ fn create_root_package_info(node: &Arc<Node>) -> Value {
 }
 
 /// Create package info for non-root nodes
-fn create_non_root_package_info(node: &Arc<Node>, root_path: &Path, total_packages: &mut i32) -> Value {
+fn create_non_root_package_info(
+    node: &Arc<Node>,
+    root_path: &Path,
+    total_packages: &mut i32,
+) -> Value {
     let mut info = json!({
         "name": node.package.get("name"),
     });
@@ -681,7 +690,7 @@ fn add_children_to_stack(
     node: &Arc<Node>,
     prefix: &str,
     root_path: &Path,
-    stack: &mut Vec<(Arc<Node>, String)>
+    stack: &mut Vec<(Arc<Node>, String)>,
 ) {
     let children = node.children.read().unwrap();
 
@@ -1431,7 +1440,11 @@ mod tests {
         });
 
         fs::write(temp_path.join("package.json"), pkg_json_no_deps.to_string()).unwrap();
-        fs::write(temp_path.join("package-lock.json"), pkg_lock_empty_deps.to_string()).unwrap();
+        fs::write(
+            temp_path.join("package-lock.json"),
+            pkg_lock_empty_deps.to_string(),
+        )
+        .unwrap();
 
         // Test that missing field and empty object are treated as equal
         assert!(!is_pkg_lock_outdated(&temp_path.to_path_buf())
