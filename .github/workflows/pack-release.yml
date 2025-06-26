@@ -133,7 +133,7 @@ jobs:
         id: get_version
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/@utoo/pack-v}" >> $GITHUB_OUTPUT
-      - name: Publish Pack
+      - name: NPM Publish
         run: |
           # npm config set provenance true
           echo "${VERSION}" &&
