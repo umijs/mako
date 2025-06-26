@@ -19,7 +19,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     log_info("Executing dependency hook scripts and creating node_modules/.bin links");
 
     let cwd = std::env::current_dir()?;
@@ -30,4 +30,5 @@ async fn main() {
     }
 
     log_info("💫 All dependencies rebuild completed");
+    Ok(())
 }
