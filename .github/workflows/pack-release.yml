@@ -152,12 +152,14 @@ jobs:
       - name: Publish Pack
         run: |
           # npm config set provenance true
+          echo "${VERSION}" &&
           cd packages/pack &&
           npm version "${VERSION}" &&
           npm publish --access public
       - name: Publish Pack Cli
         run: |
           # npm config set provenance true
+          echo "${VERSION}" &&
           cd packages/pack-cli &&
           npm version "${VERSION}" &&
           npm publish --access public
