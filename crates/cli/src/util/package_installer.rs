@@ -46,7 +46,7 @@ pub async fn install_package_to_cache(package_name: &str) -> Result<PathBuf> {
         name
     ));
     install_global_package(
-        &package_name,
+        package_name,
         &Some(package_cache_dir.to_string_lossy().to_string()),
     )
     .await?;
