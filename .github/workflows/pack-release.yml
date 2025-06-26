@@ -82,8 +82,6 @@ jobs:
           targets: ${{ matrix.settings.target }}
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}-${{ hashFiles('crates/pack-*/**/*','**/Cargo.lock') }}
       - name: Setup toolchain
         run: ${{ matrix.settings.setup }}
         if: ${{ matrix.settings.setup }}
@@ -97,7 +95,7 @@ jobs:
         if: ${{ matrix.settings.docker }}
         with:
           image: ${{ matrix.settings.docker }}
-          options: "--user 0:0 -v ${{ github.workspace }}/.cargo-cache/git/db:/usr/local/cargo/git/db -v ${{ github.workspace }}/.cargo/registry/cache:/usr/local/cargo/registry/cache -v ${{ github.workspace }}/.cargo/registry/index:/usr/local/cargo/registry/index -v ${{ github.workspace }}:/build -w /build"
+          options: "-v ${{ github.workspace }}/.cargo-cache/git/db:/usr/local/cargo/git/db -v ${{ github.workspace }}/.cargo/registry/cache:/usr/local/cargo/registry/cache -v ${{ github.workspace }}/.cargo/registry/index:/usr/local/cargo/registry/index -v ${{ github.workspace }}:/build -w /build"
           run: ${{ matrix.settings.build }}
       - name: Build
         run: ${{ matrix.settings.build }}
@@ -131,10 +129,6 @@ jobs:
       - name: List packages
         run: cd packages/pack && ls -R ./npm
         shell: bash
-      - name: Setup npm token
-        run: |
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-        shell: bash
       - name: Get version from release or use alpha version
         id: get_version
         run: |
@@ -143,10 +137,11 @@ jobs:
         run: |
           # npm config set provenance true
           echo "${VERSION}" &&
-          npm version --workspace=@utoo/pack "${VERSION}"
-          npm version --workspace=@utoo/pack-cli "${VERSION}"
-          npm install --workspace=@utoo/pack-cli @utoo/pack --save-exact
-          npm publish --workspace=@utoo/pack --access public
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc &&
+          npm version --workspace=@utoo/pack "${VERSION}" &&
+          npm version --workspace=@utoo/pack-cli "${VERSION}" &&
+          npm install --workspace=@utoo/pack-cli @utoo/pack --save-exact &&
+          npm publish --workspace=@utoo/pack --access public &&
           npm publish --workspace=@utoo/pack-cli --access public
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
