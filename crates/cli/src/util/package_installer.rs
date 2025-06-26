@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use std::path::PathBuf;
-use crate::util::logger::log_info;
+use crate::util::logger::{log_info, log_verbose};
 use crate::util::cache::parse_pattern;
 use crate::util::registry::resolve;
 use crate::cmd::install::install_global_package;
@@ -29,6 +29,12 @@ pub async fn install_package_to_cache(package_name: &str) -> Result<PathBuf> {
 
     // Create a unique directory for this package installation
     let package_cache_dir = cache_dir.join(format!("{}@{}", package_name_to_dir_name(&name), version));
+
+    // Maybe the package is already installed
+    if package_cache_dir.join("bin").exists() {
+        log_verbose(&format!("Package {} already cached at {}", name, package_cache_dir.display()));
+        return Ok(package_cache_dir);
+    }
 
     log_info(&format!("Installing package {} to cache using utoo...", name));
     install_global_package(&package_name, &Some(package_cache_dir.to_string_lossy().to_string())).await?;

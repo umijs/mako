@@ -225,6 +225,7 @@ pub async fn prepare_global_package_json(npm_spec: &str, prefix: &Option<String>
     if let Some(scripts) = package_obj.get_mut("scripts") {
         if let Some(scripts_obj) = scripts.as_object_mut() {
             scripts_obj.remove("prepare");
+            scripts_obj.remove("prepublish");
         }
     }
 
