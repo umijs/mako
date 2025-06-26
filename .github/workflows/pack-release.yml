@@ -83,7 +83,7 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}-${{ hashFiles('**/Cargo.lock') }}
+          shared-key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}-${{ hashFiles('crates/pack-*/**/*','**/Cargo.lock') }}
       - name: Setup toolchain
         run: ${{ matrix.settings.setup }}
         if: ${{ matrix.settings.setup }}
