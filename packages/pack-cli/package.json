@@ -28,7 +28,6 @@
   "main": "dist/index.js",
   "oclif": {
     "bin": "utoo-pack",
-    "dirname": "utoo-pack",
     "commands": "./dist/commands",
     "topicSeparator": " ",
     "topics": {
