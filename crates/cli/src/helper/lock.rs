@@ -158,18 +158,26 @@ pub async fn parse_package_spec(spec: &str) -> Result<(String, String, String)> 
     Ok((name, resolved.version, version_spec))
 }
 
-pub async fn prepare_global_package_json(npm_spec: &str) -> Result<PathBuf> {
+pub async fn prepare_global_package_json(
+    npm_spec: &str,
+    prefix: &Option<String>,
+) -> Result<PathBuf> {
     // Parse package name and version
     let (name, _version, version_spec) = parse_package_spec(npm_spec).await?;
+    let lib_path = match prefix {
+        Some(prefix) => PathBuf::from(prefix).join("lib/node_modules"),
+        None => {
+            // Get current executable path
+            let current_exe = std::env::current_exe()?;
+            current_exe
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("lib/node_modules")
+        }
+    };
 
-    // Get current executable path
-    let current_exe = std::env::current_exe()?;
-    let lib_path = current_exe
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("lib/node_modules");
     log_verbose(&format!("lib_path: {}", lib_path.to_string_lossy()));
 
     // Create global package directory
@@ -219,15 +227,21 @@ pub async fn prepare_global_package_json(npm_spec: &str) -> Result<PathBuf> {
         .await
         .map_err(|e| anyhow!("Failed to clone package: {}", e))?;
 
-    // Remove devDependencies, peerDependencies and optionalDependencies from package.json
+    // Remove devDependencies from package.json
     let package_json_path = package_path.join("package.json");
     let mut package_json: Value = serde_json::from_reader(fs::File::open(&package_json_path)?)?;
 
-    // Remove specified dependency fields
-    package_json
-        .as_object_mut()
-        .unwrap()
-        .remove("devDependencies");
+    // Remove specified dependency fields and scripts.prepare
+    let package_obj = package_json.as_object_mut().unwrap();
+    package_obj.remove("devDependencies");
+
+    // Remove scripts.prepare if it exists
+    if let Some(scripts) = package_obj.get_mut("scripts") {
+        if let Some(scripts_obj) = scripts.as_object_mut() {
+            scripts_obj.remove("prepare");
+            scripts_obj.remove("prepublish");
+        }
+    }
 
     // Write back the modified package.json
     fs::write(

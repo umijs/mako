@@ -10,7 +10,7 @@ use tokio::sync::Semaphore;
 use crate::helper::install_runtime::install_runtime;
 use crate::helper::workspace::find_workspaces;
 use crate::util::config::get_legacy_peer_deps;
-use crate::util::json::load_package_json;
+use crate::util::json::load_package_json_from_path;
 use crate::util::logger::{
     finish_progress_bar, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
 };
@@ -324,7 +324,7 @@ impl Ruborist {
 
     async fn init_tree(&mut self) -> Result<Arc<Node>> {
         // load package.json
-        let pkg = load_package_json()?;
+        let pkg = load_package_json_from_path(&self.path)?;
 
         // create root node
         let root = Node::new_root(
@@ -478,7 +478,8 @@ impl Ruborist {
     }
 
     pub async fn build_ideal_tree(&mut self) -> Result<()> {
-        load_cache("./node_modules/.utoo-manifest.json")
+        let cache_path = self.path.join("./node_modules/.utoo-manifest.json");
+        load_cache(&cache_path)
             .await
             .context("Failed to load cache")?;
         let root = self.init_tree().await?;
@@ -491,7 +492,7 @@ impl Ruborist {
             self.replace_deps(dup_node).await?;
         }
 
-        store_cache("./node_modules/.utoo-manifest.json")
+        store_cache(&cache_path)
             .await
             .context("Failed to store cache")?;
         finish_progress_bar("Building dependency tree complete.");

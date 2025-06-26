@@ -3,6 +3,7 @@ use std::process;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use cmd::deps::build_deps;
+use cmd::execute::execute;
 use cmd::install::{install, install_global_package, update_package};
 use cmd::rebuild::rebuild;
 use cmd::update::update;
@@ -20,8 +21,8 @@ mod service;
 mod util;
 
 use crate::constants::cmd::{
-    CLEAN_ABOUT, CLEAN_NAME, DEPS_ABOUT, DEPS_NAME, INSTALL_ABOUT, INSTALL_NAME, REBUILD_ABOUT,
-    REBUILD_NAME, UNINSTALL_ABOUT, UNINSTALL_NAME, UPDATE_ABOUT,
+    CLEAN_ABOUT, CLEAN_NAME, DEPS_ABOUT, DEPS_NAME, EXECUTE_ABOUT, EXECUTE_NAME, INSTALL_ABOUT,
+    INSTALL_NAME, REBUILD_ABOUT, REBUILD_NAME, UNINSTALL_ABOUT, UNINSTALL_NAME, UPDATE_ABOUT,
 };
 use crate::constants::{APP_ABOUT, APP_NAME, APP_VERSION};
 use crate::helper::cli::parse_script_and_args;
@@ -31,10 +32,7 @@ use crate::helper::workspace::update_cwd_to_root;
 #[command(name = APP_NAME)]
 #[command(version = APP_VERSION)]
 #[command(about = APP_ABOUT)]
-#[command(version = None)]
 #[command(allow_external_subcommands(true))]
-#[command(disable_help_subcommand(true))]
-#[command(ignore_errors(true))]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -92,6 +90,9 @@ enum Commands {
         /// Install package globally
         #[arg(short, long)]
         global: bool,
+
+        #[arg(short, long)]
+        prefix: Option<String>,
     },
     /// Uninstall dependencies
     #[command(name = UNINSTALL_NAME, alias = "un", about = UNINSTALL_ABOUT)]
@@ -135,6 +136,17 @@ enum Commands {
         /// Workspace to run script in
         #[arg(short, long)]
         workspace: Option<String>,
+    },
+
+    /// Execute packages similar to npx
+    #[command(name = EXECUTE_NAME, alias = "x", about = EXECUTE_ABOUT)]
+    Execute {
+        /// Command to execute
+        command: String,
+
+        /// Arguments to pass to the command
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
     },
 }
 
@@ -184,10 +196,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             save_peer,
             save_optional,
             global,
+            prefix,
         }) => {
             if let Some(spec) = spec {
                 if global {
-                    if let Err(e) = install_global_package(&spec).await {
+                    if let Err(e) = install_global_package(&spec, &prefix).await {
                         log_error(&e.to_string());
                         let _ = write_verbose_logs_to_file();
                         process::exit(1);
@@ -243,7 +256,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Commands::Rebuild) => {
             log_info("Executing dependency hook scripts and creating node_modules/.bin links");
-            if let Err(e) = rebuild().await {
+            let cwd = std::env::current_dir()?;
+            if let Err(e) = rebuild(&cwd).await {
                 log_error(&e.to_string());
                 let _ = write_verbose_logs_to_file();
                 process::exit(1);
@@ -267,6 +281,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Commands::Update) => {
             if let Err(e) = update(false).await {
+                log_error(&e.to_string());
+                let _ = write_verbose_logs_to_file();
+                process::exit(1);
+            }
+        }
+        Some(Commands::Execute { command, args }) => {
+            if let Err(e) = execute(&command, args).await {
                 log_error(&e.to_string());
                 let _ = write_verbose_logs_to_file();
                 process::exit(1);

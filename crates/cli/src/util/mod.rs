@@ -1,3 +1,4 @@
+pub mod binary_resolver;
 pub mod cache;
 pub mod cloner;
 pub mod config;
@@ -6,6 +7,7 @@ pub mod json;
 pub mod linker;
 pub mod logger;
 pub mod node;
+pub mod package_installer;
 pub mod registry;
 pub mod relative_path;
 pub mod retry;

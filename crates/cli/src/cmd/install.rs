@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread;
 use tokio::sync::Semaphore;
@@ -94,7 +94,7 @@ pub async fn install(ignore_scripts: bool, root_path: &Path) -> Result<()> {
         log_info(
             "Starting to execute dependency hook scripts, you can add --ignore-scripts to skip",
         );
-        rebuild().await?;
+        rebuild(root_path).await?;
         log_info("💫 All dependencies installed successfully");
         Ok(())
     } else {
@@ -103,9 +103,9 @@ pub async fn install(ignore_scripts: bool, root_path: &Path) -> Result<()> {
     }
 }
 
-pub async fn install_global_package(npm_spec: &str) -> Result<()> {
+pub async fn install_global_package(npm_spec: &str, prefix: &Option<String>) -> Result<()> {
     // Prepare global package directory and package.json
-    let package_path = prepare_global_package_json(npm_spec)
+    let package_path = prepare_global_package_json(npm_spec, prefix)
         .await
         .context("Failed to prepare global package.json")?;
 
@@ -114,21 +114,25 @@ pub async fn install_global_package(npm_spec: &str) -> Result<()> {
     // Install dependencies
     install(false, &package_path)
         .await
-        .context("Failed to install global package dependencies")?;
+        .map_err(|e| anyhow::anyhow!("Failed to install global package dependencies: {}", e))?;
 
     // Create package info from path
     let package_info =
         PackageInfo::from_path(&package_path).context("Failed to create package info from path")?;
 
+    let target_bin_dir = match prefix {
+        Some(prefix) => PathBuf::from(prefix).join("bin"),
+        None => std::env::current_exe()
+            .context("Failed to get current executable path")?
+            .parent()
+            .context("Failed to get executable parent directory")?
+            .join("bin"),
+    };
+
     // Link binary files to global
     log_verbose("Linking binary files to global...");
-    let current_exe = std::env::current_exe().context("Failed to get current executable path")?;
     package_info
-        .link_to_global(
-            current_exe
-                .parent()
-                .context("Failed to get executable parent directory")?,
-        )
+        .link_to_global(&target_bin_dir)
         .await
         .context("Failed to link binary files to global")?;
 
@@ -142,7 +146,7 @@ mod tests {
     #[tokio::test]
     async fn test_install_global_package_invalid_spec() {
         // Test installing with invalid package spec
-        let result = install_global_package("invalid-package-that-does-not-exist").await;
+        let result = install_global_package("invalid-package-that-does-not-exist", &None).await;
         assert!(result.is_err(), "Should fail with invalid package spec");
     }
 }

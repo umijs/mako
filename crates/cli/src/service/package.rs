@@ -1,7 +1,7 @@
 use crate::helper::compatibility::{is_cpu_compatible, is_os_compatible};
 use crate::helper::package::parse_package_name;
 use crate::model::package::{PackageInfo, Scripts};
-use crate::util::json::{load_package_json, load_package_json_from_path, load_package_lock_json};
+use crate::util::json::{load_package_json_from_path, load_package_lock_json_from_path};
 use crate::util::logger::{
     finish_progress_bar, log_info, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
 };
@@ -14,8 +14,8 @@ use super::script::ScriptService;
 pub struct PackageService;
 
 impl PackageService {
-    pub async fn process_project_hooks() -> Result<()> {
-        let data = load_package_json()?;
+    pub async fn process_project_hooks(root_path: &Path) -> Result<()> {
+        let data = load_package_json_from_path(root_path)?;
 
         let binding = serde_json::Map::new();
         let scripts = data
@@ -97,9 +97,9 @@ impl PackageService {
         Ok(())
     }
 
-    pub fn collect_packages() -> Result<Vec<PackageInfo>> {
+    pub fn collect_packages(root_path: &Path) -> Result<Vec<PackageInfo>> {
         log_verbose("Collecting packages...");
-        let lock_data = load_package_lock_json()?;
+        let lock_data = load_package_lock_json_from_path(root_path)?;
 
         let mut packages = Vec::new();
         if let Some(deps) = lock_data.get("packages").and_then(|v| v.as_object()) {
@@ -107,7 +107,9 @@ impl PackageService {
                 if path.is_empty() {
                     continue;
                 }
-                if let Some(package) = Self::process_package_info(path, info)? {
+                if let Some(package) =
+                    Self::process_package_info(&format!("{}/{}", root_path.display(), path), info)?
+                {
                     packages.push(package);
                 }
             }

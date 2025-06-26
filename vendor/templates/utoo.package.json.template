@@ -4,7 +4,8 @@
   "description": "Utoo CLI tool",
   "bin": {
     "utoo": "bin/utoo",
-    "ut": "bin/ut"
+    "ut": "bin/ut",
+    "utx": "bin/utx"
   },
   "repository": {
     "type": "git",
