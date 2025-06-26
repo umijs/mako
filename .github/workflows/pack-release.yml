@@ -93,7 +93,7 @@ jobs:
             ~/.cargo/.package-cache
           key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}-
+            ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}-${{ hashFiles('**/Cargo.lock') }}
       - name: Setup toolchain
         run: ${{ matrix.settings.setup }}
         if: ${{ matrix.settings.setup }}
