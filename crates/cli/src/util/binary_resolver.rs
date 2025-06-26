@@ -1,6 +1,6 @@
 use anyhow::Result;
-use std::path::{Path, PathBuf};
 use std::fs;
+use std::path::{Path, PathBuf};
 
 /// Find a binary in node_modules/.bin directories, searching up the directory tree
 pub async fn find_binary(command: &str) -> Result<Option<PathBuf>> {
@@ -87,13 +87,14 @@ mod tests {
         Ok(temp_dir)
     }
 
-
     #[tokio::test]
     async fn test_find_binary_in_hierarchy_found() {
         let temp_dir = create_test_structure().await.unwrap();
         let start_path = temp_dir.path();
 
-        let result = find_binary_in_hierarchy(start_path, "test-cmd").await.unwrap();
+        let result = find_binary_in_hierarchy(start_path, "test-cmd")
+            .await
+            .unwrap();
         assert!(result.is_some());
 
         let found_path = result.unwrap();
@@ -106,7 +107,9 @@ mod tests {
         let temp_dir = create_test_structure().await.unwrap();
         let start_path = temp_dir.path();
 
-        let result = find_binary_in_hierarchy(start_path, "nonexistent-cmd").await.unwrap();
+        let result = find_binary_in_hierarchy(start_path, "nonexistent-cmd")
+            .await
+            .unwrap();
         assert!(result.is_none());
     }
 
@@ -120,11 +123,12 @@ mod tests {
         async_fs::create_dir_all(&sub_dir).await.unwrap();
 
         // Search from the subdirectory should find the binary in parent
-        let result = find_binary_in_hierarchy(&sub_dir, "test-cmd").await.unwrap();
+        let result = find_binary_in_hierarchy(&sub_dir, "test-cmd")
+            .await
+            .unwrap();
         assert!(result.is_some());
 
         let found_path = result.unwrap();
         assert!(found_path.ends_with("node_modules/.bin/test-cmd"));
     }
-
 }

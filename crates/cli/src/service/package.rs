@@ -107,7 +107,9 @@ impl PackageService {
                 if path.is_empty() {
                     continue;
                 }
-                if let Some(package) = Self::process_package_info(&format!("{}/{}", root_path.display(), path), info)? {
+                if let Some(package) =
+                    Self::process_package_info(&format!("{}/{}", root_path.display(), path), info)?
+                {
                     packages.push(package);
                 }
             }

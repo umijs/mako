@@ -145,16 +145,17 @@ pub async fn parse_package_spec(spec: &str) -> Result<(String, String, String)> 
     Ok((name, resolved.version, version_spec))
 }
 
-pub async fn prepare_global_package_json(npm_spec: &str, prefix: &Option<String>) -> Result<PathBuf> {
+pub async fn prepare_global_package_json(
+    npm_spec: &str,
+    prefix: &Option<String>,
+) -> Result<PathBuf> {
     // Parse package name and version
     let (name, _version, version_spec) = parse_package_spec(npm_spec).await?;
     let lib_path = match prefix {
-        Some(prefix) => {
-            PathBuf::from(prefix).join("lib/node_modules")
-        }
+        Some(prefix) => PathBuf::from(prefix).join("lib/node_modules"),
         None => {
-        // Get current executable path
-        let current_exe = std::env::current_exe()?;
+            // Get current executable path
+            let current_exe = std::env::current_exe()?;
             current_exe
                 .parent()
                 .unwrap()

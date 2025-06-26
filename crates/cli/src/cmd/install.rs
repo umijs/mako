@@ -121,12 +121,12 @@ pub async fn install_global_package(npm_spec: &str, prefix: &Option<String>) -> 
         PackageInfo::from_path(&package_path).context("Failed to create package info from path")?;
 
     let target_bin_dir = match prefix {
-        Some(prefix) => {
-            PathBuf::from(prefix).join("bin")
-        }
-        None => {
-            std::env::current_exe().context("Failed to get current executable path")?.parent().context("Failed to get executable parent directory")?.join("bin")
-        }
+        Some(prefix) => PathBuf::from(prefix).join("bin"),
+        None => std::env::current_exe()
+            .context("Failed to get current executable path")?
+            .parent()
+            .context("Failed to get executable parent directory")?
+            .join("bin"),
     };
 
     // Link binary files to global
