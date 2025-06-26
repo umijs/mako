@@ -55,6 +55,7 @@ urlencoding = "2.1.2"
 par-core = { version = "1.0.3", features = ["rayon"] }
 qstring = "0.7.2"
 indoc = "2.0.0"
+parking_lot = "0.12.1"
 
 # Dependencies from nextjs, should keep the same rev!
 ## Dependencies for common cache and task. See https://github.com/umijs/next.js/blob/canary/turbopack/crates/turbopack/architecture.md
