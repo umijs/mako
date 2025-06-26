@@ -39,6 +39,12 @@ exit 1
 EOF
     chmod +x "$ENTRY_DIR/bin/$binary"
 done
+# create utx shell script that executes utoo x
+cat > "$ENTRY_DIR/bin/utx" << EOF
+#!/bin/bash
+utoo x "\$@"
+EOF
+chmod +x "$ENTRY_DIR/bin/utx"
 
 # do publish
 cd "$ENTRY_DIR"

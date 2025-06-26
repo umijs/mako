@@ -47,12 +47,6 @@ exit 1
 EOF
 chmod +x "$ENTRY_DIR/bin/$NAME"
 
-# create utx shell script that executes utoo x
-cat > "$ENTRY_DIR/bin/utx" << EOF
-#!/bin/bash
-utoo x "\$@"
-EOF
-chmod +x "$ENTRY_DIR/bin/utx"
 
 # do publish, --dry-run for test
 cd "$ENTRY_DIR"
