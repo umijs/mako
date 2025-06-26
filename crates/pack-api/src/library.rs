@@ -182,6 +182,7 @@ impl LibraryEndpoint {
             .next_back()
             .unwrap_or("");
         let relative_import = self
+            .project()
             .convert_to_relative_import(this.import.clone(), project_dir_name.into())
             .await?;
 
@@ -289,36 +290,6 @@ impl LibraryEndpoint {
     pub async fn output_assets(self: Vc<Self>) -> Result<Vc<OutputAssets>> {
         let chunk_group_assets = *self.library_chunk().await?.assets;
         Ok(chunk_group_assets)
-    }
-
-    #[turbo_tasks::function]
-    pub fn convert_to_relative_import(
-        self: Vc<Self>,
-        import_path: RcStr,
-        project_dir_name: RcStr,
-    ) -> Result<Vc<RcStr>> {
-        // When project is root, the project_dir_name is empty
-        // In this case, the import path is already relative
-        // TODO: test use polyrepo project.
-        if project_dir_name.is_empty() {
-            return Ok(Vc::cell(import_path));
-        }
-        if import_path.starts_with(MAIN_SEPARATOR) {
-            let pattern = format!("{}{}{}", MAIN_SEPARATOR, project_dir_name, MAIN_SEPARATOR);
-            if let Some(pos) = import_path.find(&pattern) {
-                let relative_part = &import_path[pos + pattern.len()..];
-                if !relative_part.is_empty() {
-                    let relative_import = format!(".{}{}", MAIN_SEPARATOR, relative_part);
-                    Ok(Vc::cell(relative_import.into()))
-                } else {
-                    bail!("Invalid import path: {}", import_path)
-                }
-            } else {
-                bail!("Invalid import path: {}", import_path)
-            }
-        } else {
-            Ok(Vc::cell(import_path))
-        }
     }
 }
 

@@ -326,7 +326,6 @@ pub async fn get_client_module_options_context(
         enable_postcss_transform: enable_foreign_postcss_transform,
         module_rules: foreign_client_rules,
         tree_shaking_mode: tree_shaking_mode_for_foreign_code,
-        // NOTE(WEB-1016) PostCSS transforms should also apply to foreign code.
         ..module_options_context.clone()
     };
 

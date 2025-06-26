@@ -9,7 +9,6 @@ pub mod endpoint;
 pub mod entrypoint;
 pub mod hmr;
 pub mod library;
-pub mod ntf_json;
 pub mod operation;
 pub mod paths;
 pub mod project;

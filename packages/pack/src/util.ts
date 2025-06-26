@@ -1,12 +1,12 @@
-import { bold, green, magenta, red } from "picocolors";
 import { codeFrameColumns } from "@babel/code-frame";
+import { bold, green, magenta, red } from "picocolors";
 
 import { NapiIssue } from "./binding";
-import { DefineEnv, StyledString, RustifiedEnv, ConfigComplete } from "./types";
 import {
   decodeMagicIdentifier,
   MAGIC_IDENTIFIER_REGEX,
 } from "./magicIdentifier";
+import { ConfigComplete, DefineEnv, RustifiedEnv, StyledString } from "./types";
 
 export class ModuleBuildError extends Error {
   name = "ModuleBuildError";

@@ -10,11 +10,13 @@ use qstring::QString;
 use tracing::{info_span, Instrument};
 use turbo_rcstr::RcStr;
 use turbo_tasks::{Completion, JoinIterExt, ResolvedVc, TryJoinIterExt, Value, ValueToString, Vc};
+use turbo_tasks_fs::File;
 use turbopack::{
     module_options::ModuleOptionsContext, resolve_options_context::ResolveOptionsContext,
     transition::TransitionOptions, ModuleAssetContext,
 };
 use turbopack_core::{
+    asset::AssetContent,
     chunk::{
         availability_info::AvailabilityInfo, ChunkGroupResult, ChunkingContext, EvaluatableAsset,
         EvaluatableAssets,
@@ -32,11 +34,13 @@ use turbopack_core::{
         origin::{PlainResolveOrigin, ResolveOriginExt},
         parse::Request,
     },
+    virtual_output::VirtualOutputAsset,
 };
 
 use crate::{
     endpoint::{Endpoint, EndpointOutput, EndpointOutputPaths},
     project::Project,
+    webpack_stats::generate_webpack_stats,
 };
 
 #[turbo_tasks::value(transparent)]
@@ -121,6 +125,7 @@ impl AppEntrypoint {
             .next_back()
             .unwrap_or("");
         let relative_import = self
+            .project()
             .convert_to_relative_import(this.import.clone(), project_dir_name.into())
             .await?;
 
@@ -232,36 +237,6 @@ impl AppEntrypoint {
             .await?
             .assets;
         Ok(chunk_group_assets)
-    }
-
-    #[turbo_tasks::function]
-    pub fn convert_to_relative_import(
-        self: Vc<Self>,
-        import_path: RcStr,
-        project_dir_name: RcStr,
-    ) -> Result<Vc<RcStr>> {
-        // When project is root, the project_dir_name is empty
-        // In this case, the import path is already relative
-        // TODO: test use polyrepo project.
-        if project_dir_name.is_empty() {
-            return Ok(Vc::cell(import_path));
-        }
-        if import_path.starts_with(MAIN_SEPARATOR) {
-            let pattern = format!("{}{}{}", MAIN_SEPARATOR, project_dir_name, MAIN_SEPARATOR);
-            if let Some(pos) = import_path.find(&pattern) {
-                let relative_part = &import_path[pos + pattern.len()..];
-                if !relative_part.is_empty() {
-                    let relative_import = format!(".{}{}", MAIN_SEPARATOR, relative_part);
-                    Ok(Vc::cell(relative_import.into()))
-                } else {
-                    bail!("Invalid import path: {}", import_path)
-                }
-            } else {
-                bail!("Invalid import path: {}", import_path)
-            }
-        } else {
-            Ok(Vc::cell(import_path))
-        }
     }
 }
 
@@ -379,14 +354,27 @@ impl Endpoint for AppEndpoint {
                 })
                 .await;
 
-            let dist_root = self.project().dist_root().await?;
+            let dist_root = self.project().dist_root();
 
             let (server_paths, client_paths) = (vec![], vec![]);
 
             let written_endpoint = EndpointOutputPaths::NodeJs {
-                server_entry_path: dist_root.to_string(),
+                server_entry_path: dist_root.await?.to_string(),
                 server_paths,
                 client_paths,
+            };
+
+            let output_assets = if *self.project().should_create_webpack_stats().await? {
+                let webpack_stats = generate_webpack_stats(output_assets).await?;
+                let stats_output = VirtualOutputAsset::new(
+                    dist_root.join("stats.json".to_string().into()),
+                    AssetContent::file(
+                        File::from(serde_json::to_string_pretty(&webpack_stats)?).into(),
+                    ),
+                );
+                output_assets.concatenate(OutputAssets::new(vec![Vc::upcast(stats_output)]))
+            } else {
+                output_assets
             };
 
             Ok(EndpointOutput {

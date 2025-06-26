@@ -1,7 +1,5 @@
-import { isDeepStrictEqual } from "util";
-import * as binding from "./binding";
 import { nanoid } from "nanoid";
-
+import { isDeepStrictEqual } from "util";
 import type {
   HmrIdentifiers,
   NapiPartialProjectOptions,
@@ -10,6 +8,7 @@ import type {
   NapiWrittenEndpoint,
   StackFrame,
 } from "./binding";
+import * as binding from "./binding";
 import {
   ConfigComplete,
   Endpoint,

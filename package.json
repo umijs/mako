@@ -4,11 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "format:js": "biome check --write ."
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "devDependencies": {
+    "@biomejs/biome": "2.0.5"
+  },
   "workspaces": [
     "packages/pack",
     "packages/pack-cli",
@@ -18,11 +21,12 @@
     "crates/pack/js",
     "examples/define",
     "examples/externals",
-    "examples/muilti-entries-heavy",
+    "examples/multi-entries-heavy",
     "examples/with-antd",
     "examples/with-less",
     "examples/with-library",
     "examples/with-sass",
     "examples/with-style-loader"
-  ]
+  ],
+  "repository": "https://github.com/umijs/mako"
 }

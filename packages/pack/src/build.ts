@@ -1,12 +1,12 @@
 import { nanoid } from "nanoid";
 import { projectFactory } from "./project";
+import { BundleOptions } from "./types";
 import {
   blockStdout,
   createDefineEnv,
   formatIssue,
   isRelevantWarning,
 } from "./util";
-import { BundleOptions } from "./types";
 import { xcodeProfilingReady } from "./xcodeProfile";
 
 export async function build(

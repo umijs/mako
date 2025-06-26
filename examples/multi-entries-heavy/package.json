@@ -1,5 +1,5 @@
 {
-  "name": "multiple-entries-heavy",
+  "name": "multi-entries-heavy",
   "version": "1.0.0",
   "scripts": {
     "bootstrap": "node ./bootstrap.js",

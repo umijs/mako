@@ -108,6 +108,7 @@ pub struct Config {
     images: Option<ImageConfig>,
     styles: Option<StyleConfig>,
     optimization: Option<OptimizationConfig>,
+    stats: Option<bool>,
     #[serde(default)]
     experimental: ExperimentalConfig,
     persistent_caching: Option<bool>,
@@ -1139,6 +1140,11 @@ impl Config {
     #[turbo_tasks::function]
     pub async fn source_maps(&self) -> Result<Vc<bool>> {
         Ok(Vc::cell(self.source_maps.unwrap_or(true)))
+    }
+
+    #[turbo_tasks::function]
+    pub fn stats(&self) -> Vc<bool> {
+        Vc::cell(self.stats.unwrap_or(false))
     }
 }
 
