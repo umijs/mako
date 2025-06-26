@@ -206,15 +206,20 @@ pub async fn prepare_global_package_json(npm_spec: &str) -> Result<PathBuf> {
         .await
         .map_err(|e| anyhow!("Failed to clone package: {}", e))?;
 
-    // Remove devDependencies, peerDependencies and optionalDependencies from package.json
+    // Remove devDependencies from package.json
     let package_json_path = package_path.join("package.json");
     let mut package_json: Value = serde_json::from_reader(fs::File::open(&package_json_path)?)?;
 
-    // Remove specified dependency fields
-    package_json
-        .as_object_mut()
-        .unwrap()
-        .remove("devDependencies");
+    // Remove specified dependency fields and scripts.prepare
+    let package_obj = package_json.as_object_mut().unwrap();
+    package_obj.remove("devDependencies");
+
+    // Remove scripts.prepare if it exists
+    if let Some(scripts) = package_obj.get_mut("scripts") {
+        if let Some(scripts_obj) = scripts.as_object_mut() {
+            scripts_obj.remove("prepare");
+        }
+    }
 
     // Write back the modified package.json
     fs::write(
