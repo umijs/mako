@@ -28,7 +28,6 @@
   "main": "dist/index.js",
   "oclif": {
     "bin": "utoo-pack",
-    "dirname": "utoo-pack",
     "commands": "./dist/commands",
     "topicSeparator": " ",
     "topics": {
@@ -42,8 +41,7 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -b",
-    "postpack": "rm -f oclif.manifest.json",
-    "prepack": "oclif manifest && oclif readme"
+    "prepublishOnly": "npm run build"
   },
   "types": "dist/index.d.ts"
 }

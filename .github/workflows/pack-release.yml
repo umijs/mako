@@ -17,18 +17,18 @@ jobs:
           - host: macos-latest
             target: aarch64-apple-darwin
             build: |
-              cd packages/pack && npm run build:binding -- --target aarch64-apple-darwin
+              npm run build:binding --workspace=@utoo/pack -- --target aarch64-apple-darwin
           - host: macos-latest
             target: x86_64-apple-darwin
             build: |
               rustup target add x86_64-apple-darwin &&
-              cd packages/pack && npm run build:binding -- --target x86_64-apple-darwin
+              npm run build:binding --workspace=@utoo/pack -- --target x86_64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
             build: |
               rustup target add aarch64-unknown-linux-gnu &&
-              cd packages/pack && npm run build:binding -- --target aarch64-unknown-linux-gnu
+              npm run build:binding --workspace=@utoo/pack -- --target aarch64-unknown-linux-gnu
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
@@ -38,11 +38,11 @@ jobs:
               apk add --no-cache libc6-compat pkgconfig dav1d libdav1d dav1d-dev clang-static llvm-dev &&
               rustup target add aarch64-unknown-linux-musl &&
               export RUSTFLAGS='--cfg tokio_unstable -Zshare-generics=y -Zthreads=8 -Zunstable-options -Csymbol-mangling-version=v0 -Clinker-flavor=gnu-lld-cc -Clink-self-contained=+linker' &&
-              cd packages/pack && npm run build:binding -- --target aarch64-unknown-linux-musl
+              npm run build:binding --workspace=@utoo/pack -- --target aarch64-unknown-linux-musl
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
-            build: cd packages/pack && npm run build:binding -- --target x86_64-unknown-linux-gnu
+            build: npm run build:binding --workspace=@utoo/pack -- --target x86_64-unknown-linux-gnu
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
@@ -52,18 +52,18 @@ jobs:
               apk add --no-cache libc6-compat pkgconfig dav1d libdav1d dav1d-dev clang-static llvm-dev &&
               rustup target add x86_64-unknown-linux-musl &&
               export RUSTFLAGS='--cfg tokio_unstable -Zshare-generics=y -Zthreads=8 -Csymbol-mangling-version=v0 -Ctarget-feature=-crt-static' &&
-              cd packages/pack && npm run build:binding -- --target x86_64-unknown-linux-musl
+              npm run build:binding --workspace=@utoo/pack -- --target x86_64-unknown-linux-musl
           # swc_plugin_runner not supported on aarch64 windows now
           # - host: windows-latest
           #   target: aarch64-pc-windows-msvc
           #   build: |
           #     git config --system core.longpaths true &&
           #     rustup target add aarch64-pc-windows-msvc &&
-          #     cd packages/pack && npm run build:binding -- --target aarch64-pc-windows-msvc
+          #     npm run build:binding --workspace=@utoo/pack -- --target aarch64-pc-windows-msvc
           - host: windows-latest
             build: |
               git config --system core.longpaths true &&
-              cd packages/pack && npm run build:binding -- --target x86_64-pc-windows-msvc
+              npm run build:binding --workspace=@utoo/pack -- --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
     name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
@@ -81,19 +81,7 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.settings.target }}
       - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            .cargo-cache
-            target/
-            ~/.cargo/bin/
-            ~/.cargo/.package-cache
-          key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}-
+        uses: Swatinem/rust-cache@v2
       - name: Setup toolchain
         run: ${{ matrix.settings.setup }}
         if: ${{ matrix.settings.setup }}
@@ -107,7 +95,7 @@ jobs:
         if: ${{ matrix.settings.docker }}
         with:
           image: ${{ matrix.settings.docker }}
-          options: "--user 0:0 -v ${{ github.workspace }}/.cargo-cache/git/db:/usr/local/cargo/git/db -v ${{ github.workspace }}/.cargo/registry/cache:/usr/local/cargo/registry/cache -v ${{ github.workspace }}/.cargo/registry/index:/usr/local/cargo/registry/index -v ${{ github.workspace }}:/build -w /build"
+          options: "-v ${{ github.workspace }}/.cargo-cache/git/db:/usr/local/cargo/git/db -v ${{ github.workspace }}/.cargo/registry/cache:/usr/local/cargo/registry/cache -v ${{ github.workspace }}/.cargo/registry/index:/usr/local/cargo/registry/index -v ${{ github.workspace }}:/build -w /build"
           run: ${{ matrix.settings.build }}
       - name: Build
         run: ${{ matrix.settings.build }}
@@ -141,26 +129,20 @@ jobs:
       - name: List packages
         run: cd packages/pack && ls -R ./npm
         shell: bash
-      - name: Setup npm token
-        run: |
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc &&
-        shell: bash
       - name: Get version from release or use alpha version
         id: get_version
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/@utoo/pack-v}" >> $GITHUB_OUTPUT
-      - name: Publish Pack
+      - name: NPM Publish
         run: |
           # npm config set provenance true
-          cd packages/pack &&
-          npm version "${VERSION}" &&
-          npm publish --access public
-      - name: Publish Pack Cli
-        run: |
-          # npm config set provenance true
-          cd packages/pack-cli &&
-          npm version "${VERSION}" &&
-          npm publish --access public
+          echo "${VERSION}" &&
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc &&
+          npm version --workspace=@utoo/pack "${VERSION}" &&
+          npm version --workspace=@utoo/pack-cli "${VERSION}" &&
+          npm install --workspace=@utoo/pack-cli @utoo/pack --save-exact &&
+          npm publish --workspace=@utoo/pack --access public &&
+          npm publish --workspace=@utoo/pack-cli --access public
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
