@@ -478,7 +478,8 @@ impl Ruborist {
     }
 
     pub async fn build_ideal_tree(&mut self) -> Result<()> {
-        load_cache("./node_modules/.utoo-manifest.json")
+        let cache_path = self.path.join("./node_modules/.utoo-manifest.json");
+        load_cache(&cache_path)
             .await
             .context("Failed to load cache")?;
         let root = self.init_tree().await?;
@@ -491,7 +492,7 @@ impl Ruborist {
             self.replace_deps(dup_node).await?;
         }
 
-        store_cache("./node_modules/.utoo-manifest.json")
+        store_cache(&cache_path)
             .await
             .context("Failed to store cache")?;
         finish_progress_bar("Building dependency tree complete.");

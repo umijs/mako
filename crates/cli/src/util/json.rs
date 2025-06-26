@@ -18,15 +18,6 @@ pub fn read_json_value(path: &Path) -> Result<serde_json::Value> {
     read_json_file(path)
 }
 
-/// Load package.json from current directory
-pub fn load_package_json() -> Result<Value> {
-    read_json_value(Path::new("package.json"))
-}
-
-pub fn load_package_lock_json() -> Result<Value> {
-    read_json_value(Path::new("package-lock.json"))
-}
-
 /// Load package.json from specified path
 pub fn load_package_json_from_path(path: &Path) -> Result<Value> {
     read_json_value(&path.join("package.json"))
@@ -91,23 +82,6 @@ mod tests {
         let value = read_json_value(&file_path).unwrap();
         assert_eq!(value["key"], "value");
         assert_eq!(value["number"], 42);
-    }
-
-    #[test]
-    fn test_load_package_json() {
-        let dir = tempdir().unwrap();
-
-        // Create a test package.json
-        let test_data = json!({
-            "name": "test-package",
-            "version": "1.0.0"
-        });
-
-        fs::write(dir.path().join("package.json"), test_data.to_string()).unwrap();
-
-        let value = load_package_json_from_path(dir.path()).unwrap();
-        assert_eq!(value["name"], "test-package");
-        assert_eq!(value["version"], "1.0.0");
     }
 
     #[test]

@@ -32,10 +32,7 @@ use crate::helper::workspace::update_cwd_to_root;
 #[command(name = APP_NAME)]
 #[command(version = APP_VERSION)]
 #[command(about = APP_ABOUT)]
-#[command(version = None)]
 #[command(allow_external_subcommands(true))]
-#[command(disable_help_subcommand(true))]
-#[command(ignore_errors(true))]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -93,6 +90,9 @@ enum Commands {
         /// Install package globally
         #[arg(short, long)]
         global: bool,
+
+        #[arg(short, long)]
+        prefix: Option<String>,
     },
     /// Uninstall dependencies
     #[command(name = UNINSTALL_NAME, alias = "un", about = UNINSTALL_ABOUT)]
@@ -196,10 +196,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             save_peer,
             save_optional,
             global,
+            prefix,
         }) => {
             if let Some(spec) = spec {
                 if global {
-                    if let Err(e) = install_global_package(&spec).await {
+                    if let Err(e) = install_global_package(&spec, &prefix).await {
                         log_error(&e.to_string());
                         let _ = write_verbose_logs_to_file();
                         process::exit(1);

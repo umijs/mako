@@ -4,6 +4,7 @@ use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
@@ -236,12 +237,12 @@ pub async fn resolve(name: &str, spec: &str) -> Result<ResolvedPackage> {
 }
 
 // Public cache operations
-pub async fn store_cache(path: &str) -> Result<()> {
+pub async fn store_cache(path: &Path) -> Result<()> {
     let cache_data = PACKAGE_CACHE.export_data().await;
     let cache_str =
         serde_json::to_string_pretty(&cache_data).context("Failed to serialize cache data")?;
 
-    if let Some(parent) = std::path::Path::new(path).parent() {
+    if let Some(parent) = path.parent() {
         tokio::fs::create_dir_all(parent)
             .await
             .context("Failed to create cache directory")?;
@@ -249,17 +250,17 @@ pub async fn store_cache(path: &str) -> Result<()> {
     tokio::fs::write(path, cache_str)
         .await
         .context("Failed to write cache file")?;
-    log_verbose(&format!("Cache stored to {}", path));
+    log_verbose(&format!("Cache stored to {}", path.display()));
     Ok(())
 }
 
-pub async fn load_cache(path: &str) -> Result<()> {
+pub async fn load_cache(path: &Path) -> Result<()> {
     // Check file existence
     if !tokio::fs::try_exists(path)
         .await
         .context("Failed to check cache file existence")?
     {
-        log_verbose(&format!("Cache file not found: {}", path));
+        log_verbose(&format!("Cache file not found: {}", path.display()));
         return Ok(());
     }
 
@@ -270,7 +271,7 @@ pub async fn load_cache(path: &str) -> Result<()> {
         .map_err(|e| anyhow::anyhow!("Failed to parse cache data: {}", e))?;
 
     PACKAGE_CACHE.import_data(cache_data).await;
-    log_verbose(&format!("Cache loaded from {}", path));
+    log_verbose(&format!("Cache loaded from {}", path.display()));
     Ok(())
 }
 
