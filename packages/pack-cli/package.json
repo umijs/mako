@@ -42,7 +42,8 @@
   "scripts": {
     "build": "rm -rf dist && tsc -b",
     "postpack": "rm -f oclif.manifest.json",
-    "prepack": "oclif manifest && oclif readme"
+    "prepack": "oclif manifest",
+    "prepublishOnly": "npm run build"
   },
   "types": "dist/index.d.ts"
 }
