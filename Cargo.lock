@@ -3978,6 +3978,7 @@ dependencies = [
  "futures",
  "pack-core",
  "par-core",
+ "parking_lot",
  "qstring",
  "rustc-hash 2.1.1",
  "serde",
