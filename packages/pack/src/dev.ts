@@ -1,15 +1,14 @@
+import fs from "fs";
 import http, { IncomingMessage, ServerResponse } from "http";
 import https from "https";
-import fs from "fs";
-import url from "url";
-import path from "path";
 import { isIPv6 } from "net";
-import { Duplex, Writable } from "stream";
-import { createHotReloader, HMR_ACTIONS_SENT_TO_BROWSER } from "./hmr";
-import { BundleOptions } from "./types";
+import path from "path";
 import send from "send";
-
+import { Duplex, Writable } from "stream";
+import url from "url";
+import { createHotReloader, HMR_ACTIONS_SENT_TO_BROWSER } from "./hmr";
 import { createSelfSignedCertificate } from "./mkcert";
+import { BundleOptions } from "./types";
 import { blockStdout } from "./util";
 import { xcodeProfilingReady } from "./xcodeProfile";
 

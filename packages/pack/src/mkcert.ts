@@ -1,8 +1,9 @@
+import { execSync } from "node:child_process";
+import { createPrivateKey, X509Certificate } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import os from "os";
-import { X509Certificate, createPrivateKey } from "node:crypto";
-import { execSync } from "node:child_process";
+
 const { WritableStream } = require("node:stream/web") as {
   WritableStream: typeof global.WritableStream;
 };

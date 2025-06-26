@@ -1,7 +1,7 @@
+import { Command, Flags } from "@oclif/core";
+import * as utooPack from "@utoo/pack";
 import fs from "fs";
 import path from "path";
-import * as utooPack from "@utoo/pack";
-import { Command, Flags } from "@oclif/core";
 
 export default class Dev extends Command {
   static description = "Utoo pack dev";
