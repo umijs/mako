@@ -129,13 +129,12 @@ pub async fn install_global_package(npm_spec: &str, prefix: &Option<String>) -> 
             .context("Failed to get current executable path")?
             .parent()
             .context("Failed to get executable parent directory")?
-            .to_path_buf()
+            .to_path_buf(),
     };
 
     // Link binary files to global
     log_verbose(&format!(
-        "Linking binary files to global... {} {}",
-        std::env::current_exe().unwrap().display(),
+        "Linking binary files to global... {}",
         target_bin_dir.display()
     ));
     package_info
