@@ -22,6 +22,7 @@
     "examples/define",
     "examples/externals",
     "examples/multi-entries-heavy",
+    "examples/webpack-compat",
     "examples/with-antd",
     "examples/with-less",
     "examples/with-library",

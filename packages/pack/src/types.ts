@@ -66,8 +66,6 @@ export interface DefineEnv {
 
 export interface ExperimentalConfig {}
 
-export type TurbopackRuleConfigItemOrShortcut = TurbopackRuleConfigItem;
-
 export type TurbopackRuleConfigItem =
   | TurbopackRuleConfigItemOptions
   | { [condition: string]: TurbopackRuleConfigItem }
@@ -90,7 +88,7 @@ export type TurbopackRuleConfigItemOptions = {
 };
 
 export interface ModuleOptions {
-  rules?: Record<string, TurbopackRuleConfigItemOrShortcut>;
+  rules?: Record<string, TurbopackRuleConfigItem>;
 }
 
 export interface ResolveOptions {
@@ -176,6 +174,7 @@ export interface ConfigComplete {
   images?: {
     inlineLimit?: number;
   };
+  stats?: boolean;
   experimental?: ExperimentalConfig;
   persistentCaching?: boolean;
   cacheHandler?: string;
@@ -239,14 +238,14 @@ export interface ProjectOptions {
   /**
    * A map of environment variables to use when compiling code.
    */
-  processEnv: Record<string, string>;
+  processEnv?: Record<string, string>;
 
-  processDefineEnv: DefineEnv;
+  processDefineEnv?: DefineEnv;
 
   /**
    * Whether to watch the filesystem for file changes.
    */
-  watch: {
+  watch?: {
     enable: boolean;
     pollIntervalMs?: number;
   };
@@ -254,12 +253,12 @@ export interface ProjectOptions {
   /**
    * The mode of utoo-pack.
    */
-  dev: boolean;
+  dev?: boolean;
 
   /**
    * The build id.
    */
-  buildId: string;
+  buildId?: string;
 }
 
 export type BundleOptions = Omit<ProjectOptions, "rootPath" | "projectPath">;
