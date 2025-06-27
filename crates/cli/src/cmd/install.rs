@@ -122,15 +122,21 @@ pub async fn install_global_package(npm_spec: &str, prefix: &Option<String>) -> 
 
     let target_bin_dir = match prefix {
         Some(prefix) => PathBuf::from(prefix).join("bin"),
+
+        // If prefix is not set, link to the bin directory of the current executable
+        // ~/.nvm/versions/node/v20.15.0/bin/utoo -> ~/.nvm/versions/node/v20.15.0/bin
         None => std::env::current_exe()
             .context("Failed to get current executable path")?
             .parent()
             .context("Failed to get executable parent directory")?
-            .join("bin"),
+            .to_path_buf(),
     };
 
     // Link binary files to global
-    log_verbose("Linking binary files to global...");
+    log_verbose(&format!(
+        "Linking binary files to global... {}",
+        target_bin_dir.display()
+    ));
     package_info
         .link_to_global(&target_bin_dir)
         .await
