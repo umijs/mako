@@ -1,0 +1,277 @@
+/**
+ * This file contains runtime types and functions that are shared between all
+ * Turbopack *development* ECMAScript runtimes.
+ *
+ * It will be appended to the runtime code of each runtime right after the
+ * shared runtime utils.
+ */
+
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
+/// <reference path="./globals.d.ts" />
+/// <reference path="./runtime-utils.ts" />
+
+// Used in WebWorkers to tell the runtime about the chunk base path
+declare var TURBOPACK_WORKER_LOCATION: string;
+// Used in WebWorkers to tell the runtime about the current chunk url since it can't be detected via document.currentScript
+// Note it's stored in reversed order to use push and pop
+declare var TURBOPACK_NEXT_CHUNK_URLS: ChunkUrl[] | undefined;
+
+// Injected by rust code
+declare var CHUNK_BASE_PATH: string;
+declare var CHUNK_SUFFIX_PATH: string;
+
+function normalizeChunkPath(path: string) {
+  if (path.startsWith("/")) {
+      path = path.substring(1);
+  } else if (path.startsWith("./")) {
+      path = path.substring(2);
+  }
+
+  if (path.endsWith("/")) {
+      path = path.slice(0,-1);
+  }
+  return path;
+}
+
+const NORMALIZED_CHUNK_BASE_PATH = normalizeChunkPath(CHUNK_BASE_PATH);
+
+// Provided by build or dev base
+declare function instantiateModule(id: ModuleId, source: SourceInfo): Module;
+
+type RuntimeParams = {
+  otherChunks: ChunkData[];
+  runtimeModuleIds: ModuleId[];
+};
+
+type ChunkRegistration = [
+  chunkPath: ChunkScript,
+  chunkModules: ModuleFactories,
+  params: RuntimeParams | undefined
+];
+
+type ChunkList = {
+  script: ChunkListScript;
+  chunks: ChunkData[];
+  source: "entry" | "dynamic";
+};
+
+enum SourceType {
+  /**
+   * The module was instantiated because it was included in an evaluated chunk's
+   * runtime.
+   */
+  Runtime = 0,
+  /**
+   * The module was instantiated because a parent module imported it.
+   */
+  Parent = 1,
+  /**
+   * The module was instantiated because it was included in a chunk's hot module
+   * update.
+   */
+  Update = 2,
+}
+
+type SourceInfo =
+  | {
+      type: SourceType.Runtime;
+      chunkPath: ChunkPath;
+    }
+  | {
+      type: SourceType.Parent;
+      parentId: ModuleId;
+    }
+  | {
+      type: SourceType.Update;
+      parents?: ModuleId[];
+    };
+
+interface RuntimeBackend {
+  loadChunk: (chunkUrl: ChunkUrl, source: SourceInfo) => Promise<void>;
+}
+
+interface DevRuntimeBackend {
+  reloadChunk?: (chunkUrl: ChunkUrl) => Promise<void>;
+  unloadChunk?: (chunkUrl: ChunkUrl) => void;
+  restart: () => void;
+}
+
+const moduleFactories: ModuleFactories = Object.create(null);
+/**
+ * Module IDs that are instantiated as part of the runtime of a chunk.
+ */
+const runtimeModules: Set<ModuleId> = new Set();
+/**
+ * Map from module ID to the chunks that contain this module.
+ *
+ * In HMR, we need to keep track of which modules are contained in which so
+ * chunks. This is so we don't eagerly dispose of a module when it is removed
+ * from chunk A, but still exists in chunk B.
+ */
+const moduleChunksMap: Map<ModuleId, Set<ChunkPath>> = new Map();
+/**
+ * Map from a chunk path to all modules it contains.
+ */
+const chunkModulesMap: Map<ChunkPath, Set<ModuleId>> = new Map();
+/**
+ * Chunk lists that contain a runtime. When these chunk lists receive an update
+ * that can't be reconciled with the current state of the page, we need to
+ * reload the runtime entirely.
+ */
+const runtimeChunkLists: Set<ChunkListPath> = new Set();
+/**
+ * Map from a chunk list to the chunk paths it contains.
+ */
+const chunkListChunksMap: Map<ChunkListPath, Set<ChunkPath>> = new Map();
+/**
+ * Map from a chunk path to the chunk lists it belongs to.
+ */
+const chunkChunkListsMap: Map<ChunkPath, Set<ChunkListPath>> = new Map();
+
+const availableModules: Map<ModuleId, Promise<any> | true> = new Map();
+
+const availableModuleChunks: Map<ChunkPath, Promise<any> | true> = new Map();
+
+
+/**
+ * Returns an absolute url to an asset.
+ */
+function createResolvePathFromModule(
+  resolver: (moduleId: string) => Exports
+): (moduleId: string) => string {
+  return function resolvePathFromModule(moduleId: string): string {
+    const exported = resolver(moduleId);
+    return exported?.default ?? exported;
+  };
+}
+
+/**
+ * no-op for browser
+ * @param modulePath
+ */
+function resolveAbsolutePath(modulePath?: string): string {
+  return `/ROOT/${modulePath ?? ""}`;
+}
+
+/**
+ * Adds a module to a chunk.
+ */
+function addModuleToChunk(moduleId: ModuleId, chunkPath: ChunkPath) {
+  let moduleChunks = moduleChunksMap.get(moduleId);
+  if (!moduleChunks) {
+    moduleChunks = new Set([chunkPath]);
+    moduleChunksMap.set(moduleId, moduleChunks);
+  } else {
+    moduleChunks.add(chunkPath);
+  }
+
+  let chunkModules = chunkModulesMap.get(chunkPath);
+  if (!chunkModules) {
+    chunkModules = new Set([moduleId]);
+    chunkModulesMap.set(chunkPath, chunkModules);
+  } else {
+    chunkModules.add(moduleId);
+  }
+}
+
+/**
+ * Returns the first chunk that included a module.
+ * This is used by the Node.js backend, hence why it's marked as unused in this
+ * file.
+ */
+function getFirstModuleChunk(moduleId: ModuleId) {
+  const moduleChunkPaths = moduleChunksMap.get(moduleId);
+  if (moduleChunkPaths == null) {
+    return null;
+  }
+
+  return moduleChunkPaths.values().next().value;
+}
+
+/**
+ * Instantiates a runtime module.
+ */
+function instantiateRuntimeModule(
+  moduleId: ModuleId,
+  chunkPath: ChunkPath
+): Module {
+  return instantiateModule(moduleId, { type: SourceType.Runtime, chunkPath });
+}
+/**
+ * Returns the URL relative to the origin where a chunk can be fetched from.
+ */
+function getChunkRelativeUrl(chunkPath: ChunkPath | ChunkListPath): ChunkUrl {
+  return `${NORMALIZED_CHUNK_BASE_PATH}${chunkPath
+    .split("/")
+    .map((p) => encodeURIComponent(p))
+    .join("/")}${CHUNK_SUFFIX_PATH}` as ChunkUrl;
+}
+
+/**
+ * Return the ChunkPath from a ChunkScript.
+ */
+function getPathFromScript(chunkScript: ChunkPath | ChunkScript): ChunkPath;
+function getPathFromScript(chunkScript: ChunkListPath | ChunkListScript): ChunkListPath;
+function getPathFromScript(chunkScript: ChunkPath | ChunkListPath | ChunkScript | ChunkListScript): ChunkPath | ChunkListPath {
+  if (typeof chunkScript === "string") {
+    return chunkScript as ChunkPath | ChunkListPath;
+  }
+  let chunkUrl = typeof TURBOPACK_NEXT_CHUNK_URLS !== "undefined"
+    ? TURBOPACK_NEXT_CHUNK_URLS.pop()!
+    : chunkScript.getAttribute("src")!;
+  if (chunkUrl.startsWith("/")) {
+    chunkUrl = chunkUrl.substring(1);
+  } else if (chunkUrl.startsWith("./")) {
+    chunkUrl = chunkUrl.substring(2);
+
+  }
+  const src = decodeURIComponent(chunkUrl.replace(/[?#].*$/, ""));
+  const path = src.startsWith(NORMALIZED_CHUNK_BASE_PATH) ? src.slice(NORMALIZED_CHUNK_BASE_PATH.length) : src;
+  return path as ChunkPath | ChunkListPath;
+}
+
+/**
+ * Marks a chunk list as a runtime chunk list. There can be more than one
+ * runtime chunk list. For instance, integration tests can have multiple chunk
+ * groups loaded at runtime, each with its own chunk list.
+ */
+function markChunkListAsRuntime(chunkListPath: ChunkListPath) {
+  runtimeChunkLists.add(chunkListPath);
+}
+
+function registerChunk([
+  chunkScript,
+  chunkModules,
+  runtimeParams,
+]: ChunkRegistration) {
+  const chunkPath = getPathFromScript(chunkScript);
+  for (const [moduleId, moduleFactory] of Object.entries(chunkModules)) {
+    if (!moduleFactories[moduleId]) {
+      moduleFactories[moduleId] = moduleFactory;
+    }
+    addModuleToChunk(moduleId, chunkPath);
+  }
+
+  if (runtimeParams.runtimeModuleIds.length > 0) {
+    for (const moduleId of runtimeParams.runtimeModuleIds){
+        getOrInstantiateRuntimeModule(moduleId, chunkPath);
+    }
+}
+}
+
+const regexJsUrl = /\.js(?:\?[^#]*)?(?:#.*)?$/;
+/**
+ * Checks if a given path/URL ends with .js, optionally followed by ?query or #fragment.
+ */
+function isJs(chunkUrlOrPath: ChunkUrl | ChunkPath): boolean {
+  return regexJsUrl.test(chunkUrlOrPath);
+}
+
+const regexCssUrl = /\.css(?:\?[^#]*)?(?:#.*)?$/;
+/**
+ * Checks if a given path/URL ends with .css, optionally followed by ?query or #fragment.
+ */
+function isCss(chunkUrl: ChunkUrl): boolean {
+  return regexCssUrl.test(chunkUrl);
+}

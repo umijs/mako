@@ -12,7 +12,7 @@ use turbopack_resolve::{
 
 #[turbo_tasks::function]
 fn react_refresh_request() -> Vc<Request> {
-    Request::parse_string("@utoo/pack-dev-runtime/src/react-refresh/runtime".into())
+    Request::parse_string("@utoo/pack-runtime/src/react-refresh/runtime".into())
 }
 
 #[turbo_tasks::value]
@@ -103,7 +103,7 @@ impl Issue for ReactRefreshResolvingIssue {
                 ),
                 StyledString::Code("react-refresh".into()),
                 StyledString::Text(" and ".into()),
-                StyledString::Code("@utoo/pack-dev-runtime/src/react-refresh/runtime".into()),
+                StyledString::Code("@utoo/pack-runtime/src/react-refresh/runtime".into()),
                 StyledString::Text(" modules.".into()),
             ])
             .resolved_cell(),

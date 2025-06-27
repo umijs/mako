@@ -6,8 +6,7 @@ use turbo_rcstr::RcStr;
 use turbo_tasks::{Value, Vc};
 use turbopack_core::{
     code_builder::{Code, CodeBuilder},
-    context::AssetContext,
-    environment::{ChunkLoading, Environment},
+    environment::Environment,
 };
 use turbopack_ecmascript::utils::StringifyJs;
 use turbopack_ecmascript_runtime::RuntimeType;
@@ -30,48 +29,11 @@ pub async fn get_library_runtime_code(
 
     let shared_runtime_utils_code = embed_static_code(
         asset_context,
-        "shared/runtime-utils.ts".into(),
+        "umd/runtime-utils.ts".into(),
         generate_source_map,
     );
 
-    let runtime_base_code = vec!["browser/runtime/base/runtime-base.ts"];
-
-    // Follwing runtime code is useless for umd output:
-    // match *runtime_type {
-    //     RuntimeType::Production => runtime_base_code.push("browser/runtime/base/build-base.ts"),
-    //     RuntimeType::Development => {
-    //         runtime_base_code.push("browser/runtime/base/dev-base.ts");
-    //     }
-    // }
-
-    let chunk_loading = &*asset_context
-        .compile_time_info()
-        .environment()
-        .chunk_loading()
-        .await?;
-
-    let mut runtime_backend_code = vec![];
-    match (chunk_loading, *runtime_type) {
-        (ChunkLoading::Edge, RuntimeType::Development) => {
-            runtime_backend_code.push("browser/runtime/edge/runtime-backend-edge.ts");
-            runtime_backend_code.push("browser/runtime/edge/dev-backend-edge.ts");
-        }
-        (ChunkLoading::Edge, RuntimeType::Production) => {
-            // runtime_backend_code.push("browser/runtime/edge/runtime-backend-edge.ts");
-        }
-        // This case should never be hit.
-        (ChunkLoading::NodeJs, _) => {
-            panic!("Node.js runtime is not supported in the browser runtime!")
-        }
-        (ChunkLoading::Dom, RuntimeType::Development) => {
-            runtime_backend_code.push("browser/runtime/dom/runtime-backend-dom.ts");
-            runtime_backend_code.push("browser/runtime/dom/dev-backend-dom.ts");
-        }
-        (ChunkLoading::Dom, RuntimeType::Production) => {
-            // TODO
-            runtime_backend_code.push("browser/runtime/dom/runtime-backend-dom.ts");
-        }
-    };
+    let runtime_base_code = vec!["umd/runtime-base.ts", "umd/build-base.ts"];
 
     let mut code: CodeBuilder = CodeBuilder::default();
     let relative_root_path = output_root_to_root_path.await?;
@@ -108,42 +70,14 @@ pub async fn get_library_runtime_code(
         );
     }
 
-    if *environment.supports_commonjs_externals().await? {
-        code.push_code(
-            &*embed_static_code(
-                asset_context,
-                "shared-node/base-externals-utils.ts".into(),
-                generate_source_map,
-            )
-            .await?,
-        );
-    }
-    if *environment.node_externals().await? {
-        code.push_code(
-            &*embed_static_code(
-                asset_context,
-                "shared-node/node-externals-utils.ts".into(),
-                generate_source_map,
-            )
-            .await?,
-        );
-    }
-    if *environment.supports_wasm().await? {
-        code.push_code(
-            &*embed_static_code(
-                asset_context,
-                "shared-node/node-wasm-utils.ts".into(),
-                generate_source_map,
-            )
-            .await?,
-        );
-    }
-
-    for backend_code in runtime_backend_code {
-        code.push_code(
-            &*embed_static_code(asset_context, backend_code.into(), generate_source_map).await?,
-        );
-    }
+    code.push_code(
+        &*embed_static_code(
+            asset_context,
+            "umd/runtime-backend-dom.ts".into(),
+            generate_source_map,
+        )
+        .await?,
+    );
 
     // Registering chunks and chunk lists depends on the BACKEND variable, which is set by the
     // specific runtime code, hence it must be appended after it.
