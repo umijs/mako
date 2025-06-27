@@ -1,7 +1,7 @@
 {
-  "name": "@utoo/pack-dev-runtime",
+  "name": "@utoo/pack-runtime",
   "version": "0.0.0",
-  "description": "Utoo pack dev runtime",
+  "description": "Utoo pack runtime code",
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
