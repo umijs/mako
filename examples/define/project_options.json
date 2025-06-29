@@ -4,8 +4,9 @@
   "projectPath": "./",
   "config": {
     "define": {
-      "AAA": "aaa",
-      "BBB": "bbb"
+      "AAA": "\"aaa\"",
+      "BBB": "\"bbb\"",
+      "CCC": "1"
     },
     "entry": [
       {
@@ -22,5 +23,5 @@
     "optimization": {
       "minify": false
     }
-  } 
+  }
 }

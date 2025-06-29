@@ -117,7 +117,7 @@ pub struct ProjectOptions {
 
     /// A map of environment variables which should get injected at compile
     /// time.
-    pub process_define_env: DefineEnv,
+    pub define_env: DefineEnv,
 
     /// Filesystem watcher options.
     pub watch: WatchOptions,
@@ -159,7 +159,7 @@ pub struct PartialProjectOptions {
 
     /// A map of environment variables which should get injected at compile
     /// time.
-    pub process_define_env: Option<DefineEnv>,
+    pub define_env: Option<DefineEnv>,
 
     /// Filesystem watcher options.
     pub watch: Option<WatchOptions>,
@@ -257,7 +257,7 @@ impl ProjectContainer {
             project_path,
             config,
             process_env,
-            process_define_env,
+            define_env,
             watch,
             build_id,
         } = options;
@@ -282,8 +282,8 @@ impl ProjectContainer {
         if let Some(process_env) = process_env {
             new_options.process_env = process_env;
         }
-        if let Some(process_define_env) = process_define_env {
-            new_options.process_define_env = process_define_env;
+        if let Some(define_env) = define_env {
+            new_options.define_env = define_env;
         }
         if let Some(watch) = watch {
             new_options.watch = watch;
@@ -350,13 +350,9 @@ impl ProjectContainer {
 
             env_map = Vc::cell(options.process_env.iter().cloned().collect());
             define_env = ProjectDefineEnv {
-                client: ResolvedVc::cell(
-                    options.process_define_env.client.iter().cloned().collect(),
-                ),
-                edge: ResolvedVc::cell(options.process_define_env.edge.iter().cloned().collect()),
-                nodejs: ResolvedVc::cell(
-                    options.process_define_env.nodejs.iter().cloned().collect(),
-                ),
+                client: ResolvedVc::cell(options.define_env.client.iter().cloned().collect()),
+                edge: ResolvedVc::cell(options.define_env.edge.iter().cloned().collect()),
+                nodejs: ResolvedVc::cell(options.define_env.nodejs.iter().cloned().collect()),
             }
             .cell();
             config = Config::from_string(Vc::cell(options.config.clone()));
@@ -372,7 +368,7 @@ impl ProjectContainer {
             watch,
             config: config.to_resolved().await?,
             process_env: ResolvedVc::upcast(env_map.to_resolved().await?),
-            process_define_env: define_env.to_resolved().await?,
+            define_env: define_env.to_resolved().await?,
             versioned_content_map: self.versioned_content_map,
             build_id,
         }
@@ -427,7 +423,7 @@ pub struct Project {
 
     /// A map of environment variables which should get injected at compile
     /// time.
-    process_define_env: ResolvedVc<ProjectDefineEnv>,
+    define_env: ResolvedVc<ProjectDefineEnv>,
 
     versioned_content_map: Option<ResolvedVc<VersionedContentMap>>,
 
@@ -715,9 +711,11 @@ impl Project {
 
     #[turbo_tasks::function]
     pub(super) async fn client_compile_time_info(&self) -> Result<Vc<CompileTimeInfo>> {
+        let mut define_env = (*self.config.define_env().await?).clone();
+        define_env.extend((*self.define_env.client().await?).clone());
         Ok(get_client_compile_time_info(
             (*self.config.target().await?).clone(),
-            self.process_define_env.client(),
+            Vc::cell(define_env),
             self.config.mode(),
         ))
     }

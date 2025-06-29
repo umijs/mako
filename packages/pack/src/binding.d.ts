@@ -63,7 +63,7 @@ export interface NapiProjectOptions {
    * A map of environment variables which should get injected at compile
    * time.
    */
-  processDefineEnv: NapiDefineEnv
+  defineEnv: NapiDefineEnv
   /** The mode in which Next.js is running. */
   dev: boolean
   /** The build id. */
@@ -88,7 +88,7 @@ export interface NapiPartialProjectOptions {
    * A map of environment variables which should get injected at compile
    * time.
    */
-  processDefineEnv?: NapiDefineEnv
+  defineEnv?: NapiDefineEnv
   /** The mode in which Next.js is running. */
   dev?: boolean
   /** The build id. */
