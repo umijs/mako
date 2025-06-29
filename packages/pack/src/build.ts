@@ -7,10 +7,34 @@ import {
   formatIssue,
   isRelevantWarning,
 } from "./util";
+import { compatOptionsFromWebpack, WebpackConfig } from "./webpackCompat";
 import { xcodeProfilingReady } from "./xcodeProfile";
 
-export async function build(
-  projectOptions: BundleOptions,
+export function build(
+  bundleOptions: BundleOptions,
+  projectPath?: string,
+  rootPath?: string,
+): Promise<void>;
+
+export function build(
+  webpackConfig: WebpackConfig,
+  projectPath?: string,
+  rootPath?: string,
+): Promise<void>;
+
+export function build(
+  options: BundleOptions | WebpackConfig,
+  projectPath?: string,
+  rootPath?: string,
+) {
+  const bundleOptions = (<WebpackConfig>options).compatMode
+    ? compatOptionsFromWebpack(<WebpackConfig>options)
+    : <BundleOptions>options;
+  return buildInternal(bundleOptions, projectPath, rootPath);
+}
+
+async function buildInternal(
+  bundleOptions: BundleOptions,
   projectPath?: string,
   rootPath?: string,
 ) {
@@ -23,18 +47,18 @@ export async function build(
   const createProject = projectFactory();
   const project = await createProject(
     {
-      processEnv: projectOptions.processEnv ?? ({} as Record<string, string>),
+      processEnv: bundleOptions.processEnv ?? {},
       processDefineEnv: createDefineEnv({
-        config: projectOptions.config,
-        dev: projectOptions.dev ?? false,
-        optionDefineEnv: projectOptions.processDefineEnv,
+        config: bundleOptions.config,
+        dev: bundleOptions.dev ?? false,
+        optionDefineEnv: bundleOptions.processDefineEnv,
       }),
-      watch: projectOptions.watch ?? {
+      watch: {
         enable: false,
       },
-      dev: projectOptions.dev ?? false,
-      buildId: nanoid(),
-      config: projectOptions.config,
+      dev: bundleOptions.dev ?? false,
+      buildId: bundleOptions.buildId || nanoid(),
+      config: bundleOptions.config,
       projectPath: projectPath || process.cwd(),
       rootPath: rootPath || projectPath || process.cwd(),
     },

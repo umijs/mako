@@ -122,7 +122,7 @@ export async function createHotReloader(
 
   const project = await createProject(
     {
-      processEnv: bundleOptions.processEnv ?? ({} as Record<string, string>),
+      processEnv: bundleOptions.processEnv ?? {},
       processDefineEnv: createDefineEnv({
         config: bundleOptions.config,
         dev: true,
@@ -132,7 +132,7 @@ export async function createHotReloader(
         enable: true,
       },
       dev: true,
-      buildId: nanoid(),
+      buildId: bundleOptions.buildId || nanoid(),
       config: {
         ...bundleOptions.config,
         mode: "development",

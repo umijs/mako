@@ -27,12 +27,12 @@
     "valtio": "^1.10.4"
   },
   "devDependencies": {
-    "serve": "^14.2.4",
+    "@types/lodash": "^4.17.16",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
-    "@types/lodash": "^4.17.16",
     "@types/styled-components": "^5.1.34",
-    "@utoo/pack-cli": "*"
+    "@utoo/pack-cli": "*",
+    "serve": "^14.2.4"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

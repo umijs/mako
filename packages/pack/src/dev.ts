@@ -6,15 +6,42 @@ import path from "path";
 import send from "send";
 import { Duplex, Writable } from "stream";
 import url from "url";
-import { createHotReloader, HMR_ACTIONS_SENT_TO_BROWSER } from "./hmr";
+import { createHotReloader } from "./hmr";
 import { createSelfSignedCertificate } from "./mkcert";
 import { BundleOptions } from "./types";
 import { blockStdout } from "./util";
+import { compatOptionsFromWebpack, WebpackConfig } from "./webpackCompat";
 import { xcodeProfilingReady } from "./xcodeProfile";
 
-export async function serve(
+export function serve(
+  bundleOptions: BundleOptions,
+  projectPath?: string,
+  rootPath?: string,
+  serverOptions?: StartServerOptions,
+): Promise<void>;
+
+export function serve(
+  webpackConfig: WebpackConfig,
+  projectPath?: string,
+  rootPath?: string,
+  serverOptions?: StartServerOptions,
+): Promise<void>;
+
+export function serve(
+  options: BundleOptions | WebpackConfig,
+  projectPath?: string,
+  rootPath?: string,
+  serverOptions?: StartServerOptions,
+) {
+  const bundleOptions = (<WebpackConfig>options).compatMode
+    ? compatOptionsFromWebpack(<WebpackConfig>options)
+    : <BundleOptions>options;
+  return serveInternal(bundleOptions, projectPath, rootPath, serverOptions);
+}
+
+async function serveInternal(
   options: BundleOptions,
-  projectPath: string,
+  projectPath?: string,
   rootPath?: string,
   serverOptions?: StartServerOptions,
 ) {
@@ -36,7 +63,7 @@ export async function serve(
         : undefined,
     },
     options,
-    projectPath,
+    projectPath || process.cwd(),
     rootPath,
   );
 }

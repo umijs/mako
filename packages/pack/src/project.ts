@@ -18,7 +18,6 @@ import {
   TurbopackLoaderItem,
   TurbopackRuleConfigItem,
   TurbopackRuleConfigItemOptions,
-  TurbopackRuleConfigItemOrShortcut,
   Update,
 } from "./types";
 import { rustifyEnv } from "./util";
@@ -41,7 +40,7 @@ async function withErrorCause<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 function ensureLoadersHaveSerializableOptions(
-  turbopackRules: Record<string, TurbopackRuleConfigItemOrShortcut>,
+  turbopackRules: Record<string, TurbopackRuleConfigItem>,
 ) {
   for (const [glob, rule] of Object.entries(turbopackRules)) {
     if (Array.isArray(rule)) {
@@ -81,8 +80,6 @@ function ensureLoadersHaveSerializableOptions(
 
 async function serializeConfig(config: ConfigComplete): Promise<string> {
   let configSerializable = { ...config };
-
-  (configSerializable as any).generateBuildId = () => nanoid();
 
   if (configSerializable.module?.rules) {
     ensureLoadersHaveSerializableOptions(configSerializable.module.rules);
@@ -130,7 +127,7 @@ type NativeFunction<T> = (
 ) => Promise<{ __napiType: "RootTask" }>;
 
 async function rustifyProjectOptions(
-  options: ProjectOptions,
+  options: Required<ProjectOptions>,
 ): Promise<NapiProjectOptions> {
   return {
     ...options,
@@ -386,7 +383,7 @@ export function projectFactory() {
   }
 
   return async function createProject(
-    options: ProjectOptions,
+    options: Required<ProjectOptions>,
     turboEngineOptions: binding.NapiTurboEngineOptions,
   ) {
     return new ProjectImpl(
