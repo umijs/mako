@@ -99,7 +99,9 @@ async fn client_defines(define_env: Vc<EnvMap>) -> Result<Vc<CompileTimeDefines>
 #[turbo_tasks::function]
 async fn client_free_vars(define_env: Vc<EnvMap>) -> Result<Vc<FreeVarReferences>> {
     Ok(free_var_references!(
-        ..defines(&*define_env.await?).into_iter() // FIXME: Buffer = FreeVarReference::EcmaScriptModule {
+        ..defines(&*define_env.await?).into_iter() //
+                                                   //FIXME: keep original request when compiling target node
+                                                   //, Buffer = FreeVarReference::EcmaScriptModule {
                                                    //     request: "node:buffer".into(),
                                                    //     lookup_path: None,
                                                    //     export: Some("Buffer".into()),
