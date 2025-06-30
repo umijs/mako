@@ -58,7 +58,7 @@ pub struct PartialProjectOptions {
 
     /// A map of environment variables which should get injected at compile
     /// time.
-    pub process_define_env: Option<DefineEnv>,
+    pub define_env: Option<DefineEnv>,
 
     /// Filesystem watcher options.
     pub watch: Option<WatchOptions>,

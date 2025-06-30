@@ -240,7 +240,7 @@ export interface ProjectOptions {
    */
   processEnv?: Record<string, string>;
 
-  processDefineEnv?: DefineEnv;
+  defineEnv?: DefineEnv;
 
   /**
    * Whether to watch the filesystem for file changes.
