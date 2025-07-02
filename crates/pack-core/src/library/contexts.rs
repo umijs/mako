@@ -16,9 +16,9 @@ use super::LibraryChunkingContext;
 
 #[turbo_tasks::function]
 pub async fn get_library_chunking_context(
-    root_path: ResolvedVc<FileSystemPath>,
-    output_root: ResolvedVc<FileSystemPath>,
-    output_root_to_root_path: ResolvedVc<RcStr>,
+    root_path: FileSystemPath,
+    output_root: FileSystemPath,
+    output_root_to_root_path: RcStr,
     environment: ResolvedVc<Environment>,
     mode: Vc<Mode>,
     module_id_strategy: ResolvedVc<Box<dyn ModuleIdStrategy>>,

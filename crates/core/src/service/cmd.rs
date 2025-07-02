@@ -21,7 +21,7 @@ impl CommandService {
                 // Remove .cmd suffix to get command name
                 if let Some(command) = key.strip_suffix(".cmd") {
                     // Get the command alias
-                    if let Some(alias) = self.config.get(&format!("{}.cmd", command))? {
+                    if let Some(alias) = self.config.get(&format!("{command}.cmd"))? {
                         commands.push((command.to_string(), alias));
                     }
                 }

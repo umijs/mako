@@ -15,7 +15,7 @@ pub(crate) mod sass;
 pub(crate) mod style_loader;
 
 pub async fn webpack_loader_options(
-    project_path: ResolvedVc<FileSystemPath>,
+    project_path: FileSystemPath,
     config: Vc<Config>,
     conditions: Vec<RcStr>,
 ) -> Result<Option<ResolvedVc<WebpackLoadersOptions>>> {
@@ -28,8 +28,10 @@ pub async fn webpack_loader_options(
         Some(
             WebpackLoadersOptions {
                 rules,
+                // TODO: https://github.com/vercel/next.js/pull/78733
+                conditions: ResolvedVc::cell(None),
                 loader_runner_package: Some(
-                    loader_runner_package_mapping(*project_path)
+                    loader_runner_package_mapping(project_path)
                         .to_resolved()
                         .await?,
                 ),
@@ -42,9 +44,7 @@ pub async fn webpack_loader_options(
 }
 
 #[turbo_tasks::function]
-async fn loader_runner_package_mapping(
-    _project_path: ResolvedVc<FileSystemPath>,
-) -> Result<Vc<ImportMapping>> {
+async fn loader_runner_package_mapping(_project_path: FileSystemPath) -> Result<Vc<ImportMapping>> {
     Ok(ImportMapping::Alternatives(vec![ImportMapping::External(
         Some("@utoo/loader-runner".into()),
         ExternalType::CommonJs,

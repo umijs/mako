@@ -1,6 +1,6 @@
 use anyhow::Result;
 pub use modularize_imports::ModularizeImportPackageConfig;
-use turbo_tasks::{ResolvedVc, Value};
+use turbo_tasks::ResolvedVc;
 use turbopack::module_options::{ModuleRule, ModuleRuleEffect, ModuleType, RuleCondition};
 use turbopack_core::reference_type::{ReferenceType, UrlReferenceSubType};
 use turbopack_ecmascript::{CustomTransformer, EcmascriptInputTransform};
@@ -37,12 +37,9 @@ pub async fn get_image_rule(inline_limit: Option<u64>) -> Result<ModuleRule> {
         ]),
         vec![ModuleRuleEffect::ModuleType(ModuleType::Custom(
             ResolvedVc::upcast(
-                StructuredImageModuleType::new(
-                    inline_limit,
-                    Value::new(BlurPlaceholderMode::DataUrl),
-                )
-                .to_resolved()
-                .await?,
+                StructuredImageModuleType::new(inline_limit, BlurPlaceholderMode::DataUrl)
+                    .to_resolved()
+                    .await?,
             ),
         ))],
     ))

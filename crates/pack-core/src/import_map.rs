@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use anyhow::{Context, Result};
 use rustc_hash::FxHashMap;
 use turbo_rcstr::RcStr;
-use turbo_tasks::{FxIndexMap, ResolvedVc, Value, Vc};
+use turbo_tasks::{FxIndexMap, ResolvedVc, Vc};
 use turbo_tasks_fs::{FileSystem, FileSystemPath};
 use turbopack_core::{
     reference_type::{CommonJsReferenceSubType, ReferenceType},
@@ -58,17 +58,23 @@ pub async fn get_client_fallback_import_map() -> Result<Vc<ImportMap>> {
 /// Computes the client import map.
 #[turbo_tasks::function]
 pub async fn get_client_import_map(
-    project_path: ResolvedVc<FileSystemPath>,
+    project_path: FileSystemPath,
     config: Vc<Config>,
     execution_context: Vc<ExecutionContext>,
 ) -> Result<Vc<ImportMap>> {
     let mut import_map = ImportMap::empty();
 
-    insert_shared_aliases(&mut import_map, project_path, execution_context, config).await?;
+    insert_shared_aliases(
+        &mut import_map,
+        project_path.clone(),
+        execution_context,
+        config,
+    )
+    .await?;
 
     insert_alias_option(
         &mut import_map,
-        project_path,
+        &project_path,
         config.resolve_alias_options(),
         ["browser"],
     )
@@ -80,23 +86,23 @@ pub async fn get_client_import_map(
 // Make sure to not add any external requests here.
 async fn insert_shared_aliases(
     import_map: &mut ImportMap,
-    project_path: ResolvedVc<FileSystemPath>,
+    project_path: FileSystemPath,
     _execution_context: Vc<ExecutionContext>,
     _config: Vc<Config>,
 ) -> Result<()> {
-    let pack_package = get_pack_package(*project_path).to_resolved().await?;
-    import_map.insert_singleton_alias("@swc/helpers", pack_package);
-    import_map.insert_singleton_alias("styled-jsx", pack_package);
-    import_map.insert_singleton_alias("react", project_path);
-    import_map.insert_singleton_alias("react-dom", project_path);
+    let pack_package = get_pack_package(project_path.clone()).await?.clone_value();
+    import_map.insert_singleton_alias("@swc/helpers", pack_package.clone());
+    import_map.insert_singleton_alias("styled-jsx", pack_package.clone());
+    import_map.insert_singleton_alias("react", project_path.clone());
+    import_map.insert_singleton_alias("react-dom", project_path.clone());
 
     insert_package_alias(
         import_map,
         "@vercel/turbopack-ecmascript-runtime/",
         turbopack_ecmascript_runtime::embed_fs()
             .root()
-            .to_resolved()
-            .await?,
+            .await?
+            .clone_value(),
     );
 
     Ok(())
@@ -104,7 +110,7 @@ async fn insert_shared_aliases(
 
 pub async fn insert_alias_option<const N: usize>(
     import_map: &mut ImportMap,
-    project_path: ResolvedVc<FileSystemPath>,
+    project_path: &FileSystemPath,
     alias_options: Vc<ResolveAliasMap>,
     conditions: [&'static str; N],
 ) -> Result<()> {
@@ -120,7 +126,7 @@ pub async fn insert_alias_option<const N: usize>(
 fn export_value_to_import_mapping(
     value: &SubpathValue,
     conditions: &BTreeMap<RcStr, ConditionValue>,
-    project_path: ResolvedVc<FileSystemPath>,
+    project_path: &FileSystemPath,
 ) -> Option<ResolvedVc<ImportMapping>> {
     let mut result = Vec::new();
     value.add_results(
@@ -133,14 +139,14 @@ fn export_value_to_import_mapping(
         None
     } else {
         Some(if result.len() == 1 {
-            ImportMapping::PrimaryAlternative(result[0].0.into(), Some(project_path))
+            ImportMapping::PrimaryAlternative(result[0].0.into(), Some(project_path.clone()))
                 .resolved_cell()
         } else {
             ImportMapping::Alternatives(
                 result
                     .iter()
                     .map(|(m, _)| {
-                        ImportMapping::PrimaryAlternative((*m).into(), Some(project_path))
+                        ImportMapping::PrimaryAlternative((*m).into(), Some(project_path.clone()))
                             .resolved_cell()
                     })
                     .collect(),
@@ -153,23 +159,28 @@ fn export_value_to_import_mapping(
 #[allow(dead_code)]
 fn insert_exact_alias_map(
     import_map: &mut ImportMap,
-    project_path: ResolvedVc<FileSystemPath>,
+    project_path: FileSystemPath,
     map: FxIndexMap<&'static str, String>,
 ) {
     for (pattern, request) in map {
-        import_map.insert_exact_alias(pattern, request_to_import_mapping(project_path, &request));
+        import_map.insert_exact_alias(
+            pattern,
+            request_to_import_mapping(project_path.clone(), &request),
+        );
     }
 }
 
 #[allow(dead_code)]
 fn insert_wildcard_alias_map(
     import_map: &mut ImportMap,
-    project_path: ResolvedVc<FileSystemPath>,
+    project_path: FileSystemPath,
     map: FxIndexMap<&'static str, String>,
 ) {
     for (pattern, request) in map {
-        import_map
-            .insert_wildcard_alias(pattern, request_to_import_mapping(project_path, &request));
+        import_map.insert_wildcard_alias(
+            pattern,
+            request_to_import_mapping(project_path.clone(), &request),
+        );
     }
 }
 
@@ -188,11 +199,7 @@ fn insert_alias_to_alternatives<'a>(
 
 /// Inserts an alias to an import mapping into an import map.
 #[allow(dead_code)]
-fn insert_package_alias(
-    import_map: &mut ImportMap,
-    prefix: &str,
-    package_root: ResolvedVc<FileSystemPath>,
-) {
+fn insert_package_alias(import_map: &mut ImportMap, prefix: &str, package_root: FileSystemPath) {
     import_map.insert_wildcard_alias(
         prefix,
         ImportMapping::PrimaryAlternative("./*".into(), Some(package_root)).resolved_cell(),
@@ -200,25 +207,23 @@ fn insert_package_alias(
 }
 
 #[turbo_tasks::function]
-pub async fn get_pack_package(context_directory: Vc<FileSystemPath>) -> Result<Vc<FileSystemPath>> {
+pub async fn get_pack_package(context_directory: FileSystemPath) -> Result<Vc<FileSystemPath>> {
     let result = resolve(
-        context_directory,
-        Value::new(ReferenceType::CommonJs(CommonJsReferenceSubType::Undefined)),
-        Request::parse(Value::new(Pattern::Constant(
-            "@utoo/pack/package.json".into(),
-        ))),
-        node_cjs_resolve_options(context_directory.root()),
+        context_directory.clone(),
+        ReferenceType::CommonJs(CommonJsReferenceSubType::Undefined),
+        Request::parse(Pattern::Constant("@utoo/pack/package.json".into())),
+        node_cjs_resolve_options(context_directory.root().await?.clone_value()),
     );
     let source = result
         .first_source()
         .await?
         .context("@utoo/pack package not found")?;
-    Ok(source.ident().path().parent())
+    Ok(source.ident().path().await?.parent().cell())
 }
 
 pub fn get_client_resolved_map(
-    _context: Vc<FileSystemPath>,
-    _root: ResolvedVc<FileSystemPath>,
+    _context: FileSystemPath,
+    _root: FileSystemPath,
     _mode: Mode,
 ) -> Vc<ResolvedMap> {
     let glob_mappings = vec![];
@@ -232,7 +237,7 @@ pub fn get_client_resolved_map(
 /// in a context.
 #[allow(dead_code)]
 fn request_to_import_mapping(
-    context_path: ResolvedVc<FileSystemPath>,
+    context_path: FileSystemPath,
     request: &str,
 ) -> ResolvedVc<ImportMapping> {
     ImportMapping::PrimaryAlternative(request.into(), Some(context_path)).resolved_cell()
@@ -242,7 +247,7 @@ fn request_to_import_mapping(
 /// request.
 #[allow(dead_code)]
 fn external_request_to_cjs_import_mapping(
-    context_dir: ResolvedVc<FileSystemPath>,
+    context_dir: FileSystemPath,
     request: &str,
 ) -> ResolvedVc<ImportMapping> {
     ImportMapping::PrimaryAlternativeExternal {
@@ -258,7 +263,7 @@ fn external_request_to_cjs_import_mapping(
 /// request.
 #[allow(dead_code)]
 fn external_request_to_esm_import_mapping(
-    context_dir: ResolvedVc<FileSystemPath>,
+    context_dir: FileSystemPath,
     request: &str,
 ) -> ResolvedVc<ImportMapping> {
     ImportMapping::PrimaryAlternativeExternal {

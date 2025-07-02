@@ -4,21 +4,21 @@
 use clap::Parser;
 use dunce::canonicalize;
 use pack_api::project::{ProjectOptions, WatchOptions};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{fs::File, path::PathBuf};
 use turbo_rcstr::RcStr;
 
 use pack_core::tracing_presets::{
-    TRACING_OVERVIEW_TARGETS, TRACING_TARGETS, TRACING_TURBOPACK_TARGETS,
-    TRACING_TURBO_TASKS_TARGETS,
+    TRACING_OVERVIEW_TARGETS, TRACING_TARGETS, TRACING_TURBO_TASKS_TARGETS,
+    TRACING_TURBOPACK_TARGETS,
 };
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
+use tracing_subscriber::{EnvFilter, Registry, layer::SubscriberExt, util::SubscriberInitExt};
 use turbo_tasks_malloc::TurboMalloc;
 use turbopack_trace_utils::{
     exit::ExitGuard, filter_layer::FilterLayer, raw_trace::RawTraceLayer, trace_writer::TraceWriter,
 };
 
-use pack_cli::{build, register, serve, Command, Mode, PartialProjectOptions};
+use pack_cli::{Command, Mode, PartialProjectOptions, build, register, serve};
 
 #[global_allocator]
 static ALLOC: TurboMalloc = TurboMalloc;
@@ -105,8 +105,8 @@ fn main() {
 
             partial_project_options.config = partial_project_options.config.as_mut().map_or(
                 Some(json!(format!(r#"{{ "mode": {mode}}}"#,))),
-                |config| {
-                    if let Value::Object(ref mut map) = config {
+                |mut config| {
+                    if let Value::Object(map) = &mut config {
                         map.insert("mode".to_string(), mode.into());
                     }
                     Some(config.take())

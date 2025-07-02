@@ -10,8 +10,8 @@ use pack_core::{
 };
 use qstring::QString;
 use tracing::{info_span, Instrument};
-use turbo_rcstr::RcStr;
-use turbo_tasks::{Completion, JoinIterExt, ResolvedVc, Value, ValueToString, Vc};
+use turbo_rcstr::{rcstr, RcStr};
+use turbo_tasks::{Completion, JoinIterExt, ResolvedVc, ValueToString, Vc};
 use turbopack::{
     module_options::ModuleOptionsContext, resolve_options_context::ResolveOptionsContext,
     transition::TransitionOptions, ModuleAssetContext,
@@ -21,7 +21,7 @@ use turbopack_core::{
         availability_info::AvailabilityInfo, ChunkGroupResult, ChunkingContext, EvaluatableAsset,
         EvaluatableAssets,
     },
-    ident::AssetIdent,
+    ident::{AssetIdent, Layer},
     module::{Module, Modules},
     module_graph::{
         chunk_group_info::{ChunkGroup, ChunkGroupEntry},
@@ -129,14 +129,14 @@ impl LibraryEndpoint {
             self.project().client_compile_time_info(),
             self.library_module_options_context(),
             self.library_resolve_options_context(),
-            Vc::cell("library".into()),
+            Layer::new_with_user_friendly_name(rcstr!("library"), rcstr!("Umd")),
         ))
     }
 
     #[turbo_tasks::function]
     async fn library_module_options_context(self: Vc<Self>) -> Result<Vc<ModuleOptionsContext>> {
         Ok(get_client_module_options_context(
-            self.project().project_path(),
+            self.project().project_path().await?.clone_value(),
             self.project().execution_context(),
             self.project().client_compile_time_info().environment(),
             self.project().mode(),
@@ -150,7 +150,7 @@ impl LibraryEndpoint {
     #[turbo_tasks::function]
     async fn library_resolve_options_context(self: Vc<Self>) -> Result<Vc<ResolveOptionsContext>> {
         Ok(get_client_resolve_options_context(
-            self.project().project_path(),
+            self.project().project_path().await?.clone_value(),
             self.project().mode(),
             self.project().config(),
             self.project().execution_context(),
@@ -160,7 +160,7 @@ impl LibraryEndpoint {
     #[turbo_tasks::function]
     async fn library_runtime_entries(self: Vc<Self>) -> Result<Vc<EvaluatableAssets>> {
         Ok(get_client_runtime_entries(
-            self.project().project_path(),
+            self.project().project_path().await?.clone_value(),
             self.project().mode(),
             self.project().config(),
             self.project().execution_context(),
@@ -184,10 +184,11 @@ impl LibraryEndpoint {
         let relative_import = self
             .project()
             .convert_to_relative_import(this.import.clone(), project_dir_name.into())
-            .await?;
+            .await?
+            .clone_value();
 
         let entry_request = Request::relative(
-            Value::new((*relative_import).clone().into()),
+            relative_import.into(),
             Default::default(),
             Default::default(),
             false,
@@ -196,13 +197,13 @@ impl LibraryEndpoint {
         let asset_context = Vc::upcast(self.library_module_context());
         let origin = PlainResolveOrigin::new(
             asset_context,
-            self.project().project_path().join("_".into()),
+            self.project().project_path().await?.join("_".into())?,
         );
 
-        let ty = Value::new(ReferenceType::Entry(EntryReferenceSubType::Undefined));
+        let ty = ReferenceType::Entry(EntryReferenceSubType::Undefined);
 
         Ok(origin
-            .resolve_asset(entry_request, origin.resolve_options(ty.clone()), ty)
+            .resolve_asset(entry_request, origin.resolve_options(ty.clone()).await?, ty)
             .await?
             .primary_modules())
     }
@@ -243,9 +244,9 @@ impl LibraryEndpoint {
     ) -> Result<Vc<Box<dyn ChunkingContext>>> {
         let project = self.project();
         Ok(get_library_chunking_context(
-            project.project_root(),
-            project.dist_root(),
-            Vc::cell("/ROOT".into()),
+            project.project_root().await?.clone_value(),
+            project.dist_root().await?.clone_value(),
+            rcstr!("/ROOT"),
             project.client_compile_time_info().environment(),
             project.mode(),
             project.module_ids(),
@@ -273,11 +274,11 @@ impl LibraryEndpoint {
             let query = QString::new(vec![("name", this.name.as_str())]).to_string();
 
             let library_chunk_group = library_chunking_context.evaluated_chunk_group(
-                AssetIdent::from_path(project.project_root().join(this.import.clone()))
-                    .with_query(Vc::cell(query.into())),
+                AssetIdent::from_path(project.project_root().await?.join(this.import.as_str())?)
+                    .with_query(query.into()),
                 ChunkGroup::Entry(self.library_entry_modules().await?.to_vec()),
                 module_graph,
-                Value::new(AvailabilityInfo::Root),
+                AvailabilityInfo::Root,
             );
 
             Ok(library_chunk_group)

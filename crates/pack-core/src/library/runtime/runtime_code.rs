@@ -3,7 +3,7 @@ use std::io::Write;
 use anyhow::Result;
 use indoc::writedoc;
 use turbo_rcstr::RcStr;
-use turbo_tasks::{Value, Vc};
+use turbo_tasks::Vc;
 use turbopack_core::{
     code_builder::{Code, CodeBuilder},
     environment::Environment,
@@ -19,7 +19,7 @@ pub async fn get_library_runtime_code(
     environment: Vc<Environment>,
     chunk_base_path: Vc<Option<RcStr>>,
     chunk_suffix_path: Vc<Option<RcStr>>,
-    runtime_type: Value<RuntimeType>,
+    runtime_type: RuntimeType,
     output_root_to_root_path: Vc<RcStr>,
     generate_source_map: bool,
     runtime_root: Vc<Option<RcStr>>,
@@ -89,7 +89,7 @@ pub async fn get_library_runtime_code(
             chunksToRegister.forEach(registerChunk);
         "#
     )?;
-    if matches!(*runtime_type, RuntimeType::Development) {
+    if matches!(runtime_type, RuntimeType::Development) {
         writedoc!(
             code,
             r#"

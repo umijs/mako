@@ -8,8 +8,8 @@ use pack_core::client::context::{
 };
 use qstring::QString;
 use tracing::{info_span, Instrument};
-use turbo_rcstr::RcStr;
-use turbo_tasks::{Completion, JoinIterExt, ResolvedVc, TryJoinIterExt, Value, ValueToString, Vc};
+use turbo_rcstr::{rcstr, RcStr};
+use turbo_tasks::{Completion, JoinIterExt, ResolvedVc, TryJoinIterExt, ValueToString, Vc};
 use turbo_tasks_fs::File;
 use turbopack::{
     module_options::ModuleOptionsContext, resolve_options_context::ResolveOptionsContext,
@@ -22,7 +22,7 @@ use turbopack_core::{
         EvaluatableAssets,
     },
     context::AssetContext,
-    ident::AssetIdent,
+    ident::{AssetIdent, Layer},
     module::{Module, Modules},
     module_graph::{
         chunk_group_info::{ChunkGroup, ChunkGroupEntry},
@@ -127,10 +127,11 @@ impl AppEntrypoint {
         let relative_import = self
             .project()
             .convert_to_relative_import(this.import.clone(), project_dir_name.into())
-            .await?;
+            .await?
+            .clone_value();
 
         let entry_request = Request::relative(
-            Value::new((*relative_import).clone().into()),
+            relative_import.into(),
             Default::default(),
             Default::default(),
             false,
@@ -138,13 +139,13 @@ impl AppEntrypoint {
 
         let origin = PlainResolveOrigin::new(
             asset_context,
-            self.project().project_path().join("_".into()),
+            self.project().project_path().await?.join("_")?,
         );
 
-        let ty = Value::new(ReferenceType::Entry(EntryReferenceSubType::Undefined));
+        let ty = ReferenceType::Entry(EntryReferenceSubType::Undefined);
 
         Ok(origin
-            .resolve_asset(entry_request, origin.resolve_options(ty.clone()), ty)
+            .resolve_asset(entry_request, origin.resolve_options(ty.clone()).await?, ty)
             .await?
             .primary_modules())
     }
@@ -207,8 +208,8 @@ impl AppEntrypoint {
             let query = QString::new(vec![("name", this.name.as_str())]).to_string();
 
             let app_chunk_group = app_chunking_context.evaluated_chunk_group(
-                AssetIdent::from_path(project.project_root().join(this.import.clone()))
-                    .with_query(Vc::cell(query.into())),
+                AssetIdent::from_path(project.project_root().await?.join(this.import.as_str())?)
+                    .with_query(query.into()),
                 ChunkGroup::Entry(
                     self.entry_evaluatable_assets(asset_context, runtime_entries)
                         .await?
@@ -217,7 +218,7 @@ impl AppEntrypoint {
                         .collect(),
                 ),
                 module_graph,
-                Value::new(AvailabilityInfo::Root),
+                AvailabilityInfo::Root,
             );
 
             Ok(app_chunk_group)
@@ -256,7 +257,7 @@ impl AppEndpoint {
     #[turbo_tasks::function]
     pub async fn app_runtime_entries(self: Vc<Self>) -> Result<Vc<EvaluatableAssets>> {
         Ok(get_client_runtime_entries(
-            self.project().project_path(),
+            self.project().project_path().await?.clone_value(),
             self.project().mode(),
             self.project().config(),
             self.project().execution_context(),
@@ -276,14 +277,15 @@ impl AppEndpoint {
             self.project().client_compile_time_info(),
             self.app_module_options_context(),
             self.app_resolve_options_context(),
-            Vc::cell("app".into()),
+            // TODO: add server Layer for SSR
+            Layer::new_with_user_friendly_name(rcstr!("client"), rcstr!("Browser")),
         ))
     }
 
     #[turbo_tasks::function]
     async fn app_module_options_context(self: Vc<Self>) -> Result<Vc<ModuleOptionsContext>> {
         Ok(get_client_module_options_context(
-            self.project().project_path(),
+            self.project().project_path().await?.clone_value(),
             self.project().execution_context(),
             self.project().client_compile_time_info().environment(),
             self.project().mode(),
@@ -297,7 +299,7 @@ impl AppEndpoint {
     #[turbo_tasks::function]
     async fn app_resolve_options_context(self: Vc<Self>) -> Result<Vc<ResolveOptionsContext>> {
         Ok(get_client_resolve_options_context(
-            self.project().project_path(),
+            self.project().project_path().await?.clone_value(),
             self.project().mode(),
             self.project().config(),
             self.project().execution_context(),
@@ -354,12 +356,12 @@ impl Endpoint for AppEndpoint {
                 })
                 .await;
 
-            let dist_root = self.project().dist_root();
+            let dist_root = self.project().dist_root().await?;
 
             let (server_paths, client_paths) = (vec![], vec![]);
 
             let written_endpoint = EndpointOutputPaths::NodeJs {
-                server_entry_path: dist_root.await?.to_string(),
+                server_entry_path: dist_root.to_string(),
                 server_paths,
                 client_paths,
             };
@@ -367,7 +369,7 @@ impl Endpoint for AppEndpoint {
             let output_assets = if *self.project().should_create_webpack_stats().await? {
                 let webpack_stats = generate_webpack_stats(output_assets).await?;
                 let stats_output = VirtualOutputAsset::new(
-                    dist_root.join("stats.json".to_string().into()),
+                    dist_root.join("stats.json")?,
                     AssetContent::file(
                         File::from(serde_json::to_string_pretty(&webpack_stats)?).into(),
                     ),

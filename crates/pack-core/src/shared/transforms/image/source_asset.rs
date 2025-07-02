@@ -2,7 +2,7 @@ use std::io::Write;
 
 use anyhow::{bail, Result};
 use base64::{display::Base64Display, engine::general_purpose::STANDARD};
-use turbo_rcstr::RcStr;
+use turbo_rcstr::rcstr;
 use turbo_tasks::{ResolvedVc, Vc};
 use turbo_tasks_fs::{rope::RopeBuilder, FileContent};
 use turbopack_core::{
@@ -14,10 +14,6 @@ use turbopack_ecmascript::utils::StringifyJs;
 use turbopack_image::process::{get_meta_data, BlurPlaceholderOptions};
 
 use super::module::BlurPlaceholderMode;
-
-fn modifier() -> Vc<RcStr> {
-    Vc::cell("structured image object".into())
-}
 
 #[turbo_tasks::function]
 fn blur_options() -> Vc<BlurPlaceholderOptions> {
@@ -43,7 +39,7 @@ impl Source for StructuredImageFileSource {
     fn ident(&self) -> Vc<AssetIdent> {
         self.image
             .ident()
-            .with_modifier(modifier())
+            .with_modifier(rcstr!("structured image object"))
             .rename_as("*.mjs".into())
     }
 }
@@ -61,9 +57,9 @@ impl Asset for StructuredImageFileSource {
         if let Some(inline_limit) = self.inline_limit {
             if let FileContent::Content(file) = &*content.await? {
                 if (file.content().len() as u64) < inline_limit {
-                    if let Some(ext) = self.image.ident().await?.path.await?.extension_ref() {
+                    if let Some(ext) = self.image.ident().await?.path.extension_ref() {
                         if let Some(mime) = mime_guess::from_ext(ext).first() {
-                            let data = file.content().to_bytes()?;
+                            let data = file.content().to_bytes();
                             let data_url = format!(
                                 "data:{mime};base64,{}",
                                 Base64Display::new(&data, &STANDARD)

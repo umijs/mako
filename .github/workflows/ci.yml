@@ -70,7 +70,7 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: nightly-2025-02-12
+        toolchain: nightly-2025-06-05
         override: true
         components: rustfmt, clippy
 
@@ -78,7 +78,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: fmt
-        toolchain: nightly-2025-02-12
+        toolchain: nightly-2025-06-05
         args: --all -- --check
 
     - name: Lint changed Rust Code

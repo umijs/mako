@@ -19,36 +19,42 @@ use turbopack_core::{
 #[turbo_tasks::function]
 pub async fn emit_assets(
     assets: Vc<OutputAssets>,
-    node_root: Vc<FileSystemPath>,
-    client_relative_path: Vc<FileSystemPath>,
-    client_output_path: Vc<FileSystemPath>,
+    node_root: FileSystemPath,
+    client_relative_path: FileSystemPath,
+    client_output_path: FileSystemPath,
 ) -> Result<()> {
     let _: Vec<Vc<()>> = assets
         .await?
         .iter()
         .copied()
-        .map(|asset| async move {
-            let path = asset.path();
-            let span = tracing::trace_span!("emit asset", name = %path.to_string().await?);
+        .map(|asset| {
+            let node_root = node_root.clone();
+            let client_relative_path = client_relative_path.clone();
+            let client_output_path = client_output_path.clone();
+
             async move {
-                let path = path.await?;
-                Ok(if path.is_inside_ref(&*node_root.await?) {
-                    Some(emit(*asset))
-                } else if path.is_inside_ref(&*client_relative_path.await?) {
-                    // Client assets are emitted to the client output path, which is prefixed
-                    // with _next. We need to rebase them to remove that
-                    // prefix.
-                    Some(emit_rebase(
-                        *asset,
-                        client_relative_path,
-                        client_output_path,
-                    ))
-                } else {
-                    None
-                })
+                let path = asset.path();
+                let span = tracing::trace_span!("emit asset", name = %path.to_string().await?);
+                async move {
+                    let path = path.await?;
+                    Ok(if path.is_inside_ref(&node_root) {
+                        Some(emit(*asset))
+                    } else if path.is_inside_ref(&client_relative_path) {
+                        // Client assets are emitted to the client output path, which is prefixed
+                        // with _next. We need to rebase them to remove that
+                        // prefix.
+                        Some(emit_rebase(
+                            *asset,
+                            client_relative_path,
+                            client_output_path,
+                        ))
+                    } else {
+                        None
+                    })
+                }
+                .instrument(span)
+                .await
             }
-            .instrument(span)
-            .await
         })
         .try_flat_join()
         .await?;
@@ -57,22 +63,26 @@ pub async fn emit_assets(
 
 #[turbo_tasks::function]
 async fn emit(asset: Vc<Box<dyn OutputAsset>>) -> Result<()> {
-    let _ = asset.content().write(asset.path()).resolve().await?;
+    let _ = asset
+        .content()
+        .write(asset.path().await?.clone_value())
+        .resolve()
+        .await?;
     Ok(())
 }
 
 #[turbo_tasks::function]
 async fn emit_rebase(
     asset: Vc<Box<dyn OutputAsset>>,
-    from: Vc<FileSystemPath>,
-    to: Vc<FileSystemPath>,
+    from: FileSystemPath,
+    to: FileSystemPath,
 ) -> Result<()> {
-    let path = rebase(asset.path(), from, to);
+    let path = rebase(asset.path().await?.clone_value(), from, to);
     let content = asset.content();
     let _ = content
         .resolve()
         .await?
-        .write(path.resolve().await?)
+        .write(path.await?.clone_value())
         .resolve()
         .await?;
     Ok(())

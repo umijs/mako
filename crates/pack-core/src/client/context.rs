@@ -1,8 +1,8 @@
-use std::iter::once;
+use std::{iter::once, str::FromStr};
 
 use anyhow::Result;
-use turbo_rcstr::RcStr;
-use turbo_tasks::{FxIndexMap, ResolvedVc, TryJoinIterExt, Value, ValueToString, Vc};
+use turbo_rcstr::{rcstr, RcStr};
+use turbo_tasks::{FxIndexMap, ResolvedVc, TryJoinIterExt, ValueToString, Vc};
 use turbo_tasks_env::EnvMap;
 use turbo_tasks_fs::FileSystemPath;
 use turbopack::{
@@ -79,11 +79,10 @@ fn defines(define_env: &FxIndexMap<RcStr, RcStr>) -> CompileTimeDefines {
                     .collect::<Vec<_>>(),
             )
             .or_insert_with(|| {
-                let val = serde_json::from_str(v);
+                let val = serde_json::Value::from_str(v);
                 match val {
-                    Ok(serde_json::Value::Bool(v)) => CompileTimeDefineValue::Bool(v),
-                    Ok(serde_json::Value::String(v)) => CompileTimeDefineValue::String(v.into()),
-                    _ => CompileTimeDefineValue::JSON(v.clone()),
+                    Ok(v) => v.into(),
+                    _ => CompileTimeDefineValue::Evaluate(v.clone()),
                 }
             });
     }
@@ -131,7 +130,7 @@ pub async fn get_client_compile_time_info(
     let define_env = Vc::cell(define_env);
 
     CompileTimeInfo::builder(
-        Environment::new(Value::new(ExecutionEnvironment::Browser(
+        Environment::new(ExecutionEnvironment::Browser(
             BrowserEnvironment {
                 dom: true,
                 web_worker: false,
@@ -139,7 +138,7 @@ pub async fn get_client_compile_time_info(
                 browserslist_query: browserslist_query.to_owned(),
             }
             .resolved_cell(),
-        )))
+        ))
         .to_resolved()
         .await?,
     )
@@ -151,7 +150,7 @@ pub async fn get_client_compile_time_info(
 
 #[turbo_tasks::function]
 pub async fn get_client_runtime_entries(
-    project_root: Vc<FileSystemPath>,
+    project_root: FileSystemPath,
     mode: Vc<Mode>,
     config: Vc<Config>,
     execution_context: Vc<ExecutionContext>,
@@ -159,13 +158,13 @@ pub async fn get_client_runtime_entries(
 ) -> Result<Vc<RuntimeEntries>> {
     let mut runtime_entries = vec![];
     let resolve_options_context =
-        get_client_resolve_options_context(project_root, mode, config, execution_context);
+        get_client_resolve_options_context(project_root.clone(), mode, config, execution_context);
 
     let watch = *watch.await?;
 
     if watch && mode.await?.is_development() {
         let enable_react_refresh =
-            assert_can_resolve_react_refresh(project_root, resolve_options_context)
+            assert_can_resolve_react_refresh(project_root.clone(), resolve_options_context)
                 .await?
                 .as_request();
 
@@ -174,20 +173,21 @@ pub async fn get_client_runtime_entries(
         // functions to be available.
         if let Some(request) = enable_react_refresh {
             runtime_entries.push(
-                RuntimeEntry::Request(
-                    request.to_resolved().await?,
-                    project_root.join("_".into()).to_resolved().await?,
-                )
-                .resolved_cell(),
+                RuntimeEntry::Request(request.to_resolved().await?, project_root.join("_")?)
+                    .resolved_cell(),
             )
         };
 
         if watch {
             runtime_entries.push(
                 RuntimeEntry::Source(ResolvedVc::upcast(
-                    FileSource::new(embed_file_path("hmr/bootstrap.ts".into()))
-                        .to_resolved()
-                        .await?,
+                    FileSource::new(
+                        embed_file_path(rcstr!("hmr/bootstrap.ts"))
+                            .await?
+                            .clone_value(),
+                    )
+                    .to_resolved()
+                    .await?,
                 ))
                 .resolved_cell(),
             );
@@ -199,7 +199,7 @@ pub async fn get_client_runtime_entries(
 
 #[turbo_tasks::function]
 pub async fn get_client_module_options_context(
-    project_path: ResolvedVc<FileSystemPath>,
+    project_path: FileSystemPath,
     execution_context: ResolvedVc<ExecutionContext>,
     env: ResolvedVc<Environment>,
     mode: Vc<Mode>,
@@ -212,15 +212,15 @@ pub async fn get_client_module_options_context(
 
     // resolve context
     let resolve_options_context =
-        get_client_resolve_options_context(*project_path, mode, config, *execution_context);
+        get_client_resolve_options_context(project_path.clone(), mode, config, *execution_context);
 
-    let tsconfig = get_typescript_transform_options(*project_path)
+    let tsconfig = get_typescript_transform_options(project_path.clone())
         .to_resolved()
         .await?;
-    let decorators_options = get_decorators_transform_options(*project_path);
+    let decorators_options = get_decorators_transform_options(project_path.clone());
     let enable_mdx_rs = *config.mdx_rs().await?;
     let jsx_runtime_options = get_jsx_transform_options(
-        *project_path,
+        project_path.clone(),
         mode,
         Some(resolve_options_context),
         false,
@@ -236,7 +236,7 @@ pub async fn get_client_module_options_context(
     // does by default.
     let conditions = vec!["browser".into(), mode.await?.condition().into()];
     let foreign_enable_webpack_loaders = webpack_loader_options(
-        project_path,
+        project_path.clone(),
         config,
         conditions
             .iter()
@@ -247,7 +247,8 @@ pub async fn get_client_module_options_context(
     .await?;
 
     // Now creates a webpack rules that applies to all codes.
-    let enable_webpack_loaders = webpack_loader_options(project_path, config, conditions).await?;
+    let enable_webpack_loaders =
+        webpack_loader_options(project_path.clone(), config, conditions).await?;
 
     let tree_shaking_mode_for_user_code = *config
         .tree_shaking_mode_for_user_code(mode_ref.is_development())
@@ -260,7 +261,7 @@ pub async fn get_client_module_options_context(
     let mut client_rules = get_client_transforms_rules(config).await?;
     let foreign_client_rules = get_client_transforms_rules(config).await?;
     let additional_rules: Vec<ModuleRule> = vec![
-        get_swc_ecma_transform_plugin_rule(config, project_path).await?,
+        get_swc_ecma_transform_plugin_rule(config, project_path.clone()).await?,
         get_emotion_transform_rule(config).await?,
         get_styled_components_transform_rule(config).await?,
         get_styled_jsx_transform_rule(config, target_browsers).await?,
@@ -309,7 +310,6 @@ pub async fn get_client_module_options_context(
             },
             ..Default::default()
         },
-        preset_env_versions: Some(env),
         execution_context: Some(execution_context),
         tree_shaking_mode: tree_shaking_mode_for_user_code,
         enable_postcss_transform,
@@ -385,29 +385,33 @@ pub async fn get_client_module_options_context(
 
 #[turbo_tasks::function]
 pub async fn get_client_resolve_options_context(
-    project_path: ResolvedVc<FileSystemPath>,
+    project_path: FileSystemPath,
     mode: Vc<Mode>,
     config: Vc<Config>,
     execution_context: Vc<ExecutionContext>,
 ) -> Result<Vc<ResolveOptionsContext>> {
-    let client_import_map = get_client_import_map(*project_path, config, execution_context)
+    let client_import_map = get_client_import_map(project_path.clone(), config, execution_context)
         .to_resolved()
         .await?;
     let client_fallback_import_map = get_client_fallback_import_map().to_resolved().await?;
-    let client_resolved_map = get_client_resolved_map(*project_path, project_path, *mode.await?)
-        .to_resolved()
-        .await?;
-
-    let external_config = *config.externals_config().to_resolved().await?;
-
-    let externals_plugin =
-        ExternalsPlugin::new(*project_path, project_path.root(), external_config)
+    let client_resolved_map =
+        get_client_resolved_map(project_path.clone(), project_path.clone(), *mode.await?)
             .to_resolved()
             .await?;
 
+    let external_config = *config.externals_config().to_resolved().await?;
+
+    let externals_plugin = ExternalsPlugin::new(
+        project_path.clone(),
+        project_path.root().await?.clone_value(),
+        external_config,
+    )
+    .to_resolved()
+    .await?;
+
     let custom_conditions = vec![mode.await?.condition().into()];
     let resolve_options_context = ResolveOptionsContext {
-        enable_node_modules: Some(project_path.root().to_resolved().await?),
+        enable_node_modules: Some(project_path.root().await?.clone_value()),
         custom_conditions,
         import_map: Some(client_import_map),
         fallback_import_map: Some(client_fallback_import_map),
@@ -434,10 +438,10 @@ pub async fn get_client_resolve_options_context(
 
 #[turbo_tasks::function]
 pub async fn get_client_chunking_context(
-    root_path: ResolvedVc<FileSystemPath>,
-    output_root: ResolvedVc<FileSystemPath>,
-    output_root_to_root_path: ResolvedVc<RcStr>,
-    chunk_base_path: ResolvedVc<Option<RcStr>>,
+    root_path: FileSystemPath,
+    output_root: FileSystemPath,
+    output_root_to_root_path: RcStr,
+    chunk_base_path: Option<RcStr>,
     environment: ResolvedVc<Environment>,
     mode: Vc<Mode>,
     module_id_strategy: ResolvedVc<Box<dyn ModuleIdStrategy>>,
@@ -448,10 +452,10 @@ pub async fn get_client_chunking_context(
     let mode = mode.await?;
     let mut builder = BrowserChunkingContext::builder(
         root_path,
-        output_root,
+        output_root.clone(),
         output_root_to_root_path,
-        output_root,
-        output_root,
+        output_root.clone(),
+        output_root.clone(),
         output_root,
         environment,
         mode.runtime_type(),

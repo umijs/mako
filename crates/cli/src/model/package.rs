@@ -170,7 +170,7 @@ impl PackageInfo {
             let global_bin_str = global_bin_dir.to_string_lossy().to_string();
             if !current_path.contains(&global_bin_str) {
                 let new_path = format!("{}:{}", global_bin_str, current_path);
-                env::set_var("PATH", new_path);
+                unsafe { env::set_var("PATH", new_path) };
                 log_verbose("Updated PATH environment variable");
             }
         }

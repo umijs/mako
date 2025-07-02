@@ -1,6 +1,6 @@
 use anyhow::Result;
 use turbo_esregex::EsRegex;
-use turbo_tasks::{ResolvedVc, Value, Vc};
+use turbo_tasks::{ResolvedVc, Vc};
 use turbo_tasks_fs::{self, glob::Glob, FileSystemPath};
 use turbopack_core::{
     reference_type::ReferenceType,
@@ -105,8 +105,8 @@ fn to_snake_case(input: &str) -> String {
 
 #[turbo_tasks::value]
 pub struct ExternalsPlugin {
-    project_path: ResolvedVc<FileSystemPath>,
-    root: ResolvedVc<FileSystemPath>,
+    project_path: FileSystemPath,
+    root: FileSystemPath,
     externals_config: ResolvedVc<ExternalsConfig>,
 }
 
@@ -114,8 +114,8 @@ pub struct ExternalsPlugin {
 impl ExternalsPlugin {
     #[turbo_tasks::function]
     pub fn new(
-        project_path: ResolvedVc<FileSystemPath>,
-        root: ResolvedVc<FileSystemPath>,
+        project_path: FileSystemPath,
+        root: FileSystemPath,
         externals_config: ResolvedVc<ExternalsConfig>,
     ) -> Vc<Self> {
         ExternalsPlugin {
@@ -137,8 +137,8 @@ impl BeforeResolvePlugin for ExternalsPlugin {
     #[turbo_tasks::function]
     async fn before_resolve(
         &self,
-        _lookup_path: ResolvedVc<FileSystemPath>,
-        _reference_type: Value<ReferenceType>,
+        _lookup_path: FileSystemPath,
+        _reference_type: ReferenceType,
         request: Vc<Request>,
     ) -> Result<Vc<ResolveResultOption>> {
         let externals_config = self.externals_config.await?;
@@ -232,15 +232,15 @@ impl AfterResolvePlugin for ExternalsPlugin {
     #[turbo_tasks::function]
     fn after_resolve_condition(&self) -> Vc<AfterResolvePluginCondition> {
         // We need to match files in node_modules to handle subpath externals
-        AfterResolvePluginCondition::new(*self.root, Glob::new("**/node_modules/**".into()))
+        AfterResolvePluginCondition::new(self.root.clone(), Glob::new("**/node_modules/**".into()))
     }
 
     #[turbo_tasks::function]
     async fn after_resolve(
         &self,
-        _fs_path: ResolvedVc<FileSystemPath>,
-        _lookup_path: ResolvedVc<FileSystemPath>,
-        _reference_type: Value<ReferenceType>,
+        _fs_path: FileSystemPath,
+        _lookup_path: FileSystemPath,
+        _reference_type: ReferenceType,
         request: ResolvedVc<Request>,
     ) -> Result<Vc<ResolveResultOption>> {
         tracing::debug!("execute externals plugins after resolve");

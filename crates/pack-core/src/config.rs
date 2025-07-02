@@ -8,15 +8,10 @@ use turbo_tasks::{
     ResolvedVc, Vc,
 };
 use turbo_tasks_env::EnvMap;
-use turbo_tasks_fs::FileSystemPath;
 use turbopack::module_options::{
     module_options_context::MdxTransformOptions, LoaderRuleItem, OptionWebpackRules,
 };
-use turbopack_core::{
-    chunk::ChunkingConfig,
-    issue::{Issue, IssueSeverity, IssueStage, OptionStyledString, StyledString},
-    resolve::ResolveAliasMap,
-};
+use turbopack_core::{chunk::ChunkingConfig, resolve::ResolveAliasMap};
 use turbopack_ecmascript::{OptionTreeShaking, TreeShakingMode};
 use turbopack_ecmascript_plugins::transform::{
     emotion::EmotionTransformConfig, styled_components::StyledComponentsTransformConfig,
@@ -1145,49 +1140,6 @@ impl Config {
     #[turbo_tasks::function]
     pub fn stats(&self) -> Vc<bool> {
         Vc::cell(self.stats.unwrap_or(false))
-    }
-}
-
-#[turbo_tasks::value]
-struct OutdatedConfigIssue {
-    path: ResolvedVc<FileSystemPath>,
-    old_name: RcStr,
-    new_name: RcStr,
-    description: RcStr,
-}
-
-#[turbo_tasks::value_impl]
-impl Issue for OutdatedConfigIssue {
-    #[turbo_tasks::function]
-    fn severity(&self) -> Vc<IssueSeverity> {
-        IssueSeverity::Error.into()
-    }
-
-    #[turbo_tasks::function]
-    fn stage(&self) -> Vc<IssueStage> {
-        IssueStage::Config.into()
-    }
-
-    #[turbo_tasks::function]
-    fn file_path(&self) -> Vc<FileSystemPath> {
-        *self.path
-    }
-
-    #[turbo_tasks::function]
-    fn title(&self) -> Vc<StyledString> {
-        StyledString::Line(vec![
-            StyledString::Code(self.old_name.clone()),
-            StyledString::Text(" has been replaced by ".into()),
-            StyledString::Code(self.new_name.clone()),
-        ])
-        .cell()
-    }
-
-    #[turbo_tasks::function]
-    fn description(&self) -> Vc<OptionStyledString> {
-        Vc::cell(Some(
-            StyledString::Text(self.description.clone()).resolved_cell(),
-        ))
     }
 }
 
