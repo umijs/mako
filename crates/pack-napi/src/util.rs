@@ -54,17 +54,16 @@ static PANIC_LOG: LazyLock<PathBuf> = LazyLock::new(|| {
 pub fn log_internal_error_and_inform(err_info: &str) {
     // hold open this mutex guard to prevent concurrent writes to the file!
     let mut last_error_time = LOG_THROTTLE.lock().unwrap();
-    if let Some(last_error_time) = last_error_time.as_ref() {
-        if last_error_time.elapsed().as_secs() < 1 {
+    if let Some(last_error_time) = last_error_time.as_ref()
+        && last_error_time.elapsed().as_secs() < 1 {
             // Throttle panic logging to once per second
             return;
         }
-    }
     *last_error_time = Some(Instant::now());
 
     let size = std::fs::metadata(PANIC_LOG.as_path()).map(|m| m.len());
-    if let Ok(size) = size {
-        if size > 512 * 1024 {
+    if let Ok(size) = size
+        && size > 512 * 1024 {
             // Truncate the earliest error from log file if it's larger than 512KB
             let new_lines = {
                 let log_read = OpenOptions::new()
@@ -92,7 +91,7 @@ pub fn log_internal_error_and_inform(err_info: &str) {
             for line in new_lines {
                 match line {
                     Ok(line) => {
-                        writeln!(log_write, "{}", line).unwrap();
+                        writeln!(log_write, "{line}").unwrap();
                     }
                     Err(_) => {
                         break;
@@ -100,7 +99,6 @@ pub fn log_internal_error_and_inform(err_info: &str) {
                 }
             }
         }
-    }
 
     let mut log_file = OpenOptions::new()
         .create(true)
@@ -108,14 +106,14 @@ pub fn log_internal_error_and_inform(err_info: &str) {
         .open(PANIC_LOG.as_path())
         .unwrap_or_else(|_| panic!("Failed to open {}", PANIC_LOG.to_string_lossy()));
 
-    writeln!(log_file, "{}\n{}", LOG_DIVIDER, err_info).unwrap();
+    writeln!(log_file, "{LOG_DIVIDER}\n{err_info}").unwrap();
     eprintln!("{}: An unexpected Turbopack error occurred. Please report the content of {}, along with a description of what you were doing when the error occurred, to https://github.com/umijs/mako/issues/new?template=1.bug_report.yml", "FATAL".red().bold(), PANIC_LOG.to_string_lossy());
 }
 
 pub trait MapErr<T>: Into<Result<T, anyhow::Error>> {
     fn convert_err(self) -> napi::Result<T> {
         self.into()
-            .map_err(|err| napi::Error::new(Status::GenericFailure, format!("{:?}", err)))
+            .map_err(|err| napi::Error::new(Status::GenericFailure, format!("{err:?}")))
     }
 }
 

@@ -185,8 +185,8 @@ impl Node {
         }
 
         // Apply override rules if exists
-        if let Some(root) = root {
-            if let Some(overrides) = &root.overrides {
+        if let Some(root) = root
+            && let Some(overrides) = &root.overrides {
                 // Collect parent chain information
                 let mut parent_chain = Vec::new();
                 let mut current_node = edge.from.parent.read().unwrap().clone();
@@ -213,7 +213,6 @@ impl Node {
                     }
                 }
             }
-        }
 
         let mut edges = self.edges_out.write().unwrap();
         edges.push(edge);
@@ -326,11 +325,10 @@ impl std::fmt::Display for Node {
         write!(f, "{}@{}", self.name, self.version)?;
 
         // stdout parent
-        if !self.is_root {
-            if let Some(parent) = self.parent.read().unwrap().as_ref() {
-                write!(f, " <- {}", parent)?;
+        if !self.is_root
+            && let Some(parent) = self.parent.read().unwrap().as_ref() {
+                write!(f, " <- {parent}")?;
             }
-        }
 
         Ok(())
     }

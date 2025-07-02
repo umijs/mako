@@ -57,7 +57,7 @@ impl ScriptService {
                     }
                 }
             }
-            log_verbose(&format!("Executing command: {:?}", cmd));
+            log_verbose(&format!("Executing command: {cmd:?}"));
 
             let output = tokio::process::Command::from(cmd)
                 .output()
@@ -104,7 +104,7 @@ impl ScriptService {
                 .context(format!("Failed to read file {}", target_path.display()))?;
 
             if !content.starts_with("#!") {
-                content = format!("#!/usr/bin/env node\n{}", content);
+                content = format!("#!/usr/bin/env node\n{content}");
                 fs::write(&target_path, content)
                     .await
                     .context(format!("Failed to write shebang {}", target_path.display()))?;
@@ -126,11 +126,10 @@ impl ScriptService {
 
         while let Some(path) = current_path {
             let bin_path = path.join("node_modules/.bin");
-            if bin_path.exists() {
-                if let Ok(absolute_path) = std::fs::canonicalize(&bin_path) {
+            if bin_path.exists()
+                && let Ok(absolute_path) = std::fs::canonicalize(&bin_path) {
                     bin_paths.push(absolute_path);
                 }
-            }
             current_path = path.parent();
         }
 

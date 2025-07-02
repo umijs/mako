@@ -214,13 +214,11 @@ pub async fn validate_directory(src: &Path, dst: &Path) -> Result<bool> {
         let mut read_dir = fs::read_dir(dir).await?;
 
         while let Some(entry) = read_dir.next_entry().await? {
-            if let Some(ignore_list) = ignore {
-                if let Some(file_name) = entry.path().file_name() {
-                    if ignore_list.contains(&file_name.to_str().unwrap_or_default()) {
+            if let Some(ignore_list) = ignore
+                && let Some(file_name) = entry.path().file_name()
+                    && ignore_list.contains(&file_name.to_str().unwrap_or_default()) {
                         continue;
                     }
-                }
-            }
 
             let metadata = entry.metadata().await?;
             entries.push(EntryInfo {
@@ -286,15 +284,12 @@ pub async fn validate_directory(src: &Path, dst: &Path) -> Result<bool> {
 pub async fn find_real_src<P: AsRef<Path>>(src: P) -> Option<PathBuf> {
     let mut read_dir = fs::read_dir(src.as_ref()).await.ok()?;
     while let Some(entry) = read_dir.next_entry().await.ok()? {
-        if let Ok(metadata) = entry.metadata().await {
-            if metadata.is_dir() {
-                if let Some(name) = entry.path().file_name() {
-                    if name.to_str().unwrap_or_default() != ".utoo_builded" {
+        if let Ok(metadata) = entry.metadata().await
+            && metadata.is_dir()
+                && let Some(name) = entry.path().file_name()
+                    && name.to_str().unwrap_or_default() != ".utoo_builded" {
                         return Some(entry.path());
                     }
-                }
-            }
-        }
     }
     None
 }
@@ -316,7 +311,7 @@ pub async fn clone(src: &Path, dst: &Path, find_real: bool) -> Result<()> {
             ));
             return Ok(());
         } else {
-            log_verbose(&format!("{:?} --> {:?} overrides", real_src, dst));
+            log_verbose(&format!("{real_src:?} --> {dst:?} overrides"));
             if let Err(e) = fs::remove_dir_all(dst).await {
                 log_warning(&format!(
                     "Failed to clean target directory {}: {}",

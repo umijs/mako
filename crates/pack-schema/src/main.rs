@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Write the schema to file
     fs::write(output_path, schema_string)?;
 
-    println!("✅ JSON Schema generated successfully at: {}", output_path);
+    println!("✅ JSON Schema generated successfully at: {output_path}");
 
     Ok(())
 }

@@ -39,13 +39,12 @@ impl<T: Clone + Debug + 'static> ConfigValue<T> {
         }
 
         // load from utoo-core config
-        if let Ok(config) = Config::load(false) {
-            if let Ok(Some(value)) = config.get(self.key) {
+        if let Ok(config) = Config::load(false)
+            && let Ok(Some(value)) = config.get(self.key) {
                 let parsed_value = self.parse_config_value(&value);
                 let _ = self.value.set(parsed_value.clone());
                 return parsed_value;
             }
-        }
 
         self.default.clone()
     }

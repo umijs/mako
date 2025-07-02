@@ -1100,11 +1100,11 @@ impl Project {
             project_dir_name
         };
         if import_path.starts_with(MAIN_SEPARATOR) {
-            let pattern = format!("{}{}{}", MAIN_SEPARATOR, project_dir_name, MAIN_SEPARATOR);
+            let pattern = format!("{MAIN_SEPARATOR}{project_dir_name}{MAIN_SEPARATOR}");
             if let Some(pos) = import_path.find(&pattern) {
                 let relative_part = &import_path[pos + pattern.len()..];
                 if !relative_part.is_empty() {
-                    let relative_import = format!(".{}{}", MAIN_SEPARATOR, relative_part);
+                    let relative_import = format!(".{MAIN_SEPARATOR}{relative_part}");
                     Ok(Vc::cell(relative_import.into()))
                 } else {
                     bail!("Invalid import path: {}", import_path)

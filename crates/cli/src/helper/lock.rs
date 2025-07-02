@@ -122,7 +122,7 @@ pub async fn update_package_json(
     };
 
     let version_to_write = match version_spec {
-        spec if spec.is_empty() || spec == "*" || spec == "latest" => format!("^{}", version),
+        spec if spec.is_empty() || spec == "*" || spec == "latest" => format!("^{version}"),
         spec => spec.to_string(),
     };
 
@@ -236,12 +236,11 @@ pub async fn prepare_global_package_json(
     package_obj.remove("devDependencies");
 
     // Remove scripts.prepare if it exists
-    if let Some(scripts) = package_obj.get_mut("scripts") {
-        if let Some(scripts_obj) = scripts.as_object_mut() {
+    if let Some(scripts) = package_obj.get_mut("scripts")
+        && let Some(scripts_obj) = scripts.as_object_mut() {
             scripts_obj.remove("prepare");
             scripts_obj.remove("prepublish");
         }
-    }
 
     // Write back the modified package.json
     fs::write(
@@ -302,8 +301,7 @@ pub async fn is_pkg_lock_outdated(root_path: &Path) -> Result<bool> {
             None => {
                 let name = if path.is_empty() { "root" } else { &path };
                 log_warning(&format!(
-                    "package-lock.json is outdated, new workspace {} not found",
-                    name
+                    "package-lock.json is outdated, new workspace {name} not found"
                 ));
                 return Ok(true);
             }
@@ -314,8 +312,7 @@ pub async fn is_pkg_lock_outdated(root_path: &Path) -> Result<bool> {
             if !deps_fields_equal(pkg.get(dep_field), lock.get(dep_field)) {
                 let name = if path.is_empty() { "root" } else { &path };
                 log_warning(&format!(
-                    "package-lock.json is outdated, {} {} changed",
-                    name, dep_field
+                    "package-lock.json is outdated, {name} {dep_field} changed"
                 ));
                 return Ok(true);
             }
@@ -351,15 +348,13 @@ pub async fn validate_deps(
                         let mut current_path = String::from(pkg_path);
 
                         while !current_path.is_empty() {
-                            if let Some(pkg_info) = packages.get(&current_path) {
-                                if let Some(name) = pkg_info.get("name").and_then(|n| n.as_str()) {
-                                    if let Some(version) =
+                            if let Some(pkg_info) = packages.get(&current_path)
+                                && let Some(name) = pkg_info.get("name").and_then(|n| n.as_str())
+                                    && let Some(version) =
                                         pkg_info.get("version").and_then(|v| v.as_str())
                                     {
                                         parent_chain.push((name.to_string(), version.to_string()));
                                     }
-                                }
-                            }
 
                             if let Some(last_modules) = current_path.rfind("/node_modules/") {
                                 current_path = current_path[..last_modules].to_string();
@@ -394,9 +389,9 @@ pub async fn validate_deps(
                         // until root or found
                         loop {
                             let search_path = if current_path.is_empty() {
-                                format!("node_modules/{}", dep_name)
+                                format!("node_modules/{dep_name}")
                             } else {
-                                format!("{}/node_modules/{}", current_path, dep_name)
+                                format!("{current_path}/node_modules/{dep_name}")
                             };
 
                             if let Some(info) = packages.get(&search_path) {
@@ -422,38 +417,31 @@ pub async fn validate_deps(
                         if let Some(dep_info) = dep_info {
                             if let Some(actual_version) =
                                 dep_info.get("version").and_then(|v| v.as_str())
-                            {
-                                if !semver::matches(&effective_req_version, actual_version) {
+                                && !semver::matches(&effective_req_version, actual_version) {
                                     if let Some(resolved_dep) = resolve_dependency(
                                         dep_name,
                                         &effective_req_version,
                                         &EdgeType::Optional,
                                     )
                                     .await?
-                                    {
-                                        if resolved_dep.version == actual_version {
+                                        && resolved_dep.version == actual_version {
                                             log_verbose(&format!(
-                                                "Package {} {} dependency {} (required version: {}, effective version: {}) hit bug-version {}@{}",
-                                                pkg_path, dep_field, dep_name, req_version_str, effective_req_version, current_path, actual_version
+                                                "Package {pkg_path} {dep_field} dependency {dep_name} (required version: {req_version_str}, effective version: {effective_req_version}) hit bug-version {current_path}@{actual_version}"
                                             ));
                                             continue;
                                         }
-                                    }
 
                                     log_warning(&format!(
-                                        "Package {} {} dependency {} (required version: {}, effective version: {}) does not match actual version {}@{}",
-                                        pkg_path, dep_field, dep_name, req_version_str, effective_req_version, current_path, actual_version
+                                        "Package {pkg_path} {dep_field} dependency {dep_name} (required version: {req_version_str}, effective version: {effective_req_version}) does not match actual version {current_path}@{actual_version}"
                                     ));
                                     invalid_deps.push(InvalidDependency {
                                         package_path: pkg_path.clone(),
                                         dependency_name: dep_name.clone(),
                                     });
                                 }
-                            }
                         } else if !is_optional {
                             log_verbose(&format!(
-                                "pkg_path {} dep_field {} dep_name {} not found",
-                                pkg_path, dep_field, dep_name
+                                "pkg_path {pkg_path} dep_field {dep_field} dep_name {dep_name} not found"
                             ));
                             invalid_deps.push(InvalidDependency {
                                 package_path: pkg_path.clone(),
@@ -499,8 +487,7 @@ pub async fn write_ideal_tree_to_lock_file(path: &Path, ideal_tree: &Arc<Node>) 
     });
 
     log_info(&format!(
-        "Total {} dependencies after merging",
-        total_packages
+        "Total {total_packages} dependencies after merging"
     ));
 
     // Write to temporary file first, then atomically move to target location
@@ -651,11 +638,10 @@ fn add_package_fields(pkg_info: &mut Value, node: &Arc<Node>) {
     let fields = get_package_fields(node);
 
     for field in fields {
-        if let Some(field_value) = node.package.get(field) {
-            if should_include_field(field_value) {
+        if let Some(field_value) = node.package.get(field)
+            && should_include_field(field_value) {
                 pkg_info[field] = field_value.clone();
             }
-        }
     }
 }
 

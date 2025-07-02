@@ -64,9 +64,9 @@ use super::{
 use crate::{register, util::DhatProfilerGuard};
 
 static SOURCE_MAP_PREFIX: LazyLock<String> =
-    LazyLock::new(|| format!("{}///", SOURCE_URL_PROTOCOL));
+    LazyLock::new(|| format!("{SOURCE_URL_PROTOCOL}///"));
 static SOURCE_MAP_PREFIX_PROJECT: LazyLock<String> =
-    LazyLock::new(|| format!("{}///[{}]/", SOURCE_URL_PROTOCOL, PROJECT_FILESYSTEM_NAME));
+    LazyLock::new(|| format!("{SOURCE_URL_PROTOCOL}///[{PROJECT_FILESYSTEM_NAME}]/"));
 
 static TRACING_INIT: std::sync::Once = std::sync::Once::new();
 
@@ -577,7 +577,7 @@ pub fn project_hmr_events(
             let outer_identifier = identifier.clone();
             let session = session.clone();
             move || {
-                let identifier: RcStr = outer_identifier.clone().into();
+                let identifier: RcStr = outer_identifier.clone();
                 let session = session.clone();
                 async move {
                     let project = project.project().to_resolved().await?;
@@ -795,7 +795,7 @@ pub fn project_update_info_subscribe(
 
             if !matches!(status, Status::Ok) {
                 let error = anyhow!("Error calling JS function: {}", status);
-                eprintln!("{}", error);
+                eprintln!("{error}");
                 break;
             }
         }

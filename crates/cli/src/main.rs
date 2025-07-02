@@ -171,7 +171,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Handle --version flag
     if cli.version {
-        println!("{}", APP_VERSION);
+        println!("{APP_VERSION}");
         return Ok(());
     }
 

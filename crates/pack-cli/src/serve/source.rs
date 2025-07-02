@@ -95,7 +95,7 @@ pub async fn create_web_entry_source(
     let client_root = project.client_root().await?.clone_value();
 
     let entry_asset = Vc::upcast(DevHtmlAsset::new_with_body(
-        client_root.join("index.html".into())?,
+        client_root.join("index.html")?,
         entries,
         // Just add this root node for test
         r#"<div id="root"></div>"#.into(),

@@ -26,7 +26,7 @@ async fn main() {
     let cli = Cli::parse();
 
     if let Err(err) = clean(&cli.pattern).await {
-        eprintln!("Error: {}", err);
+        eprintln!("Error: {err}");
         process::exit(1);
     }
 }

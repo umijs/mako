@@ -57,15 +57,14 @@ async fn clean_symlink(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 
 /// Clean up a directory, handling scoped packages and legacy npm install packages
 async fn clean_directory(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    if let Some(file_name) = path.file_name() {
-        if let Some(name) = file_name.to_str() {
+    if let Some(file_name) = path.file_name()
+        && let Some(name) = file_name.to_str() {
             if name.starts_with('@') {
                 clean_scoped_package(path).await?;
             } else {
                 clean_legacy_npminstall_package(path, name).await?;
             }
         }
-    }
     Ok(())
 }
 
@@ -131,10 +130,10 @@ async fn clean_unused_packages(
             for pattern in patterns.iter() {
                 let pattern_str = pattern.to_string_lossy().to_string();
                 for entry in glob(&pattern_str)
-                    .with_context(|| format!("Glob failed for pattern: {}", pattern_str))?
+                    .with_context(|| format!("Glob failed for pattern: {pattern_str}"))?
                 {
                     let pkg_json_path = entry.with_context(|| {
-                        format!("Glob entry error for pattern: {}", pattern_str)
+                        format!("Glob entry error for pattern: {pattern_str}")
                     })?;
                     let pkg_dir = pkg_json_path
                         .parent()
@@ -148,9 +147,9 @@ async fn clean_unused_packages(
                             )
                         })?;
                         if !valid_packages.contains(pkg_path.to_string_lossy().as_ref()) {
-                            log_verbose(&format!("Cleaning unused package: {}", pkg_name));
+                            log_verbose(&format!("Cleaning unused package: {pkg_name}"));
                             if let Err(e) = tokio::fs::remove_dir_all(pkg_dir).await {
-                                log_verbose(&format!("Failed to remove {}: {}", pkg_name, e));
+                                log_verbose(&format!("Failed to remove {pkg_name}: {e}"));
                             }
                         }
                     }
@@ -179,7 +178,7 @@ async fn clean_deps(
         }
     }
 
-    log_verbose(&format!("Valid packages: {:?}", valid_packages));
+    log_verbose(&format!("Valid packages: {valid_packages:?}"));
 
     let mut node_modules_dirs = vec![cwd.join("node_modules")];
 
@@ -229,19 +228,17 @@ pub async fn install_packages(
                         if link_name.is_empty() {
                             PROGRESS_BAR.inc(1);
                             log_verbose(&format!(
-                                "Link skipped due to empty package name: {}",
-                                path
+                                "Link skipped due to empty package name: {path}"
                             ));
                             log_progress("empty package name link skipped");
                             continue;
                         }
-                        log_verbose(&format!("Attempting to link from {} to {}", resolved, path));
+                        log_verbose(&format!("Attempting to link from {resolved} to {path}"));
                         if let Err(e) = link(Path::new(&resolved), Path::new(&path)) {
                             log_verbose(&format!(
-                                "Link failed: source={}, target={}, error={}",
-                                resolved, path, e
+                                "Link failed: source={resolved}, target={path}, error={e}"
                             ));
-                            return Err(format!("Link failed: {}", e).into());
+                            return Err(format!("Link failed: {e}").into());
                         }
                         PROGRESS_BAR.inc(1);
                         log_progress("resolved link skipped");
@@ -265,8 +262,8 @@ pub async fn install_packages(
 
                     let name = extract_package_name(&path);
                     let version = package.version.as_ref().unwrap();
-                    let cache_path = cache_dir.join(format!("{}/{}", name, version));
-                    let cache_flag_path = cache_dir.join(format!("{}/{}/_resolved", name, version));
+                    let cache_path = cache_dir.join(format!("{name}/{version}"));
+                    let cache_flag_path = cache_dir.join(format!("{name}/{version}/_resolved"));
                     let cwd_clone = cwd.to_path_buf();
                     let should_resolve = !cache_flag_path.exists();
                     let semaphore = Arc::clone(&semaphore);
@@ -274,13 +271,13 @@ pub async fn install_packages(
                     let task = tokio::spawn(async move {
                         let _permit = semaphore.acquire().await.unwrap();
                         if should_resolve {
-                            log_progress(&format!("Downloading {} to {}", path, name));
-                            log_verbose(&format!("Downloading {} to {}", path, name));
+                            log_progress(&format!("Downloading {path} to {name}"));
+                            log_verbose(&format!("Downloading {path} to {name}"));
                             match download(&resolved, &cache_path).await {
                                 Ok(_) => {
-                                    log_progress(&format!("{} downloaded", name));
+                                    log_progress(&format!("{name} downloaded"));
                                     if package.has_install_script.is_some() {
-                                        log_verbose(&format!("{} has install script", name));
+                                        log_verbose(&format!("{name} has install script"));
                                         let has_install_script_flag_path =
                                             cache_path.join("_hasInstallScript");
                                         fs::write(has_install_script_flag_path, "").await?;
@@ -293,21 +290,20 @@ pub async fn install_packages(
                                         cache_path.display(),
                                         e
                                     ));
-                                    return Err(Box::new(std::io::Error::new(
-                                        std::io::ErrorKind::Other,
-                                        format!("{} download failed: {}", name, e),
+                                    return Err(Box::new(std::io::Error::other(
+                                        format!("{name} download failed: {e}"),
                                     ))
                                         as Box<dyn std::error::Error + Send + Sync>);
                                 }
                             }
                         }
 
-                        log_verbose(&format!("{} clone", name));
+                        log_verbose(&format!("{name} clone"));
                         match clone(&cache_path, &cwd_clone.join(&path), true).await {
                             Ok(_) => {
-                                log_verbose(&format!("{} resolved", name));
+                                log_verbose(&format!("{name} resolved"));
                                 PROGRESS_BAR.inc(1);
-                                log_progress(&format!("{} resolved", name));
+                                log_progress(&format!("{name} resolved"));
                                 update_package_binary(&cwd_clone.join(&path), &name).await?;
                                 Ok(())
                             }
@@ -323,7 +319,7 @@ pub async fn install_packages(
                     tasks.push(task);
                 } else {
                     PROGRESS_BAR.inc(1);
-                    log_progress(&format!("{} no resolved info skipped", path));
+                    log_progress(&format!("{path} no resolved info skipped"));
                 }
             }
 
@@ -331,12 +327,12 @@ pub async fn install_packages(
                 match task.await {
                     Ok(Ok(())) => continue,
                     Ok(Err(e)) => {
-                        log_verbose(&format!("Task execution error: {}", e));
-                        return Err(format!("Error during installation: {}", e).into());
+                        log_verbose(&format!("Task execution error: {e}"));
+                        return Err(format!("Error during installation: {e}").into());
                     }
                     Err(e) => {
-                        log_verbose(&format!("Task join error: {}", e));
-                        return Err(format!("Task execution failed: {}", e).into());
+                        log_verbose(&format!("Task join error: {e}"));
+                        return Err(format!("Task execution failed: {e}").into());
                     }
                 }
             }

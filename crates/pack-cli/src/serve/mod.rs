@@ -138,8 +138,8 @@ async fn dev_server_builder() -> Result<DevServerBuilder> {
         let addr = SocketAddr::new(host, current_port);
         let listen_result = DevServer::listen(addr);
 
-        if let Err(e) = &listen_result {
-            if attempts < max_attempts {
+        if let Err(e) = &listen_result
+            && attempts < max_attempts {
                 // Returned error from `listen` is not `std::io::Error` but `anyhow::Error`,
                 // so we need to access its source to check if it is
                 // `std::io::ErrorKind::AddrInUse`.
@@ -162,7 +162,6 @@ async fn dev_server_builder() -> Result<DevServerBuilder> {
                     continue;
                 }
             }
-        }
 
         tracing::info!("listenining on http://{}:{}", host, current_port);
 

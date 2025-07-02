@@ -197,7 +197,7 @@ impl LibraryEndpoint {
         let asset_context = Vc::upcast(self.library_module_context());
         let origin = PlainResolveOrigin::new(
             asset_context,
-            self.project().project_path().await?.join("_".into())?,
+            self.project().project_path().await?.join("_")?,
         );
 
         let ty = ReferenceType::Entry(EntryReferenceSubType::Undefined);

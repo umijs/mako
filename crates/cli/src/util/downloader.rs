@@ -26,8 +26,8 @@ impl std::error::Error for DownloadError {}
 impl std::fmt::Display for DownloadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DownloadError::Permanent(e) => write!(f, "{}", e),
-            DownloadError::Temporary(e) => write!(f, "{}", e),
+            DownloadError::Permanent(e) => write!(f, "{e}"),
+            DownloadError::Temporary(e) => write!(f, "{e}"),
         }
     }
 }
@@ -39,12 +39,12 @@ pub async fn download(url: &str, dest: &Path) -> Result<()> {
         || async {
             let response = reqwest::get(url)
                 .await
-                .map_err(|e| DownloadError::Temporary(format!("Network error: {}", e)))?;
+                .map_err(|e| DownloadError::Temporary(format!("Network error: {e}")))?;
 
             match response.status() {
                 StatusCode::OK => {
                     let bytes = response.bytes().await.map_err(|e| {
-                        DownloadError::Temporary(format!("Failed to read response: {}", e))
+                        DownloadError::Temporary(format!("Failed to read response: {e}"))
                     })?;
                     if let Err(e) = try_unpack(&bytes, dest).await {
                         log_verbose(&format!("Unpacking failed {}: {}", dest.display(), e));
@@ -53,12 +53,12 @@ pub async fn download(url: &str, dest: &Path) -> Result<()> {
                     Ok(())
                 }
                 StatusCode::NOT_FOUND => {
-                    log_verbose(&format!("URL not found {}", url));
-                    Err(DownloadError::Permanent(format!("URL not found {}", url)))
+                    log_verbose(&format!("URL not found {url}"));
+                    Err(DownloadError::Permanent(format!("URL not found {url}")))
                 }
                 status => {
-                    log_verbose(&format!("Error: {}, retrying", status));
-                    Err(DownloadError::Temporary(format!("HTTP error: {}", status)))
+                    log_verbose(&format!("Error: {status}, retrying"));
+                    Err(DownloadError::Temporary(format!("HTTP error: {status}")))
                 }
             }
         },
@@ -69,8 +69,7 @@ pub async fn download(url: &str, dest: &Path) -> Result<()> {
 
     let duration = start.elapsed();
     log_verbose(&format!(
-        "Download task took: {:?}, url: {:?}",
-        duration, url
+        "Download task took: {duration:?}, url: {url:?}"
     ));
     Ok(())
 }
@@ -86,10 +85,10 @@ async fn try_unpack(bytes: &[u8], dest: &Path) -> Result<(), Box<dyn std::error:
         let mut archive = TarArchive::new(tar_gz);
 
         for entry in archive.entries()? {
-            let mut file = entry.map_err(|e| format!("Failed to read file entry: {}", e))?;
+            let mut file = entry.map_err(|e| format!("Failed to read file entry: {e}"))?;
             let path = file
                 .path()
-                .map_err(|e| format!("Failed to parse file path: {}", e))?
+                .map_err(|e| format!("Failed to parse file path: {e}"))?
                 .into_owned();
             let full_path = dest.join(&path);
 

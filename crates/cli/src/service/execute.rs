@@ -8,8 +8,7 @@ use std::process::{Command, Stdio};
 /// Execute a package binary
 pub async fn execute_package(command: &str, args: Vec<String>) -> Result<()> {
     log_verbose(&format!(
-        "Executing command: {} with args: {:?}",
-        command, args
+        "Executing command: {command} with args: {args:?}"
     ));
 
     // First, try to find the binary in local node_modules/.bin directories
@@ -19,7 +18,7 @@ pub async fn execute_package(command: &str, args: Vec<String>) -> Result<()> {
     }
 
     // If not found locally, try to install the package to cache
-    log_verbose(&format!("Command '{}' not found locally", command));
+    log_verbose(&format!("Command '{command}' not found locally"));
 
     // For now, assume the package name is the same as the command
     // This can be enhanced later to handle more complex package/command mappings
@@ -43,8 +42,7 @@ pub async fn execute_package(command: &str, args: Vec<String>) -> Result<()> {
         }
         Ok(None) => {
             log_error(&format!(
-                "No executable found in bin directory for package '{}'",
-                package_name
+                "No executable found in bin directory for package '{package_name}'"
             ));
             log_info("The package might not provide any executables, or the bin directory might be empty");
             Err(anyhow!(
@@ -54,8 +52,7 @@ pub async fn execute_package(command: &str, args: Vec<String>) -> Result<()> {
         }
         Err(e) => {
             log_error(&format!(
-                "Error finding binary for package '{}': {}",
-                package_name, e
+                "Error finding binary for package '{package_name}': {e}"
             ));
             Err(e)
         }

@@ -31,8 +31,7 @@ static CONCURRENCY_LIMITER: Lazy<Arc<Semaphore>> = Lazy::new(|| Arc::new(Semapho
 pub async fn build_deps(root: Arc<Node>) -> Result<()> {
     let legacy_peer_deps = get_legacy_peer_deps();
     log_verbose(&format!(
-        "going to build deps for {}, legacy_peer_deps: {}",
-        root, legacy_peer_deps
+        "going to build deps for {root}, legacy_peer_deps: {legacy_peer_deps}"
     ));
     let current_level = Arc::new(Mutex::new(vec![root.clone()]));
     // Track processed workspace nodes to prevent cycles
@@ -152,8 +151,8 @@ pub async fn build_deps(root: Arc<Node>) -> Result<()> {
                             };
 
                             for (field, edge_type) in dep_types {
-                                if let Some(deps) = new_node.package.get(field) {
-                                    if let Some(deps) = deps.as_object() {
+                                if let Some(deps) = new_node.package.get(field)
+                                    && let Some(deps) = deps.as_object() {
                                         for (name, version) in deps {
                                             let version_spec = version.as_str().unwrap_or("").to_string();
                                             let dep_edge = Edge::new(new_node.clone(), edge_type.clone(), name.clone(), version_spec);
@@ -164,7 +163,6 @@ pub async fn build_deps(root: Arc<Node>) -> Result<()> {
                                             new_node.add_edge(dep_edge).await;
                                         }
                                     }
-                                }
                             }
 
                             next_level.lock().unwrap().push(new_node);
@@ -228,7 +226,7 @@ pub async fn build_deps(root: Arc<Node>) -> Result<()> {
             .map_err(|e| {
                 let err_msg = e
                     .chain()
-                    .map(|err| format!("  {}", err))
+                    .map(|err| format!("  {err}"))
                     .collect::<Vec<_>>()
                     .join("\n");
                 anyhow::anyhow!(err_msg)
@@ -332,7 +330,7 @@ impl Ruborist {
             self.path.clone(),
             pkg.clone(),
         );
-        log_verbose(&format!("root node: {:?}", root));
+        log_verbose(&format!("root node: {root:?}"));
 
         self.init_runtime(root.clone()).await?;
         self.init_workspaces(root.clone()).await?;
@@ -356,10 +354,10 @@ impl Ruborist {
 
         // process deps in root
         for (field, dep_type) in dep_types {
-            if let Some(deps) = pkg.get(field) {
-                if let Some(deps) = deps.as_object() {
+            if let Some(deps) = pkg.get(field)
+                && let Some(deps) = deps.as_object() {
                     for (name, version) in deps {
-                        log_verbose(&format!("{}: {}", name, version));
+                        log_verbose(&format!("{name}: {version}"));
                         let version_spec = version.as_str().unwrap_or("").to_string();
 
                         // create edge
@@ -374,7 +372,6 @@ impl Ruborist {
                         root.add_edge(edge).await;
                     }
                 }
-            }
         }
 
         Ok(root)
@@ -384,7 +381,7 @@ impl Ruborist {
         let workspaces = find_workspaces(&self.path).await.map_err(|e| {
             let err_msg = e
                 .chain()
-                .map(|err| format!("  {}", err))
+                .map(|err| format!("  {err}"))
                 .collect::<Vec<_>>()
                 .join("\n");
             anyhow::anyhow!(err_msg)
@@ -453,8 +450,8 @@ impl Ruborist {
             };
 
             for (field, edge_type) in dep_types {
-                if let Some(deps) = workspace_node.package.get(field) {
-                    if let Some(deps) = deps.as_object() {
+                if let Some(deps) = workspace_node.package.get(field)
+                    && let Some(deps) = deps.as_object() {
                         for (name, version) in deps {
                             let version_spec = version.as_str().unwrap_or("").to_string();
                             let dep_edge = Edge::new(
@@ -470,7 +467,6 @@ impl Ruborist {
                             workspace_node.add_edge(dep_edge).await;
                         }
                     }
-                }
             }
         }
 
@@ -599,7 +595,7 @@ impl Ruborist {
     }
 
     pub async fn replace_deps(&self, node: Arc<Node>) -> Result<()> {
-        log_verbose(&format!("going to replace node {}", node));
+        log_verbose(&format!("going to replace node {node}"));
         // 1. remove from parent node
         if let Some(parent) = node.parent.read().unwrap().as_ref() {
             let mut parent_children = parent.children.write().unwrap();
@@ -673,8 +669,8 @@ impl Ruborist {
 }
 
 async fn add_dependency_edge(node: &Arc<Node>, field: &str, edge_type: EdgeType) {
-    if let Some(deps) = node.package.get(field) {
-        if let Some(deps) = deps.as_object() {
+    if let Some(deps) = node.package.get(field)
+        && let Some(deps) = deps.as_object() {
             for (name, version) in deps {
                 let version_spec = version.as_str().unwrap_or("").to_string();
                 let dep_edge =
@@ -683,7 +679,6 @@ async fn add_dependency_edge(node: &Arc<Node>, field: &str, edge_type: EdgeType)
                 node.add_edge(dep_edge).await;
             }
         }
-    }
 }
 
 #[cfg(test)]

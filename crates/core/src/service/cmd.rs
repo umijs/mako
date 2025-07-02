@@ -62,7 +62,7 @@ impl CommandService {
             .config
             .get("registry")?
             .unwrap_or_else(|| "https://registry.npmmirror.com".to_string());
-        println!("  Registry:      {}", registry);
+        println!("  Registry:      {registry}");
         println!();
         println!("{}", "Commands:".bold());
 
@@ -133,13 +133,13 @@ impl CommandService {
 
         // First try to find specific command
         let (aliased_command, is_wildcard) =
-            if let Some(cmd) = self.config.get(&format!("{}.cmd", command_name))? {
+            if let Some(cmd) = self.config.get(&format!("{command_name}.cmd"))? {
                 (cmd, false)
             } else if let Some(cmd) = self.config.get("*.cmd")? {
                 (cmd.replace("*", command_name), true)
             } else {
                 // Default to utoo if no wildcard command is configured
-                (format!("utoo {}", command_name), true)
+                (format!("utoo {command_name}"), true)
             };
 
         // Split the aliased command into parts

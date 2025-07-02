@@ -81,7 +81,7 @@ pub async fn install(ignore_scripts: bool, root_path: &Path) -> Result<()> {
         .map(|n| n.get() * 2)
         .unwrap_or(20)
         .max(20);
-    log_verbose(&format!("Setting concurrent limit to {}", concurrent_limit));
+    log_verbose(&format!("Setting concurrent limit to {concurrent_limit}"));
     let semaphore = Arc::new(Semaphore::new(concurrent_limit));
 
     install_packages(&groups, &cache_dir, root_path, semaphore)
@@ -109,7 +109,7 @@ pub async fn install_global_package(npm_spec: &str, prefix: &Option<String>) -> 
         .await
         .context("Failed to prepare global package.json")?;
 
-    log_verbose(&format!("Installing global package: {}", npm_spec));
+    log_verbose(&format!("Installing global package: {npm_spec}"));
 
     // Install dependencies
     install(false, &package_path)

@@ -1,7 +1,7 @@
 use anyhow::{Result, bail};
 use turbo_rcstr::RcStr;
-use turbo_tasks::{ReadRef, Vc};
-use turbopack_core::source_map::{OptionSourceMap, OptionStringifiedSourceMap, SourceMap};
+use turbo_tasks::Vc;
+use turbopack_core::source_map::OptionStringifiedSourceMap;
 use url::Url;
 
 use crate::project::ProjectContainer;

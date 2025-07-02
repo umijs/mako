@@ -50,7 +50,7 @@ pub async fn build_deps(cwd: &Path) -> Result<()> {
                 .fix_dep_path(&dep.package_path, &dep.dependency_name)
                 .await
             {
-                log_verbose(&format!("Failed to fix dependency: {}", e));
+                log_verbose(&format!("Failed to fix dependency: {e}"));
                 return Err(anyhow::anyhow!("Failed to fix dependency: {}", e));
             } else {
                 log_verbose(&format!(
@@ -92,11 +92,10 @@ pub async fn build_workspace(cwd: &Path) -> Result<()> {
 
         for child in ideal_tree.children.read().unwrap().iter() {
             for edge in child.edges_out.read().unwrap().iter() {
-                if *edge.valid.read().unwrap() {
-                    if let Some(to_node) = edge.to.read().unwrap().as_ref() {
+                if *edge.valid.read().unwrap()
+                    && let Some(to_node) = edge.to.read().unwrap().as_ref() {
                         edges.push(json!([to_node.name.clone(), edge.from.name.clone()]));
                     }
-                }
             }
         }
 
