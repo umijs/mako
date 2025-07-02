@@ -6,11 +6,12 @@ pub fn parse_pattern(pattern: &str) -> (String, String) {
     if pattern.starts_with('@') {
         if let Some(at_pos) = pattern.rfind('@')
             && let Some(slash_pos) = pattern.find('/')
-                && at_pos > slash_pos {
-                    // for @scope/name@version
-                    let (pkg, version) = pattern.split_at(at_pos);
-                    return (pkg.to_string(), version[1..].to_string());
-                }
+            && at_pos > slash_pos
+        {
+            // for @scope/name@version
+            let (pkg, version) = pattern.split_at(at_pos);
+            return (pkg.to_string(), version[1..].to_string());
+        }
         // @scope/name or @scope*
         return (pattern.to_string(), "*".to_string());
     }

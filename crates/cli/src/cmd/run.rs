@@ -127,10 +127,12 @@ mod tests {
         let result = run_script("nonexistent", None, None).await;
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Script 'nonexistent' not found"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Script 'nonexistent' not found")
+        );
     }
 
     #[tokio::test]

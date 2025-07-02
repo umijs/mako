@@ -5,7 +5,7 @@ use reqwest::StatusCode;
 use std::{fs::Permissions, os::unix::fs::PermissionsExt, path::Path};
 use tar::Archive as TarArchive;
 use tokio::{
-    fs::{set_permissions, File},
+    fs::{File, set_permissions},
     io::BufReader,
 };
 use tokio_retry::RetryIf;
@@ -68,9 +68,7 @@ pub async fn download(url: &str, dest: &Path) -> Result<()> {
     .context("Download failed after retries")?;
 
     let duration = start.elapsed();
-    log_verbose(&format!(
-        "Download task took: {duration:?}, url: {url:?}"
-    ));
+    log_verbose(&format!("Download task took: {duration:?}, url: {url:?}"));
     Ok(())
 }
 

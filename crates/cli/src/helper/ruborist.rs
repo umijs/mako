@@ -12,10 +12,10 @@ use crate::helper::workspace::find_workspaces;
 use crate::util::config::get_legacy_peer_deps;
 use crate::util::json::load_package_json_from_path;
 use crate::util::logger::{
-    finish_progress_bar, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
+    PROGRESS_BAR, finish_progress_bar, log_progress, log_verbose, start_progress_bar,
 };
-use crate::util::node::{get_node_from_root_by_path, Edge, EdgeType, Node};
-use crate::util::registry::{load_cache, resolve_dependency, store_cache, ResolvedPackage};
+use crate::util::node::{Edge, EdgeType, Node, get_node_from_root_by_path};
+use crate::util::registry::{ResolvedPackage, load_cache, resolve_dependency, store_cache};
 use crate::util::semver::matches;
 
 pub struct Ruborist {
@@ -355,23 +355,24 @@ impl Ruborist {
         // process deps in root
         for (field, dep_type) in dep_types {
             if let Some(deps) = pkg.get(field)
-                && let Some(deps) = deps.as_object() {
-                    for (name, version) in deps {
-                        log_verbose(&format!("{name}: {version}"));
-                        let version_spec = version.as_str().unwrap_or("").to_string();
+                && let Some(deps) = deps.as_object()
+            {
+                for (name, version) in deps {
+                    log_verbose(&format!("{name}: {version}"));
+                    let version_spec = version.as_str().unwrap_or("").to_string();
 
-                        // create edge
-                        let edge = Edge::new(
-                            root.clone(), // need clone Arc<Node>
-                            dep_type.clone(),
-                            name.clone(),
-                            version_spec,
-                        );
+                    // create edge
+                    let edge = Edge::new(
+                        root.clone(), // need clone Arc<Node>
+                        dep_type.clone(),
+                        name.clone(),
+                        version_spec,
+                    );
 
-                        log_verbose(&format!("add edge {}@{}", edge.name, edge.spec));
-                        root.add_edge(edge).await;
-                    }
+                    log_verbose(&format!("add edge {}@{}", edge.name, edge.spec));
+                    root.add_edge(edge).await;
                 }
+            }
         }
 
         Ok(root)
@@ -451,22 +452,23 @@ impl Ruborist {
 
             for (field, edge_type) in dep_types {
                 if let Some(deps) = workspace_node.package.get(field)
-                    && let Some(deps) = deps.as_object() {
-                        for (name, version) in deps {
-                            let version_spec = version.as_str().unwrap_or("").to_string();
-                            let dep_edge = Edge::new(
-                                workspace_node.clone(),
-                                edge_type.clone(),
-                                name.clone(),
-                                version_spec,
-                            );
-                            log_verbose(&format!(
-                                "add edge {}@{} for {}",
-                                name, version, workspace_node.name
-                            ));
-                            workspace_node.add_edge(dep_edge).await;
-                        }
+                    && let Some(deps) = deps.as_object()
+                {
+                    for (name, version) in deps {
+                        let version_spec = version.as_str().unwrap_or("").to_string();
+                        let dep_edge = Edge::new(
+                            workspace_node.clone(),
+                            edge_type.clone(),
+                            name.clone(),
+                            version_spec,
+                        );
+                        log_verbose(&format!(
+                            "add edge {}@{} for {}",
+                            name, version, workspace_node.name
+                        ));
+                        workspace_node.add_edge(dep_edge).await;
                     }
+                }
             }
         }
 
@@ -670,15 +672,15 @@ impl Ruborist {
 
 async fn add_dependency_edge(node: &Arc<Node>, field: &str, edge_type: EdgeType) {
     if let Some(deps) = node.package.get(field)
-        && let Some(deps) = deps.as_object() {
-            for (name, version) in deps {
-                let version_spec = version.as_str().unwrap_or("").to_string();
-                let dep_edge =
-                    Edge::new(node.clone(), edge_type.clone(), name.clone(), version_spec);
-                log_verbose(&format!("add edge {}@{} for {}", name, version, node.name));
-                node.add_edge(dep_edge).await;
-            }
+        && let Some(deps) = deps.as_object()
+    {
+        for (name, version) in deps {
+            let version_spec = version.as_str().unwrap_or("").to_string();
+            let dep_edge = Edge::new(node.clone(), edge_type.clone(), name.clone(), version_spec);
+            log_verbose(&format!("add edge {}@{} for {}", name, version, node.name));
+            node.add_edge(dep_edge).await;
         }
+    }
 }
 
 #[cfg(test)]

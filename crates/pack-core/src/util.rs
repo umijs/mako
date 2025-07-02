@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use turbo_rcstr::RcStr;
-use turbo_tasks::{trace::TraceRawVcs, NonLocalValue, TaskInput, Vc};
+use turbo_tasks::{NonLocalValue, TaskInput, Vc, trace::TraceRawVcs};
 use turbo_tasks_fs::FileSystem;
 use turbopack::condition::ContextCondition;
 

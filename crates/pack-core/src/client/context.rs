@@ -1,7 +1,7 @@
 use std::{iter::once, str::FromStr};
 
 use anyhow::Result;
-use turbo_rcstr::{rcstr, RcStr};
+use turbo_rcstr::{RcStr, rcstr};
 use turbo_tasks::{FxIndexMap, ResolvedVc, TryJoinIterExt, ValueToString, Vc};
 use turbo_tasks_env::EnvMap;
 use turbo_tasks_fs::FileSystemPath;
@@ -16,8 +16,8 @@ use turbopack::{
 use turbopack_browser::{BrowserChunkingContext, CurrentChunkMethod};
 use turbopack_core::{
     chunk::{
-        module_id_strategies::ModuleIdStrategy, ChunkingConfig, ChunkingContext, MangleType,
-        MinifyType, SourceMapsType,
+        ChunkingConfig, ChunkingContext, MangleType, MinifyType, SourceMapsType,
+        module_id_strategies::ModuleIdStrategy,
     },
     compile_time_info::{
         CompileTimeDefineValue, CompileTimeDefines, CompileTimeInfo, DefineableNameSegment,
@@ -36,8 +36,8 @@ use turbopack_node::{
 use crate::{
     client::runtime_entry::RuntimeEntries,
     config::{
-        default_max_chunk_count_per_group, default_max_merge_chunk_size, default_min_chunk_size,
-        Config,
+        Config, default_max_chunk_count_per_group, default_max_merge_chunk_size,
+        default_min_chunk_size,
     },
     embed_js::embed_file_path,
     import_map::{

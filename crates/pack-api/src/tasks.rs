@@ -2,8 +2,8 @@ use std::{future::Future, sync::Arc, time::Duration};
 
 use anyhow::Result;
 use turbo_tasks::{
-    task_statistics::TaskStatisticsApi, trace::TraceRawVcs, TaskId, TurboTasks, TurboTasksApi,
-    UpdateInfo, Vc,
+    TaskId, TurboTasks, TurboTasksApi, UpdateInfo, Vc, task_statistics::TaskStatisticsApi,
+    trace::TraceRawVcs,
 };
 use turbo_tasks_backend::{DefaultBackingStorage, NoopBackingStorage, TurboTasksBackend};
 

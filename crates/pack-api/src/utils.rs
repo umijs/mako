@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use turbo_tasks::{
-    get_effects, Completion, Effects, OperationVc, ReadRef, TryJoinIterExt, Vc, VcValueType,
+    Completion, Effects, OperationVc, ReadRef, TryJoinIterExt, Vc, VcValueType, get_effects,
 };
 use turbopack_core::{
     diagnostics::{Diagnostic, DiagnosticContextExt, PlainDiagnostic},
     issue::{IssueDescriptionExt, IssueSeverity, PlainIssue},
 };
 
-use crate::endpoint::{endpoint_server_changed_operation, Endpoint, EndpointIssuesAndDiags};
+use crate::endpoint::{Endpoint, EndpointIssuesAndDiags, endpoint_server_changed_operation};
 
 #[turbo_tasks::function(operation)]
 pub async fn subscribe_issues_and_diags_operation(

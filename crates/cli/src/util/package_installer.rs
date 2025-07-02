@@ -2,7 +2,7 @@ use crate::cmd::install::install_global_package;
 use crate::util::cache::parse_pattern;
 use crate::util::logger::{log_info, log_verbose};
 use crate::util::registry::resolve;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::path::PathBuf;
 
 /// Get the utoo cache directory (~/.utoo/utx)
@@ -41,17 +41,13 @@ pub async fn install_package_to_cache(package_name: &str) -> Result<PathBuf> {
         return Ok(package_cache_dir);
     }
 
-    log_info(&format!(
-        "Installing package {name} to cache using utoo..."
-    ));
+    log_info(&format!("Installing package {name} to cache using utoo..."));
     install_global_package(
         package_name,
         &Some(package_cache_dir.to_string_lossy().to_string()),
     )
     .await?;
-    log_info(&format!(
-        "Package {name} installed successfully using utoo"
-    ));
+    log_info(&format!("Package {name} installed successfully using utoo"));
     Ok(package_cache_dir)
 }
 

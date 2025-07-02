@@ -1,15 +1,15 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use rustc_hash::FxHashSet;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{
-    debug::ValueDebugFormat, trace::TraceRawVcs, FxIndexMap, NonLocalValue, OperationValue,
-    ResolvedVc, Vc,
+    FxIndexMap, NonLocalValue, OperationValue, ResolvedVc, Vc, debug::ValueDebugFormat,
+    trace::TraceRawVcs,
 };
 use turbo_tasks_env::EnvMap;
 use turbopack::module_options::{
-    module_options_context::MdxTransformOptions, LoaderRuleItem, OptionWebpackRules,
+    LoaderRuleItem, OptionWebpackRules, module_options_context::MdxTransformOptions,
 };
 use turbopack_core::{chunk::ChunkingConfig, resolve::ResolveAliasMap};
 use turbopack_ecmascript::{OptionTreeShaking, TreeShakingMode};

@@ -59,9 +59,7 @@ pub async fn find_workspaces(root_path: &Path) -> Result<Vec<(String, PathBuf, V
                                     log_verbose(&format!("Found workspace: {name} {path:?}"));
                                     workspaces.push((name, workspace_path, workspace_pkg));
                                 }
-                                Err(e) => {
-                                    log_verbose(&format!("Error processing workspace: {e}"))
-                                }
+                                Err(e) => log_verbose(&format!("Error processing workspace: {e}")),
                             }
                         }
                     }
@@ -91,9 +89,10 @@ pub async fn find_workspace_path(cwd: &Path, workspace: &str) -> Result<PathBuf>
 
         // Try relative path match
         if let Ok(relative) = path.strip_prefix(cwd)
-            && relative.to_string_lossy() == workspace {
-                return Ok(path);
-            }
+            && relative.to_string_lossy() == workspace
+        {
+            return Ok(path);
+        }
     }
     anyhow::bail!("Workspace '{}' not found", workspace)
 }

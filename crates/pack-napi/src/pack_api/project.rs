@@ -63,8 +63,7 @@ use super::{
 };
 use crate::{register, util::DhatProfilerGuard};
 
-static SOURCE_MAP_PREFIX: LazyLock<String> =
-    LazyLock::new(|| format!("{SOURCE_URL_PROTOCOL}///"));
+static SOURCE_MAP_PREFIX: LazyLock<String> = LazyLock::new(|| format!("{SOURCE_URL_PROTOCOL}///"));
 static SOURCE_MAP_PREFIX_PROJECT: LazyLock<String> =
     LazyLock::new(|| format!("{SOURCE_URL_PROTOCOL}///[{PROJECT_FILESYSTEM_NAME}]/"));
 

@@ -5,7 +5,7 @@ use turbopack::module_options::{ModuleRule, ModuleRuleEffect, ModuleType, RuleCo
 use turbopack_core::reference_type::{ReferenceType, UrlReferenceSubType};
 use turbopack_ecmascript::{CustomTransformer, EcmascriptInputTransform};
 
-use image::{module::BlurPlaceholderMode, StructuredImageModuleType};
+use image::{StructuredImageModuleType, module::BlurPlaceholderMode};
 
 pub mod dynamic_import_to_require;
 pub mod emotion;

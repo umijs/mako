@@ -1,15 +1,13 @@
 use crate::util::binary_resolver;
 use crate::util::logger::{log_error, log_info, log_verbose};
 use crate::util::package_installer;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
 /// Execute a package binary
 pub async fn execute_package(command: &str, args: Vec<String>) -> Result<()> {
-    log_verbose(&format!(
-        "Executing command: {command} with args: {args:?}"
-    ));
+    log_verbose(&format!("Executing command: {command} with args: {args:?}"));
 
     // First, try to find the binary in local node_modules/.bin directories
     if let Some(binary_path) = binary_resolver::find_binary(command).await? {
@@ -44,7 +42,9 @@ pub async fn execute_package(command: &str, args: Vec<String>) -> Result<()> {
             log_error(&format!(
                 "No executable found in bin directory for package '{package_name}'"
             ));
-            log_info("The package might not provide any executables, or the bin directory might be empty");
+            log_info(
+                "The package might not provide any executables, or the bin directory might be empty",
+            );
             Err(anyhow!(
                 "No executable found for package '{}'",
                 package_name

@@ -186,33 +186,34 @@ impl Node {
 
         // Apply override rules if exists
         if let Some(root) = root
-            && let Some(overrides) = &root.overrides {
-                // Collect parent chain information
-                let mut parent_chain = Vec::new();
-                let mut current_node = edge.from.parent.read().unwrap().clone();
+            && let Some(overrides) = &root.overrides
+        {
+            // Collect parent chain information
+            let mut parent_chain = Vec::new();
+            let mut current_node = edge.from.parent.read().unwrap().clone();
 
-                while let Some(node) = current_node {
-                    parent_chain.push((node.name.clone(), node.version.clone()));
-                    current_node = node.parent.read().unwrap().clone();
-                }
+            while let Some(node) = current_node {
+                parent_chain.push((node.name.clone(), node.version.clone()));
+                current_node = node.parent.read().unwrap().clone();
+            }
 
-                // Check each rule
-                for rule in &overrides.rules {
-                    if overrides
-                        .matches_rule(rule, &edge.name, &edge.spec, &parent_chain)
-                        .await
-                    {
-                        if let Some(edge_mut) = Arc::get_mut(&mut edge) {
-                            log_verbose(&format!(
-                                "Override rule applied {}@{} => {}",
-                                rule.name, rule.spec, rule.target_spec
-                            ));
-                            edge_mut.spec = rule.target_spec.clone();
-                        }
-                        break;
+            // Check each rule
+            for rule in &overrides.rules {
+                if overrides
+                    .matches_rule(rule, &edge.name, &edge.spec, &parent_chain)
+                    .await
+                {
+                    if let Some(edge_mut) = Arc::get_mut(&mut edge) {
+                        log_verbose(&format!(
+                            "Override rule applied {}@{} => {}",
+                            rule.name, rule.spec, rule.target_spec
+                        ));
+                        edge_mut.spec = rule.target_spec.clone();
                     }
+                    break;
                 }
             }
+        }
 
         let mut edges = self.edges_out.write().unwrap();
         edges.push(edge);
@@ -326,9 +327,10 @@ impl std::fmt::Display for Node {
 
         // stdout parent
         if !self.is_root
-            && let Some(parent) = self.parent.read().unwrap().as_ref() {
-                write!(f, " <- {parent}")?;
-            }
+            && let Some(parent) = self.parent.read().unwrap().as_ref()
+        {
+            write!(f, " <- {parent}")?;
+        }
 
         Ok(())
     }

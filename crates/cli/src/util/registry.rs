@@ -139,10 +139,11 @@ impl Registry {
     pub async fn get_package_manifest(&self, name: &str, spec: &str) -> Result<(String, Value)> {
         // First check cache for version
         if let Some(version) = PACKAGE_CACHE.get_version(name, spec).await
-            && let Some(manifest) = PACKAGE_CACHE.get_manifest(name, spec, &version).await {
-                log_verbose(&format!("Cache hit for {name}@{spec} => {version}"));
-                return Ok((version, manifest));
-            }
+            && let Some(manifest) = PACKAGE_CACHE.get_manifest(name, spec, &version).await
+        {
+            log_verbose(&format!("Cache hit for {name}@{spec} => {version}"));
+            return Ok((version, manifest));
+        }
 
         // Build request URL
         let url = self.build_url(name, spec);
@@ -161,9 +162,7 @@ impl Registry {
 
         // Calculate and log request duration
         let duration = start_time.elapsed();
-        log_verbose(&format!(
-            "HTTP request for {name}@{spec} took {duration:?}"
-        ));
+        log_verbose(&format!("HTTP request for {name}@{spec} took {duration:?}"));
 
         // Check response status
         if !response.status().is_success() {

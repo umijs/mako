@@ -9,13 +9,13 @@ use std::sync::Arc;
 use tokio::fs;
 use tokio::sync::Semaphore;
 
-use crate::helper::lock::{extract_package_name, path_to_pkg_name, Package};
+use crate::helper::lock::{Package, extract_package_name, path_to_pkg_name};
 use crate::helper::workspace;
 use crate::helper::{is_cpu_compatible, is_os_compatible};
 use crate::util::cloner::clone;
 use crate::util::downloader::download;
 use crate::util::linker::link;
-use crate::util::logger::{log_progress, log_verbose, PROGRESS_BAR};
+use crate::util::logger::{PROGRESS_BAR, log_progress, log_verbose};
 
 use super::binary::update_package_binary;
 
@@ -58,13 +58,14 @@ async fn clean_symlink(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 /// Clean up a directory, handling scoped packages and legacy npm install packages
 async fn clean_directory(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(file_name) = path.file_name()
-        && let Some(name) = file_name.to_str() {
-            if name.starts_with('@') {
-                clean_scoped_package(path).await?;
-            } else {
-                clean_legacy_npminstall_package(path, name).await?;
-            }
+        && let Some(name) = file_name.to_str()
+    {
+        if name.starts_with('@') {
+            clean_scoped_package(path).await?;
+        } else {
+            clean_legacy_npminstall_package(path, name).await?;
         }
+    }
     Ok(())
 }
 
@@ -132,9 +133,8 @@ async fn clean_unused_packages(
                 for entry in glob(&pattern_str)
                     .with_context(|| format!("Glob failed for pattern: {pattern_str}"))?
                 {
-                    let pkg_json_path = entry.with_context(|| {
-                        format!("Glob entry error for pattern: {pattern_str}")
-                    })?;
+                    let pkg_json_path = entry
+                        .with_context(|| format!("Glob entry error for pattern: {pattern_str}"))?;
                     let pkg_dir = pkg_json_path
                         .parent()
                         .context("Failed to get parent directory of package.json")?;
@@ -227,9 +227,7 @@ pub async fn install_packages(
                         let link_name = extract_package_name(&path);
                         if link_name.is_empty() {
                             PROGRESS_BAR.inc(1);
-                            log_verbose(&format!(
-                                "Link skipped due to empty package name: {path}"
-                            ));
+                            log_verbose(&format!("Link skipped due to empty package name: {path}"));
                             log_progress("empty package name link skipped");
                             continue;
                         }
@@ -290,9 +288,9 @@ pub async fn install_packages(
                                         cache_path.display(),
                                         e
                                     ));
-                                    return Err(Box::new(std::io::Error::other(
-                                        format!("{name} download failed: {e}"),
-                                    ))
+                                    return Err(Box::new(std::io::Error::other(format!(
+                                        "{name} download failed: {e}"
+                                    )))
                                         as Box<dyn std::error::Error + Send + Sync>);
                                 }
                             }

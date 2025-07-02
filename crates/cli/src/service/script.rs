@@ -127,9 +127,10 @@ impl ScriptService {
         while let Some(path) = current_path {
             let bin_path = path.join("node_modules/.bin");
             if bin_path.exists()
-                && let Ok(absolute_path) = std::fs::canonicalize(&bin_path) {
-                    bin_paths.push(absolute_path);
-                }
+                && let Ok(absolute_path) = std::fs::canonicalize(&bin_path)
+            {
+                bin_paths.push(absolute_path);
+            }
             current_path = path.parent();
         }
 
@@ -235,8 +236,8 @@ mod tests {
 
     use super::*;
     use std::fs;
-    use tempfile::tempdir;
     use tempfile::TempDir;
+    use tempfile::tempdir;
 
     #[tokio::test]
     async fn test_execute_custom_script_success() {
@@ -273,10 +274,12 @@ mod tests {
         let result = ScriptService::execute_custom_script(&package, "test", "exit 1").await;
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Custom script execution failed"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Custom script execution failed")
+        );
     }
 
     #[tokio::test]

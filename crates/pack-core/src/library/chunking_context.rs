@@ -1,14 +1,14 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use qstring::QString;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use tracing::Instrument;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{
-    trace::TraceRawVcs, NonLocalValue, ResolvedVc, TaskInput, TryJoinIterExt, ValueToString, Vc,
+    NonLocalValue, ResolvedVc, TaskInput, TryJoinIterExt, ValueToString, Vc, trace::TraceRawVcs,
 };
 use turbo_tasks_fs::FileSystemPath;
-use turbo_tasks_hash::{encode_hex, DeterministicHash, Xxh3Hash64Hasher};
+use turbo_tasks_hash::{DeterministicHash, Xxh3Hash64Hasher, encode_hex};
 use turbopack_browser::chunking_context::{
     clean_separators, match_content_hash_placeholder, match_name_placeholder,
     replace_content_hash_placeholder, replace_name_placeholder,
@@ -16,17 +16,17 @@ use turbopack_browser::chunking_context::{
 use turbopack_core::{
     asset::Asset,
     chunk::{
-        availability_info::AvailabilityInfo,
-        chunk_group::{make_chunk_group, MakeChunkGroupResult},
-        module_id_strategies::{DevModuleIdStrategy, ModuleIdStrategy},
         Chunk, ChunkGroupResult, ChunkItem, ChunkableModule, ChunkingConfig, ChunkingConfigs,
         ChunkingContext, EntryChunkGroupResult, EvaluatableAsset, EvaluatableAssets, MinifyType,
         ModuleId, SourceMapsType,
+        availability_info::AvailabilityInfo,
+        chunk_group::{MakeChunkGroupResult, make_chunk_group},
+        module_id_strategies::{DevModuleIdStrategy, ModuleIdStrategy},
     },
     environment::Environment,
     ident::AssetIdent,
     module::Module,
-    module_graph::{chunk_group_info::ChunkGroup, ModuleGraph},
+    module_graph::{ModuleGraph, chunk_group_info::ChunkGroup},
     output::{OutputAsset, OutputAssets},
 };
 use turbopack_ecmascript::chunk::{EcmascriptChunk, EcmascriptChunkType};
@@ -350,7 +350,9 @@ impl ChunkingContext for LibraryChunkingContext {
             .any(|m| m.contains("evaluate"));
 
         if !evaluate {
-            bail!("library should only generate a single evaluate chunk, please enable inline features of styles.inlineCss and images.inlineLimit in config")
+            bail!(
+                "library should only generate a single evaluate chunk, please enable inline features of styles.inlineCss and images.inlineLimit in config"
+            )
         }
 
         let root_path = &self.output_root;

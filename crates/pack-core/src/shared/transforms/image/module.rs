@@ -1,8 +1,8 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use turbo_rcstr::rcstr;
-use turbo_tasks::{fxindexmap, trace::TraceRawVcs, NonLocalValue, ResolvedVc, TaskInput, Vc};
-use turbopack::{module_options::CustomModuleType, ModuleAssetContext};
+use turbo_tasks::{NonLocalValue, ResolvedVc, TaskInput, Vc, fxindexmap, trace::TraceRawVcs};
+use turbopack::{ModuleAssetContext, module_options::CustomModuleType};
 use turbopack_core::{
     context::AssetContext, module::Module, reference_type::ReferenceType, resolve::ModulePart,
     source::Source,

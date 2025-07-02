@@ -93,9 +93,10 @@ pub async fn build_workspace(cwd: &Path) -> Result<()> {
         for child in ideal_tree.children.read().unwrap().iter() {
             for edge in child.edges_out.read().unwrap().iter() {
                 if *edge.valid.read().unwrap()
-                    && let Some(to_node) = edge.to.read().unwrap().as_ref() {
-                        edges.push(json!([to_node.name.clone(), edge.from.name.clone()]));
-                    }
+                    && let Some(to_node) = edge.to.read().unwrap().as_ref()
+                {
+                    edges.push(json!([to_node.name.clone(), edge.from.name.clone()]));
+                }
             }
         }
 

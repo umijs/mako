@@ -1,17 +1,17 @@
 use anyhow::Result;
 use turbo_esregex::EsRegex;
 use turbo_tasks::{ResolvedVc, Vc};
-use turbo_tasks_fs::{self, glob::Glob, FileSystemPath};
+use turbo_tasks_fs::{self, FileSystemPath, glob::Glob};
 use turbopack_core::{
     reference_type::ReferenceType,
     resolve::{
+        ExternalTraced, ExternalType, ResolveResult, ResolveResultItem, ResolveResultOption,
         parse::Request,
         pattern::Pattern,
         plugin::{
             AfterResolvePlugin, AfterResolvePluginCondition, BeforeResolvePlugin,
             BeforeResolvePluginCondition,
         },
-        ExternalTraced, ExternalType, ResolveResult, ResolveResultItem, ResolveResultOption,
     },
 };
 

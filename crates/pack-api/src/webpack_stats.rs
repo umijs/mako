@@ -190,9 +190,10 @@ pub async fn generate_webpack_stats(output_assets: Vc<OutputAssets>) -> Result<V
 
 fn remove_extension_from_str(filename: &str) -> &str {
     if let Some(dot_index) = filename.rfind('.')
-        && dot_index > 0 {
-            return &filename[..dot_index];
-        }
+        && dot_index > 0
+    {
+        return &filename[..dot_index];
+    }
     filename
 }
 

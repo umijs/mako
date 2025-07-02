@@ -1,6 +1,6 @@
 use std::path::MAIN_SEPARATOR;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use pack_core::{
     client::context::{
         get_client_module_options_context, get_client_resolve_options_context,
@@ -9,23 +9,23 @@ use pack_core::{
     library::contexts::get_library_chunking_context,
 };
 use qstring::QString;
-use tracing::{info_span, Instrument};
-use turbo_rcstr::{rcstr, RcStr};
+use tracing::{Instrument, info_span};
+use turbo_rcstr::{RcStr, rcstr};
 use turbo_tasks::{Completion, JoinIterExt, ResolvedVc, ValueToString, Vc};
 use turbopack::{
-    module_options::ModuleOptionsContext, resolve_options_context::ResolveOptionsContext,
-    transition::TransitionOptions, ModuleAssetContext,
+    ModuleAssetContext, module_options::ModuleOptionsContext,
+    resolve_options_context::ResolveOptionsContext, transition::TransitionOptions,
 };
 use turbopack_core::{
     chunk::{
-        availability_info::AvailabilityInfo, ChunkGroupResult, ChunkingContext, EvaluatableAsset,
-        EvaluatableAssets,
+        ChunkGroupResult, ChunkingContext, EvaluatableAsset, EvaluatableAssets,
+        availability_info::AvailabilityInfo,
     },
     ident::{AssetIdent, Layer},
     module::{Module, Modules},
     module_graph::{
-        chunk_group_info::{ChunkGroup, ChunkGroupEntry},
         GraphEntries, ModuleGraph,
+        chunk_group_info::{ChunkGroup, ChunkGroupEntry},
     },
     output::OutputAssets,
     reference_type::{EntryReferenceSubType, ReferenceType},

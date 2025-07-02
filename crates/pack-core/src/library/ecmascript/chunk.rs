@@ -1,10 +1,10 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use indoc::writedoc;
 use serde::Serialize;
 use std::io::Write;
-use turbo_rcstr::{rcstr, RcStr};
+use turbo_rcstr::{RcStr, rcstr};
 use turbo_tasks::{ReadRef, ResolvedVc, TryJoinIterExt, ValueToString, Vc};
-use turbo_tasks_fs::{rope::RopeBuilder, File, FileSystemPath};
+use turbo_tasks_fs::{File, FileSystemPath, rope::RopeBuilder};
 use turbopack_core::{
     asset::{Asset, AssetContent},
     chunk::{
@@ -23,7 +23,7 @@ use turbopack_ecmascript::{
 };
 use turbopack_ecmascript_runtime::RuntimeType;
 
-use crate::library::{runtime::runtime_code::get_library_runtime_code, LibraryChunkingContext};
+use crate::library::{LibraryChunkingContext, runtime::runtime_code::get_library_runtime_code};
 
 #[turbo_tasks::value(shared)]
 pub struct EcmascriptLibraryEvaluateChunk {

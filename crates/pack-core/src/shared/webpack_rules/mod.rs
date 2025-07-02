@@ -4,7 +4,7 @@ use turbo_rcstr::RcStr;
 use turbo_tasks::{ResolvedVc, Vc};
 use turbo_tasks_fs::FileSystemPath;
 use turbopack::module_options::WebpackLoadersOptions;
-use turbopack_core::resolve::{options::ImportMapping, ExternalTraced, ExternalType};
+use turbopack_core::resolve::{ExternalTraced, ExternalType, options::ImportMapping};
 
 use self::less::maybe_add_less_loader;
 use self::sass::maybe_add_sass_loader;
@@ -45,11 +45,13 @@ pub async fn webpack_loader_options(
 
 #[turbo_tasks::function]
 async fn loader_runner_package_mapping(_project_path: FileSystemPath) -> Result<Vc<ImportMapping>> {
-    Ok(ImportMapping::Alternatives(vec![ImportMapping::External(
-        Some("@utoo/loader-runner".into()),
-        ExternalType::CommonJs,
-        ExternalTraced::Untraced,
-    )
-    .resolved_cell()])
+    Ok(ImportMapping::Alternatives(vec![
+        ImportMapping::External(
+            Some("@utoo/loader-runner".into()),
+            ExternalType::CommonJs,
+            ExternalTraced::Untraced,
+        )
+        .resolved_cell(),
+    ])
     .cell())
 }

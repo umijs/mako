@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{collections::HashMap, fs};
@@ -237,10 +237,11 @@ pub async fn prepare_global_package_json(
 
     // Remove scripts.prepare if it exists
     if let Some(scripts) = package_obj.get_mut("scripts")
-        && let Some(scripts_obj) = scripts.as_object_mut() {
-            scripts_obj.remove("prepare");
-            scripts_obj.remove("prepublish");
-        }
+        && let Some(scripts_obj) = scripts.as_object_mut()
+    {
+        scripts_obj.remove("prepare");
+        scripts_obj.remove("prepublish");
+    }
 
     // Write back the modified package.json
     fs::write(
@@ -350,11 +351,11 @@ pub async fn validate_deps(
                         while !current_path.is_empty() {
                             if let Some(pkg_info) = packages.get(&current_path)
                                 && let Some(name) = pkg_info.get("name").and_then(|n| n.as_str())
-                                    && let Some(version) =
-                                        pkg_info.get("version").and_then(|v| v.as_str())
-                                    {
-                                        parent_chain.push((name.to_string(), version.to_string()));
-                                    }
+                                && let Some(version) =
+                                    pkg_info.get("version").and_then(|v| v.as_str())
+                            {
+                                parent_chain.push((name.to_string(), version.to_string()));
+                            }
 
                             if let Some(last_modules) = current_path.rfind("/node_modules/") {
                                 current_path = current_path[..last_modules].to_string();
@@ -417,28 +418,30 @@ pub async fn validate_deps(
                         if let Some(dep_info) = dep_info {
                             if let Some(actual_version) =
                                 dep_info.get("version").and_then(|v| v.as_str())
-                                && !semver::matches(&effective_req_version, actual_version) {
-                                    if let Some(resolved_dep) = resolve_dependency(
-                                        dep_name,
-                                        &effective_req_version,
-                                        &EdgeType::Optional,
-                                    )
-                                    .await?
-                                        && resolved_dep.version == actual_version {
-                                            log_verbose(&format!(
-                                                "Package {pkg_path} {dep_field} dependency {dep_name} (required version: {req_version_str}, effective version: {effective_req_version}) hit bug-version {current_path}@{actual_version}"
-                                            ));
-                                            continue;
-                                        }
-
-                                    log_warning(&format!(
-                                        "Package {pkg_path} {dep_field} dependency {dep_name} (required version: {req_version_str}, effective version: {effective_req_version}) does not match actual version {current_path}@{actual_version}"
+                                && !semver::matches(&effective_req_version, actual_version)
+                            {
+                                if let Some(resolved_dep) = resolve_dependency(
+                                    dep_name,
+                                    &effective_req_version,
+                                    &EdgeType::Optional,
+                                )
+                                .await?
+                                    && resolved_dep.version == actual_version
+                                {
+                                    log_verbose(&format!(
+                                        "Package {pkg_path} {dep_field} dependency {dep_name} (required version: {req_version_str}, effective version: {effective_req_version}) hit bug-version {current_path}@{actual_version}"
                                     ));
-                                    invalid_deps.push(InvalidDependency {
-                                        package_path: pkg_path.clone(),
-                                        dependency_name: dep_name.clone(),
-                                    });
+                                    continue;
                                 }
+
+                                log_warning(&format!(
+                                    "Package {pkg_path} {dep_field} dependency {dep_name} (required version: {req_version_str}, effective version: {effective_req_version}) does not match actual version {current_path}@{actual_version}"
+                                ));
+                                invalid_deps.push(InvalidDependency {
+                                    package_path: pkg_path.clone(),
+                                    dependency_name: dep_name.clone(),
+                                });
+                            }
                         } else if !is_optional {
                             log_verbose(&format!(
                                 "pkg_path {pkg_path} dep_field {dep_field} dep_name {dep_name} not found"
@@ -639,9 +642,10 @@ fn add_package_fields(pkg_info: &mut Value, node: &Arc<Node>) {
 
     for field in fields {
         if let Some(field_value) = node.package.get(field)
-            && should_include_field(field_value) {
-                pkg_info[field] = field_value.clone();
-            }
+            && should_include_field(field_value)
+        {
+            pkg_info[field] = field_value.clone();
+        }
     }
 }
 
@@ -929,9 +933,11 @@ mod tests {
         fs::write(temp_path.join("package-lock.json"), pkg_lock.to_string()).unwrap();
 
         // Test that files are in sync
-        assert!(!is_pkg_lock_outdated(&temp_path.to_path_buf())
-            .await
-            .unwrap());
+        assert!(
+            !is_pkg_lock_outdated(&temp_path.to_path_buf())
+                .await
+                .unwrap()
+        );
 
         // Test case 2: package.json has new dependency
         let pkg_json_updated = json!({
@@ -969,9 +975,11 @@ mod tests {
             pkg_json_version_updated.to_string(),
         )
         .unwrap();
-        assert!(is_pkg_lock_outdated(&temp_path.to_path_buf())
-            .await
-            .unwrap());
+        assert!(
+            is_pkg_lock_outdated(&temp_path.to_path_buf())
+                .await
+                .unwrap()
+        );
 
         // Test case 4: package.json has removed dependency
         let pkg_json_removed = json!({
@@ -984,9 +992,11 @@ mod tests {
         });
 
         fs::write(temp_path.join("package.json"), pkg_json_removed.to_string()).unwrap();
-        assert!(is_pkg_lock_outdated(&temp_path.to_path_buf())
-            .await
-            .unwrap());
+        assert!(
+            is_pkg_lock_outdated(&temp_path.to_path_buf())
+                .await
+                .unwrap()
+        );
 
         // Test case 4: package.json has removed dependency
         let pkg_json_engines_changed = json!({
@@ -1009,9 +1019,11 @@ mod tests {
             pkg_json_engines_changed.to_string(),
         )
         .unwrap();
-        assert!(is_pkg_lock_outdated(&temp_path.to_path_buf())
-            .await
-            .unwrap());
+        assert!(
+            is_pkg_lock_outdated(&temp_path.to_path_buf())
+                .await
+                .unwrap()
+        );
     }
 
     #[test]
@@ -1414,9 +1426,11 @@ mod tests {
         fs::write(temp_path.join("package-lock.json"), pkg_lock.to_string()).unwrap();
 
         // Test that empty object and missing field are treated as equal
-        assert!(!is_pkg_lock_outdated(&temp_path.to_path_buf())
-            .await
-            .unwrap());
+        assert!(
+            !is_pkg_lock_outdated(&temp_path.to_path_buf())
+                .await
+                .unwrap()
+        );
 
         // Test reverse case: package.json has no dependencies field, package-lock.json has empty dependencies
         let pkg_json_no_deps = json!({
@@ -1447,8 +1461,10 @@ mod tests {
         .unwrap();
 
         // Test that missing field and empty object are treated as equal
-        assert!(!is_pkg_lock_outdated(&temp_path.to_path_buf())
-            .await
-            .unwrap());
+        assert!(
+            !is_pkg_lock_outdated(&temp_path.to_path_buf())
+                .await
+                .unwrap()
+        );
     }
 }
