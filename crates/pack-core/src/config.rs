@@ -687,7 +687,7 @@ impl Config {
     pub async fn from_string(string: Vc<RcStr>) -> Result<Vc<Self>> {
         let string = string.await?;
         let config: Config = serde_json::from_str(&string)
-            .with_context(|| format!("failed to parse config.js: {}", string))?;
+            .with_context(|| format!("failed to parse config.js: {string}"))?;
         Ok(config.cell())
     }
 

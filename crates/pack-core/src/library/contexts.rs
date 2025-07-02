@@ -52,10 +52,10 @@ pub async fn get_library_chunking_context(
     })
     .module_id_strategy(module_id_strategy);
 
-    if !mode.is_development() {
-        if let Some(filename) = &config.output().await?.filename {
-            builder = builder.filename(filename.clone());
-        }
+    if !mode.is_development()
+        && let Some(filename) = &config.output().await?.filename
+    {
+        builder = builder.filename(filename.clone());
     }
 
     if mode.is_development() {

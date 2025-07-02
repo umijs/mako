@@ -257,7 +257,7 @@ impl LibraryChunkingContext {
             };
             Ok(AssetIdent::from_path(root.join(&filename)?))
         } else {
-            Ok(AssetIdent::from_path(root.join(&name)?))
+            Ok(AssetIdent::from_path(root.join(name)?))
         }
     }
 

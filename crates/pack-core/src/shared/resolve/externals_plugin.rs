@@ -21,13 +21,13 @@ use crate::config::{
 
 /// Parse a string to a Swc Regex
 fn parse_str_to_regex(regex_str: &str) -> Result<EsRegex> {
-    if let Some(captures) = regex_str.strip_prefix('/') {
-        if let Some(last_slash) = captures.rfind('/') {
-            let pattern = &captures[..last_slash];
-            let flags = &captures[last_slash + 1..];
+    if let Some(captures) = regex_str.strip_prefix('/')
+        && let Some(last_slash) = captures.rfind('/')
+    {
+        let pattern = &captures[..last_slash];
+        let flags = &captures[last_slash + 1..];
 
-            return EsRegex::new(pattern, flags);
-        }
+        return EsRegex::new(pattern, flags);
     }
 
     EsRegex::new(regex_str, "")

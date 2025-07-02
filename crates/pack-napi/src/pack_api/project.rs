@@ -530,8 +530,7 @@ pub fn project_entrypoints_subscribe(
         func,
         move || {
             async move {
-                let entrypoints_with_issues_op =
-                    get_entrypoints_with_issues_operation(container.to_resolved().await?);
+                let entrypoints_with_issues_op = get_entrypoints_with_issues_operation(container);
                 let EntrypointsWithIssues {
                     entrypoints,
                     issues,

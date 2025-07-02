@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use turbo_rcstr::RcStr;
 use turbo_tasks::{
     FxIndexSet, NonLocalValue, OperationValue, OperationVc, ResolvedVc, State, TryFlatJoinIterExt,
-    TryJoinIterExt, ValueDefault, ValueToString, Vc, debug::ValueDebugFormat, trace::TraceRawVcs,
+    TryJoinIterExt, ValueDefault, Vc, debug::ValueDebugFormat, trace::TraceRawVcs,
 };
 use turbo_tasks_fs::FileSystemPath;
 use turbopack_core::{
