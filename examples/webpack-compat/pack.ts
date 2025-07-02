@@ -8,6 +8,10 @@ const webpackConfig: utoopack.WebpackConfig = {
   output: {
     path: "dist",
   },
+  externals: {
+    react: 'React',
+    'react-dom': 'ReactDOM',
+  },
   plugins: [
     new webpack.DefinePlugin({
       VERSION: JSON.stringify("5fa3b9"),
