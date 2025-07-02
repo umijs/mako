@@ -363,7 +363,7 @@ impl ChunkingContext for LibraryChunkingContext {
         // Check if the name already ends with the extension
         if !name.ends_with(&*extension) {
             // If doesn't end with extension, add the provided extension
-            name = format!("{}{}", name, extension).into();
+            name = format!("{name}{extension}").into();
         }
 
         root_path.join(&name).map(|p| p.cell())

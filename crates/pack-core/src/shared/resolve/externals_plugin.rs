@@ -177,7 +177,7 @@ impl BeforeResolvePlugin for ExternalsPlugin {
                         } else {
                             // Otherwise, concatenate module_name and script URL with '@' separator
                             // Format: module_name@script_url
-                            format!("{}@{}", module_name, script_content)
+                            format!("{module_name}@{script_content}")
                         };
                         (external_name.into(), ExternalType::Script)
                     } else {
@@ -323,7 +323,7 @@ impl AfterResolvePlugin for ExternalsPlugin {
                                 // Replace $1, $2, etc. with capture groups
                                 if let Some(captures) = rule_regex.captures(sub_path_str) {
                                     for (i, capture) in captures.iter().enumerate().skip(1) {
-                                        let placeholder = format!("${}", i);
+                                        let placeholder = format!("${i}");
                                         let capture_value = capture.as_str();
 
                                         // Apply target converter to the capture group

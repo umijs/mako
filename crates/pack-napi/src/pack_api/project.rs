@@ -475,9 +475,8 @@ pub async fn project_write_all_entrypoints_to_disk(
     let turbo_tasks = project.turbo_tasks.clone();
     let (entrypoints, issues, diags) = turbo_tasks
         .run_once(async move {
-            let entrypoints_with_issues_op = get_all_written_entrypoints_with_issues_operation(
-                project.container.to_resolved().await?,
-            );
+            let entrypoints_with_issues_op =
+                get_all_written_entrypoints_with_issues_operation(project.container);
 
             let EntrypointsWithIssues {
                 entrypoints,
