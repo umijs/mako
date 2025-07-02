@@ -20,7 +20,7 @@ use turbopack_core::{
         module_id_strategies::ModuleIdStrategy,
     },
     compile_time_info::{
-        CompileTimeDefineValue, CompileTimeDefines, CompileTimeInfo, DefineableNameSegment,
+        CompileTimeDefineValue, CompileTimeDefines, CompileTimeInfo, DefinableNameSegment,
         FreeVarReferences,
     },
     environment::{BrowserEnvironment, Environment, ExecutionEnvironment},
@@ -75,7 +75,7 @@ fn defines(define_env: &FxIndexMap<RcStr, RcStr>) -> CompileTimeDefines {
         defines
             .entry(
                 k.split('.')
-                    .map(|s| DefineableNameSegment::Name(s.into()))
+                    .map(|s| DefinableNameSegment::Name(s.into()))
                     .collect::<Vec<_>>(),
             )
             .or_insert_with(|| {

@@ -24,9 +24,9 @@ indoc = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
 rustc-hash = { workspace = true }
-remove_console = "0.44.0"
+remove_console = "0.45.0"
 urlencoding = { workspace = true }
-modularize_imports = { version = "0.89.0" }
+modularize_imports = { version = "0.90.0" }
 swc_core = { workspace = true, features = [
   "base",
   "common_concurrent",

@@ -86,7 +86,7 @@ impl Asset for StructuredImageFileSource {
         match self.blur_placeholder_mode {
             BlurPlaceholderMode::DataUrl => {
                 writeln!(result, "import src from \"IMAGE\";",)?;
-                let info = get_meta_data(self.image.ident(), *content, Some(blur_options)).await?;
+                let info = get_meta_data(*self.image, *content, Some(blur_options)).await?;
                 writeln!(
                     result,
                     "export default {{ src, width: {width}, height: {height}, blurDataURL: \
@@ -103,7 +103,7 @@ impl Asset for StructuredImageFileSource {
             }
             BlurPlaceholderMode::None => {
                 writeln!(result, "import src from \"IMAGE\";",)?;
-                let info = get_meta_data(self.image.ident(), *content, None).await?;
+                let info = get_meta_data(*self.image, *content, None).await?;
                 writeln!(
                     result,
                     "export default {{ src, width: {width}, height: {height} }}",
