@@ -2,6 +2,7 @@ import type webpack from "webpack";
 import {
   BundleOptions,
   ConfigComplete,
+  ExternalConfig,
   TurbopackRuleConfigItem,
 } from "./types";
 
@@ -155,42 +156,130 @@ function compatDefine(maybeWebpackPluginInstance: MaybeWebpackPluginInstance) {
   return maybeWebpackPluginInstance?.definitions;
 }
 
-function compatExternals(webpackExternal: webpack.Configuration["externals"]) {
+function compatExternals(
+  webpackExternals?: webpack.Configuration["externals"],
+): ConfigComplete["externals"] {
+  if (!webpackExternals) {
+    return undefined;
+  }
   let externals: ConfigComplete["externals"] = {};
-  switch (typeof webpackExternal) {
-    case "string":
-      externals[webpackExternal] = webpackExternal;
+  switch (typeof webpackExternals) {
+    case "string": {
+      // Single string external: "lodash" -> { "lodash": "lodash" }
+      externals[webpackExternals] = webpackExternals;
       break;
-    case "object":
-      if (webpackExternal instanceof RegExp) {
-        throw "regex enternal not supported yet";
-      } else if (Array.isArray(webpackExternal)) {
-        webpackExternal.forEach((k) => {
-          switch (typeof k) {
-            case "string":
-              externals[k] = k;
-              break;
-            default:
-              throw "non string external item not supported yet";
-          }
-        });
+    }
+    case "object": {
+      if (Array.isArray(webpackExternals)) {
+        // Array of externals: ["lodash", "react"] -> { "lodash": "lodash", "react": "react" }
+        externals = webpackExternals.reduce(
+          (acc, external) => {
+            if (typeof external === "string") {
+              acc![external] = external;
+            } else if (typeof external === "object" && external !== null) {
+              Object.assign(acc!, compatExternals(external));
+            }
+            return acc;
+          },
+          {} as ConfigComplete["externals"],
+        );
+      } else if (webpackExternals instanceof RegExp) {
+        throw "regex external not supported yet";
       } else {
-        if ("byLayer" in webpackExternal) {
+        if ("byLayer" in webpackExternals) {
           throw "by layer external item not supported yet";
         }
-        Object.entries(webpackExternal).forEach(([k, v]) => {
-          switch (typeof v) {
-            case "string":
-              externals[k] = v;
-              break;
-            default:
-              throw "non string external item not supported yet";
+        Object.entries(webpackExternals).forEach(([key, value]) => {
+          if (typeof value === "string") {
+            // Check if it's a script type with shorthand syntax: "global@https://example.com/script.js"
+            if (
+              value.includes("@") &&
+              (value.startsWith("script ") || value.includes("://"))
+            ) {
+              const match = value.match(/^(?:script\s+)?(.+?)@(.+)$/);
+              if (match) {
+                const [, globalName, scriptUrl] = match;
+                // Use utoo-pack string format: "script globalName@url"
+                externals![key] = `script ${globalName}@${scriptUrl}`;
+              } else {
+                externals![key] = value;
+              }
+            } else {
+              // Simple string mapping: { "react": "React" }
+              externals![key] = value;
+            }
+          } else if (Array.isArray(value)) {
+            // Array format handling
+            if (value.length >= 2) {
+              const [first, second] = value;
+
+              // Check if it's a script type array: ["https://example.com/script.js", "GlobalName"]
+              if (
+                typeof first === "string" &&
+                first.includes("://") &&
+                typeof second === "string"
+              ) {
+                // Use utoo-pack object format for script
+                externals![key] = {
+                  root: second,
+                  type: "script",
+                  script: first,
+                };
+              } else if (
+                typeof first === "string" &&
+                typeof second === "string"
+              ) {
+                // Handle type prefix formats
+                if (first.startsWith("commonjs")) {
+                  externals![key] = `commonjs ${second}`;
+                } else if (first === "module") {
+                  externals![key] = `esm ${second}`;
+                } else if (
+                  first === "var" ||
+                  first === "global" ||
+                  first === "window"
+                ) {
+                  externals![key] = second;
+                } else if (first === "script") {
+                  // Script type without URL in array format - treat as regular script prefix
+                  externals![key] = `script ${second}`;
+                } else {
+                  externals![key] = `${first} ${second}`;
+                }
+              } else {
+                externals![key] = value[0] || key;
+              }
+            } else {
+              externals![key] = value[0] || key;
+            }
+          } else if (typeof value === "object" && value !== null) {
+            // Object format: handle complex configurations
+            if ("root" in value || "commonjs" in value || "amd" in value) {
+              // Standard webpack externals object format
+              if (value.commonjs) {
+                externals![key] = `commonjs ${value.commonjs}`;
+              } else if (value.root) {
+                externals![key] = value.root;
+              } else if (value.amd) {
+                externals![key] = value.amd;
+              } else {
+                externals![key] = key;
+              }
+            } else {
+              // Treat as utoo-pack specific configuration (might already be in correct format)
+              externals![key] = value as ExternalConfig;
+            }
+          } else {
+            // Fallback to key name
+            externals![key] = key;
           }
         });
       }
       break;
-    case "function":
+    }
+    case "function": {
       throw "functional external not supported yet";
+    }
     default:
       break;
   }
