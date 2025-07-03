@@ -14,6 +14,7 @@ declare global {
   };
   export type RefCell = { readonly __tag: unique symbol };
   export type ExternalEndpoint = { readonly __tag: unique symbol };
+  export type RcStr = string;
 }
 
 export interface BaseUpdate {

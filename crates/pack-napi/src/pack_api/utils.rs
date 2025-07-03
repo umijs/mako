@@ -43,7 +43,7 @@ pub fn create_turbo_tasks(
         // TODO: check is_ci;
         let is_ci: bool = false;
         let (backing_storage, cache_state) =
-            default_backing_storage(&output_path.join("cache/turbopack"), &version_info, is_ci)?;
+            default_backing_storage(&output_path.join(".turbopack/.cache"), &version_info, is_ci)?;
         let tt = TurboTasks::new(turbo_tasks_backend::TurboTasksBackend::new(
             turbo_tasks_backend::BackendOptions {
                 storage_mode: Some(if std::env::var("TURBO_ENGINE_READ_ONLY").is_ok() {
