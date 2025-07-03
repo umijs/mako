@@ -153,7 +153,7 @@ mod tests {
         )
         .unwrap();
 
-        std::env::set_var("HOME", home_dir.path());
+        unsafe { std::env::set_var("HOME", home_dir.path()) };
 
         let config = Config::load(true).unwrap();
         assert_eq!(
@@ -186,7 +186,7 @@ mod tests {
         )
         .unwrap();
 
-        std::env::set_var("HOME", home_dir.path());
+        unsafe { std::env::set_var("HOME", home_dir.path()) };
         std::env::set_current_dir(work_dir.path()).unwrap();
 
         let config = Config::load(false).unwrap();

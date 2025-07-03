@@ -181,7 +181,7 @@ mod tests {
         fs::create_dir_all(&config_dir).unwrap();
 
         // Set up temporary home directory
-        env::set_var("HOME", temp_dir.path());
+        unsafe { env::set_var("HOME", temp_dir.path()) };
 
         let mut config = Config::load(false).unwrap();
         // Use "true" command which exists on Unix systems
