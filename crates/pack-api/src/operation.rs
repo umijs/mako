@@ -1,8 +1,8 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use turbo_tasks::{
-    debug::ValueDebugFormat, get_effects, trace::TraceRawVcs, CollectiblesSource, NonLocalValue,
-    OperationVc, ResolvedVc, Vc,
+    CollectiblesSource, NonLocalValue, OperationVc, ResolvedVc, Vc, debug::ValueDebugFormat,
+    get_effects, trace::TraceRawVcs,
 };
 use turbopack_core::{diagnostics::Diagnostic, issue::IssueDescriptionExt};
 

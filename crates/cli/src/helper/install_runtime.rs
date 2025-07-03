@@ -45,7 +45,7 @@ fn get_node_deps(version: &str) -> Result<HashMap<String, String>> {
     // Iterate through platform and their supported architectures
     for (prefix, platform, archs) in PLATFORM_ARCHS {
         for arch in *archs {
-            let dep_name: String = format!("{}-{}-{}", prefix, platform, arch);
+            let dep_name: String = format!("{prefix}-{platform}-{arch}");
             optional_deps.insert(dep_name, version.to_string());
         }
     }

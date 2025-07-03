@@ -7,19 +7,17 @@ members = [
   "crates/pack-schema",
   "crates/cli",
   "crates/core",
-  "crates/turbo-esregex",
 ]
 exclude = ["crates/runtime"]
 resolver = "2"
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 license = "MIT"
 
 [workspace.dependencies]
 pack-core = { path = "./crates/pack-core" }
 pack-api = { path = "./crates/pack-api" }
-turbo-esregex = { path = "./crates/turbo-esregex" }
 schemars = "0.8"
 insta = "1.0"
 either = "1.9.0"
@@ -34,60 +32,60 @@ rustc-hash = "2.1.1"
 clap = { version = "4.5.32", features = ["derive"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
-serde_qs = "0.13.0"
+serde_qs = "0.15.0"
 owo-colors = "4.2.0"
 dunce = "1.0.5"
 webbrowser = "1.0.4"
 regex = "1.11.1"
 regress = "0.10.3"
 indexmap = "2.7.1"
-criterion = "0.5.1"
+criterion = "0.6.0"
 dirs = "5.0"
 toml = "0.8"
 async-trait = "0.1.64"
-swc_core = { version = "21.0.1", features = [
+swc_core = { version = "30.0.1", features = [
   "ecma_loader_lru",
   "ecma_loader_parking_lot",
+  "parallel_rayon",
 ] }
 rand = "0.9.0"
 url = "2.2.2"
 urlencoding = "2.1.2"
-par-core = { version = "1.0.3", features = ["rayon"] }
 qstring = "0.7.2"
 indoc = "2.0.0"
 parking_lot = "0.12.1"
 
 # Dependencies from nextjs, should keep the same rev!
 ## Dependencies for common cache and task. See https://github.com/umijs/next.js/blob/canary/turbopack/crates/turbopack/architecture.md
-turbo-tasks = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks", branch = "utoo-patch-v15.3.2" }
-turbo-tasks-fs = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-fs", branch = "utoo-patch-v15.3.2" }
-turbo-tasks-env = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-env", branch = "utoo-patch-v15.3.2" }
-turbo-tasks-backend = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-backend", branch = "utoo-patch-v15.3.2" }
-turbo-tasks-bytes = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-bytes", branch = "utoo-patch-v15.3.2" }
-turbo-tasks-fetch = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-fetch", branch = "utoo-patch-v15.3.2" }
-turbo-tasks-hash = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-hash", branch = "utoo-patch-v15.3.2" }
-turbo-tasks-build = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-build", branch = "utoo-patch-v15.3.2" }
-turbo-rcstr = { git = "https://github.com/umijs/next.js.git", package = "turbo-rcstr", branch = "utoo-patch-v15.3.2" }
-turbo-tasks-memory = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-memory", branch = "utoo-patch-v15.3.2" }
-turbo-tasks-malloc = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-malloc", branch = "utoo-patch-v15.3.2", default-features = false }
-turbopack-trace-utils = { git = "https://github.com/umijs/next.js.git", package = "turbopack-trace-utils", branch = "utoo-patch-v15.3.2" }
-turbopack-trace-server = { git = "https://github.com/umijs/next.js.git", package = "turbopack-trace-server", branch = "utoo-patch-v15.3.2" }
+turbo-tasks = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks" }
+turbo-tasks-fs = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-fs" }
+turbo-tasks-env = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-env" }
+turbo-tasks-backend = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-backend" }
+turbo-tasks-bytes = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-bytes" }
+turbo-tasks-fetch = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-fetch" }
+turbo-tasks-hash = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-hash" }
+turbo-tasks-build = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-build" }
+turbo-rcstr = { git = "https://github.com/umijs/next.js.git", package = "turbo-rcstr" }
+turbo-esregex = { git = "https://github.com/umijs/next.js.git", package = "turbo-esregex" }
+turbo-tasks-malloc = { git = "https://github.com/umijs/next.js.git", package = "turbo-tasks-malloc", default-features = false }
+turbopack-trace-utils = { git = "https://github.com/umijs/next.js.git", package = "turbopack-trace-utils" }
+turbopack-trace-server = { git = "https://github.com/umijs/next.js.git", package = "turbopack-trace-server" }
 
 ### Dependencies for bundler specially.
-turbopack = { git = "https://github.com/umijs/next.js.git", package = "turbopack", branch = "utoo-patch-v15.3.2" }
-turbopack-browser = { git = "https://github.com/umijs/next.js.git", package = "turbopack-browser", branch = "utoo-patch-v15.3.2" }
-turbopack-core = { git = "https://github.com/umijs/next.js.git", package = "turbopack-core", branch = "utoo-patch-v15.3.2" }
-turbopack-resolve = { git = "https://github.com/umijs/next.js.git", package = "turbopack-resolve", branch = "utoo-patch-v15.3.2" }
-turbopack-ecmascript = { git = "https://github.com/umijs/next.js.git", package = "turbopack-ecmascript", branch = "utoo-patch-v15.3.2" }
-turbopack-ecmascript-plugins = { git = "https://github.com/umijs/next.js.git", package = "turbopack-ecmascript-plugins", branch = "utoo-patch-v15.3.2" }
-turbopack-ecmascript-runtime = { git = "https://github.com/umijs/next.js.git", package = "turbopack-ecmascript-runtime", branch = "utoo-patch-v15.3.2" }
-turbopack-ecmascript-hmr-protocol = { git = "https://github.com/umijs/next.js.git", package = "turbopack-ecmascript-hmr-protocol", branch = "utoo-patch-v15.3.2" }
-turbopack-image = { git = "https://github.com/umijs/next.js.git", package = "turbopack-image", branch = "utoo-patch-v15.3.2" }
-turbopack-node = { git = "https://github.com/umijs/next.js.git", package = "turbopack-node", branch = "utoo-patch-v15.3.2" }
-turbopack-nodejs = { git = "https://github.com/umijs/next.js.git", package = "turbopack-nodejs", branch = "utoo-patch-v15.3.2" }
-turbopack-static = { git = "https://github.com/umijs/next.js.git", package = "turbopack-static", branch = "utoo-patch-v15.3.2" }
-turbopack-dev-server = { git = "https://github.com/umijs/next.js.git", package = "turbopack-dev-server", branch = "utoo-patch-v15.3.2" }
-turbopack-cli-utils = { git = "https://github.com/umijs/next.js.git", package = "turbopack-cli-utils", branch = "utoo-patch-v15.3.2" }
+turbopack = { git = "https://github.com/umijs/next.js.git", package = "turbopack" }
+turbopack-browser = { git = "https://github.com/umijs/next.js.git", package = "turbopack-browser" }
+turbopack-core = { git = "https://github.com/umijs/next.js.git", package = "turbopack-core" }
+turbopack-resolve = { git = "https://github.com/umijs/next.js.git", package = "turbopack-resolve" }
+turbopack-ecmascript = { git = "https://github.com/umijs/next.js.git", package = "turbopack-ecmascript" }
+turbopack-ecmascript-plugins = { git = "https://github.com/umijs/next.js.git", package = "turbopack-ecmascript-plugins" }
+turbopack-ecmascript-runtime = { git = "https://github.com/umijs/next.js.git", package = "turbopack-ecmascript-runtime" }
+turbopack-ecmascript-hmr-protocol = { git = "https://github.com/umijs/next.js.git", package = "turbopack-ecmascript-hmr-protocol" }
+turbopack-image = { git = "https://github.com/umijs/next.js.git", package = "turbopack-image" }
+turbopack-node = { git = "https://github.com/umijs/next.js.git", package = "turbopack-node" }
+turbopack-nodejs = { git = "https://github.com/umijs/next.js.git", package = "turbopack-nodejs" }
+turbopack-static = { git = "https://github.com/umijs/next.js.git", package = "turbopack-static" }
+turbopack-dev-server = { git = "https://github.com/umijs/next.js.git", package = "turbopack-dev-server" }
+turbopack-cli-utils = { git = "https://github.com/umijs/next.js.git", package = "turbopack-cli-utils" }
 
 [workspace.lints.clippy]
 too_many_arguments = "allow"
@@ -108,5 +106,10 @@ codegen-units = 256
 # cargo build --profile release-instruments --bin pack-cli
 # xcrun xctrace record --template "Time Profiler" --launch -- ./target/release/pack-cli --mode build --project-dir ./examples/multiple-entries-heavy --root-dir .
 [profile.release-instruments]
-inherits = "release-local"
+inherits = "release"
+opt-level = 1
+lto = false
+strip = "none"
+incremental = true
+codegen-units = 256
 debug = 2

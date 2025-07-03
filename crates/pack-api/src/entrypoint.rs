@@ -1,6 +1,6 @@
 use anyhow::Result;
 use std::sync::Arc;
-use turbo_tasks::{get_effects, Effects, FxIndexSet, ReadRef, ResolvedVc, TryJoinIterExt, Vc};
+use turbo_tasks::{Effects, FxIndexSet, ReadRef, ResolvedVc, TryJoinIterExt, Vc, get_effects};
 use turbopack_core::{
     diagnostics::PlainDiagnostic,
     issue::PlainIssue,

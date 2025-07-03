@@ -1,20 +1,20 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use pack_api::project::Project;
 use rustc_hash::FxHashSet;
 use turbo_tasks::{
-    trace::TraceRawVcs, NonLocalValue, OperationVc, ResolvedVc, TryFlatJoinIterExt, TryJoinIterExt,
-    Vc,
+    NonLocalValue, OperationVc, ResolvedVc, TryFlatJoinIterExt, TryJoinIterExt, Vc,
+    trace::TraceRawVcs,
 };
 
 use turbopack_core::chunk::{ChunkableModule, EvaluatableAsset};
 use turbopack_dev_server::{
+    SourceProvider,
     html::{DevHtmlAsset, DevHtmlEntry},
     introspect::IntrospectionSource,
     source::{
-        asset_graph::AssetGraphContentSource, combined::CombinedContentSource,
-        router::PrefixedRouterContentSource, ContentSource,
+        ContentSource, asset_graph::AssetGraphContentSource, combined::CombinedContentSource,
+        router::PrefixedRouterContentSource,
     },
-    SourceProvider,
 };
 
 #[turbo_tasks::function]
@@ -92,10 +92,10 @@ pub async fn create_web_entry_source(
         None => vec![],
     };
 
-    let client_root = project.client_root();
+    let client_root = project.client_root().await?.clone_value();
 
     let entry_asset = Vc::upcast(DevHtmlAsset::new_with_body(
-        client_root.join("index.html".into()).to_resolved().await?,
+        client_root.join("index.html")?,
         entries,
         // Just add this root node for test
         r#"<div id="root"></div>"#.into(),

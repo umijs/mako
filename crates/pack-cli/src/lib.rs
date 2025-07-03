@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use turbo_rcstr::RcStr;
 use turbo_tasks::{ResolvedVc, TurboTasks};
 use turbo_tasks_backend::{
-    noop_backing_storage, BackendOptions, NoopBackingStorage, TurboTasksBackend,
+    BackendOptions, NoopBackingStorage, TurboTasksBackend, noop_backing_storage,
 };
 
 pub mod build;

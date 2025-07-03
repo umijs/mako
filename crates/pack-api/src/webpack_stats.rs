@@ -85,7 +85,7 @@ pub async fn generate_webpack_stats(output_assets: Vc<OutputAssets>) -> Result<V
                         name: entry_path.clone(),
                     });
 
-                    let entry_name: RcStr = QString::from((*chunk).ident().query().await?.as_str())
+                    let entry_name: RcStr = QString::from((*chunk).ident().await?.query.as_str())
                         .get("name")
                         .unwrap_or(remove_extension_from_str(entry_path.as_str()))
                         .into();
@@ -163,7 +163,7 @@ pub async fn generate_webpack_stats(output_assets: Vc<OutputAssets>) -> Result<V
     chunk_items
         .iter()
         .map(|(chunk_item, chunks)| async {
-            let size = *chunk_item.content_ident().path().read().len().await?;
+            let size = *chunk_item.content_ident().await?.path.read().len().await?;
             let path = chunk_item.asset_ident().path().await?.path.clone();
             {
                 let mut modules = modules.lock();
@@ -189,10 +189,10 @@ pub async fn generate_webpack_stats(output_assets: Vc<OutputAssets>) -> Result<V
 }
 
 fn remove_extension_from_str(filename: &str) -> &str {
-    if let Some(dot_index) = filename.rfind('.') {
-        if dot_index > 0 {
-            return &filename[..dot_index];
-        }
+    if let Some(dot_index) = filename.rfind('.')
+        && dot_index > 0
+    {
+        return &filename[..dot_index];
     }
     filename
 }

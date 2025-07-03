@@ -1,7 +1,7 @@
 [package]
 name = "pack-schema"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 description = "Schema generator for Mako configuration files"
 
@@ -16,4 +16,5 @@ schemars = { workspace = true }
 pack-core = { path = "../pack-core" }
 
 [dev-dependencies]
-insta = { workspace = true } 
+insta = { workspace = true }
+

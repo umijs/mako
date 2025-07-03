@@ -2,7 +2,7 @@ use clap::Parser;
 use std::process;
 use utoo_cli::{
     cmd::clean::clean,
-    constants::{cmd::CLEAN_ABOUT, APP_VERSION},
+    constants::{APP_VERSION, cmd::CLEAN_ABOUT},
 };
 
 #[derive(Parser)]
@@ -26,7 +26,7 @@ async fn main() {
     let cli = Cli::parse();
 
     if let Err(err) = clean(&cli.pattern).await {
-        eprintln!("Error: {}", err);
+        eprintln!("Error: {err}");
         process::exit(1);
     }
 }

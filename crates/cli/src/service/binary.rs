@@ -15,7 +15,7 @@ async fn load_config() -> Result<&'static Value> {
     CONFIG
         .get_or_try_init(|| async {
             let registry = get_registry();
-            let url = format!("{}/binary-mirror-config/latest", registry);
+            let url = format!("{registry}/binary-mirror-config/latest");
             let response = reqwest::get(&url)
                 .await
                 .context("Failed to fetch binary mirror config")?;
@@ -65,8 +65,7 @@ fn update_binary_config(pkg: &mut Value, binary_mirror: &Map<String, Value>) {
         .unwrap_or("unknown");
 
     log_info(&format!(
-        "{}@{} download from binary mirror: {:?}",
-        name, version, new_binary
+        "{name}@{version} download from binary mirror: {new_binary:?}"
     ));
 }
 
@@ -106,8 +105,7 @@ fn get_replace_host_files(binary_mirror: &Map<String, Value>) -> Vec<&str> {
 fn replace_with_regex(content: &str, replace_map: &Value) -> Result<String> {
     let mut result = content.to_string();
     for (pattern, replacement) in replace_map.as_object().unwrap() {
-        let re =
-            Regex::new(pattern).with_context(|| format!("Invalid regex pattern {}", pattern))?;
+        let re = Regex::new(pattern).with_context(|| format!("Invalid regex pattern {pattern}"))?;
         result = re
             .replace_all(&result, replacement.as_str().unwrap())
             .to_string();
@@ -323,10 +321,12 @@ mod tests {
         assert_eq!(pkg["binary"]["existing"].as_str(), Some("value"));
         assert_eq!(pkg["binary"]["host"].as_str(), Some("https://example.com"));
         assert_eq!(pkg["binary"]["newKey"].as_str(), Some("newValue"));
-        assert!(!pkg["binary"]
-            .as_object()
-            .unwrap()
-            .contains_key("replaceHostFiles"));
+        assert!(
+            !pkg["binary"]
+                .as_object()
+                .unwrap()
+                .contains_key("replaceHostFiles")
+        );
     }
 
     #[tokio::test]

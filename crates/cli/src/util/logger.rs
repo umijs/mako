@@ -8,8 +8,8 @@ use indicatif::{ProgressBar, ProgressStyle};
 use once_cell::sync::Lazy;
 use owo_colors::OwoColorize;
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 pub static PROGRESS_BAR: Lazy<ProgressBar> = Lazy::new(|| {
     let pb = ProgressBar::new(0).with_style(
@@ -63,7 +63,7 @@ use crate::util::timer::Timer;
 
 pub fn log_verbose(msg: &str) {
     if VERBOSE.load(Ordering::Relaxed) {
-        println!("🔍 {}", msg);
+        println!("🔍 {msg}");
     }
     if let Ok(mut logs) = VERBOSE_LOGS.lock() {
         logs.push(format!("[{}][VERBOSE] {}", Timer::format_datetime(), msg));
@@ -79,7 +79,7 @@ pub fn get_verbose_logs() -> Vec<String> {
 
 pub fn log_warning(text: &str) {
     if VERBOSE.load(Ordering::Relaxed) {
-        PROGRESS_BAR.suspend(|| println!("[WARN] {}", text));
+        PROGRESS_BAR.suspend(|| println!("[WARN] {text}"));
     } else {
         PROGRESS_BAR.suspend(|| println!("{} {}", " WARN ".on_yellow(), text));
     }
@@ -90,7 +90,7 @@ pub fn log_warning(text: &str) {
 
 pub fn log_error(text: &str) {
     if VERBOSE.load(Ordering::Relaxed) {
-        PROGRESS_BAR.suspend(|| println!("[ERROR] {}", text));
+        PROGRESS_BAR.suspend(|| println!("[ERROR] {text}"));
     } else {
         PROGRESS_BAR.suspend(|| println!("{} {}", " ERROR ".on_red(), text));
     }
@@ -101,7 +101,7 @@ pub fn log_error(text: &str) {
 
 pub fn log_info(text: &str) {
     if VERBOSE.load(Ordering::Relaxed) {
-        PROGRESS_BAR.suspend(|| println!("[INFO] {}", text));
+        PROGRESS_BAR.suspend(|| println!("[INFO] {text}"));
     } else {
         PROGRESS_BAR.suspend(|| println!("{} {}", " INFO ".on_cyan(), text));
     }
@@ -122,7 +122,7 @@ pub fn write_verbose_logs_to_file() -> Result<String> {
         .unwrap()
         .as_secs();
     let log_file = env::temp_dir()
-        .join(format!("utoo-{}.log", timestamp))
+        .join(format!("utoo-{timestamp}.log"))
         .to_string_lossy()
         .to_string();
 
@@ -138,7 +138,7 @@ pub fn write_verbose_logs_to_file() -> Result<String> {
         file.write_all(logs.join("\n").as_bytes())
             .context("Failed to write logs to file")?;
 
-        log_error(&format!("Verbose logs have been saved to {}", log_file));
+        log_error(&format!("Verbose logs have been saved to {log_file}"));
     }
     Ok(log_file)
 }

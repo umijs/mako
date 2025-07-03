@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use turbo_rcstr::RcStr;
-use turbo_tasks::{get_effects, Effects, ReadRef, ResolvedVc, Vc};
+use turbo_tasks::{Effects, ReadRef, ResolvedVc, Vc, get_effects};
 use turbopack_core::{
     diagnostics::PlainDiagnostic,
     issue::PlainIssue,

@@ -80,7 +80,7 @@ fn main() -> Result<()> {
             ConfigCommands::Set { key, value, global } => {
                 let mut config = Config::load(global)?;
                 config.set(&key, value, global)?;
-                println!("Successfully set {} (global: {})", key, global);
+                println!("Successfully set {key} (global: {global})");
             }
             ConfigCommands::Get {
                 key,
@@ -93,19 +93,19 @@ fn main() -> Result<()> {
                     .collect();
 
                 if let Some(value) = overrides.get(&key) {
-                    println!("{}", value);
+                    println!("{value}");
                 } else {
                     let config = Config::load(global)?;
                     match config.get(&key)? {
-                        Some(value) => println!("{}", value),
-                        None => println!("No value set for {}", key),
+                        Some(value) => println!("{value}"),
+                        None => println!("No value set for {key}"),
                     }
                 }
             }
             ConfigCommands::List { global } => {
                 let config = Config::load(global)?;
                 for (key, value) in config.list()? {
-                    println!("{} = {}", key, value);
+                    println!("{key} = {value}");
                 }
             }
         },
@@ -153,7 +153,7 @@ mod tests {
         )
         .unwrap();
 
-        std::env::set_var("HOME", home_dir.path());
+        unsafe { std::env::set_var("HOME", home_dir.path()) };
 
         let config = Config::load(true).unwrap();
         assert_eq!(
@@ -186,7 +186,7 @@ mod tests {
         )
         .unwrap();
 
-        std::env::set_var("HOME", home_dir.path());
+        unsafe { std::env::set_var("HOME", home_dir.path()) };
         std::env::set_current_dir(work_dir.path()).unwrap();
 
         let config = Config::load(false).unwrap();

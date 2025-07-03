@@ -138,11 +138,11 @@ impl Registry {
 
     pub async fn get_package_manifest(&self, name: &str, spec: &str) -> Result<(String, Value)> {
         // First check cache for version
-        if let Some(version) = PACKAGE_CACHE.get_version(name, spec).await {
-            if let Some(manifest) = PACKAGE_CACHE.get_manifest(name, spec, &version).await {
-                log_verbose(&format!("Cache hit for {}@{} => {}", name, spec, version));
-                return Ok((version, manifest));
-            }
+        if let Some(version) = PACKAGE_CACHE.get_version(name, spec).await
+            && let Some(manifest) = PACKAGE_CACHE.get_manifest(name, spec, &version).await
+        {
+            log_verbose(&format!("Cache hit for {name}@{spec} => {version}"));
+            return Ok((version, manifest));
         }
 
         // Build request URL
@@ -162,10 +162,7 @@ impl Registry {
 
         // Calculate and log request duration
         let duration = start_time.elapsed();
-        log_verbose(&format!(
-            "HTTP request for {}@{} took {:?}",
-            name, spec, duration
-        ));
+        log_verbose(&format!("HTTP request for {name}@{spec} took {duration:?}"));
 
         // Check response status
         if !response.status().is_success() {
@@ -186,7 +183,7 @@ impl Registry {
         let version = match manifest.get("version").and_then(|v| v.as_str()) {
             Some(v) => v.to_string(),
             None => {
-                log_verbose(&format!("Invalid manifest: {:?}", manifest));
+                log_verbose(&format!("Invalid manifest: {manifest:?}"));
                 return Err(anyhow::anyhow!("Invalid manifest: missing version"));
             }
         };
@@ -201,7 +198,7 @@ impl Registry {
 
     async fn resolve_package(&self, name: &str, spec: &str) -> Result<ResolvedPackage> {
         let (version, mut manifest) = self.get_package_manifest(name, spec).await?;
-        log_verbose(&format!("Resolved {}@{} => {}", name, spec, version));
+        log_verbose(&format!("Resolved {name}@{spec} => {version}"));
         if let Some(obj) = manifest.as_object_mut() {
             // merge dependencies and devDependencies
             if let Some(optional_deps) = obj.get("optionalDependencies").and_then(|v| v.as_object())
@@ -285,8 +282,7 @@ pub async fn resolve_dependency(
         Err(e) => {
             if *edge_type == EdgeType::Optional {
                 log_verbose(&format!(
-                    "skipping optional dependency {}@{} due to resolve error: {}",
-                    name, spec, e
+                    "skipping optional dependency {name}@{spec} due to resolve error: {e}"
                 ));
                 Ok(None)
             } else {

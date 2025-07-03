@@ -1,5 +1,6 @@
 #![feature(arbitrary_self_types_pointers)]
 #![feature(box_patterns)]
+#![feature(str_as_str)]
 
 pub mod client;
 pub mod config;

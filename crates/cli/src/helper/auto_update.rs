@@ -51,7 +51,7 @@ async fn check_and_update_cache() -> Result<VersionCache> {
     match check_remote_version().await {
         Ok(_) => read_version_cache(),
         Err(e) => {
-            log_warning(&format!("Failed to check remote version: {}", e));
+            log_warning(&format!("Failed to check remote version: {e}"));
             Err(e).context("Failed to check remote version")
         }
     }
@@ -59,7 +59,7 @@ async fn check_and_update_cache() -> Result<VersionCache> {
 
 async fn execute_update(version: &str) -> Result<()> {
     let status = Command::new("utoo")
-        .args(["i", &format!("@utoo/utoo@{}", version), "-g"])
+        .args(["i", &format!("@utoo/utoo@{version}"), "-g"])
         .env("CI", "1")
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())

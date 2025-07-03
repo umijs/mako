@@ -1,16 +1,22 @@
-use std::{future::Future, ops::Deref, path::PathBuf};
+use std::{future::Future, ops::Deref, path::PathBuf, sync::Arc};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use napi::{
+    JsFunction, JsObject, JsUnknown, NapiRaw, NapiValue, Status,
     bindgen_prelude::{External, ToNapiValue},
     threadsafe_function::{ThreadSafeCallContext, ThreadsafeFunction, ThreadsafeFunctionCallMode},
-    JsFunction, JsObject, JsUnknown, NapiRaw, NapiValue, Status,
 };
 use pack_api::tasks::{BundlerTurboTasks, RootTask};
 use rustc_hash::FxHashMap;
 use serde::Serialize;
-use turbo_tasks::{OperationVc, TurboTasks, Vc};
-use turbo_tasks_backend::{default_backing_storage, noop_backing_storage, GitVersionInfo};
+use turbo_tasks::{
+    OperationVc, TurboTasks, TurboTasksApi, Vc,
+    message_queue::{CompilationEvent, Severity},
+};
+use turbo_tasks_backend::{
+    GitVersionInfo, StartupCacheState, db_invalidation::invalidation_reasons,
+    default_backing_storage, noop_backing_storage,
+};
 use turbo_tasks_fs::FileContent;
 use turbopack_core::{
     diagnostics::PlainDiagnostic,
@@ -33,20 +39,28 @@ pub fn create_turbo_tasks(
             dirty: option_env!("CI").is_none_or(|value| value.is_empty())
                 && env!("VERGEN_GIT_DIRTY") == "true",
         };
-        BundlerTurboTasks::PersistentCaching(TurboTasks::new(
-            turbo_tasks_backend::TurboTasksBackend::new(
-                turbo_tasks_backend::BackendOptions {
-                    storage_mode: Some(if std::env::var("TURBO_ENGINE_READ_ONLY").is_ok() {
-                        turbo_tasks_backend::StorageMode::ReadOnly
-                    } else {
-                        turbo_tasks_backend::StorageMode::ReadWrite
-                    }),
-                    dependency_tracking,
-                    ..Default::default()
-                },
-                default_backing_storage(&output_path.join(".turbopack/.cache"), &version_info)?,
-            ),
-        ))
+
+        // TODO: check is_ci;
+        let is_ci: bool = false;
+        let (backing_storage, cache_state) =
+            default_backing_storage(&output_path.join(".turbopack/.cache"), &version_info, is_ci)?;
+        let tt = TurboTasks::new(turbo_tasks_backend::TurboTasksBackend::new(
+            turbo_tasks_backend::BackendOptions {
+                storage_mode: Some(if std::env::var("TURBO_ENGINE_READ_ONLY").is_ok() {
+                    turbo_tasks_backend::StorageMode::ReadOnly
+                } else {
+                    turbo_tasks_backend::StorageMode::ReadWrite
+                }),
+                dependency_tracking,
+                ..Default::default()
+            },
+            backing_storage,
+        ));
+        if let StartupCacheState::Invalidated { reason_code } = cache_state {
+            tt.send_compilation_event(Arc::new(StartupCacheInvalidationEvent { reason_code }));
+        }
+
+        BundlerTurboTasks::PersistentCaching(tt)
     } else {
         BundlerTurboTasks::Memory(TurboTasks::new(
             turbo_tasks_backend::TurboTasksBackend::new(
@@ -59,6 +73,39 @@ pub fn create_turbo_tasks(
             ),
         ))
     })
+}
+
+#[derive(Serialize)]
+struct StartupCacheInvalidationEvent {
+    reason_code: Option<String>,
+}
+
+impl CompilationEvent for StartupCacheInvalidationEvent {
+    fn type_name(&self) -> &'static str {
+        "StartupCacheInvalidationEvent"
+    }
+
+    fn severity(&self) -> Severity {
+        Severity::Warning
+    }
+
+    fn message(&self) -> String {
+        let reason_msg = match self.reason_code.as_deref() {
+            Some(invalidation_reasons::PANIC) => {
+                " because we previously detected an internal error in Turbopack"
+            }
+            Some(invalidation_reasons::USER_REQUEST) => " as the result of a user request",
+            _ => "", // ignore unknown reasons
+        };
+        format!(
+            "Turbopack's persistent cache has been deleted{reason_msg}. Builds or page loads may \
+             be slower as a result."
+        )
+    }
+
+    fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
 }
 
 /// A helper type to hold both a Vc operation and the TurboTasks root process.
@@ -108,7 +155,7 @@ pub struct NapiIssue {
     pub detail: Option<serde_json::Value>,
     pub source: Option<NapiIssueSource>,
     pub documentation_link: String,
-    pub sub_issues: Vec<NapiIssue>,
+    pub import_traces: serde_json::Value,
 }
 
 impl From<&PlainIssue> for NapiIssue {
@@ -128,11 +175,7 @@ impl From<&PlainIssue> for NapiIssue {
             severity: issue.severity.as_str().to_string(),
             source: issue.source.as_ref().map(|source| source.into()),
             title: serde_json::to_value(StyledStringSerialize::from(&issue.title)).unwrap(),
-            sub_issues: issue
-                .sub_issues
-                .iter()
-                .map(|issue| (&**issue).into())
-                .collect(),
+            import_traces: serde_json::to_value(&issue.import_traces).unwrap(),
         }
     }
 }
@@ -277,10 +320,10 @@ impl<T: ToNapiValue> ToNapiValue for TurbopackResult<T> {
         env: napi::sys::napi_env,
         val: Self,
     ) -> napi::Result<napi::sys::napi_value> {
-        let mut obj = napi::Env::from_raw(env).create_object()?;
+        let mut obj = unsafe { napi::Env::from_raw(env).create_object() }?;
 
-        let result = T::to_napi_value(env, val.result)?;
-        let result = JsUnknown::from_raw(env, result)?;
+        let result = unsafe { T::to_napi_value(env, val.result) }?;
+        let result = unsafe { JsUnknown::from_raw(env, result) }?;
         if matches!(result.get_type()?, napi::ValueType::Object) {
             // SAFETY: We know that result is an object, so we can cast it to a JsObject
             let result = unsafe { result.cast::<JsObject>() };
@@ -294,7 +337,7 @@ impl<T: ToNapiValue> ToNapiValue for TurbopackResult<T> {
         obj.set_named_property("issues", val.issues)?;
         obj.set_named_property("diagnostics", val.diagnostics)?;
 
-        Ok(obj.raw())
+        Ok(unsafe { obj.raw() })
     }
 }
 
@@ -321,7 +364,7 @@ pub fn subscribe<T: 'static + Send + Sync, F: Future<Output = Result<T>> + Send,
             );
             if !matches!(status, Status::Ok) {
                 let error = anyhow!("Error calling JS function: {}", status);
-                eprintln!("{}", error);
+                eprintln!("{error}");
                 return Err::<Vc<()>, _>(error);
             }
             Ok(Default::default())

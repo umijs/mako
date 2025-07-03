@@ -1,7 +1,7 @@
 use std::{
     env::current_dir,
     future::join,
-    io::{stdout, Write},
+    io::{Write, stdout},
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
     sync::Arc,
@@ -12,8 +12,8 @@ use anyhow::Result;
 use owo_colors::OwoColorize;
 use pack_api::project::ProjectOptions;
 use turbo_tasks::{
-    util::{FormatBytes, FormatDuration},
     TransientInstance, UpdateInfo, Vc,
+    util::{FormatBytes, FormatDuration},
 };
 use turbo_tasks_malloc::TurboMalloc;
 use turbopack_cli_utils::issue::{ConsoleUi, LogOptions};
@@ -23,7 +23,7 @@ use turbopack_dev_server::{DevServer, DevServerBuilder};
 use crate::initialize_project_container;
 
 pub mod source;
-use crate::serve::source::{create_web_entry_source, ServerSourceProvider};
+use crate::serve::source::{ServerSourceProvider, create_web_entry_source};
 
 pub async fn run(options: ProjectOptions) -> Result<()> {
     let dev = options.dev;
@@ -138,29 +138,29 @@ async fn dev_server_builder() -> Result<DevServerBuilder> {
         let addr = SocketAddr::new(host, current_port);
         let listen_result = DevServer::listen(addr);
 
-        if let Err(e) = &listen_result {
-            if attempts < max_attempts {
-                // Returned error from `listen` is not `std::io::Error` but `anyhow::Error`,
-                // so we need to access its source to check if it is
-                // `std::io::ErrorKind::AddrInUse`.
-                let should_retry = e
-                    .source()
-                    .and_then(|e| {
-                        e.downcast_ref::<std::io::Error>()
-                            .map(|e| e.kind() == std::io::ErrorKind::AddrInUse)
-                    })
-                    .unwrap_or(false);
+        if let Err(e) = &listen_result
+            && attempts < max_attempts
+        {
+            // Returned error from `listen` is not `std::io::Error` but `anyhow::Error`,
+            // so we need to access its source to check if it is
+            // `std::io::ErrorKind::AddrInUse`.
+            let should_retry = e
+                .source()
+                .and_then(|e| {
+                    e.downcast_ref::<std::io::Error>()
+                        .map(|e| e.kind() == std::io::ErrorKind::AddrInUse)
+                })
+                .unwrap_or(false);
 
-                if should_retry {
-                    tracing::warn!(
-                        "{} - Port {} is in use, trying {} instead",
-                        "warn ".yellow(),
-                        current_port,
-                        current_port + 1
-                    );
-                    attempts += 1;
-                    continue;
-                }
+            if should_retry {
+                tracing::warn!(
+                    "{} - Port {} is in use, trying {} instead",
+                    "warn ".yellow(),
+                    current_port,
+                    current_port + 1
+                );
+                attempts += 1;
+                continue;
             }
         }
 

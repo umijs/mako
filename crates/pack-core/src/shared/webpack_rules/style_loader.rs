@@ -1,6 +1,6 @@
 use std::mem::take;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use serde_json::Value as JsonValue;
 use turbopack_node::transforms::webpack::WebpackLoaderItem;
 

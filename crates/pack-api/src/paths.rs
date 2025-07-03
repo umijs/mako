@@ -3,7 +3,7 @@ use pack_core::all_assets_from_entries;
 use serde::{Deserialize, Serialize};
 use tracing::Instrument;
 use turbo_rcstr::RcStr;
-use turbo_tasks::{trace::TraceRawVcs, NonLocalValue, ResolvedVc, TryFlatJoinIterExt, Vc};
+use turbo_tasks::{NonLocalValue, ResolvedVc, TryFlatJoinIterExt, Vc, trace::TraceRawVcs};
 use turbo_tasks_fs::FileSystemPath;
 use turbopack_core::{
     asset::{Asset, AssetContent},

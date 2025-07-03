@@ -1,23 +1,19 @@
 use std::io::Write;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use base64::{display::Base64Display, engine::general_purpose::STANDARD};
-use turbo_rcstr::RcStr;
+use turbo_rcstr::rcstr;
 use turbo_tasks::{ResolvedVc, Vc};
-use turbo_tasks_fs::{rope::RopeBuilder, FileContent};
+use turbo_tasks_fs::{FileContent, rope::RopeBuilder};
 use turbopack_core::{
     asset::{Asset, AssetContent},
     ident::AssetIdent,
     source::Source,
 };
 use turbopack_ecmascript::utils::StringifyJs;
-use turbopack_image::process::{get_meta_data, BlurPlaceholderOptions};
+use turbopack_image::process::{BlurPlaceholderOptions, get_meta_data};
 
 use super::module::BlurPlaceholderMode;
-
-fn modifier() -> Vc<RcStr> {
-    Vc::cell("structured image object".into())
-}
 
 #[turbo_tasks::function]
 fn blur_options() -> Vc<BlurPlaceholderOptions> {
@@ -43,7 +39,7 @@ impl Source for StructuredImageFileSource {
     fn ident(&self) -> Vc<AssetIdent> {
         self.image
             .ident()
-            .with_modifier(modifier())
+            .with_modifier(rcstr!("structured image object"))
             .rename_as("*.mjs".into())
     }
 }
@@ -61,9 +57,9 @@ impl Asset for StructuredImageFileSource {
         if let Some(inline_limit) = self.inline_limit {
             if let FileContent::Content(file) = &*content.await? {
                 if (file.content().len() as u64) < inline_limit {
-                    if let Some(ext) = self.image.ident().await?.path.await?.extension_ref() {
+                    if let Some(ext) = self.image.ident().await?.path.extension_ref() {
                         if let Some(mime) = mime_guess::from_ext(ext).first() {
-                            let data = file.content().to_bytes()?;
+                            let data = file.content().to_bytes();
                             let data_url = format!(
                                 "data:{mime};base64,{}",
                                 Base64Display::new(&data, &STANDARD)
@@ -90,7 +86,7 @@ impl Asset for StructuredImageFileSource {
         match self.blur_placeholder_mode {
             BlurPlaceholderMode::DataUrl => {
                 writeln!(result, "import src from \"IMAGE\";",)?;
-                let info = get_meta_data(self.image.ident(), *content, Some(blur_options)).await?;
+                let info = get_meta_data(*self.image, *content, Some(blur_options)).await?;
                 writeln!(
                     result,
                     "export default {{ src, width: {width}, height: {height}, blurDataURL: \
@@ -107,7 +103,7 @@ impl Asset for StructuredImageFileSource {
             }
             BlurPlaceholderMode::None => {
                 writeln!(result, "import src from \"IMAGE\";",)?;
-                let info = get_meta_data(self.image.ident(), *content, None).await?;
+                let info = get_meta_data(*self.image, *content, None).await?;
                 writeln!(
                     result,
                     "export default {{ src, width: {width}, height: {height} }}",

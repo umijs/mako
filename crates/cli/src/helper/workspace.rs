@@ -30,7 +30,7 @@ pub async fn find_workspaces(root_path: &Path) -> Result<Vec<(String, PathBuf, V
 
                         // glob match
                         for entry in glob(glob_pattern)
-                            .context(format!("Invalid glob pattern: {}", glob_pattern))?
+                            .context(format!("Invalid glob pattern: {glob_pattern}"))?
                         {
                             match entry {
                                 Ok(path) => {
@@ -56,12 +56,10 @@ pub async fn find_workspaces(root_path: &Path) -> Result<Vec<(String, PathBuf, V
                                         })?
                                         .to_path_buf();
 
-                                    log_verbose(&format!("Found workspace: {} {:?}", name, path));
+                                    log_verbose(&format!("Found workspace: {name} {path:?}"));
                                     workspaces.push((name, workspace_path, workspace_pkg));
                                 }
-                                Err(e) => {
-                                    log_verbose(&format!("Error processing workspace: {}", e))
-                                }
+                                Err(e) => log_verbose(&format!("Error processing workspace: {e}")),
                             }
                         }
                     }
@@ -90,10 +88,10 @@ pub async fn find_workspace_path(cwd: &Path, workspace: &str) -> Result<PathBuf>
         }
 
         // Try relative path match
-        if let Ok(relative) = path.strip_prefix(cwd) {
-            if relative.to_string_lossy() == workspace {
-                return Ok(path);
-            }
+        if let Ok(relative) = path.strip_prefix(cwd)
+            && relative.to_string_lossy() == workspace
+        {
+            return Ok(path);
         }
     }
     anyhow::bail!("Workspace '{}' not found", workspace)

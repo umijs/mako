@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use turbo_rcstr::RcStr;
-use turbo_tasks::{trace::TraceRawVcs, NonLocalValue, TaskInput, Vc};
+use turbo_tasks::{NonLocalValue, TaskInput, Vc, trace::TraceRawVcs};
 use turbo_tasks_fs::FileSystem;
 use turbopack::condition::ContextCondition;
 
@@ -78,14 +78,14 @@ pub async fn internal_assets_conditions() -> Result<ContextCondition> {
         ContextCondition::InPath(
             turbopack_ecmascript_runtime::embed_fs()
                 .root()
-                .to_resolved()
-                .await?,
+                .await?
+                .clone_value(),
         ),
         ContextCondition::InPath(
             turbopack_node::embed_js::embed_fs()
                 .root()
-                .to_resolved()
-                .await?,
+                .await?
+                .clone_value(),
         ),
     ]))
 }

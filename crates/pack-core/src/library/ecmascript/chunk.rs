@@ -1,17 +1,17 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use indoc::writedoc;
 use serde::Serialize;
 use std::io::Write;
-use turbo_rcstr::RcStr;
-use turbo_tasks::{ReadRef, ResolvedVc, TryJoinIterExt, Value, ValueToString, Vc};
-use turbo_tasks_fs::{rope::RopeBuilder, File, FileSystemPath};
+use turbo_rcstr::{RcStr, rcstr};
+use turbo_tasks::{ReadRef, ResolvedVc, TryJoinIterExt, ValueToString, Vc};
+use turbo_tasks_fs::{File, FileSystemPath, rope::RopeBuilder};
 use turbopack_core::{
     asset::{Asset, AssetContent},
     chunk::{
         Chunk, ChunkingContext, EvaluatableAssets, MinifyType, ModuleChunkItemIdExt, ModuleId,
     },
     code_builder::{Code, CodeBuilder},
-    environment::{EdgeWorkerEnvironment, Environment, ExecutionEnvironment},
+    environment::{EdgeWorkerEnvironment, Environment, ExecutionEnvironment, NodeJsVersion},
     ident::AssetIdent,
     output::{OutputAsset, OutputAssets},
     source_map::{GenerateSourceMap, OptionStringifiedSourceMap, SourceMapAsset},
@@ -23,7 +23,7 @@ use turbopack_ecmascript::{
 };
 use turbopack_ecmascript_runtime::RuntimeType;
 
-use crate::library::{runtime::runtime_code::get_library_runtime_code, LibraryChunkingContext};
+use crate::library::{LibraryChunkingContext, runtime::runtime_code::get_library_runtime_code};
 
 #[turbo_tasks::value(shared)]
 pub struct EcmascriptLibraryEvaluateChunk {
@@ -136,12 +136,16 @@ impl EcmascriptLibraryEvaluateChunk {
         writeln!(code, "\n]);")?;
 
         let runtime_code = get_library_runtime_code(
-            Environment::new(Value::new(ExecutionEnvironment::EdgeWorker(
-                EdgeWorkerEnvironment {}.resolved_cell(),
-            ))),
+            Environment::new(ExecutionEnvironment::EdgeWorker(
+                EdgeWorkerEnvironment {
+                    // FIXME
+                    node_version: NodeJsVersion::default().resolved_cell(),
+                }
+                .resolved_cell(),
+            )),
             Vc::cell(None),
             Vc::cell(None),
-            Value::new(RuntimeType::Production),
+            RuntimeType::Production,
             output_root_to_root_path,
             source_maps,
             this.chunking_context.runtime_root(),
@@ -152,7 +156,7 @@ impl EcmascriptLibraryEvaluateChunk {
         let mut code = code.build();
 
         if let MinifyType::Minify { mangle } = this.chunking_context.await?.minify_type() {
-            code = minify(&code, source_maps, mangle)?;
+            code = minify(code, source_maps, mangle)?;
         }
 
         Ok(code.cell())
@@ -162,9 +166,9 @@ impl EcmascriptLibraryEvaluateChunk {
     async fn ident_for_path(&self) -> Result<Vc<AssetIdent>> {
         let mut ident = self.ident.owned().await?;
 
-        ident.add_modifier(modifier().to_resolved().await?);
+        ident.add_modifier(rcstr!("ecmascript library evaluate chunk"));
 
-        Ok(AssetIdent::new(Value::new(ident)))
+        Ok(AssetIdent::new(ident))
     }
 
     #[turbo_tasks::function]

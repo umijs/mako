@@ -1,11 +1,11 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use swc_core::{
-    common::{SyntaxContext, DUMMY_SP},
+    common::{DUMMY_SP, SyntaxContext},
     ecma::{
         ast::{CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, Pass, Program},
-        utils::{member_expr, quote_str, ExprFactory},
-        visit::{visit_mut_pass, VisitMut, VisitMutWith},
+        utils::{ExprFactory, member_expr, quote_str},
+        visit::{VisitMut, VisitMutWith, visit_mut_pass},
     },
 };
 use turbo_tasks::ResolvedVc;
@@ -40,7 +40,7 @@ impl VisitMut for DynamicImportToRequire {
     fn visit_mut_call_expr(&mut self, call_expr: &mut CallExpr) {
         if let Callee::Import(..) = &call_expr.callee {
             if let ExprOrSpread {
-                expr: box Expr::Lit(Lit::Str(ref mut source)),
+                expr: box Expr::Lit(Lit::Str(source)),
                 ..
             } = &mut call_expr.args[0]
             {

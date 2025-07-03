@@ -1,10 +1,10 @@
 use std::ops::Deref;
 
-use napi::{bindgen_prelude::External, JsFunction};
+use napi::{JsFunction, bindgen_prelude::External};
 use pack_api::{
     endpoint::{
-        get_written_endpoint_with_issues_operation, Endpoint, EndpointIssuesAndDiags,
-        EndpointOutputPaths, WrittenEndpointWithIssues,
+        Endpoint, EndpointIssuesAndDiags, EndpointOutputPaths, WrittenEndpointWithIssues,
+        get_written_endpoint_with_issues_operation,
     },
     paths::ServerPath,
     tasks::RootTask,
@@ -14,7 +14,7 @@ use tracing::Instrument;
 use turbo_tasks::ReadRef;
 use turbopack_core::error::PrettyPrintError;
 
-use super::utils::{subscribe, NapiDiagnostic, NapiIssue, TurbopackResult, VcArc};
+use super::utils::{NapiDiagnostic, NapiIssue, TurbopackResult, VcArc, subscribe};
 
 #[napi(object)]
 #[derive(Default)]

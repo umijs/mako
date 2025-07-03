@@ -29,8 +29,7 @@ pub async fn clean(pattern: &str) -> Result<()> {
                 let full_pkg_name = format!("{}/{}", name_str, pkg_name.to_string_lossy());
 
                 log_verbose(&format!(
-                    "full pkg name {}, pkg_pattern {}",
-                    full_pkg_name, pkg_pattern
+                    "full pkg name {full_pkg_name}, pkg_pattern {pkg_pattern}"
                 ));
                 if matches_pattern(&full_pkg_name, &pkg_pattern) {
                     collect_matching_versions(
@@ -73,11 +72,13 @@ pub async fn clean(pattern: &str) -> Result<()> {
 
     println!("\nThe following caches will be deleted:");
     for (pkg, version, _) in &to_delete {
-        println!("- {}@{}", pkg, version);
+        println!("- {pkg}@{version}");
     }
 
     println!();
-    log_info("Note: This will only delete caches from global storage and won't affect dependencies in the current project. If you need to reinstall project dependencies, please run 'utoo update'");
+    log_info(
+        "Note: This will only delete caches from global storage and won't affect dependencies in the current project. If you need to reinstall project dependencies, please run 'utoo update'",
+    );
     print!(
         "\nConfirm to delete these {} packages? [y/N] ",
         to_delete.len()
@@ -90,9 +91,9 @@ pub async fn clean(pattern: &str) -> Result<()> {
     if input.trim().to_lowercase() == "y" {
         for (pkg, version, path) in to_delete {
             if let Err(e) = fs::remove_dir_all(&path).await {
-                log_error(&format!("Failed to delete {}@{}: {}", pkg, version, e));
+                log_error(&format!("Failed to delete {pkg}@{version}: {e}"));
             } else {
-                log_verbose(&format!("Deleted {}@{}", pkg, version));
+                log_verbose(&format!("Deleted {pkg}@{version}"));
             }
         }
         log_info("Cleanup completed");

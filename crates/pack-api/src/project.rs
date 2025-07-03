@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use pack_core::{
     all_assets_from_entries,
     client::context::{get_client_chunking_context, get_client_compile_time_info},
@@ -10,43 +10,43 @@ use pack_core::{
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
-    path::{Path, PathBuf, MAIN_SEPARATOR},
+    path::{MAIN_SEPARATOR, Path, PathBuf},
     time::Duration,
 };
 use tracing::Instrument;
-use turbo_rcstr::RcStr;
+use turbo_rcstr::{RcStr, rcstr};
 use turbo_tasks::{
+    Completion, Completions, IntoTraitRef, NonLocalValue, OperationValue, OperationVc, ReadRef,
+    ResolvedVc, State, TaskInput, TransientInstance, TryFlatJoinIterExt, TryJoinIterExt, Vc,
     graph::{AdjacencyMap, GraphTraversal},
     mark_root,
     trace::TraceRawVcs,
-    Completion, Completions, IntoTraitRef, NonLocalValue, OperationValue, OperationVc, ReadRef,
-    ResolvedVc, State, TaskInput, TransientInstance, TryFlatJoinIterExt, TryJoinIterExt, Vc,
 };
 use turbo_tasks_env::{EnvMap, ProcessEnv};
-use turbo_tasks_fs::{DiskFileSystem, FileSystem, FileSystemPath, VirtualFileSystem};
+use turbo_tasks_fs::{DiskFileSystem, FileSystem, FileSystemPath, VirtualFileSystem, invalidation};
 use turbopack::{
     evaluate_context::node_build_environment, global_module_ids::get_global_module_id_strategy,
 };
 use turbopack_core::{
+    PROJECT_FILESYSTEM_NAME,
     changed::content_changed,
     chunk::{
-        module_id_strategies::{DevModuleIdStrategy, ModuleIdStrategy},
         ChunkingContext, EvaluatableAssets, SourceMapsType,
+        module_id_strategies::{DevModuleIdStrategy, ModuleIdStrategy},
     },
     compile_time_info::CompileTimeInfo,
     issue::{
         Issue, IssueDescriptionExt, IssueSeverity, IssueStage, OptionStyledString, StyledString,
     },
     module_graph::{
-        chunk_group_info::ChunkGroupEntry, GraphEntries, ModuleGraph, SingleModuleGraph,
-        VisitedModules,
+        GraphEntries, ModuleGraph, SingleModuleGraph, VisitedModules,
+        chunk_group_info::ChunkGroupEntry,
     },
     output::{OutputAsset, OutputAssets},
     source_map::OptionStringifiedSourceMap,
     version::{
         NotFoundVersion, OptionVersionedContent, Update, Version, VersionState, VersionedContent,
     },
-    PROJECT_FILESYSTEM_NAME,
 };
 use turbopack_node::execution_context::ExecutionContext;
 use turbopack_nodejs::NodeJsChunkingContext;
@@ -241,12 +241,16 @@ impl ProjectContainer {
                 .start_watching_with_invalidation_reason(watch.poll_interval)
                 .await?;
         } else {
-            project_fs.invalidate_with_reason();
+            project_fs.invalidate_with_reason(|path| invalidation::Initialize {
+                path: RcStr::from(path),
+            });
         }
         let output_fs = output_fs_operation(project)
             .read_strongly_consistent()
             .await?;
-        output_fs.invalidate_with_reason();
+        output_fs.invalidate_with_reason(|path| invalidation::Initialize {
+            path: RcStr::from(path),
+        });
         Ok(())
     }
 
@@ -320,11 +324,15 @@ impl ProjectContainer {
                     .start_watching_with_invalidation_reason(watch.poll_interval)
                     .await?;
             } else {
-                project_fs.invalidate_with_reason();
+                project_fs.invalidate_with_reason(|path| invalidation::Initialize {
+                    path: RcStr::from(path),
+                });
             }
         }
         if !ReadRef::ptr_eq(&prev_output_fs, &output_fs) {
-            prev_output_fs.invalidate_with_reason();
+            prev_output_fs.invalidate_with_reason(|path| invalidation::Initialize {
+                path: RcStr::from(path),
+            });
         }
 
         Ok(())
@@ -392,7 +400,7 @@ impl ProjectContainer {
     #[turbo_tasks::function]
     pub fn get_source_map(
         &self,
-        file_path: Vc<FileSystemPath>,
+        file_path: FileSystemPath,
         section: Option<RcStr>,
     ) -> Vc<OptionStringifiedSourceMap> {
         if let Some(map) = self.versioned_content_map {
@@ -458,10 +466,10 @@ impl ProjectDefineEnv {
 
 #[turbo_tasks::value(shared)]
 struct ConflictIssue {
-    path: ResolvedVc<FileSystemPath>,
+    path: FileSystemPath,
     title: ResolvedVc<StyledString>,
     description: ResolvedVc<StyledString>,
-    severity: ResolvedVc<IssueSeverity>,
+    severity: IssueSeverity,
 }
 
 #[turbo_tasks::value_impl]
@@ -471,14 +479,13 @@ impl Issue for ConflictIssue {
         IssueStage::AppStructure.cell()
     }
 
-    #[turbo_tasks::function]
-    fn severity(&self) -> Vc<IssueSeverity> {
-        *self.severity
+    fn severity(&self) -> IssueSeverity {
+        self.severity
     }
 
     #[turbo_tasks::function]
     fn file_path(&self) -> Vc<FileSystemPath> {
-        *self.path
+        self.path.clone().cell()
     }
 
     #[turbo_tasks::function]
@@ -604,7 +611,7 @@ impl Project {
 
     #[turbo_tasks::function]
     pub async fn node_root(self: Vc<Self>) -> Result<Vc<FileSystemPath>> {
-        Ok(self.output_fs().root().join(".turbopack".into()))
+        Ok(self.output_fs().root().await?.join(".turbopack")?.cell())
     }
 
     #[turbo_tasks::function]
@@ -612,7 +619,9 @@ impl Project {
         Ok(self
             .output_fs()
             .root()
-            .join(self.dist_dir().await?.as_str().into()))
+            .await?
+            .join(self.dist_dir().await?.as_str())?
+            .cell())
     }
 
     #[turbo_tasks::function]
@@ -629,8 +638,8 @@ impl Project {
     pub async fn node_root_to_root_path(self: Vc<Self>) -> Result<Vc<RcStr>> {
         let output_root_to_root_path = self
             .project_path()
-            .join(".turbopack".into())
             .await?
+            .join(".turbopack")?
             .get_relative_path_to(&*self.project_root().await?)
             .context("Project path need to be in root path")?;
         Ok(Vc::cell(output_root_to_root_path))
@@ -639,13 +648,13 @@ impl Project {
     #[turbo_tasks::function]
     pub async fn project_path(self: Vc<Self>) -> Result<Vc<FileSystemPath>> {
         let this = self.await?;
-        let root = self.project_root();
+        let root = self.project_root().await?;
         let project_relative = this.project_path.strip_prefix(&*this.root_path).unwrap();
         let project_relative = project_relative
             .strip_prefix(MAIN_SEPARATOR)
             .unwrap_or(project_relative)
             .replace(MAIN_SEPARATOR, "/");
-        Ok(root.join(project_relative.into()))
+        Ok(root.join(&project_relative)?.cell())
     }
 
     #[turbo_tasks::function]
@@ -680,17 +689,17 @@ impl Project {
 
     #[turbo_tasks::function]
     pub(super) async fn execution_context(self: Vc<Self>) -> Result<Vc<ExecutionContext>> {
-        let node_root = self.node_root().to_resolved().await?;
+        let node_root = self.node_root().await?.clone_value();
         let mode = self.mode().await?;
 
         let node_execution_chunking_context = Vc::upcast(
             NodeJsChunkingContext::builder(
-                self.project_root().to_resolved().await?,
-                node_root,
-                self.node_root_to_root_path().to_resolved().await?,
-                node_root,
-                node_root,
-                node_root,
+                self.project_root().await?.clone_value(),
+                node_root.clone(),
+                self.node_root_to_root_path().await?.clone_value(),
+                node_root.clone(),
+                node_root.clone(),
+                node_root.clone(),
                 node_build_environment().to_resolved().await?,
                 mode.runtime_type(),
             )
@@ -703,7 +712,7 @@ impl Project {
         );
 
         Ok(ExecutionContext::new(
-            self.project_path(),
+            self.project_path().await?.clone_value(),
             node_execution_chunking_context,
             self.env(),
         ))
@@ -773,7 +782,10 @@ impl Project {
                 .copied()
                 .map(ResolvedVc::upcast)
                 .collect();
-            ModuleGraph::from_modules(Vc::cell(vec![ChunkGroupEntry::Entry(entries)]))
+            ModuleGraph::from_modules(
+                Vc::cell(vec![ChunkGroupEntry::Entry(entries)]),
+                self.mode().await?.is_production(),
+            )
         } else {
             *self.whole_app_module_graphs().await?.full
         })
@@ -818,10 +830,10 @@ impl Project {
     #[turbo_tasks::function]
     pub async fn client_chunking_context(self: Vc<Self>) -> Result<Vc<Box<dyn ChunkingContext>>> {
         Ok(get_client_chunking_context(
-            self.project_root(),
-            self.client_root(),
-            Vc::cell("/ROOT".into()),
-            Vc::cell(Some(self.dist_dir().await?.as_str().into())),
+            self.project_root().await?.clone_value(),
+            self.client_root().await?.clone_value(),
+            rcstr!("/ROOT"),
+            Some(self.dist_dir().await?.clone_value()),
             self.client_compile_time_info().environment(),
             self.mode(),
             self.module_ids(),
@@ -914,12 +926,17 @@ impl Project {
 
             let all_output_assets = all_assets_from_entries_operation(output_assets);
 
-            let client_root = self.client_root();
-            let dist_root = self.dist_root();
+            let client_root = self.client_root().await?.clone_value();
+            let dist_root = self.dist_root().await?.clone_value();
 
             if let Some(map) = self.await?.versioned_content_map {
                 let _ = map
-                    .insert_output_assets(all_output_assets, dist_root, client_root, dist_root)
+                    .insert_output_assets(
+                        all_output_assets,
+                        dist_root.clone(),
+                        client_root.clone(),
+                        dist_root.clone(),
+                    )
                     .resolve()
                     .await?;
 
@@ -927,7 +944,7 @@ impl Project {
             } else {
                 let _ = emit_assets(
                     all_output_assets.connect(),
-                    dist_root,
+                    dist_root.clone(),
                     client_root,
                     dist_root,
                 )
@@ -944,7 +961,7 @@ impl Project {
     #[turbo_tasks::function]
     async fn hmr_content(self: Vc<Self>, identifier: RcStr) -> Result<Vc<OptionVersionedContent>> {
         if let Some(map) = self.await?.versioned_content_map {
-            let content = map.get(self.client_root().join(identifier.clone()));
+            let content = map.get(self.client_root().await?.join(identifier.as_str())?);
             Ok(content)
         } else {
             bail!("must be in dev mode to hmr")
@@ -1011,7 +1028,7 @@ impl Project {
     #[turbo_tasks::function]
     pub async fn hmr_identifiers(self: Vc<Self>) -> Result<Vc<Vec<RcStr>>> {
         if let Some(map) = self.await?.versioned_content_map {
-            Ok(map.keys_in_path(self.dist_root()))
+            Ok(map.keys_in_path(self.dist_root().await?.clone_value()))
         } else {
             bail!("must be in dev mode to hmr")
         }
@@ -1083,11 +1100,11 @@ impl Project {
             project_dir_name
         };
         if import_path.starts_with(MAIN_SEPARATOR) {
-            let pattern = format!("{}{}{}", MAIN_SEPARATOR, project_dir_name, MAIN_SEPARATOR);
+            let pattern = format!("{MAIN_SEPARATOR}{project_dir_name}{MAIN_SEPARATOR}");
             if let Some(pos) = import_path.find(&pattern) {
                 let relative_part = &import_path[pos + pattern.len()..];
                 if !relative_part.is_empty() {
-                    let relative_import = format!(".{}{}", MAIN_SEPARATOR, relative_part);
+                    let relative_import = format!(".{MAIN_SEPARATOR}{relative_part}");
                     Ok(Vc::cell(relative_import.into()))
                 } else {
                     bail!("Invalid import path: {}", import_path)
@@ -1108,14 +1125,20 @@ async fn whole_app_module_graph_operation(
     project: ResolvedVc<Project>,
 ) -> Result<Vc<ModuleGraphs>> {
     mark_root();
-    let base_single_module_graph = SingleModuleGraph::new_with_entries(project.get_all_entries());
+    let should_trace = project.mode().await?.is_production();
+
+    let base_single_module_graph =
+        SingleModuleGraph::new_with_entries(project.get_all_entries(), should_trace);
     let base_visited_modules = VisitedModules::from_graph(base_single_module_graph);
 
     let base = ModuleGraph::from_single_graph(base_single_module_graph);
     let additional_entries = project.get_all_additional_entries(base);
 
-    let additional_module_graph =
-        SingleModuleGraph::new_with_entries_visited(additional_entries, base_visited_modules);
+    let additional_module_graph = SingleModuleGraph::new_with_entries_visited(
+        additional_entries,
+        base_visited_modules,
+        should_trace,
+    );
 
     let full = ModuleGraph::from_graphs(vec![base_single_module_graph, additional_module_graph]);
     Ok(ModuleGraphs {
@@ -1184,7 +1207,7 @@ async fn all_assets_from_entries_operation(
 
 pub struct ProjectInstance {
     pub turbo_tasks: BundlerTurboTasks,
-    pub container: Vc<ProjectContainer>,
+    pub container: ResolvedVc<ProjectContainer>,
     pub exit_receiver: tokio::sync::Mutex<Option<ExitReceiver>>,
 }
 

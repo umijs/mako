@@ -11,7 +11,7 @@ use cmd::{clean::clean, deps::build_workspace};
 use helper::auto_update::init_auto_update;
 use util::config::{set_legacy_peer_deps, set_registry};
 use util::logger::{log_error, log_info, log_warning, set_verbose, write_verbose_logs_to_file};
-use util::save_type::{parse_save_type, PackageAction, SaveType};
+use util::save_type::{PackageAction, SaveType, parse_save_type};
 
 mod cmd;
 mod constants;
@@ -171,7 +171,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Handle --version flag
     if cli.version {
-        println!("{}", APP_VERSION);
+        println!("{APP_VERSION}");
         return Ok(());
     }
 

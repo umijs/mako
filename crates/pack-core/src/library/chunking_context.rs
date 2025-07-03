@@ -1,16 +1,14 @@
-use anyhow::{bail, Context, Result};
-use futures::stream::{self, StreamExt};
+use anyhow::{Context, Result, bail};
 use qstring::QString;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use tracing::Instrument;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{
-    trace::TraceRawVcs, NonLocalValue, ResolvedVc, TaskInput, TryJoinIterExt, Value, ValueToString,
-    Vc,
+    NonLocalValue, ResolvedVc, TaskInput, TryJoinIterExt, ValueToString, Vc, trace::TraceRawVcs,
 };
 use turbo_tasks_fs::FileSystemPath;
-use turbo_tasks_hash::{encode_hex, DeterministicHash, Xxh3Hash64Hasher};
+use turbo_tasks_hash::{DeterministicHash, Xxh3Hash64Hasher, encode_hex};
 use turbopack_browser::chunking_context::{
     clean_separators, match_content_hash_placeholder, match_name_placeholder,
     replace_content_hash_placeholder, replace_name_placeholder,
@@ -18,17 +16,17 @@ use turbopack_browser::chunking_context::{
 use turbopack_core::{
     asset::Asset,
     chunk::{
-        availability_info::AvailabilityInfo,
-        chunk_group::{make_chunk_group, MakeChunkGroupResult},
-        module_id_strategies::{DevModuleIdStrategy, ModuleIdStrategy},
         Chunk, ChunkGroupResult, ChunkItem, ChunkableModule, ChunkingConfig, ChunkingConfigs,
         ChunkingContext, EntryChunkGroupResult, EvaluatableAsset, EvaluatableAssets, MinifyType,
         ModuleId, SourceMapsType,
+        availability_info::AvailabilityInfo,
+        chunk_group::{MakeChunkGroupResult, make_chunk_group},
+        module_id_strategies::{DevModuleIdStrategy, ModuleIdStrategy},
     },
     environment::Environment,
     ident::AssetIdent,
     module::Module,
-    module_graph::{chunk_group_info::ChunkGroup, ModuleGraph},
+    module_graph::{ModuleGraph, chunk_group_info::ChunkGroup},
     output::{OutputAsset, OutputAssets},
 };
 use turbopack_ecmascript::chunk::{EcmascriptChunk, EcmascriptChunkType};
@@ -115,7 +113,7 @@ impl LibraryChunkingContextBuilder {
     }
 
     pub fn build(self) -> Vc<LibraryChunkingContext> {
-        LibraryChunkingContext::new(Value::new(self.chunking_context))
+        LibraryChunkingContext::cell(self.chunking_context)
     }
 }
 
@@ -125,8 +123,8 @@ impl LibraryChunkingContextBuilder {
 /// It also uses a chunking heuristic that is incremental and cacheable.
 /// It splits "node_modules" separately as these are less likely to change
 /// during development
-#[turbo_tasks::value(serialization = "auto_for_input")]
-#[derive(Debug, Clone, Hash)]
+#[turbo_tasks::value]
+#[derive(Debug, Clone, Hash, TaskInput)]
 pub struct LibraryChunkingContext {
     name: Option<RcStr>,
     /// The library root name
@@ -134,13 +132,13 @@ pub struct LibraryChunkingContext {
     /// The library export subpaths
     runtime_export: Vec<RcStr>,
     /// The root path of the project
-    root_path: ResolvedVc<FileSystemPath>,
+    root_path: FileSystemPath,
     /// Whether to write file sources as file:// paths in source maps
     should_use_file_source_map_uris: bool,
     /// This path is used to compute the url to request chunks from
-    output_root: ResolvedVc<FileSystemPath>,
+    output_root: FileSystemPath,
     /// The relative path from the output_root to the root_path.
-    output_root_to_root_path: ResolvedVc<RcStr>,
+    output_root_to_root_path: RcStr,
     /// The environment chunks will be evaluated in.
     environment: ResolvedVc<Environment>,
     /// The kind of runtime to include in the output.
@@ -157,9 +155,9 @@ pub struct LibraryChunkingContext {
 
 impl LibraryChunkingContext {
     pub fn builder(
-        root_path: ResolvedVc<FileSystemPath>,
-        output_root: ResolvedVc<FileSystemPath>,
-        output_root_to_root_path: ResolvedVc<RcStr>,
+        root_path: FileSystemPath,
+        output_root: FileSystemPath,
+        output_root_to_root_path: RcStr,
         environment: ResolvedVc<Environment>,
         runtime_type: RuntimeType,
         runtime_root: Option<RcStr>,
@@ -208,11 +206,6 @@ impl LibraryChunkingContext {
 #[turbo_tasks::value_impl]
 impl LibraryChunkingContext {
     #[turbo_tasks::function]
-    fn new(this: Value<LibraryChunkingContext>) -> Vc<Self> {
-        this.into_value().cell()
-    }
-
-    #[turbo_tasks::function]
     async fn generate_chunk(
         self: Vc<Self>,
         ident: Vc<AssetIdent>,
@@ -247,11 +240,12 @@ impl LibraryChunkingContext {
         ident: Vc<AssetIdent>,
         ecmascript_chunk: Vc<EcmascriptChunk>,
     ) -> Result<Vc<AssetIdent>> {
-        let root = self.chunk_root_path();
-        let query = QString::from(ident.query().await?.as_str());
+        let query = QString::from(ident.await?.query.as_str());
         let Some(name) = query.get("name") else {
             bail!("Failed to get name for entry")
         };
+        let this = self.await?;
+        let root = &this.output_root;
         if let Some(filename) = self.await?.filename.as_ref() {
             let mut filename = filename.to_string();
             if match_name_placeholder(&filename) {
@@ -261,9 +255,9 @@ impl LibraryChunkingContext {
                 let content_hash = self.ecmascript_chunk_content_hash(ecmascript_chunk).await?;
                 filename = replace_content_hash_placeholder(&filename, &content_hash);
             };
-            Ok(AssetIdent::from_path(root.join(filename.into())))
+            Ok(AssetIdent::from_path(root.join(&filename)?))
         } else {
-            Ok(AssetIdent::from_path(root.join(name.into())))
+            Ok(AssetIdent::from_path(root.join(name)?))
         }
     }
 
@@ -319,17 +313,17 @@ impl ChunkingContext for LibraryChunkingContext {
 
     #[turbo_tasks::function]
     fn root_path(&self) -> Vc<FileSystemPath> {
-        *self.root_path
+        self.root_path.clone().cell()
     }
 
     #[turbo_tasks::function]
     fn output_root(&self) -> Vc<FileSystemPath> {
-        *self.output_root
+        self.output_root.clone().cell()
     }
 
     #[turbo_tasks::function]
     fn output_root_to_root_path(&self) -> Vc<RcStr> {
-        *self.output_root_to_root_path
+        Vc::cell(self.output_root_to_root_path.clone())
     }
 
     #[turbo_tasks::function]
@@ -339,7 +333,7 @@ impl ChunkingContext for LibraryChunkingContext {
 
     #[turbo_tasks::function]
     async fn chunk_root_path(&self) -> Vc<FileSystemPath> {
-        *self.output_root
+        self.output_root.clone().cell()
     }
 
     #[turbo_tasks::function]
@@ -349,26 +343,30 @@ impl ChunkingContext for LibraryChunkingContext {
         ident: Vc<AssetIdent>,
         extension: RcStr,
     ) -> Result<Vc<FileSystemPath>> {
-        let evaluate = stream::iter(&ident.await?.modifiers)
-            .any(async |m| m.await.is_ok_and(|m| m.contains("evaluate")))
-            .await;
+        let evaluate = ident
+            .await?
+            .modifiers
+            .iter()
+            .any(|m| m.contains("evaluate"));
 
         if !evaluate {
-            bail!("library should only generate a single evaluate chunk, please enable inline features of styles.inlineCss and images.inlineLimit in config")
+            bail!(
+                "library should only generate a single evaluate chunk, please enable inline features of styles.inlineCss and images.inlineLimit in config"
+            )
         }
 
-        let root_path = self.output_root;
-        let mut name = ident_to_output_filename(ident, *self.root_path, extension.clone())
+        let root_path = &self.output_root;
+        let mut name = ident_to_output_filename(ident, self.root_path.clone(), extension.clone())
             .owned()
             .await?;
 
         // Check if the name already ends with the extension
         if !name.ends_with(&*extension) {
             // If doesn't end with extension, add the provided extension
-            name = format!("{}{}", name, extension).into();
+            name = format!("{name}{extension}").into();
         }
 
-        Ok(root_path.join(name))
+        root_path.join(&name).map(|p| p.cell())
     }
 
     #[turbo_tasks::function]
@@ -377,8 +375,8 @@ impl ChunkingContext for LibraryChunkingContext {
     }
 
     #[turbo_tasks::function]
-    async fn asset_url(&self, ident: Vc<FileSystemPath>) -> Result<Vc<RcStr>> {
-        let asset_path = ident.await?.to_string();
+    async fn asset_url(&self, ident: FileSystemPath) -> Result<Vc<RcStr>> {
+        let asset_path = ident.to_string();
 
         Ok(Vc::cell(asset_path.into()))
     }
@@ -418,7 +416,7 @@ impl ChunkingContext for LibraryChunkingContext {
                 content_hash = &content_hash[..8]
             ),
         };
-        Ok(self.output_root.join(asset_path.into()))
+        self.output_root.join(&asset_path).map(|p| p.cell())
     }
 
     #[turbo_tasks::function]
@@ -447,7 +445,7 @@ impl ChunkingContext for LibraryChunkingContext {
         _ident: Vc<AssetIdent>,
         _chunk_group: ChunkGroup,
         _module_graph: Vc<ModuleGraph>,
-        _availability_info: Value<AvailabilityInfo>,
+        _availability_info: AvailabilityInfo,
     ) -> Result<Vc<ChunkGroupResult>> {
         bail!("Library chunking context does not support chunk groups")
     }
@@ -458,15 +456,13 @@ impl ChunkingContext for LibraryChunkingContext {
         ident: Vc<AssetIdent>,
         chunk_group: ChunkGroup,
         module_graph: Vc<ModuleGraph>,
-        availability_info: Value<AvailabilityInfo>,
+        availability_info: AvailabilityInfo,
     ) -> Result<Vc<ChunkGroupResult>> {
         let span = {
             let ident = ident.to_string().await?.to_string();
             tracing::info_span!("chunking", chunking_type = "evaluated", ident = ident)
         };
         async move {
-            let availability_info = availability_info.into_value();
-
             let entries = chunk_group.entries();
 
             let MakeChunkGroupResult {
@@ -512,11 +508,11 @@ impl ChunkingContext for LibraryChunkingContext {
     #[turbo_tasks::function]
     fn entry_chunk_group(
         self: Vc<Self>,
-        _path: Vc<FileSystemPath>,
+        _path: FileSystemPath,
         _evaluatable_assets: Vc<EvaluatableAssets>,
         _module_graph: Vc<ModuleGraph>,
         _extra_chunks: Vc<OutputAssets>,
-        _availability_info: Value<AvailabilityInfo>,
+        _availability_info: AvailabilityInfo,
     ) -> Result<Vc<EntryChunkGroupResult>> {
         bail!("Library chunking context does not support entry chunk groups")
     }
@@ -531,7 +527,7 @@ impl ChunkingContext for LibraryChunkingContext {
         self: Vc<Self>,
         _module: Vc<Box<dyn ChunkableModule>>,
         _module_graph: Vc<ModuleGraph>,
-        _availability_info: Value<AvailabilityInfo>,
+        _availability_info: AvailabilityInfo,
     ) -> Result<Vc<Box<dyn ChunkItem>>> {
         bail!("Library chunking context does not support async loader chunk item")
     }
@@ -548,15 +544,14 @@ impl ChunkingContext for LibraryChunkingContext {
 #[turbo_tasks::function]
 async fn ident_to_output_filename(
     ident: Vc<AssetIdent>,
-    context_path: Vc<FileSystemPath>,
+    context_path: FileSystemPath,
     expected_extension: RcStr,
 ) -> Result<Vc<RcStr>> {
     let ident = &*ident.await?;
-    let path = &*ident.path.await?;
-    let mut name = if let Some(inner) = context_path.await?.get_path_to(path) {
+    let mut name = if let Some(inner) = context_path.get_path_to(&ident.path) {
         clean_separators(inner)
     } else {
-        clean_separators(&ident.path.to_string().await?)
+        clean_separators(&ident.path.to_string())
     };
     let removed_extension = name.ends_with(&*expected_extension);
     if removed_extension {

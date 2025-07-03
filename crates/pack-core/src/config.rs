@@ -1,22 +1,17 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use rustc_hash::FxHashSet;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{
-    debug::ValueDebugFormat, trace::TraceRawVcs, FxIndexMap, NonLocalValue, OperationValue,
-    ResolvedVc, Vc,
+    FxIndexMap, NonLocalValue, OperationValue, ResolvedVc, Vc, debug::ValueDebugFormat,
+    trace::TraceRawVcs,
 };
 use turbo_tasks_env::EnvMap;
-use turbo_tasks_fs::FileSystemPath;
 use turbopack::module_options::{
-    module_options_context::MdxTransformOptions, LoaderRuleItem, OptionWebpackRules,
+    LoaderRuleItem, OptionWebpackRules, module_options_context::MdxTransformOptions,
 };
-use turbopack_core::{
-    chunk::ChunkingConfig,
-    issue::{Issue, IssueSeverity, IssueStage, OptionStyledString, StyledString},
-    resolve::ResolveAliasMap,
-};
+use turbopack_core::{chunk::ChunkingConfig, resolve::ResolveAliasMap};
 use turbopack_ecmascript::{OptionTreeShaking, TreeShakingMode};
 use turbopack_ecmascript_plugins::transform::{
     emotion::EmotionTransformConfig, styled_components::StyledComponentsTransformConfig,
@@ -692,7 +687,7 @@ impl Config {
     pub async fn from_string(string: Vc<RcStr>) -> Result<Vc<Self>> {
         let string = string.await?;
         let config: Config = serde_json::from_str(&string)
-            .with_context(|| format!("failed to parse config.js: {}", string))?;
+            .with_context(|| format!("failed to parse config.js: {string}"))?;
         Ok(config.cell())
     }
 
@@ -1145,49 +1140,6 @@ impl Config {
     #[turbo_tasks::function]
     pub fn stats(&self) -> Vc<bool> {
         Vc::cell(self.stats.unwrap_or(false))
-    }
-}
-
-#[turbo_tasks::value]
-struct OutdatedConfigIssue {
-    path: ResolvedVc<FileSystemPath>,
-    old_name: RcStr,
-    new_name: RcStr,
-    description: RcStr,
-}
-
-#[turbo_tasks::value_impl]
-impl Issue for OutdatedConfigIssue {
-    #[turbo_tasks::function]
-    fn severity(&self) -> Vc<IssueSeverity> {
-        IssueSeverity::Error.into()
-    }
-
-    #[turbo_tasks::function]
-    fn stage(&self) -> Vc<IssueStage> {
-        IssueStage::Config.into()
-    }
-
-    #[turbo_tasks::function]
-    fn file_path(&self) -> Vc<FileSystemPath> {
-        *self.path
-    }
-
-    #[turbo_tasks::function]
-    fn title(&self) -> Vc<StyledString> {
-        StyledString::Line(vec![
-            StyledString::Code(self.old_name.clone()),
-            StyledString::Text(" has been replaced by ".into()),
-            StyledString::Code(self.new_name.clone()),
-        ])
-        .cell()
-    }
-
-    #[turbo_tasks::function]
-    fn description(&self) -> Vc<OptionStyledString> {
-        Vc::cell(Some(
-            StyledString::Text(self.description.clone()).resolved_cell(),
-        ))
     }
 }
 

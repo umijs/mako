@@ -57,7 +57,7 @@ impl ScriptService {
                     }
                 }
             }
-            log_verbose(&format!("Executing command: {:?}", cmd));
+            log_verbose(&format!("Executing command: {cmd:?}"));
 
             let output = tokio::process::Command::from(cmd)
                 .output()
@@ -104,7 +104,7 @@ impl ScriptService {
                 .context(format!("Failed to read file {}", target_path.display()))?;
 
             if !content.starts_with("#!") {
-                content = format!("#!/usr/bin/env node\n{}", content);
+                content = format!("#!/usr/bin/env node\n{content}");
                 fs::write(&target_path, content)
                     .await
                     .context(format!("Failed to write shebang {}", target_path.display()))?;
@@ -126,10 +126,10 @@ impl ScriptService {
 
         while let Some(path) = current_path {
             let bin_path = path.join("node_modules/.bin");
-            if bin_path.exists() {
-                if let Ok(absolute_path) = std::fs::canonicalize(&bin_path) {
-                    bin_paths.push(absolute_path);
-                }
+            if bin_path.exists()
+                && let Ok(absolute_path) = std::fs::canonicalize(&bin_path)
+            {
+                bin_paths.push(absolute_path);
             }
             current_path = path.parent();
         }
@@ -236,8 +236,8 @@ mod tests {
 
     use super::*;
     use std::fs;
-    use tempfile::tempdir;
     use tempfile::TempDir;
+    use tempfile::tempdir;
 
     #[tokio::test]
     async fn test_execute_custom_script_success() {
@@ -274,10 +274,12 @@ mod tests {
         let result = ScriptService::execute_custom_script(&package, "test", "exit 1").await;
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Custom script execution failed"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Custom script execution failed")
+        );
     }
 
     #[tokio::test]

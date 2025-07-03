@@ -11,7 +11,7 @@ pub fn parse_package_name(path: &str) -> (Option<String>, String, String) {
             (
                 Some(second_last.to_string()),
                 last.to_string(),
-                format!("{}/{}", second_last, last),
+                format!("{second_last}/{last}"),
             )
         } else {
             // normal package

@@ -152,8 +152,7 @@ impl PackageInfo {
             let link_path = global_bin_dir.join(bin_name);
 
             log_verbose(&format!(
-                "Linking global binary: {} -> {}",
-                bin_name, relative_path
+                "Linking global binary: {bin_name} -> {relative_path}"
             ));
 
             // Ensure target file is executable
@@ -169,8 +168,8 @@ impl PackageInfo {
         if let Ok(current_path) = env::var("PATH") {
             let global_bin_str = global_bin_dir.to_string_lossy().to_string();
             if !current_path.contains(&global_bin_str) {
-                let new_path = format!("{}:{}", global_bin_str, current_path);
-                env::set_var("PATH", new_path);
+                let new_path = format!("{global_bin_str}:{current_path}");
+                unsafe { env::set_var("PATH", new_path) };
                 log_verbose("Updated PATH environment variable");
             }
         }

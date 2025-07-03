@@ -4,8 +4,8 @@ use turbo_tasks::{ResolvedVc, Vc};
 use turbo_tasks_fs::FileSystemPath;
 use turbopack_core::{
     chunk::{
-        module_id_strategies::ModuleIdStrategy, ChunkingContext, MangleType, MinifyType,
-        SourceMapsType,
+        ChunkingContext, MangleType, MinifyType, SourceMapsType,
+        module_id_strategies::ModuleIdStrategy,
     },
     environment::Environment,
 };
@@ -16,9 +16,9 @@ use super::LibraryChunkingContext;
 
 #[turbo_tasks::function]
 pub async fn get_library_chunking_context(
-    root_path: ResolvedVc<FileSystemPath>,
-    output_root: ResolvedVc<FileSystemPath>,
-    output_root_to_root_path: ResolvedVc<RcStr>,
+    root_path: FileSystemPath,
+    output_root: FileSystemPath,
+    output_root_to_root_path: RcStr,
     environment: ResolvedVc<Environment>,
     mode: Vc<Mode>,
     module_id_strategy: ResolvedVc<Box<dyn ModuleIdStrategy>>,
@@ -52,10 +52,10 @@ pub async fn get_library_chunking_context(
     })
     .module_id_strategy(module_id_strategy);
 
-    if !mode.is_development() {
-        if let Some(filename) = &config.output().await?.filename {
-            builder = builder.filename(filename.clone());
-        }
+    if !mode.is_development()
+        && let Some(filename) = &config.output().await?.filename
+    {
+        builder = builder.filename(filename.clone());
     }
 
     if mode.is_development() {

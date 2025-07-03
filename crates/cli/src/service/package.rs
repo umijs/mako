@@ -3,7 +3,7 @@ use crate::helper::package::parse_package_name;
 use crate::model::package::{PackageInfo, Scripts};
 use crate::util::json::{load_package_json_from_path, load_package_lock_json_from_path};
 use crate::util::logger::{
-    finish_progress_bar, log_info, log_progress, log_verbose, start_progress_bar, PROGRESS_BAR,
+    PROGRESS_BAR, finish_progress_bar, log_info, log_progress, log_verbose, start_progress_bar,
 };
 use anyhow::{Context, Result};
 use serde_json::Value;
@@ -85,7 +85,7 @@ impl PackageService {
 
         for hook in hooks {
             if scripts.get(hook).and_then(|s| s.as_str()).is_some() {
-                log_info(&format!("Executing project hook: {}", hook));
+                log_info(&format!("Executing project hook: {hook}"));
                 ScriptService::execute_script(&package_info, hook, true)
                     .await
                     .map_err(|e| {
@@ -201,8 +201,7 @@ impl PackageService {
 
         if !is_compatible {
             log_verbose(&format!(
-                "Package {} is not compatible with current platform",
-                path
+                "Package {path} is not compatible with current platform"
             ));
             return Ok(None);
         }
@@ -215,7 +214,7 @@ impl PackageService {
 
         // parse scripts
         let scripts = Self::read_package_scripts(Path::new(path))
-            .context(format!("Failed to read scripts for package: {}", path))?;
+            .context(format!("Failed to read scripts for package: {path}"))?;
 
         Ok(Some(PackageInfo {
             path: PathBuf::from(path),

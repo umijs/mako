@@ -9,6 +9,12 @@ export declare class ExternalObject<T> {
     [K: symbol]: T
   }
 }
+export interface TransformOutput {
+  code: string
+  map?: string
+  output?: string
+  diagnostics: Array<string>
+}
 export interface NapiEndpointConfig {
   
 }
@@ -130,7 +136,7 @@ export interface NapiEntrypoints {
 }
 export declare function projectWriteAllEntrypointsToDisk(project: { __napiType: "Project" }): Promise<TurbopackResult>
 export declare function projectEntrypointsSubscribe(project: { __napiType: "Project" }, func: (...args: any[]) => any): { __napiType: "RootTask" }
-export declare function projectHmrEvents(project: { __napiType: "Project" }, identifier: string, func: (...args: any[]) => any): { __napiType: "RootTask" }
+export declare function projectHmrEvents(project: { __napiType: "Project" }, identifier: RcStr, func: (...args: any[]) => any): { __napiType: "RootTask" }
 export interface HmrIdentifiers {
   identifiers: Array<string>
 }
@@ -160,16 +166,18 @@ export declare function projectUpdateInfoSubscribe(project: { __napiType: "Proje
 export interface StackFrame {
   isServer: boolean
   isInternal?: boolean
-  originalFile?: string
-  file: string
+  originalFile?: RcStr
+  file: RcStr
+  /** 1-indexed, unlike source map tokens */
   line?: number
+  /** 1-indexed, unlike source map tokens */
   column?: number
-  methodName?: string
+  methodName?: RcStr
 }
 export declare function projectTraceSource(project: { __napiType: "Project" }, frame: StackFrame, currentDirectoryFileUrl: string): Promise<StackFrame | null>
 export declare function projectGetSourceForAsset(project: { __napiType: "Project" }, filePath: string): Promise<string | null>
-export declare function projectGetSourceMap(project: { __napiType: "Project" }, filePath: string): Promise<string | null>
-export declare function projectGetSourceMapSync(project: { __napiType: "Project" }, filePath: string): string | null
+export declare function projectGetSourceMap(project: { __napiType: "Project" }, filePath: RcStr): Promise<string | null>
+export declare function projectGetSourceMapSync(project: { __napiType: "Project" }, filePath: RcStr): string | null
 export declare function rootTaskDispose(rootTask: { __napiType: "RootTask" }): void
 export interface NapiIssue {
   severity: string
@@ -180,7 +188,7 @@ export interface NapiIssue {
   detail?: any
   source?: NapiIssueSource
   documentationLink: string
-  subIssues: Array<NapiIssue>
+  importTraces: any
 }
 export interface NapiIssueSource {
   source: NapiSource
