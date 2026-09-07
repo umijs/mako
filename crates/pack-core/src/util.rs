@@ -126,6 +126,7 @@ pub async fn foreign_code_context_condition(config: Vc<Config>) -> Result<Contex
 // subject to Next.js's configuration even if it's embedded assets.
 pub async fn internal_assets_conditions() -> Result<ContextCondition> {
     Ok(ContextCondition::any(vec![
+        ContextCondition::InPath(crate::embed_js::embed_fs().root().owned().await?),
         ContextCondition::InPath(
             turbopack_ecmascript_runtime::embed_fs()
                 .root()
