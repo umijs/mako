@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "missing-dts-runtime": [
+        "./input/types.d.ts"
+      ]
+    }
+  }
+}

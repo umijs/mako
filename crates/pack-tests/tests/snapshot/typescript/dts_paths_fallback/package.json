@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "browser": {
+    "ignored-package": false
+  }
+}

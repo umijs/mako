@@ -1,0 +1,32 @@
+{
+  "runtimeType": "Production",
+  "config": {
+    "entry": [
+      {
+        "import": "input/client.ts",
+        "name": "main",
+        "library": {
+          "name": "DtsPathsFallback"
+        }
+      },
+      {
+        "import": "input/app.js",
+        "name": "app"
+      }
+    ],
+    "output": {
+      "path": "output/client"
+    },
+    "server": {
+      "entry": "input/server.ts",
+      "output": {
+        "path": "output/server"
+      }
+    },
+    "sourceMaps": false,
+    "optimization": {
+      "minify": false,
+      "moduleIds": "named"
+    }
+  }
+}

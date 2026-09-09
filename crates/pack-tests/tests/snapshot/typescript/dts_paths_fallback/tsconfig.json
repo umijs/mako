@@ -1,0 +1,27 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "dts-exact": [
+        "./node_modules/dts-exact/types.d.ts"
+      ],
+      "dts-*": [
+        "./input/wrong.js"
+      ],
+      "dts-wild/*": [
+        "./node_modules/dts-wild/*.d.ts"
+      ],
+      "dts-main": [
+        "./node_modules/dts-main/types.d.ts",
+        "./node_modules/dts-main/other.d.ts"
+      ],
+      "dts-mixed": [
+        "./node_modules/dts-mixed/types.d.ts",
+        "./input/first.js",
+        "./input/second.js"
+      ],
+      "empty-path": []
+    }
+  }
+}
