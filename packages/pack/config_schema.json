@@ -1628,6 +1628,7 @@
     "SchemaReactCompilerTarget": {
       "type": "string",
       "enum": [
+        "17",
         "18",
         "19"
       ]

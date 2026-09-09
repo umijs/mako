@@ -51,7 +51,8 @@ export type MdxOptions = boolean | MdxTransformOptions;
 
 export interface ReactCompilerOptions {
   compilationMode?: "infer" | "annotation" | "all";
-  target?: "18" | "19";
+  /** React version to target (default: "19"). React 17/18 require react-compiler-runtime. */
+  target?: "17" | "18" | "19";
 }
 
 export type ReactCompilerConfig = boolean | ReactCompilerOptions;

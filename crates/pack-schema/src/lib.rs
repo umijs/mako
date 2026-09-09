@@ -1304,6 +1304,8 @@ pub enum SchemaReactCompilerCompilationMode {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub enum SchemaReactCompilerTarget {
+    #[serde(rename = "17")]
+    React17,
     #[serde(rename = "18")]
     React18,
     #[serde(rename = "19")]
