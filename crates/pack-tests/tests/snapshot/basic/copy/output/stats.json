@@ -3,15 +3,15 @@
     "main": {
       "name": "main",
       "chunks": [
-        "input_index_0eqdxa7ujoyj7.js",
-        "main.js"
+        "143dhxybrbcom.js",
+        "turbopack-3ibokn7r99nej.js"
       ],
       "assets": [
         {
-          "name": "input_index_0eqdxa7ujoyj7.js"
+          "name": "143dhxybrbcom.js"
         },
         {
-          "name": "main.js"
+          "name": "turbopack-3ibokn7r99nej.js"
         }
       ]
     }
@@ -22,11 +22,11 @@
       "initial": false,
       "entry": false,
       "recorded": false,
-      "id": "input_index_0eqdxa7ujoyj7.js",
-      "size": 333,
+      "id": "143dhxybrbcom.js",
+      "size": 321,
       "hash": "",
       "files": [
-        "input_index_0eqdxa7ujoyj7.js"
+        "143dhxybrbcom.js"
       ]
     },
     {
@@ -34,15 +34,51 @@
       "initial": false,
       "entry": false,
       "recorded": false,
-      "id": "main.js",
-      "size": 293,
+      "id": "turbopack-3ibokn7r99nej.js",
+      "size": 281,
       "hash": "",
       "files": [
-        "main.js"
+        "turbopack-3ibokn7r99nej.js"
       ]
     }
   ],
   "assets": [
+    {
+      "type": "asset",
+      "name": "143dhxybrbcom.js",
+      "info": {},
+      "size": 321,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "143dhxybrbcom.js"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "297yz7pyxzn_w.js.map",
+      "info": {},
+      "size": 290,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "297yz7pyxzn_w.js.map"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "2z3sh82dl8glu.js.map",
+      "info": {},
+      "size": 53,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "2z3sh82dl8glu.js.map"
+      ]
+    },
     {
       "type": "asset",
       "name": "ant.svg",
@@ -57,30 +93,6 @@
     },
     {
       "type": "asset",
-      "name": "input_index_0eqdxa7ujoyj7.js",
-      "info": {},
-      "size": 333,
-      "emitted": false,
-      "comparedForEmit": false,
-      "cached": false,
-      "chunks": [
-        "input_index_0eqdxa7ujoyj7.js"
-      ]
-    },
-    {
-      "type": "asset",
-      "name": "input_index_0eqdxa7ujoyj7.js.map",
-      "info": {},
-      "size": 290,
-      "emitted": false,
-      "comparedForEmit": false,
-      "cached": false,
-      "chunks": [
-        "input_index_0eqdxa7ujoyj7.js.map"
-      ]
-    },
-    {
-      "type": "asset",
       "name": "logo.svg",
       "info": {},
       "size": 3896,
@@ -89,30 +101,6 @@
       "cached": false,
       "chunks": [
         "logo.svg"
-      ]
-    },
-    {
-      "type": "asset",
-      "name": "main.js",
-      "info": {},
-      "size": 293,
-      "emitted": false,
-      "comparedForEmit": false,
-      "cached": false,
-      "chunks": [
-        "main.js"
-      ]
-    },
-    {
-      "type": "asset",
-      "name": "main.js.map",
-      "info": {},
-      "size": 53,
-      "emitted": false,
-      "comparedForEmit": false,
-      "cached": false,
-      "chunks": [
-        "main.js.map"
       ]
     },
     {
@@ -138,6 +126,18 @@
       "chunks": [
         "reset2.css"
       ]
+    },
+    {
+      "type": "asset",
+      "name": "turbopack-3ibokn7r99nej.js",
+      "info": {},
+      "size": 281,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "turbopack-3ibokn7r99nej.js"
+      ]
     }
   ],
   "modules": [
@@ -145,7 +145,7 @@
       "name": "basic/copy/input/index.js",
       "id": "[project]/basic/copy/input/index.js [client] (ecmascript)",
       "chunks": [
-        "input_index_0eqdxa7ujoyj7.js"
+        "143dhxybrbcom.js"
       ],
       "size": 79
     }

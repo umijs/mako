@@ -33,7 +33,11 @@ async function main() {
     .readdirSync(outputDir)
     .find(
       (file) =>
-        file.startsWith("_root-of-the-server___") && file.endsWith(".js"),
+        file.endsWith(".js") &&
+        !file.startsWith("turbopack-") &&
+        fs
+          .readFileSync(path.join(outputDir, file), "utf8")
+          .includes("[external] (promise)"),
     );
 
   assert.ok(chunkFile, "expected a root chunk containing promise externals");

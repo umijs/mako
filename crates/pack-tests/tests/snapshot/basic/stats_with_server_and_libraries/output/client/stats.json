@@ -14,15 +14,15 @@
     "app": {
       "name": "app",
       "chunks": [
-        "app.js",
-        "input_1v8wsq3zj-evj.js"
+        "3yu4ts37d3a9k.js",
+        "turbopack-03bvao1fcu-xy.js"
       ],
       "assets": [
         {
-          "name": "app.js"
+          "name": "3yu4ts37d3a9k.js"
         },
         {
-          "name": "input_1v8wsq3zj-evj.js"
+          "name": "turbopack-03bvao1fcu-xy.js"
         }
       ]
     },
@@ -44,11 +44,11 @@
       "initial": false,
       "entry": false,
       "recorded": false,
-      "id": "a.js",
-      "size": 447,
+      "id": "3yu4ts37d3a9k.js",
+      "size": 1615,
       "hash": "",
       "files": [
-        "a.js"
+        "3yu4ts37d3a9k.js"
       ]
     },
     {
@@ -56,11 +56,11 @@
       "initial": false,
       "entry": false,
       "recorded": false,
-      "id": "app.js",
-      "size": 312,
+      "id": "a.js",
+      "size": 447,
       "hash": "",
       "files": [
-        "app.js"
+        "a.js"
       ]
     },
     {
@@ -80,15 +80,51 @@
       "initial": false,
       "entry": false,
       "recorded": false,
-      "id": "input_1v8wsq3zj-evj.js",
-      "size": 1621,
+      "id": "turbopack-03bvao1fcu-xy.js",
+      "size": 306,
       "hash": "",
       "files": [
-        "input_1v8wsq3zj-evj.js"
+        "turbopack-03bvao1fcu-xy.js"
       ]
     }
   ],
   "assets": [
+    {
+      "type": "asset",
+      "name": "24p0pf8xslnk2.js.map",
+      "info": {},
+      "size": 908,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "24p0pf8xslnk2.js.map"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "2z3sh82dl8glu.js.map",
+      "info": {},
+      "size": 53,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "2z3sh82dl8glu.js.map"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "3yu4ts37d3a9k.js",
+      "info": {},
+      "size": 1615,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "3yu4ts37d3a9k.js"
+      ]
+    },
     {
       "type": "asset",
       "name": "a.js",
@@ -111,30 +147,6 @@
       "cached": false,
       "chunks": [
         "a.js.map"
-      ]
-    },
-    {
-      "type": "asset",
-      "name": "app.js",
-      "info": {},
-      "size": 312,
-      "emitted": false,
-      "comparedForEmit": false,
-      "cached": false,
-      "chunks": [
-        "app.js"
-      ]
-    },
-    {
-      "type": "asset",
-      "name": "app.js.map",
-      "info": {},
-      "size": 53,
-      "emitted": false,
-      "comparedForEmit": false,
-      "cached": false,
-      "chunks": [
-        "app.js.map"
       ]
     },
     {
@@ -163,26 +175,14 @@
     },
     {
       "type": "asset",
-      "name": "input_1v8wsq3zj-evj.js",
+      "name": "turbopack-03bvao1fcu-xy.js",
       "info": {},
-      "size": 1621,
+      "size": 306,
       "emitted": false,
       "comparedForEmit": false,
       "cached": false,
       "chunks": [
-        "input_1v8wsq3zj-evj.js"
-      ]
-    },
-    {
-      "type": "asset",
-      "name": "input_1v8wsq3zj-evj.js.map",
-      "info": {},
-      "size": 908,
-      "emitted": false,
-      "comparedForEmit": false,
-      "cached": false,
-      "chunks": [
-        "input_1v8wsq3zj-evj.js.map"
+        "turbopack-03bvao1fcu-xy.js"
       ]
     }
   ],
@@ -191,7 +191,7 @@
       "name": "basic/stats_with_server_and_libraries/input/a.ts",
       "id": "[project]/basic/stats_with_server_and_libraries/input/a.ts [client] (ecmascript)",
       "chunks": [
-        "input_1v8wsq3zj-evj.js"
+        "3yu4ts37d3a9k.js"
       ],
       "size": 120
     },
@@ -207,7 +207,7 @@
       "name": "basic/stats_with_server_and_libraries/input/app.ts",
       "id": "[project]/basic/stats_with_server_and_libraries/input/app.ts [client] (ecmascript)",
       "chunks": [
-        "input_1v8wsq3zj-evj.js"
+        "3yu4ts37d3a9k.js"
       ],
       "size": 936
     },
@@ -215,7 +215,7 @@
       "name": "basic/stats_with_server_and_libraries/input/b.ts",
       "id": "[project]/basic/stats_with_server_and_libraries/input/b.ts [client] (ecmascript)",
       "chunks": [
-        "input_1v8wsq3zj-evj.js"
+        "3yu4ts37d3a9k.js"
       ],
       "size": 120
     },

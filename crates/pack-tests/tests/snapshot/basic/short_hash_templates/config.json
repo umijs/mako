@@ -1,0 +1,16 @@
+{
+  "config": {
+    "entry": [
+      {
+        "import": "../short_hash_filenames/input/index.js",
+        "name": "main"
+      }
+    ],
+    "output": {
+      "filename": "scripts/[name].js",
+      "chunkFilename": "chunks/[name].[contenthash:8].js",
+      "cssFilename": "styles/[name].[contenthash:8].css"
+    },
+    "sourceMaps": true
+  }
+}

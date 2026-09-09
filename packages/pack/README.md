@@ -121,6 +121,16 @@ The bundler can be configured via a `utoopack.json` or through the programmatic 
 
 For a full list of options, see the [Configuration Schema](./config_schema.json).
 
+Production client builds default to short content-hashed JS and CSS chunk names,
+using Turbopack's 13-character base38 hash (for example, `<hash>.js` or
+`turbopack-<hash>.js` for entry runtimes). Development builds retain readable names.
+Explicit `output.filename`, `output.chunkFilename`, and `output.cssFilename`
+templates take precedence; use `filename: "[name].js"` when consumers require
+stable entry filenames. Static assets, copied files, server builds, and library
+builds keep their existing naming rules. A deployment's complete URL also includes
+its public path and any query parameters, so short chunk names alone do not
+guarantee a particular URL length limit.
+
 ## 🛠️ Development
 
 ### Prerequisites
