@@ -3,15 +3,15 @@
     "main": {
       "name": "main",
       "chunks": [
-        "input_15liy8us72sxf.js",
-        "main.js"
+        "3iutdrd92konk.js",
+        "turbopack-42u84-9btqy5o.js"
       ],
       "assets": [
         {
-          "name": "input_15liy8us72sxf.js"
+          "name": "3iutdrd92konk.js"
         },
         {
-          "name": "main.js"
+          "name": "turbopack-42u84-9btqy5o.js"
         }
       ]
     }
@@ -22,11 +22,11 @@
       "initial": false,
       "entry": false,
       "recorded": false,
-      "id": "input_0g__tdm89q74f.js",
-      "size": 710,
+      "id": "1nqwnu9guu79c.js",
+      "size": 704,
       "hash": "",
       "files": [
-        "input_0g__tdm89q74f.js"
+        "1nqwnu9guu79c.js"
       ]
     },
     {
@@ -34,11 +34,11 @@
       "initial": false,
       "entry": false,
       "recorded": false,
-      "id": "input_15liy8us72sxf.js",
-      "size": 891,
+      "id": "3iutdrd92konk.js",
+      "size": 879,
       "hash": "",
       "files": [
-        "input_15liy8us72sxf.js"
+        "3iutdrd92konk.js"
       ]
     },
     {
@@ -46,85 +46,85 @@
       "initial": false,
       "entry": false,
       "recorded": false,
-      "id": "main.js",
-      "size": 264,
+      "id": "turbopack-42u84-9btqy5o.js",
+      "size": 258,
       "hash": "",
       "files": [
-        "main.js"
+        "turbopack-42u84-9btqy5o.js"
       ]
     }
   ],
   "assets": [
     {
       "type": "asset",
-      "name": "input_0g__tdm89q74f.js",
-      "info": {},
-      "size": 710,
-      "emitted": false,
-      "comparedForEmit": false,
-      "cached": false,
-      "chunks": [
-        "input_0g__tdm89q74f.js"
-      ]
-    },
-    {
-      "type": "asset",
-      "name": "input_0g__tdm89q74f.js.map",
-      "info": {},
-      "size": 731,
-      "emitted": false,
-      "comparedForEmit": false,
-      "cached": false,
-      "chunks": [
-        "input_0g__tdm89q74f.js.map"
-      ]
-    },
-    {
-      "type": "asset",
-      "name": "input_15liy8us72sxf.js",
-      "info": {},
-      "size": 891,
-      "emitted": false,
-      "comparedForEmit": false,
-      "cached": false,
-      "chunks": [
-        "input_15liy8us72sxf.js"
-      ]
-    },
-    {
-      "type": "asset",
-      "name": "input_15liy8us72sxf.js.map",
+      "name": "007_nutjpavf2.js.map",
       "info": {},
       "size": 798,
       "emitted": false,
       "comparedForEmit": false,
       "cached": false,
       "chunks": [
-        "input_15liy8us72sxf.js.map"
+        "007_nutjpavf2.js.map"
       ]
     },
     {
       "type": "asset",
-      "name": "main.js",
+      "name": "1nqwnu9guu79c.js",
       "info": {},
-      "size": 264,
+      "size": 704,
       "emitted": false,
       "comparedForEmit": false,
       "cached": false,
       "chunks": [
-        "main.js"
+        "1nqwnu9guu79c.js"
       ]
     },
     {
       "type": "asset",
-      "name": "main.js.map",
+      "name": "2wq8h34u5n9pv.js.map",
+      "info": {},
+      "size": 731,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "2wq8h34u5n9pv.js.map"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "2z3sh82dl8glu.js.map",
       "info": {},
       "size": 53,
       "emitted": false,
       "comparedForEmit": false,
       "cached": false,
       "chunks": [
-        "main.js.map"
+        "2z3sh82dl8glu.js.map"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "3iutdrd92konk.js",
+      "info": {},
+      "size": 879,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "3iutdrd92konk.js"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "turbopack-42u84-9btqy5o.js",
+      "info": {},
+      "size": 258,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "turbopack-42u84-9btqy5o.js"
       ]
     }
   ],
@@ -133,7 +133,7 @@
       "name": "async_chunk/input/node_modules/bar/index.js",
       "id": 2,
       "chunks": [
-        "input_15liy8us72sxf.js"
+        "3iutdrd92konk.js"
       ],
       "size": 152
     },
@@ -141,7 +141,7 @@
       "name": "async_chunk/input/node_modules/foo/index.js",
       "id": 26,
       "chunks": [
-        "input_0g__tdm89q74f.js"
+        "1nqwnu9guu79c.js"
       ],
       "size": 152
     },
@@ -149,7 +149,7 @@
       "name": "async_chunk/input/index.js",
       "id": 45,
       "chunks": [
-        "input_15liy8us72sxf.js"
+        "3iutdrd92konk.js"
       ],
       "size": 266
     },
@@ -157,7 +157,7 @@
       "name": "async_chunk/input/import.js",
       "id": 76,
       "chunks": [
-        "input_0g__tdm89q74f.js"
+        "1nqwnu9guu79c.js"
       ],
       "size": 327
     },
@@ -165,9 +165,9 @@
       "name": "async_chunk/input/import.js",
       "id": 92,
       "chunks": [
-        "input_15liy8us72sxf.js"
+        "3iutdrd92konk.js"
       ],
-      "size": 237
+      "size": 231
     }
   ]
 }

@@ -5,7 +5,14 @@ const path = require("node:path");
 const outputDir = path.join(__dirname, "output");
 const chunkFile = fs
   .readdirSync(outputDir)
-  .find((file) => file.startsWith("_root-of-the-server___") && file.endsWith(".js"));
+  .find(
+    (file) =>
+      file.endsWith(".js") &&
+      !file.startsWith("turbopack-") &&
+      fs
+        .readFileSync(path.join(outputDir, file), "utf8")
+        .includes("index.less?modules [client] (css module)"),
+  );
 
 assert.ok(chunkFile, "expected an inline CSS output chunk");
 
@@ -18,7 +25,11 @@ const cssModuleStart = chunk.indexOf(cssModuleMarker);
 const entryStart = chunk.indexOf(entryMarker, cssModuleStart);
 
 assert.notEqual(cssModuleStart, -1, "expected the CSS Modules facade");
-assert.notEqual(entryStart, -1, "expected the JavaScript entry after the CSS Modules facade");
+assert.notEqual(
+  entryStart,
+  -1,
+  "expected the JavaScript entry after the CSS Modules facade",
+);
 
 const cssModuleFactory = chunk.slice(cssModuleStart, entryStart);
 

@@ -1,0 +1,15 @@
+(globalThis["TURBOPACK"] || (globalThis["TURBOPACK"] = [])).push([typeof document === "object" ? document.currentScript : undefined,
+"[project]/basic/short_hash_filenames/input/a_very_long_directory_name_that_must_not_appear_in_production_chunk_urls/lazy.js [client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+;
+var __TURBOPACK__default__export__ = "lazy loaded";
+__turbopack_context__.s([
+    "default",
+    0,
+    __TURBOPACK__default__export__
+]);
+}),
+]);
+
+//# sourceMappingURL=2fza6klz8zr59.js.map

@@ -1,0 +1,11 @@
+{
+  "config": {
+    "entry": [
+      {
+        "import": "input/index.js",
+        "name": "an_entry_name_that_should_not_appear_in_the_production_filename"
+      }
+    ],
+    "sourceMaps": true
+  }
+}

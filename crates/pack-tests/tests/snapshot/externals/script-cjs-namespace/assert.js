@@ -35,14 +35,26 @@ async function evaluateExternal(factory) {
 
 async function main() {
   const outputDir = path.join(__dirname, "output");
-  const chunkFile = fs
+  const chunkFiles = fs
     .readdirSync(outputDir)
-    .find((file) => file.startsWith("_externals__") && file.endsWith(".js"));
+    .filter(
+      (file) =>
+        file.endsWith(".js") &&
+        !file.startsWith("turbopack-") &&
+        fs
+          .readFileSync(path.join(outputDir, file), "utf8")
+          .includes(", script)"),
+    );
 
-  assert.ok(chunkFile, "expected a chunk containing the script external");
+  assert.ok(
+    chunkFiles.length > 0,
+    "expected chunks containing the script external",
+  );
 
   globalThis.TURBOPACK = [];
-  require(path.join(outputDir, chunkFile));
+  for (const chunkFile of chunkFiles) {
+    require(path.join(outputDir, chunkFile));
+  }
 
   const registration = globalThis.TURBOPACK.find((item) =>
     item.some(

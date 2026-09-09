@@ -7,12 +7,23 @@ const outputDir = path.join(__dirname, "output");
 const markerAsset = fs
   .readdirSync(outputDir)
   .filter((asset) => asset.endsWith(".css"))
-  .find((asset) => fs.readFileSync(path.join(outputDir, asset), "utf8").includes(marker));
+  .find((asset) =>
+    fs.readFileSync(path.join(outputDir, asset), "utf8").includes(marker),
+  );
 
 assert(markerAsset, "missing page A global CSS marker in emitted CSS");
 
-const pageA = fs.readFileSync(path.join(outputDir, "a.js"), "utf8");
-const pageB = fs.readFileSync(path.join(outputDir, "b.js"), "utf8");
+const entries = fs
+  .readdirSync(outputDir)
+  .filter((file) => file.startsWith("turbopack-") && file.endsWith(".js"))
+  .map((file) => fs.readFileSync(path.join(outputDir, file), "utf8"));
+const pageA = entries.find((content) => content.includes("/input/a.js"));
+const pageB = entries.find((content) => content.includes("/input/b.js"));
+assert(pageA, "missing page A entry runtime");
+assert(pageB, "missing page B entry runtime");
 
 assert(pageA.includes(markerAsset), "page A must load its global CSS asset");
-assert(!pageB.includes(markerAsset), "page B must not load page A global CSS asset");
+assert(
+  !pageB.includes(markerAsset),
+  "page B must not load page A global CSS asset",
+);

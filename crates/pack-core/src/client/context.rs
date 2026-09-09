@@ -17,8 +17,8 @@ use turbopack_browser::{BrowserChunkingContext, CurrentChunkMethod};
 use turbopack_core::{
     asset::AssetContent,
     chunk::{
-        ChunkingConfig, ChunkingContext, MangleType, MinifyType, SourceMapSourceType,
-        SourceMapsType, UnusedReferences, chunk_id_strategy::ModuleIdStrategy,
+        ChunkingConfig, ChunkingContext, ContentHashing, MangleType, MinifyType,
+        SourceMapSourceType, SourceMapsType, UnusedReferences, chunk_id_strategy::ModuleIdStrategy,
     },
     compile_time_info::{
         CompileTimeDefineValue, CompileTimeInfo, DefinableNameSegment, FreeVarReference,
@@ -779,6 +779,7 @@ pub async fn get_client_chunking_context(
                 Vc::<CssChunkType>::default().to_resolved().await?,
                 css_chunking_config,
             )
+            .chunk_content_hashing(ContentHashing::Direct { length: 13 })
             .module_merging(*scope_hoisting.await?);
     }
 

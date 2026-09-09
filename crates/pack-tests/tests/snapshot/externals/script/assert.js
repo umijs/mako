@@ -40,10 +40,18 @@ async function main() {
   const chunkFiles = fs
     .readdirSync(outputDir)
     .filter(
-      (file) => file.startsWith("_externals__") && file.endsWith(".js"),
+      (file) =>
+        file.endsWith(".js") &&
+        !file.startsWith("turbopack-") &&
+        fs
+          .readFileSync(path.join(outputDir, file), "utf8")
+          .includes(", script)"),
     );
 
-  assert.ok(chunkFiles.length > 0, "expected chunks containing script externals");
+  assert.ok(
+    chunkFiles.length > 0,
+    "expected chunks containing script externals",
+  );
 
   globalThis.TURBOPACK = [];
   for (const chunkFile of chunkFiles) {
