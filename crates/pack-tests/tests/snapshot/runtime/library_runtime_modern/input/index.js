@@ -13,3 +13,11 @@ export function fail() {
 
 /*! @license Library runtime target fixture */
 Object.defineProperty(read, "fixture", { value: true });
+
+export const flag = 0b001;
+export function last(node) {
+  do {
+    node = node.next;
+  } while (node.next);
+  return node.value;
+}

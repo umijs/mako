@@ -30,14 +30,30 @@ use turbopack_core::{
 };
 use turbopack_ecmascript::parse::{IdentCollector, generate_js_source_map};
 
+pub(super) enum CodegenStage {
+    Lower,
+    EmitMinified,
+}
+
 /// Module transforms run before code generation. Lower the complete library as well so that
 /// runtime assets, module factories and generated async-module wrappers obey the same target.
-pub(super) async fn lower_library_code(
+pub(super) async fn generate_library_code(
     code: Code,
     environment: Vc<Environment>,
     source_maps: bool,
+    stage: CodegenStage,
 ) -> Result<Code> {
     let versions = *environment.runtime_versions().await?;
+    let target = if *environment
+        .runtime_versions()
+        .supports_arrow_functions()
+        .await?
+    {
+        EsVersion::latest()
+    } else {
+        EsVersion::Es5
+    };
+    let lower = matches!(stage, CodegenStage::Lower);
     let original_map = source_maps.then(|| code.generate_source_map_ref(None));
     let generate_debug_id = code.should_generate_debug_id();
     let source = code.into_source_code().to_str()?.into_owned();
@@ -81,21 +97,25 @@ pub(super) async fn lower_library_code(
                 let top_level_mark = Mark::new();
                 program.mutate(resolver(unresolved_mark, top_level_mark, false));
                 // Library output is self-contained: new transform helpers cannot be imports.
-                let has_helpers = HELPERS.set(&Helpers::new(false), || {
-                    program.mutate(transform_from_env::<&dyn Comments>(
-                        unresolved_mark,
-                        Some(&comments),
-                        Config {
-                            targets: Some(Targets::Versions(versions)),
-                            ..Default::default()
-                        }
-                        .into(),
-                        Assumptions::default(),
-                    ));
-                    let statements_before = statement_count(&program);
-                    program.mutate(inject_helpers(unresolved_mark));
-                    statement_count(&program) > statements_before
-                });
+                let has_helpers = if lower {
+                    HELPERS.set(&Helpers::new(false), || {
+                        program.mutate(transform_from_env::<&dyn Comments>(
+                            unresolved_mark,
+                            Some(&comments),
+                            Config {
+                                targets: Some(Targets::Versions(versions)),
+                                ..Default::default()
+                            }
+                            .into(),
+                            Assumptions::default(),
+                        ));
+                        let statements_before = statement_count(&program);
+                        program.mutate(inject_helpers(unresolved_mark));
+                        statement_count(&program) > statements_before
+                    })
+                } else {
+                    false
+                };
                 program.mutate(hygiene_with_config(hygiene::Config {
                     top_level_mark,
                     ..Default::default()
@@ -109,7 +129,9 @@ pub(super) async fn lower_library_code(
     let mut source = Vec::new();
     let mut mappings = Vec::new();
     Emitter {
-        cfg: Default::default(),
+        cfg: swc_core::ecma::codegen::Config::default()
+            .with_target(target)
+            .with_minify(!lower),
         comments: Some(&comments),
         cm: cm.clone(),
         wr: JsWriter::new(

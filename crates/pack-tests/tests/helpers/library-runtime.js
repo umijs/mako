@@ -49,6 +49,8 @@ async function checkExports(commonjs, currentScript) {
   const library = commonjs ? context.module.exports : context.LegacyLibrary;
   assert.equal(library.read(), 42);
   assert.equal(library.read({ answer: 7 }), 7);
+  assert.equal(library.flag, 1);
+  assert.equal(library.last({ next: { value: 1, next: { value: 2 } } }), 2);
   assert.equal(await library.load(), 43);
   assert.match(library.asset, /^https:\/\/example\.test\/widgets\/.*\.svg$/);
   assert.throws(() => library.fail(), (error) => {

@@ -28,7 +28,7 @@ use turbopack_ecmascript_runtime::RuntimeType;
 
 use crate::library::{LibraryChunkingContext, runtime::runtime_code::get_library_runtime_code};
 
-use super::target::lower_library_code;
+use super::target::{CodegenStage, generate_library_code};
 
 #[turbo_tasks::value(shared)]
 pub struct EcmascriptLibraryEvaluateChunk {
@@ -98,7 +98,9 @@ impl EcmascriptLibraryChunk {
         writeln!(code, "\n];")?;
 
         let environment = this.chunking_context.environment();
-        let mut code = lower_library_code(code.build(), environment, source_maps).await?;
+        let mut code =
+            generate_library_code(code.build(), environment, source_maps, CodegenStage::Lower)
+                .await?;
         let mut license_comments = None;
         if let MinifyType::Minify { mangle, compress } = this.chunking_context.await?.minify_type()
         {
@@ -127,6 +129,17 @@ impl EcmascriptLibraryChunk {
                 }
             } else {
                 code = minify(code, source_maps, mangle, compress_options)?;
+            }
+            // The shared minifier emits modern formatting (e.g. optional do/while semicolons).
+            // Re-emit legacy output as ES5 without transforming or injecting helpers again.
+            if !supports_arrow_functions {
+                code = generate_library_code(
+                    code,
+                    environment,
+                    source_maps,
+                    CodegenStage::EmitMinified,
+                )
+                .await?;
             }
         }
 
@@ -459,7 +472,9 @@ impl EcmascriptLibraryEvaluateChunk {
         writeln!(code, "]);")?;
 
         let environment = this.chunking_context.environment();
-        let mut code = lower_library_code(code.build(), environment, source_maps).await?;
+        let mut code =
+            generate_library_code(code.build(), environment, source_maps, CodegenStage::Lower)
+                .await?;
 
         let mut license_comments = None;
         if let MinifyType::Minify { mangle, compress } = this.chunking_context.await?.minify_type()
@@ -489,6 +504,17 @@ impl EcmascriptLibraryEvaluateChunk {
                 }
             } else {
                 code = minify(code, source_maps, mangle, compress_options)?;
+            }
+            // The shared minifier emits modern formatting (e.g. optional do/while semicolons).
+            // Re-emit legacy output as ES5 without transforming or injecting helpers again.
+            if !supports_arrow_functions {
+                code = generate_library_code(
+                    code,
+                    environment,
+                    source_maps,
+                    CodegenStage::EmitMinified,
+                )
+                .await?;
             }
         }
 

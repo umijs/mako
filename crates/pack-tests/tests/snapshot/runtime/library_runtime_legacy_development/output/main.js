@@ -1227,6 +1227,14 @@ function _type_of(obj) {
                 function() {
                     return fail;
                 },
+                "flag",
+                function() {
+                    return flag;
+                },
+                "last",
+                function() {
+                    return last;
+                },
                 "load",
                 function() {
                     return load;
@@ -1256,6 +1264,13 @@ function _type_of(obj) {
             /*! @license Library runtime target fixture */ Object.defineProperty(read, "fixture", {
                 value: true
             });
+            var flag = 1;
+            function last(node) {
+                do {
+                    node = node.next;
+                }while (node.next);
+                return node.value;
+            }
         },
         "[project]/runtime/library_runtime_legacy_development/input/index.js [library-client] (ecmascript)",
         function(__turbopack_context__) {
@@ -1268,6 +1283,14 @@ function _type_of(obj) {
                 "fail",
                 function() {
                     return (__TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_runtime_legacy_development$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ !== null && __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_runtime_legacy_development$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ !== void 0 ? __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_runtime_legacy_development$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ : __turbopack_context__.i("[project]/runtime/library_runtime_legacy_development/input/index.js [library-client] (ecmascript) <locals>"))["fail"];
+                },
+                "flag",
+                function() {
+                    return (__TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_runtime_legacy_development$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ !== null && __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_runtime_legacy_development$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ !== void 0 ? __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_runtime_legacy_development$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ : __turbopack_context__.i("[project]/runtime/library_runtime_legacy_development/input/index.js [library-client] (ecmascript) <locals>"))["flag"];
+                },
+                "last",
+                function() {
+                    return (__TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_runtime_legacy_development$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ !== null && __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_runtime_legacy_development$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ !== void 0 ? __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_runtime_legacy_development$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ : __turbopack_context__.i("[project]/runtime/library_runtime_legacy_development/input/index.js [library-client] (ecmascript) <locals>"))["last"];
                 },
                 "load",
                 function() {

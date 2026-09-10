@@ -1242,10 +1242,23 @@ function _type_of(obj) {
             /*! @license Library runtime target fixture */ Object.defineProperty(read, "fixture", {
                 value: true
             });
+            var flag = 1;
+            function last(node) {
+                do {
+                    node = node.next;
+                }while (node.next);
+                return node.value;
+            }
             __turbopack_context__.s([
                 "fail",
                 0,
                 fail,
+                "flag",
+                0,
+                flag,
+                "last",
+                0,
+                last,
                 "load",
                 0,
                 load,
@@ -1267,6 +1280,14 @@ function _type_of(obj) {
                 "fail",
                 function() {
                     return __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_runtime_legacy$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["fail"];
+                },
+                "flag",
+                function() {
+                    return __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_runtime_legacy$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["flag"];
+                },
+                "last",
+                function() {
+                    return __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_runtime_legacy$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["last"];
                 },
                 "load",
                 function() {
