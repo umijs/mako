@@ -782,7 +782,7 @@ const chunksToRegister = __UTOOPACK__;
 __UTOOPACK__ = { push: registerChunk };
 chunksToRegister.forEach(registerChunk);
 function factory () {
-    const runtimeModuleIds = ["[project]/typescript/dts_paths_fallback/input/client.ts [library-client] (ecmascript)"];
+    const runtimeModuleIds = ["[project]/typescript/dts_paths_fallback/input/index.ts [library-client] (ecmascript)"];
     let exports;
     for (let i = 0; i < runtimeModuleIds.length; i++) {
         const module = moduleCache[runtimeModuleIds[i]];
@@ -820,79 +820,12 @@ __turbopack_context__.s([
     getMessage
 ]);
 }),
-"[project]/typescript/dts_paths_fallback/node_modules/dts-wild/runtime.js [library-client] (ecmascript)", ((__turbopack_context__) => {
-"use strict";
-
-function getMessage() {
-    return "dts-wild-runtime";
-}
-__turbopack_context__.s([
-    "f",
-    0,
-    getMessage
-]);
-}),
-"[project]/typescript/dts_paths_fallback/node_modules/dts-main/runtime.js [library-client] (ecmascript)", ((__turbopack_context__) => {
-"use strict";
-
-function getMessage() {
-    return "dts-main-runtime";
-}
-__turbopack_context__.s([
-    "f",
-    0,
-    getMessage
-]);
-}),
-"[project]/typescript/dts_paths_fallback/input/first.js [library-client] (ecmascript)", ((__turbopack_context__) => {
-"use strict";
-
-function getMessage() {
-    return "first";
-}
-__turbopack_context__.s([
-    "f",
-    0,
-    getMessage
-]);
-}),
-"[project]/typescript/dts_paths_fallback/input/probe.ts [library-client] (ecmascript)", ((__turbopack_context__) => {
+"[project]/typescript/dts_paths_fallback/input/index.ts [library-client] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
 
 var __TURBOPACK__imported__module__$5b$project$5d2f$typescript$2f$dts_paths_fallback$2f$node_modules$2f$dts$2d$exact$2f$runtime$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/typescript/dts_paths_fallback/node_modules/dts-exact/runtime.js [library-client] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$typescript$2f$dts_paths_fallback$2f$node_modules$2f$dts$2d$wild$2f$runtime$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/typescript/dts_paths_fallback/node_modules/dts-wild/runtime.js [library-client] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$typescript$2f$dts_paths_fallback$2f$node_modules$2f$dts$2d$main$2f$runtime$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/typescript/dts_paths_fallback/node_modules/dts-main/runtime.js [library-client] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$typescript$2f$dts_paths_fallback$2f$input$2f$first$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/typescript/dts_paths_fallback/input/first.js [library-client] (ecmascript)");
 ;
-;
-;
-;
-;
-function probe() {
-    return {
-        exact: (0, __TURBOPACK__imported__module__$5b$project$5d2f$typescript$2f$dts_paths_fallback$2f$node_modules$2f$dts$2d$exact$2f$runtime$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__["f"])(),
-        wildcard: (0, __TURBOPACK__imported__module__$5b$project$5d2f$typescript$2f$dts_paths_fallback$2f$node_modules$2f$dts$2d$wild$2f$runtime$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__["f"])(),
-        main: (0, __TURBOPACK__imported__module__$5b$project$5d2f$typescript$2f$dts_paths_fallback$2f$node_modules$2f$dts$2d$main$2f$runtime$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__["f"])(),
-        mixed: (0, __TURBOPACK__imported__module__$5b$project$5d2f$typescript$2f$dts_paths_fallback$2f$input$2f$first$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__["f"])(),
-        empty: typeof void 0
-    };
-}
-__turbopack_context__.s([
-    "f",
-    0,
-    probe
-]);
-}),
-"[project]/typescript/dts_paths_fallback/input/client.ts [library-client] (ecmascript)", ((__turbopack_context__) => {
-"use strict";
-
-var __TURBOPACK__imported__module__$5b$project$5d2f$typescript$2f$dts_paths_fallback$2f$input$2f$probe$2e$ts__$5b$library$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/typescript/dts_paths_fallback/input/probe.ts [library-client] (ecmascript)");
-;
-;
-var __TURBOPACK__default__export__ = {
-    ...(0, __TURBOPACK__imported__module__$5b$project$5d2f$typescript$2f$dts_paths_fallback$2f$input$2f$probe$2e$ts__$5b$library$2d$client$5d$__$28$ecmascript$29$__["f"])(),
-    ignored: typeof void 0
-};
+var __TURBOPACK__default__export__ = (0, __TURBOPACK__imported__module__$5b$project$5d2f$typescript$2f$dts_paths_fallback$2f$node_modules$2f$dts$2d$exact$2f$runtime$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__["f"])();
 __turbopack_context__.s([
     "default",
     0,
@@ -900,5 +833,5 @@ __turbopack_context__.s([
 ]);
 }),
 ],
-["main.js", {"otherChunks":[],"runtimeModuleIds":["[project]/typescript/dts_paths_fallback/input/client.ts [library-client] (ecmascript)"]}],
+["main.js", {"otherChunks":[],"runtimeModuleIds":["[project]/typescript/dts_paths_fallback/input/index.ts [library-client] (ecmascript)"]}],
 ]);

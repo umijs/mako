@@ -3,25 +3,15 @@
   "config": {
     "entry": [
       {
-        "import": "input/client.ts",
+        "import": "input/index.ts",
         "name": "main",
         "library": {
           "name": "DtsPathsFallback"
         }
-      },
-      {
-        "import": "input/app.js",
-        "name": "app"
       }
     ],
     "output": {
-      "path": "output/client"
-    },
-    "server": {
-      "entry": "input/server.ts",
-      "output": {
-        "path": "output/server"
-      }
+      "path": "output"
     },
     "sourceMaps": false,
     "optimization": {
