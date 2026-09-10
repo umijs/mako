@@ -1,0 +1,22 @@
+{
+  "config": {
+    "entry": [
+      {
+        "import": "input/index.js",
+        "name": "main",
+        "library": {
+          "name": "LegacyLibrary"
+        }
+      }
+    ],
+    "target": "Chrome 100",
+    "optimization": {
+      "minify": true,
+      "moduleIds": "named"
+    },
+    "output": {
+      "publicPath": "auto"
+    }
+  },
+  "runtimeType": "Production"
+}

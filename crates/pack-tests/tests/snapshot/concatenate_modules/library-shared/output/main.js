@@ -1,16 +1,16 @@
-((__UTOOPACK__) => {
+((__UTOOPACK__)=>{
 // Dummy runtime
 })([
-["main.js",
-
-148, ((__turbopack_context__) => {
-"use strict";
-
-// MERGED MODULE: [project]/concatenate_modules/library-shared/input/big/index.js [library-client] (ecmascript)
-;
-// MERGED MODULE: [project]/concatenate_modules/library-shared/input/big/other.js [library-client] (ecmascript)
-;
-var __TURBOPACK__default__export__ = `
+    [
+        "main.js",
+        148,
+        (__turbopack_context__)=>{
+            "use strict";
+            // MERGED MODULE: [project]/concatenate_modules/library-shared/input/big/index.js [library-client] (ecmascript)
+            ;
+            // MERGED MODULE: [project]/concatenate_modules/library-shared/input/big/other.js [library-client] (ecmascript)
+            ;
+            var __TURBOPACK__default__export__ = `
 v8XyDjNBXwWR6pNaTwYLp5bfUJ1P8nN4Yigyk9c9S9Xt5JHt28veqF0SRPGEmShfRPTn2LnHWZbPWw5FDmaTfLPdX4NfEzJYzehn
 T6Qw1dW8tnJ3VJUHHE0QUch181CwhbSHbRvzCzwJ66gJ5PWLzpCit6mZ2ZaGuM3kg6Gmmj301bwKWvY0EhFLW26YiDJYyFeb8uR6
 NqBFFqm409pvFhfRdyZWWdBuEdd2TTdQxUgpBd6d147SKeRDj0HyrXKZNc0gd5Cj9pX8grD16fThjEE1uvkn3vPS8HkB7VXcC2Vq
@@ -64,54 +64,62 @@ x6yvtGeCzq8138FqLwZ4DCNHS63mA2LMZAq0BDn1UdMyv2TLcDzTC7c7C1qntkfC978cDjXcqHqfyyHu
 EDvvH3ZX5z8a39n5qBnwYe5uNdMWrG3Z3RWSurZL2TKKgz2383Gdx1nwfQVd3jJinZBwKt3KRWDghSRtfcyFwLmhwhK9QHRwDn4N
 FG6adF1kPdxcnQ9rUk0b1jaemDjUwXJRycSSrmUPKiA6MTt8YVMx3Xf4NTZvmTugEE9pXSLyFeQQzEx36QZhdd7jC880YEdjzWbx
 `;
-;
-var __TURBOPACK__default__export__1 = __TURBOPACK__default__export__.length;
-__turbopack_context__.s([
-    "f",
-    0,
-    __TURBOPACK__default__export__1
-], 148);
-}),
-855, ((__turbopack_context__, module, exports) => {
-
-setTimeout(()=>Promise.resolve().then(()=>__turbopack_context__.i(888)), 500);
-}),
-888, ((__turbopack_context__) => {
-"use strict";
-
-var __TURBOPACK__imported__module__148__ = __turbopack_context__.i(148);
-;
-console.log('x', __TURBOPACK__imported__module__148__["f"]);
-__turbopack_context__.s([]);
-}),
-554, ((__turbopack_context__, module, exports) => {
-
-setTimeout(()=>Promise.resolve().then(()=>__turbopack_context__.i(77)), 1000);
-}),
-498, ((__turbopack_context__) => {
-"use strict";
-
-var __TURBOPACK__imported__module__855__ = __turbopack_context__.i(855);
-var __TURBOPACK__imported__module__554__ = __turbopack_context__.i(554);
-;
-;
-__turbopack_context__.s([]);
-}),
-77, ((__turbopack_context__) => {
-"use strict";
-
-// MERGED MODULE: [project]/concatenate_modules/library-shared/input/y/middle.js [library-client] (ecmascript)
-;
-// MERGED MODULE: [project]/concatenate_modules/library-shared/input/y/inner.js [library-client] (ecmascript)
-;
-var __TURBOPACK__imported__module__148__ = __turbopack_context__.i(148);
-;
-console.log('y', __TURBOPACK__imported__module__148__["f"]);
-;
-__turbopack_context__.s([], 77);
-}),
-],
-["main.js", {"otherChunks":[],"runtimeModuleIds":[498]}],
+            ;
+            var __TURBOPACK__default__export__1 = __TURBOPACK__default__export__.length;
+            __turbopack_context__.s([
+                "f",
+                0,
+                __TURBOPACK__default__export__1
+            ], 148);
+        },
+        855,
+        (__turbopack_context__, module, exports)=>{
+            setTimeout(()=>Promise.resolve().then(()=>__turbopack_context__.i(888)), 500);
+        },
+        888,
+        (__turbopack_context__)=>{
+            "use strict";
+            var __TURBOPACK__imported__module__148__ = __turbopack_context__.i(148);
+            ;
+            console.log('x', __TURBOPACK__imported__module__148__["f"]);
+            __turbopack_context__.s([]);
+        },
+        554,
+        (__turbopack_context__, module, exports)=>{
+            setTimeout(()=>Promise.resolve().then(()=>__turbopack_context__.i(77)), 1000);
+        },
+        498,
+        (__turbopack_context__)=>{
+            "use strict";
+            var __TURBOPACK__imported__module__855__ = __turbopack_context__.i(855);
+            var __TURBOPACK__imported__module__554__ = __turbopack_context__.i(554);
+            ;
+            ;
+            __turbopack_context__.s([]);
+        },
+        77,
+        (__turbopack_context__)=>{
+            "use strict";
+            // MERGED MODULE: [project]/concatenate_modules/library-shared/input/y/middle.js [library-client] (ecmascript)
+            ;
+            // MERGED MODULE: [project]/concatenate_modules/library-shared/input/y/inner.js [library-client] (ecmascript)
+            ;
+            var __TURBOPACK__imported__module__148__ = __turbopack_context__.i(148);
+            ;
+            console.log('y', __TURBOPACK__imported__module__148__["f"]);
+            ;
+            __turbopack_context__.s([], 77);
+        }
+    ],
+    [
+        "main.js",
+        {
+            "otherChunks": [],
+            "runtimeModuleIds": [
+                498
+            ]
+        }
+    ]
 ]);
 
 

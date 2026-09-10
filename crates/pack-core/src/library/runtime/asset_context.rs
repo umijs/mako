@@ -22,7 +22,8 @@ pub async fn get_runtime_asset_context(
             ignore_dynamic_requests: true,
             ..Default::default()
         },
-        environment: Some(environment.to_resolved().await?),
+        // Downlevel the assembled library, including its generated wrappers, in one pass.
+        // Runtime assets only need TypeScript stripping here.
         follow_reexports: true,
         module_fragments_enabled: false,
         ..Default::default()

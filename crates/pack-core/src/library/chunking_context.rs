@@ -23,7 +23,7 @@ use turbopack_core::{
         chunk_group::{MakeChunkGroupResult, make_chunk_group},
         chunk_id_strategy::ModuleIdStrategy,
     },
-    environment::Environment,
+    environment::{ChunkLoading, Environment},
     ident::{AssetIdent, escape_file_path},
     module::Module,
     module_graph::{
@@ -493,6 +493,12 @@ impl ChunkingContext for LibraryChunkingContext {
     #[turbo_tasks::function]
     fn environment(&self) -> Vc<Environment> {
         *self.environment
+    }
+
+    #[turbo_tasks::function]
+    fn chunk_loading(&self) -> Vc<ChunkLoading> {
+        // Inline dynamic imports without replacing the target environment.
+        ChunkLoading::SingleChunk.cell()
     }
 
     #[turbo_tasks::function]

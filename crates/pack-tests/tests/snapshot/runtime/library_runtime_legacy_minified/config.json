@@ -1,0 +1,23 @@
+{
+  "config": {
+    "entry": [
+      {
+        "import": "input/index.js",
+        "name": "main",
+        "library": {
+          "name": "LegacyLibrary"
+        }
+      }
+    ],
+    "target": "Android 4, iOS 8",
+    "optimization": {
+      "minify": true,
+      "moduleIds": "named",
+      "extractComments": true
+    },
+    "output": {
+      "publicPath": "auto"
+    }
+  },
+  "runtimeType": "Production"
+}

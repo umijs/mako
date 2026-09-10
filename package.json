@@ -20,7 +20,9 @@
   "license": "ISC",
   "devDependencies": {
     "@biomejs/biome": "2.1.2",
+    "@jridgewell/trace-mapping": "^0.3.31",
     "@playwright/test": "1.60.0",
+    "acorn": "^8.18.0",
     "husky": "^9.1.7",
     "tombi": "^0.7.32",
     "turbo": "^2.6.3",

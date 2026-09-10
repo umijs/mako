@@ -8,7 +8,7 @@ use turbopack_core::{
         ChunkingContext, MangleType, MinifyType, SourceMapSourceType, SourceMapsType,
         UnusedReferences, chunk_id_strategy::ModuleIdStrategy,
     },
-    environment::{EdgeWorkerEnvironment, Environment, ExecutionEnvironment, NodeJsVersion},
+    environment::Environment,
     module_graph::binding_usage_info::OptionBindingUsageInfo,
 };
 
@@ -31,12 +31,7 @@ pub struct LibraryChunkingContextOptions {
     pub root_path: FileSystemPath,
     pub output_root: FileSystemPath,
     pub output_root_to_root_path: RcStr,
-    /// The environment provided by the caller. Note that this is ignored in favor of
-    /// an EdgeWorker environment to disable async chunk splitting. The EdgeWorker
-    /// environment uses `ChunkLoading::Edge`, which ensures dynamic imports are
-    /// inlined rather than split into separate chunks — essential for single-file
-    /// library output. Platform-specific semantics (Node.js built-in resolution, etc.)
-    /// are handled by compile-time info and module/resolve options contexts, not here.
+    /// The target environment, independent of the library chunk-loading strategy.
     pub environment: Vc<Environment>,
     pub module_id_strategy: Vc<ModuleIdStrategy>,
     pub no_mangling: Vc<bool>,
@@ -65,10 +60,7 @@ pub async fn get_library_chunking_context(
         root_path,
         output_root,
         output_root_to_root_path,
-        // Note: We ignore the provided environment and always use EdgeWorker.
-        // EdgeWorker uses ChunkLoading::Edge which prevents dynamic chunk splitting,
-        // ensuring the library is bundled as a single, self-contained file.
-        environment: _provided_environment,
+        environment,
         module_id_strategy,
         no_mangling,
         compress,
@@ -103,23 +95,11 @@ pub async fn get_library_chunking_context(
     };
 
     let output = config.output().await?;
-    // Always use EdgeWorker environment for library builds regardless of target platform.
-    // EdgeWorker uses ChunkLoading::Edge, which prevents async chunk splitting and ensures
-    // the library is bundled as a single, self-contained file.
-    let library_environment = Environment::new(ExecutionEnvironment::EdgeWorker(
-        EdgeWorkerEnvironment {
-            node_version: NodeJsVersion::default().resolved_cell(),
-        }
-        .resolved_cell(),
-    ))
-    .to_resolved()
-    .await?;
-
     let mut builder = LibraryChunkingContext::builder(
         root_path,
         output_root,
         output_root_to_root_path,
-        library_environment,
+        environment.to_resolved().await?,
         runtime_type,
         (*runtime_root.await?).clone(),
         (*runtime_export.await?).clone(),
