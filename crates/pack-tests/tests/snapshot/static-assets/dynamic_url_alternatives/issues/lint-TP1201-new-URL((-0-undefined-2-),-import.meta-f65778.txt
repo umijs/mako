@@ -1,0 +1,19 @@
+[92;4msuggestion - [analysis] /static-assets/dynamic_url_alternatives/input/index.js:3:17  lint TP1201 new URL((???*0* | undefined | ???*2*), import.meta*3*["url"]) is very dynamic
+  
+       1 | globalThis.createWorker = ({ classWorkerURL, ...options } = {}) =>
+       2 |   classWorkerURL
+         +                  v--------------------------------------v
+       3 +     ? new Worker(new URL(classWorkerURL, import.meta.url), options)
+         +                  ^--------------------------------------^
+       4 |     : new Worker(new URL("./worker.js", import.meta.url), options);
+       5 | 
+       6 | globalThis.optionalURL = (url = undefined) => new URL(url, import.meta.url);
+       7 | globalThis.fallbackURL = (url) =>
+  
+  - *0* ???*1*["classWorkerURL"]
+    ⚠️  unknown object
+  - *1* arguments[0]
+    ⚠️  function calls are not analyzed yet
+  - *2* unknown mutation
+    ⚠️  This value might have side effects
+  - *3* import.meta: The import.meta object

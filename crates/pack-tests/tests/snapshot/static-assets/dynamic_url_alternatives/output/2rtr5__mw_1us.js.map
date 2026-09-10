@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":["turbopack:///[project]/static-assets/dynamic_url_alternatives/input/worker.js"],"sourcesContent":["self.postMessage(\"static worker ready\");\n"],"names":["self","postMessage"],"mappings":"AAAAA,KAAKC,WAAW,CAAC"}}]
+}

@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":["turbopack:///[project]/static-assets/dynamic_url_alternatives_missing/input/index.js"],"sourcesContent":["console.log(new URL(\"./missing-static-asset.txt\", import.meta.url));\n"],"names":["console","log","URL","url"],"mappings":";;;;;;;;;;;;AAAAA,QAAQC,GAAG,CAAC,IAAIC,IAAI,8BAA8B,8BAAYC,GAAG"}}]
+}

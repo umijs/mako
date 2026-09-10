@@ -1,0 +1,13 @@
+{
+  "watch": true,
+  "writeEndpointsIndividually": true,
+  "config": {
+    "entry": [
+      {
+        "import": "../dynamic_url_alternatives/input/index.js",
+        "name": "main"
+      }
+    ],
+    "mode": "development"
+  }
+}

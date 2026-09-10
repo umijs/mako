@@ -1,0 +1,1 @@
+self.postMessage("static worker ready");
