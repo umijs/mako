@@ -19,7 +19,7 @@
       "entry": false,
       "recorded": false,
       "id": "index.js",
-      "size": 548,
+      "size": 412,
       "hash": "",
       "files": [
         "index.js"
@@ -31,7 +31,7 @@
       "type": "asset",
       "name": "index.js",
       "info": {},
-      "size": 548,
+      "size": 412,
       "emitted": false,
       "comparedForEmit": false,
       "cached": false,
@@ -43,7 +43,7 @@
       "type": "asset",
       "name": "index.js.map",
       "info": {},
-      "size": 226,
+      "size": 322,
       "emitted": false,
       "comparedForEmit": false,
       "cached": false,

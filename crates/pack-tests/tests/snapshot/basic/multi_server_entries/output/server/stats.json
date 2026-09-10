@@ -61,7 +61,7 @@
       "entry": false,
       "recorded": false,
       "id": "chunks/server-shared-0-1.1b081f62.js",
-      "size": 755,
+      "size": 686,
       "hash": "",
       "files": [
         "chunks/server-shared-0-1.1b081f62.js"
@@ -73,7 +73,7 @@
       "entry": false,
       "recorded": false,
       "id": "chunks/server-shared.fbcd5f75.js",
-      "size": 315,
+      "size": 262,
       "hash": "",
       "files": [
         "chunks/server-shared.fbcd5f75.js"
@@ -85,7 +85,7 @@
       "entry": false,
       "recorded": false,
       "id": "entries/detail-server.5d841f26.js",
-      "size": 35757,
+      "size": 32581,
       "hash": "",
       "files": [
         "entries/detail-server.5d841f26.js"
@@ -97,7 +97,7 @@
       "entry": false,
       "recorded": false,
       "id": "entries/index-server.5c83aa4e.js",
-      "size": 35786,
+      "size": 32593,
       "hash": "",
       "files": [
         "entries/index-server.5c83aa4e.js"
@@ -109,7 +109,7 @@
       "entry": false,
       "recorded": false,
       "id": "entries/server.5d80c3de.js",
-      "size": 35753,
+      "size": 32560,
       "hash": "",
       "files": [
         "entries/server.5d80c3de.js"
@@ -121,7 +121,7 @@
       "type": "asset",
       "name": "chunks/server-shared-0-1.1b081f62.js",
       "info": {},
-      "size": 755,
+      "size": 686,
       "emitted": false,
       "comparedForEmit": false,
       "cached": false,
@@ -133,7 +133,7 @@
       "type": "asset",
       "name": "chunks/server-shared.fbcd5f75.js",
       "info": {},
-      "size": 315,
+      "size": 262,
       "emitted": false,
       "comparedForEmit": false,
       "cached": false,
@@ -145,7 +145,7 @@
       "type": "asset",
       "name": "entries/detail-server.5d841f26.js",
       "info": {},
-      "size": 35757,
+      "size": 32581,
       "emitted": false,
       "comparedForEmit": false,
       "cached": false,
@@ -157,7 +157,7 @@
       "type": "asset",
       "name": "entries/index-server.5c83aa4e.js",
       "info": {},
-      "size": 35786,
+      "size": 32593,
       "emitted": false,
       "comparedForEmit": false,
       "cached": false,
@@ -169,7 +169,7 @@
       "type": "asset",
       "name": "entries/server.5d80c3de.js",
       "info": {},
-      "size": 35753,
+      "size": 32560,
       "emitted": false,
       "comparedForEmit": false,
       "cached": false,

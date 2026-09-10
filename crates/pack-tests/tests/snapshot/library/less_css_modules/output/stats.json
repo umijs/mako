@@ -19,7 +19,7 @@
       "entry": false,
       "recorded": false,
       "id": "main.js",
-      "size": 12565,
+      "size": 9406,
       "hash": "",
       "files": [
         "main.js"
@@ -43,7 +43,7 @@
       "type": "asset",
       "name": "main.js",
       "info": {},
-      "size": 12565,
+      "size": 9406,
       "emitted": false,
       "comparedForEmit": false,
       "cached": false,
@@ -55,7 +55,7 @@
       "type": "asset",
       "name": "main.js.map",
       "info": {},
-      "size": 15400,
+      "size": 15555,
       "emitted": false,
       "comparedForEmit": false,
       "cached": false,
