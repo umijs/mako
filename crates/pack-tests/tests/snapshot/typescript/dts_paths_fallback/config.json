@@ -1,13 +1,10 @@
 {
-  "runtimeType": "Production",
+  "runtimeType": "dummy",
   "config": {
     "entry": [
       {
         "import": "input/index.ts",
-        "name": "main",
-        "library": {
-          "name": "DtsPathsFallback"
-        }
+        "name": "main"
       }
     ],
     "output": {
