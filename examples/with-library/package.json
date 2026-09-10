@@ -8,14 +8,18 @@
   "scripts": {
     "build": "up build",
     "dev": "up dev",
-    "start": "npm run build && serve ./dist"
+    "start": "npm run build && serve ./dist",
+    "test": "node --test tests/runtime-targets.test.cjs"
   },
   "dependencies": {
     "react": "18.2.0",
     "react-dom": "18.2.0"
   },
   "devDependencies": {
+    "@jridgewell/trace-mapping": "^0.3.31",
+    "@utoo/pack": "*",
     "@utoo/pack-cli": "*",
+    "acorn": "^8.18.0",
     "serve": "^14.2.4"
   },
   "repository": "git@github.com:utooland/utoo.git"

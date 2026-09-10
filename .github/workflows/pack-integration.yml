@@ -87,6 +87,9 @@ jobs:
           # build-time runtime (utooland/utoo#3316).
           npm test --workspace shared-runtime-async-module
 
+          # Verify library runtime target compatibility without storing generated bundles.
+          npm test --workspace with-library
+
           # Verify examples
           for dir in examples/*/; do
             if [ -f "${dir}package.json" ]; then
