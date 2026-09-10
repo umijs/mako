@@ -17,7 +17,8 @@
     "output": {
       "publicPath": "auto"
     },
-    "mode": "development"
+    "mode": "development",
+    "sourceMaps": false
   },
   "runtimeType": "Development"
 }

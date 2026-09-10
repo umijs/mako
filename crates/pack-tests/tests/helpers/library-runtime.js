@@ -8,7 +8,10 @@ const { config } = JSON.parse(fs.readFileSync("config.json", "utf8"));
 const legacy = config.target === "Android 4, iOS 8";
 const code = fs.readFileSync("output/main.js", "utf8");
 acorn.parse(code, { ecmaVersion: legacy ? 5 : 2022, sourceType: "script" });
-const sourceMap = AnyMap(JSON.parse(fs.readFileSync("output/main.js.map", "utf8")));
+const sourceMap =
+  config.sourceMaps === false
+    ? null
+    : AnyMap(JSON.parse(fs.readFileSync("output/main.js.map", "utf8")));
 if (!legacy) assert.match(code, /=>/);
 if (config.optimization.extractComments) {
   assert.match(code, /For license information please see main.js.LICENSE.txt/);
@@ -49,13 +52,15 @@ async function checkExports(commonjs, currentScript) {
   assert.equal(await library.load(), 43);
   assert.match(library.asset, /^https:\/\/example\.test\/widgets\/.*\.svg$/);
   assert.throws(() => library.fail(), (error) => {
-    const [, line, column] = error.stack.match(/main\.js:(\d+):(\d+)/);
-    const original = originalPositionFor(sourceMap, {
-      line: Number(line),
-      column: Number(column) - 1,
-    });
-    assert.match(original.source, /input\/index\.js$/);
-    assert.equal(original.line, 11);
+    if (sourceMap) {
+      const [, line, column] = error.stack.match(/main\.js:(\d+):(\d+)/);
+      const original = originalPositionFor(sourceMap, {
+        line: Number(line),
+        column: Number(column) - 1,
+      });
+      assert.match(original.source, /input\/index\.js$/);
+      assert.equal(original.line, 11);
+    }
     return error.message === "target-map";
   });
 }

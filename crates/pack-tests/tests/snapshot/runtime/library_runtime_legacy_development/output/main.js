@@ -1012,7 +1012,7 @@ function _type_of(obj) {
     /**
  * Describes why a module was instantiated.
  * Shared between browser and Node.js runtimes.
- */ var SourceType = /*#__PURE__*/ function(SourceType) {
+ */ var SourceType = function(SourceType) {
         /**
    * The module was instantiated because it was included in an evaluated chunk's
    * runtime.
@@ -1355,6 +1355,3 @@ function _type_of(obj) {
 ]);
 
 }).call(this);
-
-
-//# sourceMappingURL=main.js.map
