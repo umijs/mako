@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "dts-exact": [
+        "./node_modules/dts-exact/types.d.ts"
+      ]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "runtimeType": "dummy",
+  "config": {
+    "entry": [
+      {
+        "import": "input/index.ts",
+        "name": "main"
+      }
+    ],
+    "output": {
+      "path": "output"
+    },
+    "sourceMaps": false,
+    "optimization": {
+      "minify": false,
+      "moduleIds": "named"
+    }
+  }
+}
