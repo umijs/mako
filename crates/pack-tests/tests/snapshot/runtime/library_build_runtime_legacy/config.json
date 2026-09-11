@@ -12,7 +12,7 @@
     "target": "Android 4, iOS 8",
     "sourceMaps": false,
     "optimization": {
-      "minify": true,
+      "minify": false,
       "moduleIds": "named"
     },
     "output": {

@@ -1,1 +1,1361 @@
-(function(){function e(e,r,t,n,o,u,i){try{var a=e[u](i),c=a.value;}catch(e){t(e);return;}a.done?r(c):Promise.resolve(c).then(n,o);}function r(e,r,t){return r in e?Object.defineProperty(e,r,{value:t,enumerable:!0,configurable:!0,writable:!0}):e[r]=t,e;}function t(e,r){var t,n,o,u={label:0,sent:function(){if(1&o[0])throw o[1];return o[1];},trys:[],ops:[]},i=Object.create(("function"==typeof Iterator?Iterator:Object).prototype),a=Object.defineProperty;return a(i,"next",{value:c(0)}),a(i,"throw",{value:c(1)}),a(i,"return",{value:c(2)}),"function"==typeof Symbol&&a(i,Symbol.iterator,{value:function(){return this;}}),i;function c(a){return function(c){var l=[a,c];if(t)throw TypeError("Generator is already executing.");for(;i&&(i=0,l[0]&&(u=0)),u;)try{if(t=1,n&&(o=2&l[0]?n.return:l[0]?n.throw||((o=n.return)&&o.call(n),0):n.next)&&!(o=o.call(n,l[1])).done)return o;switch(n=0,o&&(l=[2&l[0],o.value]),l[0]){case 0:case 1:o=l;break;case 4:return u.label++,{value:l[1],done:!1};case 5:u.label++,n=l[1],l=[0];continue;case 7:l=u.ops.pop(),u.trys.pop();continue;default:if(!(o=(o=u.trys).length>0&&o[o.length-1])&&(6===l[0]||2===l[0])){u=0;continue;}if(3===l[0]&&(!o||l[1]>o[0]&&l[1]<o[3])){u.label=l[1];break;}if(6===l[0]&&u.label<o[1]){u.label=o[1],o=l;break;}if(o&&u.label<o[2]){u.label=o[2],u.ops.push(l);break;}o[2]&&u.ops.pop(),u.trys.pop();continue;}l=r.call(e,u);}catch(e){l=[6,e],n=0;}finally{t=o=0;}if(5&l[0])throw l[1];return{value:l[0]?l[1]:void 0,done:!0};};}}function n(e){return e&&"u">typeof Symbol&&e.constructor===Symbol?"symbol":typeof e;}!function(o){var u,i,a=function(e,r){this.m=e,this.e=r;},c=function(e,r,t){D.call(e,r)||Object.defineProperty(e,r,t);},l=function(e,r){var t=e[r];return t||(t=A?s(r):f(r),e[r]=t),t;},f=function(e){return{exports:{},error:void 0,id:e,namespaceObject:void 0};},s=function(e){return{exports:{},error:void 0,id:e,namespaceObject:void 0,parents:[],children:[]};},p=function(e,r,t){c(e,"__esModule",{value:!0}),I&&c(e,I,{value:"Module"});for(var n=0;n<r.length;){var o=r[n++],u=r[n++];if("number"==typeof u)if(u===F)c(e,o,{value:r[n++],enumerable:!0,writable:!1});else throw Error("unexpected tag: ".concat(u));else"function"==typeof r[n]?c(e,o,{get:u,set:r[n++],enumerable:!0}):c(e,o,{get:u,enumerable:!0});}t||Object.seal(e);},d=function(e,r){var t=L.get(e);if(!t){L.set(e,t=[]);var n=function(e){if("default"!==e){var r=!0,n=!1,o=void 0;try{for(var u,i=t[Symbol.iterator]();!(r=(u=i.next()).done);r=!0){var a=u.value;if(D.call(a,e))return a;}}catch(e){n=!0,o=e;}finally{try{r||null==i.return||i.return();}finally{if(n)throw o;}}}};e.exports=e.namespaceObject=new Proxy(r,{get:function(e,r){if(D.call(e,r)||"default"===r||"__esModule"===r)return Reflect.get(e,r);var t=n(r);return t&&Reflect.get(t,r);},set:function(){return!1;},defineProperty:function(){return!1;},deleteProperty:function(){return!1;},has:function(e,r){return!!Reflect.has(e,r)||"default"!==r&&"__esModule"!==r&&void 0!==n(r);},ownKeys:function(e){var r=Reflect.ownKeys(e),n=!0,o=!1,u=void 0;try{for(var i,a=t[Symbol.iterator]();!(n=(i=a.next()).done);n=!0){var c=i.value,l=!0,f=!1,s=void 0;try{for(var p,d=Reflect.ownKeys(c)[Symbol.iterator]();!(l=(p=d.next()).done);l=!0){var b=p.value;"default"===b||r.includes(b)||r.push(b);}}catch(e){f=!0,s=e;}finally{try{l||null==d.return||d.return();}finally{if(f)throw s;}}}}catch(e){o=!0,u=e;}finally{try{n||null==a.return||a.return();}finally{if(o)throw u;}}return r;},getOwnPropertyDescriptor:function(e,r){var t=Reflect.getOwnPropertyDescriptor(e,r);if(t||"default"===r||"__esModule"===r)return t;var o=n(r);if(o)return{enumerable:!0,configurable:!0,get:function(){return Reflect.get(o,r);}};}});}return t;},b=function(e,r){return function(){return e[r];};},v=function(e,r,t){for(var o=[],u=-1,i=e;((void 0===i?"undefined":n(i))==="object"||"function"==typeof i)&&!K.includes(i);i=z(i)){var a=!0,c=!1,l=void 0;try{for(var f,s=Object.getOwnPropertyNames(i)[Symbol.iterator]();!(a=(f=s.next()).done);a=!0){var d=f.value;o.push(d,b(e,d)),-1===u&&"default"===d&&(u=o.length-1);}}catch(e){c=!0,l=e;}finally{try{a||null==s.return||s.return();}finally{if(c)throw l;}}}return t&&u>=0||(u>=0?o.splice(u,1,F,e):o.push("default",F,e)),p(r,o),r;},y=function(e){return"function"==typeof e?function(){for(var r=arguments.length,t=Array(r),n=0;n<r;n++)t[n]=arguments[n];return e.apply(this,t);}:Object.create(null);},h=function(e){var r=Q(e,this.m);if(r.namespaceObject)return r.namespaceObject;var t=r.exports;return r.namespaceObject=v(t,y(t),t&&t.__esModule);},m=function(e){var r=e.indexOf("#");-1!==r&&(e=e.substring(0,r));var t=e.indexOf("?");return-1!==t&&(e=e.substring(0,t)),e;},g=function(e,r,t,n){for(var o=r;o<e.length;){for(var u=o+1;u<e.length&&"function"!=typeof e[u];)u++;if(u===e.length)throw Error("malformed chunk format, expected a factory function");for(var i=e[u],a=void 0,c=o;c<u;c++){var l=e[c],f=t.get(l);if(f){a=f;break;}}for(var s=null!=a?a:i,p=!1,d=o;d<u;d++){var b=e[d];t.has(b)||(p||(s===i&&O(i),p=!0),t.set(b,s),null==n||n(b));}o=u+1;}},j=function(e,r){throw Error("Invariant: ".concat(r(e)));},_=function(e,r,t){var n;switch(r){case 0:n="as a runtime entry of chunk ".concat(t);break;case 1:n="because it was required from module ".concat(t);break;case 2:n="because of an HMR update";break;default:j(r,function(e){return"Unknown source type: ".concat(e);});}return"Module ".concat(e," was instantiated ").concat(n,", but the module factory is not available.");},w=function(){if(void 0!==u)return u;if(("u"<typeof document?"undefined":n(document))==="object"){var e,r=document.currentScript;if(!(e=null==r?void 0:r.src)){var t=document.getElementsByTagName("script"),o=t[t.length-1];e=null==o?void 0:o.src;}}return!e&&"function"==typeof globalThis.importScripts&&globalThis.location&&(e=String(globalThis.location)),u=e?e.replace(/^blob:/,"").replace(/#.*$/,"").replace(/\?.*$/,"").replace(/\/[^/]*$/,"/"):"";},O=function(e){Object.defineProperty(e,"name",{value:"module evaluation"});},x=function(){var e,r;return{promise:new Promise(function(t,n){r=n,e=t;}),resolve:e,reject:r};},P=function(e){e&&1!==e.status&&(e.status=1,e.forEach(function(e){return e.queueCount--;}),e.forEach(function(e){return e.queueCount--?e.queueCount++:e();}));},k=function(e){if("string"==typeof e)return e;if(e)return{src:e.getAttribute("src")};throw Error("chunk path is empty");},M=function(e,r){var t,n=arguments.length>2&&void 0!==arguments[2]&&arguments[2];try{t=r();}catch(r){throw Error("Failed to load external module ".concat(e,": ").concat(r));}return!n||t.__esModule?t:v(t,y(t),!0);},S=function(e,r){var t=J[r];if(t){if(t.error)throw t.error;return t;}return E(r,U.Runtime,e);},E=function(e,r,t){var n=H.get(e);if("function"!=typeof n)throw Error(_(e,r,t));var o=f(e),u=o.exports;J[e]=o;var i=new a(o,u);try{n(i,o,u);}catch(e){throw o.error=e,e;}return o.namespaceObject&&o.exports!==o.namespaceObject&&v(o.exports,o.namespaceObject),o;},T=function(e){if(!Array.isArray(e))return i.registerChunk(void 0,e);var r,t=k(e[0]);return R&&markChunkComponentsAvailable(t),2===e.length?r=e[1]:(r=void 0,g(e,1,H)),i.registerChunk(t,r);},C=function(){for(var e,r=["[project]/runtime/library_build_runtime_legacy/input/index.js [library-client] (ecmascript)"],t=0;t<r.length;t++){var n=J[r[t]];if(n.error)throw n.error;e=n;}if(e){if(e.namespaceObject)return e.namespaceObject;var o=e.exports;return e.namespaceObject=v(o,y(o),o&&o.__esModule);}};if("u"<typeof globalThis&&("u">typeof self?self.globalThis=self:"u">typeof global&&(global.globalThis=global)),Array.isArray(o)){var q,R=!1,U=((q=U||{})[q.Runtime=0]="Runtime",q[q.Parent=1]="Parent",q[q.Update=2]="Update",q),A=!1,L=new WeakMap,N=a.prototype,D=Object.prototype.hasOwnProperty,I="u">typeof Symbol&&Symbol.toStringTag,F=0;N.s=function(e,r,t){var n,o;null!=r?o=(n=l(this.c,r)).exports:(n=this.m,o=this.e),n.namespaceObject=o,p(o,e,t);},N.j=function(e,r){null!=r?o=(t=l(this.c,r)).exports:(t=this.m,o=this.e);var t,o,u=d(t,o);(void 0===e?"undefined":n(e))==="object"&&null!==e&&u.push(e);},N.v=function(e,r){(null!=r?l(this.c,r):this.m).exports=e;},N.n=function(e,r){var t;(t=null!=r?l(this.c,r):this.m).exports=t.namespaceObject=e;};var z=Object.getPrototypeOf?function(e){return Object.getPrototypeOf(e);}:function(e){return e.__proto__;},K=[null,z({}),z([]),z(z)];N.i=h,N.A=function(e){return this.r(e)(h.bind(this));},N.t="function"==typeof require?require:function(){throw Error("Unexpected use of runtime require");},N.r=function(e){return Q(e,this.m).exports;},N.f=function(r){function n(e){if(e=m(e),D.call(r,e))return r[e].module();var t=Error("Cannot find module '".concat(e,"'"));throw t.code="MODULE_NOT_FOUND",t;}return n.keys=function(){return Object.keys(r);},n.resolve=function(e){if(e=m(e),D.call(r,e))return r[e].id();var t=Error("Cannot find module '".concat(e,"'"));throw t.code="MODULE_NOT_FOUND",t;},n.import=function(r){var o;return(o=function(){return t(this,function(e){switch(e.label){case 0:return[4,n(r)];case 1:return[2,e.sent()];}});},function(){var r=this,t=arguments;return new Promise(function(n,u){var i=o.apply(r,t);function a(r){e(i,n,u,a,c,"next",r);}function c(r){e(i,n,u,a,c,"throw",r);}a(void 0);});})();},n;};var $=function(e){var r=new URL(e,"x:/"),t={};for(var n in r)t[n]=r[n];for(var o in t.href=e,t.pathname=e.replace(/[?#].*/,""),t.origin=t.protocol="",t.toString=t.toJSON=function(){for(var r=arguments.length,t=Array(r),n=0;n<r;n++)t[n]=arguments[n];return e;},t)Object.defineProperty(this,o,{enumerable:!0,configurable:!0,value:t[o]});};$.prototype=URL.prototype,N.U=$,N.z=function(e){throw Error("dynamic usage of require is not supported");},N.g=globalThis,N.p=function(e){if("auto"===e)return w();if("u">typeof globalThis&&"string"==typeof globalThis.publicPath){var r=globalThis.publicPath;return r.endsWith("/")?r:"".concat(r,"/");}return"/";};var W=Symbol("turbopack queues"),B=Symbol("turbopack exports"),G=Symbol("turbopack error");N.a=function(e,t){var o,u=this.m,i=t?Object.assign([],{status:-1}):void 0,a=new Set,c=x(),l=c.resolve,f=c.reject,s=Object.assign(c.promise,(r(o={},B,u.exports),r(o,W,function(e){i&&e(i),a.forEach(e),s.catch(function(){});}),o)),p={get:function(){return s;},set:function(e){e!==s&&(s[B]=e);}};Object.defineProperty(u,"exports",p),Object.defineProperty(u,"namespaceObject",p),e(function(e){var t=e.map(function(e){if(null!==e&&(void 0===e?"undefined":n(e))==="object"){if(W in e)return e;if(null!=e&&(void 0===e?"undefined":n(e))==="object"&&"then"in e&&"function"==typeof e.then){var t,o,u=Object.assign([],{status:0}),i=(r(o={},B,{}),r(o,W,function(e){return e(u);}),o);return e.then(function(e){i[B]=e,P(u);},function(e){i[G]=e,P(u);}),i;}}return r(t={},B,e),r(t,W,function(){}),t;}),o=function(){return t.map(function(e){if(e[G])throw e[G];return e[B];});},u=x(),c=u.promise,l=u.resolve,f=Object.assign(function(){return l(o);},{queueCount:0});function s(e){e!==i&&!a.has(e)&&(a.add(e),e&&0===e.status&&(f.queueCount++,e.push(f)));}return t.map(function(e){return e[W](s);}),f.queueCount?c:o();},function(e){e?f(s[G]=e):l(s[B]),P(i);}),i&&-1===i.status&&(i.status=0);};var H=new Map;N.M=H,M.resolve=function(e,r){return require.resolve(e,r);},N.x=M,N.N=function(e){if(e&&e.__esModule)return e;var r=Object.create(null),t=e&&I&&"Module"===e[I];if(e&&((void 0===e?"undefined":n(e))==="object"||"function"==typeof e))for(var o in e)"__esModule"!==o&&(t||"default"!==o)&&Object.defineProperty(r,o,{enumerable:!0,get:b(e,o)});return t||Object.defineProperty(r,"default",{enumerable:!0,value:e}),Object.defineProperty(r,"__esModule",{value:!0}),I&&Object.defineProperty(r,I,{value:"Module"}),r;};var J={};N.c=J;var Q=function(e,r){var t=J[e];if(t){if(t.error)throw t.error;return t;}return E(e,U.Parent,r.id);},V=new Map;N.S=function(e){var r=V.get(e);return r||(r=new Promise(function(r,t){var n=document.createElement("script");n.src=e,n.onload=function(){return r();},n.onerror=function(){return t(Error("Failed to load script: ".concat(e)));},document.head.appendChild(n);}),V.set(e,r)),r;},i={registerChunk:function(e,r){if(null!=r&&r.runtimeModuleIds.length>0){var t=!0,n=!1,o=void 0;try{for(var u,i=r.runtimeModuleIds[Symbol.iterator]();!(t=(u=i.next()).done);t=!0){var a=u.value;S(e,a);}}catch(e){n=!0,o=e;}finally{try{t||null==i.return||i.return();}finally{if(n)throw o;}}}}};var X=o;o={push:T},X.forEach(T),("u"<typeof exports?"undefined":n(exports))==="object"&&("u"<typeof module?"undefined":n(module))==="object"?module.exports=C():("u"<typeof exports?"undefined":n(exports))==="object"?exports.LegacyLibrary=C():globalThis.LegacyLibrary=C();}}([["main.js","[project]/runtime/library_build_runtime_legacy/input/asset.svg (static in ecmascript)",function(e){e.v(e.p("auto")+"asset.36cae746.svg");},"[project]/runtime/library_build_runtime_legacy/input/index.js [library-client] (ecmascript) <locals>",function(e){"use strict";e.i("[project]/runtime/library_build_runtime_legacy/input/asset.svg (static in ecmascript)"),e.s(["flag",0,1,"last",0,function(e){do e=e.next;while(e.next);return e.value;},"load",0,function(){return Promise.resolve().then(function(){return e.i("[project]/runtime/library_build_runtime_legacy/input/lazy.js [library-client] (ecmascript)");}).then(function(e){return e.answer;});},"read",0,function(e){var r;return null!=(r=null==e?void 0:e.answer)?r:42;}]);},"[project]/runtime/library_build_runtime_legacy/input/index.js [library-client] (ecmascript)",function(e){"use strict";var r=e.i("[project]/runtime/library_build_runtime_legacy/input/index.js [library-client] (ecmascript) <locals>"),t=e.i("[project]/runtime/library_build_runtime_legacy/input/asset.svg (static in ecmascript)");e.s(["asset",function(){return t.default;},"flag",function(){return r.flag;},"last",function(){return r.last;},"load",function(){return r.load;},"read",function(){return r.read;}]);},"[project]/runtime/library_build_runtime_legacy/input/lazy.js [library-client] (ecmascript)",function(e){return e.a(function(r,n){var o=function(){var r;return t(this,function(t){switch(t.label){case 0:return t.trys.push([0,2,,3]),[4,Promise.resolve(43)];case 1:return r=t.sent(),e.s(["answer",0,r]),n(),[3,3];case 2:return n(t.sent()),[3,3];case 3:return[2];}});}();!function e(r,t){try{var u=o[r](t);}catch(e){n(e);return;}u.done||Promise.resolve(u.value).then(function(r){e("next",r);},function(r){e("throw",r);});}("next");},!0);}],["main.js",{otherChunks:[],runtimeModuleIds:["[project]/runtime/library_build_runtime_legacy/input/index.js [library-client] (ecmascript)"]}]]);}).call(this);
+(function() {
+function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) {
+    try {
+        var info = gen[key](arg);
+        var value = info.value;
+    } catch (error) {
+        reject(error);
+        return;
+    }
+    if (info.done) resolve(value);
+    else Promise.resolve(value).then(_next, _throw);
+}
+function _async_to_generator(fn) {
+    return function() {
+        var self1 = this, args = arguments;
+        return new Promise(function(resolve, reject) {
+            var gen = fn.apply(self1, args);
+            function _next(value) {
+                asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value);
+            }
+            function _throw(err) {
+                asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err);
+            }
+            _next(undefined);
+        });
+    };
+}
+function _define_property(obj, key, value) {
+    if (key in obj) {
+        Object.defineProperty(obj, key, {
+            value: value,
+            enumerable: true,
+            configurable: true,
+            writable: true
+        });
+    } else obj[key] = value;
+    return obj;
+}
+function _ts_generator(thisArg, body) {
+    var f, y, t, _ = {
+        label: 0,
+        sent: function() {
+            if (t[0] & 1) throw t[1];
+            return t[1];
+        },
+        trys: [],
+        ops: []
+    }, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype), d = Object.defineProperty;
+    return d(g, "next", {
+        value: verb(0)
+    }), d(g, "throw", {
+        value: verb(1)
+    }), d(g, "return", {
+        value: verb(2)
+    }), typeof Symbol === "function" && d(g, Symbol.iterator, {
+        value: function() {
+            return this;
+        }
+    }), g;
+    function verb(n) {
+        return function(v) {
+            return step([
+                n,
+                v
+            ]);
+        };
+    }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while(g && (g = 0, op[0] && (_ = 0)), _)try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [
+                op[0] & 2,
+                t.value
+            ];
+            switch(op[0]){
+                case 0:
+                case 1:
+                    t = op;
+                    break;
+                case 4:
+                    _.label++;
+                    return {
+                        value: op[1],
+                        done: false
+                    };
+                case 5:
+                    _.label++;
+                    y = op[1];
+                    op = [
+                        0
+                    ];
+                    continue;
+                case 7:
+                    op = _.ops.pop();
+                    _.trys.pop();
+                    continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+                        _ = 0;
+                        continue;
+                    }
+                    if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+                        _.label = op[1];
+                        break;
+                    }
+                    if (op[0] === 6 && _.label < t[1]) {
+                        _.label = t[1];
+                        t = op;
+                        break;
+                    }
+                    if (t && _.label < t[2]) {
+                        _.label = t[2];
+                        _.ops.push(op);
+                        break;
+                    }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop();
+                    continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) {
+            op = [
+                6,
+                e
+            ];
+            y = 0;
+        } finally{
+            f = t = 0;
+        }
+        if (op[0] & 5) throw op[1];
+        return {
+            value: op[0] ? op[1] : void 0,
+            done: true
+        };
+    }
+}
+function _type_of(obj) {
+    "@swc/helpers - typeof";
+    return obj && typeof Symbol !== "undefined" && obj.constructor === Symbol ? "symbol" : typeof obj;
+}
+(function(__UTOOPACK__) {
+    var Context = /**
+ * Constructs the `__turbopack_context__` object for a module.
+ */ function Context(module1, exports1) {
+        this.m = module1;
+        // We need to store this here instead of accessing it from the module object to:
+        // 1. Make it available to factories directly, since we rewrite `this` to
+        //    `__turbopack_context__.e` in CJS modules.
+        // 2. Support async modules which rewrite `module.exports` to a promise, so we
+        //    can still access the original exports object from functions like
+        //    `esmExport`
+        // Ideally we could find a new approach for async modules and drop this property altogether.
+        this.e = exports1;
+    };
+    var defineProp = function defineProp(obj, name, options) {
+        if (!hasOwnProperty.call(obj, name)) Object.defineProperty(obj, name, options);
+    };
+    var getOverwrittenModule = function getOverwrittenModule(moduleCache, id) {
+        var _$module = moduleCache[id];
+        if (!_$module) {
+            if (createModuleWithDirectionFlag) {
+                // set in development modes for hmr support
+                _$module = createModuleWithDirection(id);
+            } else {
+                _$module = createModuleObject(id);
+            }
+            moduleCache[id] = _$module;
+        }
+        return _$module;
+    };
+    var createModuleObject = /**
+ * Creates the module object. Only done here to ensure all module objects have the same shape.
+ */ function createModuleObject(id) {
+        return {
+            exports: {},
+            error: undefined,
+            id: id,
+            namespaceObject: undefined
+        };
+    };
+    var createModuleWithDirection = function createModuleWithDirection(id) {
+        return {
+            exports: {},
+            error: undefined,
+            id: id,
+            namespaceObject: undefined,
+            parents: [],
+            children: []
+        };
+    };
+    var esm = /**
+ * Adds the getters to the exports object.
+ */ function esm(exports1, bindings, dynamic) {
+        defineProp(exports1, '__esModule', {
+            value: true
+        });
+        if (toStringTag) defineProp(exports1, toStringTag, {
+            value: 'Module'
+        });
+        var i = 0;
+        while(i < bindings.length){
+            var propName = bindings[i++];
+            var tagOrFunction = bindings[i++];
+            if (typeof tagOrFunction === 'number') {
+                if (tagOrFunction === BindingTag_Value) {
+                    defineProp(exports1, propName, {
+                        value: bindings[i++],
+                        enumerable: true,
+                        writable: false
+                    });
+                } else {
+                    throw new Error("unexpected tag: ".concat(tagOrFunction));
+                }
+            } else {
+                var getterFn = tagOrFunction;
+                if (typeof bindings[i] === 'function') {
+                    var setterFn = bindings[i++];
+                    defineProp(exports1, propName, {
+                        get: getterFn,
+                        set: setterFn,
+                        enumerable: true
+                    });
+                } else {
+                    defineProp(exports1, propName, {
+                        get: getterFn,
+                        enumerable: true
+                    });
+                }
+            }
+        }
+        // The properties defined above are already non-configurable and
+        // non-writable, so the namespace's existing exports are effectively
+        // immutable. Sealing additionally makes the object non-extensible, matching
+        // real ESM-namespace semantics. Modules with dynamic re-exports
+        // (`export *` from a CommonJS module) must stay extensible so the dynamic
+        // export proxy can surface keys discovered at runtime, so skip the seal for
+        // them.
+        if (!dynamic) Object.seal(exports1);
+    };
+    var esmExport = /**
+ * Makes the module an ESM with exports
+ */ function esmExport(bindings, id, dynamic) {
+        var _$module;
+        var _$exports;
+        if (id != null) {
+            _$module = getOverwrittenModule(this.c, id);
+            _$exports = _$module.exports;
+        } else {
+            _$module = this.m;
+            _$exports = this.e;
+        }
+        _$module.namespaceObject = _$exports;
+        esm(_$exports, bindings, dynamic);
+    };
+    var ensureDynamicExports = function ensureDynamicExports(module1, exports1) {
+        var reexportedObjects = REEXPORTED_OBJECTS.get(module1);
+        if (!reexportedObjects) {
+            REEXPORTED_OBJECTS.set(module1, reexportedObjects = []);
+            // Returns the re-exported object that provides `prop` as an own property,
+            // or `undefined` if none does. The traps share this logic so they always
+            // agree on which keys are synthesized from `reexportedObjects`. `default`
+            // is never re-exported by `export *`, so it is never synthesized.
+            var reexportOwning = function reexportOwning(prop) {
+                if (prop !== 'default') {
+                    var _iteratorNormalCompletion = true, _didIteratorError = false, _iteratorError = undefined;
+                    try {
+                        for(var _iterator = reexportedObjects[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true){
+                            var obj = _step.value;
+                            if (hasOwnProperty.call(obj, prop)) return obj;
+                        }
+                    } catch (err) {
+                        _didIteratorError = true;
+                        _iteratorError = err;
+                    } finally{
+                        try {
+                            if (!_iteratorNormalCompletion && _iterator.return != null) {
+                                _iterator.return();
+                            }
+                        } finally{
+                            if (_didIteratorError) {
+                                throw _iteratorError;
+                            }
+                        }
+                    }
+                }
+                return undefined;
+            };
+            // Modules with dynamic re-exports are not sealed by `esm()`, so the
+            // target beneath the namespace stays extensible. That is what lets the
+            // `ownKeys` and `getOwnPropertyDescriptor` traps legally report keys that
+            // exist on `reexportedObjects` but not on the target itself.
+            module1.exports = module1.namespaceObject = new Proxy(exports1, {
+                get: function get(target, prop) {
+                    if (hasOwnProperty.call(target, prop) || prop === 'default' || prop === '__esModule') {
+                        return Reflect.get(target, prop);
+                    }
+                    var obj = reexportOwning(prop);
+                    return obj && Reflect.get(obj, prop);
+                },
+                // The namespace is read-only, like a real esm namespace object. The
+                // re-exported modules can still mutate their own exports (exposed live
+                // via `get`), but mutating the namespace itself is rejected. Refusing
+                // here, rather than forwarding to the extensible target, also prevents an
+                // assignment/definition from shadowing a dynamic re-export. It also
+                // prevents delete from removing a static export.
+                set: function set() {
+                    return false;
+                },
+                defineProperty: function defineProperty() {
+                    return false;
+                },
+                deleteProperty: function deleteProperty() {
+                    return false;
+                },
+                // The `has` trap ensures that `'exportName' in starImports` will reflect
+                // the truth of whether a key is exported.
+                has: function has(target, prop) {
+                    if (Reflect.has(target, prop)) return true;
+                    if (prop === 'default' || prop === '__esModule') return false;
+                    return reexportOwning(prop) !== undefined;
+                },
+                // ownKeys and getOwnPropertyDescriptor together make the keys enumerable.
+                // If a value is returned from `ownKeys` but its property descriptor is
+                // not enumerable, it will not be visible to iterator methods.
+                // Collectively, they allow code like the following:
+                //
+                // ```
+                // // module.js re-exports dynamic CJS exports
+                // export * from './legacyModule.cjs'
+                //
+                // // from another JS file, reference the re-exported dynamic values
+                // import * as Namespace from './module.js'
+                // Object.keys(Namespace)
+                // ```
+                ownKeys: function ownKeys(target) {
+                    var keys = Reflect.ownKeys(target);
+                    var _iteratorNormalCompletion = true, _didIteratorError = false, _iteratorError = undefined;
+                    try {
+                        for(var _iterator = reexportedObjects[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true){
+                            var obj = _step.value;
+                            var _iteratorNormalCompletion1 = true, _didIteratorError1 = false, _iteratorError1 = undefined;
+                            try {
+                                for(var _iterator1 = Reflect.ownKeys(obj)[Symbol.iterator](), _step1; !(_iteratorNormalCompletion1 = (_step1 = _iterator1.next()).done); _iteratorNormalCompletion1 = true){
+                                    var key = _step1.value;
+                                    if (key !== 'default' && !keys.includes(key)) keys.push(key);
+                                }
+                            } catch (err) {
+                                _didIteratorError1 = true;
+                                _iteratorError1 = err;
+                            } finally{
+                                try {
+                                    if (!_iteratorNormalCompletion1 && _iterator1.return != null) {
+                                        _iterator1.return();
+                                    }
+                                } finally{
+                                    if (_didIteratorError1) {
+                                        throw _iteratorError1;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        _didIteratorError = true;
+                        _iteratorError = err;
+                    } finally{
+                        try {
+                            if (!_iteratorNormalCompletion && _iterator.return != null) {
+                                _iterator.return();
+                            }
+                        } finally{
+                            if (_didIteratorError) {
+                                throw _iteratorError;
+                            }
+                        }
+                    }
+                    return keys;
+                },
+                getOwnPropertyDescriptor: function getOwnPropertyDescriptor(target, prop) {
+                    var own = Reflect.getOwnPropertyDescriptor(target, prop);
+                    if (own || prop === 'default' || prop === '__esModule') return own;
+                    var obj = reexportOwning(prop);
+                    if (obj) {
+                        // Synthetic keys don't exist on the target, so they MUST be
+                        // reported as configurable. However the set/delete traps above will
+                        // prevent them from actually being changed
+                        return {
+                            enumerable: true,
+                            configurable: true,
+                            get: function get() {
+                                return Reflect.get(obj, prop);
+                            }
+                        };
+                    }
+                    return undefined;
+                }
+            });
+        }
+        return reexportedObjects;
+    };
+    var dynamicExport = /**
+ * Dynamically exports properties from an object
+ */ function dynamicExport(object, id) {
+        var _$module;
+        var _$exports;
+        if (id != null) {
+            _$module = getOverwrittenModule(this.c, id);
+            _$exports = _$module.exports;
+        } else {
+            _$module = this.m;
+            _$exports = this.e;
+        }
+        var reexportedObjects = ensureDynamicExports(_$module, _$exports);
+        if ((typeof object === "undefined" ? "undefined" : _type_of(object)) === 'object' && object !== null) {
+            reexportedObjects.push(object);
+        }
+    };
+    var exportValue = function exportValue(value, id) {
+        var _$module;
+        if (id != null) {
+            _$module = getOverwrittenModule(this.c, id);
+        } else {
+            _$module = this.m;
+        }
+        _$module.exports = value;
+    };
+    var exportNamespace = function exportNamespace(namespace, id) {
+        var _$module;
+        if (id != null) {
+            _$module = getOverwrittenModule(this.c, id);
+        } else {
+            _$module = this.m;
+        }
+        _$module.exports = _$module.namespaceObject = namespace;
+    };
+    var createGetter = function createGetter(obj, key) {
+        return function() {
+            return obj[key];
+        };
+    };
+    var interopEsm = /**
+ * @param raw
+ * @param ns
+ * @param allowExportDefault
+ *   * `false`: will have the raw module as default export
+ *   * `true`: will have the default property as default export
+ */ function interopEsm(raw, ns, allowExportDefault) {
+        var bindings = [];
+        var defaultLocation = -1;
+        for(var current = raw; ((typeof current === "undefined" ? "undefined" : _type_of(current)) === 'object' || typeof current === 'function') && !LEAF_PROTOTYPES.includes(current); current = getProto(current)){
+            var _iteratorNormalCompletion = true, _didIteratorError = false, _iteratorError = undefined;
+            try {
+                for(var _iterator = Object.getOwnPropertyNames(current)[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true){
+                    var key = _step.value;
+                    bindings.push(key, createGetter(raw, key));
+                    if (defaultLocation === -1 && key === 'default') {
+                        defaultLocation = bindings.length - 1;
+                    }
+                }
+            } catch (err) {
+                _didIteratorError = true;
+                _iteratorError = err;
+            } finally{
+                try {
+                    if (!_iteratorNormalCompletion && _iterator.return != null) {
+                        _iterator.return();
+                    }
+                } finally{
+                    if (_didIteratorError) {
+                        throw _iteratorError;
+                    }
+                }
+            }
+        }
+        // this is not really correct
+        // we should set the `default` getter if the imported module is a `.cjs file`
+        if (!(allowExportDefault && defaultLocation >= 0)) {
+            // Replace the binding with one for the namespace itself in order to preserve iteration order.
+            if (defaultLocation >= 0) {
+                // Replace the getter with the value
+                bindings.splice(defaultLocation, 1, BindingTag_Value, raw);
+            } else {
+                bindings.push('default', BindingTag_Value, raw);
+            }
+        }
+        esm(ns, bindings);
+        return ns;
+    };
+    var createNS = function createNS(raw) {
+        if (typeof raw === 'function') {
+            return function() {
+                for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
+                    args[_key] = arguments[_key];
+                }
+                return raw.apply(this, args);
+            };
+        } else {
+            return Object.create(null);
+        }
+    };
+    var esmImport = function esmImport(id) {
+        var _$module = getOrInstantiateModuleFromParent(id, this.m);
+        // any ES module has to have `module.namespaceObject` defined.
+        if (_$module.namespaceObject) return _$module.namespaceObject;
+        // only ESM can be an async module, so we don't need to worry about exports being a promise here.
+        var raw = _$module.exports;
+        return _$module.namespaceObject = interopEsm(raw, createNS(raw), raw && raw.__esModule);
+    };
+    var asyncLoader = function asyncLoader(moduleId) {
+        var loader = this.r(moduleId);
+        return loader(esmImport.bind(this));
+    };
+    var commonJsRequire = function commonJsRequire(id) {
+        return getOrInstantiateModuleFromParent(id, this.m).exports;
+    };
+    var parseRequest = /**
+ * Remove fragments and query parameters since they are never part of the context map keys
+ *
+ * This matches how we parse patterns at resolving time.  Arguably we should only do this for
+ * strings passed to `import` but the resolve does it for `import` and `require` and so we do
+ * here as well.
+ */ function parseRequest(request) {
+        // Per the URI spec fragments can contain `?` characters, so we should trim it off first
+        // https://datatracker.ietf.org/doc/html/rfc3986#section-3.5
+        var hashIndex = request.indexOf('#');
+        if (hashIndex !== -1) {
+            request = request.substring(0, hashIndex);
+        }
+        var queryIndex = request.indexOf('?');
+        if (queryIndex !== -1) {
+            request = request.substring(0, queryIndex);
+        }
+        return request;
+    };
+    var moduleContext = /**
+ * `require.context` and require/import expression runtime.
+ */ function moduleContext(map) {
+        function moduleContext(id) {
+            id = parseRequest(id);
+            if (hasOwnProperty.call(map, id)) {
+                return map[id].module();
+            }
+            var e = new Error("Cannot find module '".concat(id, "'"));
+            e.code = 'MODULE_NOT_FOUND';
+            throw e;
+        }
+        moduleContext.keys = function() {
+            return Object.keys(map);
+        };
+        moduleContext.resolve = function(id) {
+            id = parseRequest(id);
+            if (hasOwnProperty.call(map, id)) {
+                return map[id].id();
+            }
+            var e = new Error("Cannot find module '".concat(id, "'"));
+            e.code = 'MODULE_NOT_FOUND';
+            throw e;
+        };
+        moduleContext.import = function(id) {
+            return _async_to_generator(function() {
+                return _ts_generator(this, function(_state) {
+                    switch(_state.label){
+                        case 0:
+                            return [
+                                4,
+                                moduleContext(id)
+                            ];
+                        case 1:
+                            return [
+                                2,
+                                _state.sent()
+                            ];
+                    }
+                });
+            })();
+        };
+        return moduleContext;
+    };
+    var getChunkPath = /**
+ * Returns the path of a chunk defined by its data.
+ */ function getChunkPath(chunkData) {
+        return typeof chunkData === 'string' ? chunkData : chunkData.path;
+    };
+    var installCompressedModuleFactories = // Load the CompressedmoduleFactories of a chunk into the `moduleFactories` Map.
+    // The CompressedModuleFactories format is
+    // - 1 or more module ids
+    // - a module factory function
+    // So walking this is a little complex but the flat structure is also fast to
+    // traverse, we can use `typeof` operators to distinguish the two cases.
+    function installCompressedModuleFactories(chunkModules, offset, moduleFactories, newModuleId) {
+        var i = offset;
+        while(i < chunkModules.length){
+            var end = i + 1;
+            // Find our factory function
+            while(end < chunkModules.length && typeof chunkModules[end] !== 'function'){
+                end++;
+            }
+            if (end === chunkModules.length) {
+                throw new Error('malformed chunk format, expected a factory function');
+            }
+            // Install the factory for each module ID that doesn't already have one.
+            // When some IDs in this group already have a factory, reuse that existing
+            // group factory for the missing IDs to keep all IDs in the group consistent.
+            // Otherwise, install the factory from this chunk.
+            var moduleFactoryFn = chunkModules[end];
+            var existingGroupFactory = undefined;
+            for(var j = i; j < end; j++){
+                var id = chunkModules[j];
+                var existingFactory = moduleFactories.get(id);
+                if (existingFactory) {
+                    existingGroupFactory = existingFactory;
+                    break;
+                }
+            }
+            var factoryToInstall = existingGroupFactory !== null && existingGroupFactory !== void 0 ? existingGroupFactory : moduleFactoryFn;
+            var didInstallFactory = false;
+            for(var j1 = i; j1 < end; j1++){
+                var id1 = chunkModules[j1];
+                if (!moduleFactories.has(id1)) {
+                    if (!didInstallFactory) {
+                        if (factoryToInstall === moduleFactoryFn) {
+                            applyModuleFactoryName(moduleFactoryFn);
+                        }
+                        didInstallFactory = true;
+                    }
+                    moduleFactories.set(id1, factoryToInstall);
+                    newModuleId === null || newModuleId === void 0 ? void 0 : newModuleId(id1);
+                }
+            }
+            i = end + 1; // end is pointing at the last factory advance to the next id or the end of the array.
+        }
+    };
+    var invariant = /**
+ * Utility function to ensure all variants of an enum are handled.
+ */ function invariant(never, computeMessage) {
+        throw new Error("Invariant: ".concat(computeMessage(never)));
+    };
+    var factoryNotAvailableMessage = /**
+ * Constructs an error message for when a module factory is not available.
+ */ function factoryNotAvailableMessage(moduleId, sourceType, sourceData) {
+        var instantiationReason;
+        switch(sourceType){
+            case 0:
+                instantiationReason = "as a runtime entry of chunk ".concat(sourceData);
+                break;
+            case 1:
+                instantiationReason = "because it was required from module ".concat(sourceData);
+                break;
+            case 2:
+                instantiationReason = 'because of an HMR update';
+                break;
+            default:
+                invariant(sourceType, function(sourceType) {
+                    return "Unknown source type: ".concat(sourceType);
+                });
+        }
+        return "Module ".concat(moduleId, " was instantiated ").concat(instantiationReason, ", but the module factory is not available.");
+    };
+    var requireStub = /**
+ * A stub function to make `require` available but non-functional in ESM.
+ */ function requireStub(_moduleId) {
+        throw new Error('dynamic usage of require is not supported');
+    };
+    var getAutomaticPublicPath = function getAutomaticPublicPath() {
+        if (cachedAutomaticPublicPath !== undefined) {
+            return cachedAutomaticPublicPath;
+        }
+        var scriptUrl;
+        if ((typeof document === "undefined" ? "undefined" : _type_of(document)) === 'object') {
+            var currentScript = document.currentScript;
+            scriptUrl = currentScript === null || currentScript === void 0 ? void 0 : currentScript.src;
+            if (!scriptUrl) {
+                var scripts = document.getElementsByTagName('script');
+                var script = scripts[scripts.length - 1];
+                scriptUrl = script === null || script === void 0 ? void 0 : script.src;
+            }
+        }
+        if (!scriptUrl && typeof globalThis.importScripts === 'function' && globalThis.location) {
+            scriptUrl = String(globalThis.location);
+        }
+        cachedAutomaticPublicPath = scriptUrl ? scriptUrl.replace(/^blob:/, '').replace(/#.*$/, '').replace(/\?.*$/, '').replace(/\/[^/]*$/, '/') : '';
+        return cachedAutomaticPublicPath;
+    };
+    var getPublicPath = /**
+ * Gets the public path for runtime assets.
+ * Checks globalThis.publicPath and falls back to "/".
+ */ function getPublicPath(mode) {
+        if (mode === 'auto') {
+            return getAutomaticPublicPath();
+        }
+        if (typeof globalThis !== 'undefined' && typeof globalThis.publicPath === 'string') {
+            var publicPath = globalThis.publicPath;
+            return publicPath.endsWith('/') ? publicPath : "".concat(publicPath, "/");
+        }
+        return '/';
+    };
+    var applyModuleFactoryName = function applyModuleFactoryName(factory) {
+        // Give the module factory a nice name to improve stack traces.
+        Object.defineProperty(factory, 'name', {
+            value: 'module evaluation'
+        });
+    };
+    var isPromise = function isPromise(maybePromise) {
+        return maybePromise != null && (typeof maybePromise === "undefined" ? "undefined" : _type_of(maybePromise)) === 'object' && 'then' in maybePromise && typeof maybePromise.then === 'function';
+    };
+    var isAsyncModuleExt = function isAsyncModuleExt(obj) {
+        return turbopackQueues in obj;
+    };
+    var createPromise = function createPromise() {
+        var resolve;
+        var reject;
+        var promise = new Promise(function(res, rej) {
+            reject = rej;
+            resolve = res;
+        });
+        return {
+            promise: promise,
+            resolve: resolve,
+            reject: reject
+        };
+    };
+    var resolveQueue = function resolveQueue(queue) {
+        if (queue && queue.status !== 1) {
+            queue.status = 1;
+            queue.forEach(function(fn) {
+                return fn.queueCount--;
+            });
+            queue.forEach(function(fn) {
+                return fn.queueCount-- ? fn.queueCount++ : fn();
+            });
+        }
+    };
+    var wrapDeps = function wrapDeps(deps) {
+        return deps.map(function(dep) {
+            if (dep !== null && (typeof dep === "undefined" ? "undefined" : _type_of(dep)) === 'object') {
+                if (isAsyncModuleExt(dep)) return dep;
+                if (isPromise(dep)) {
+                    var queue = Object.assign([], {
+                        status: 0
+                    });
+                    var _obj;
+                    var obj = (_obj = {}, _define_property(_obj, turbopackExports, {}), _define_property(_obj, turbopackQueues, function(fn) {
+                        return fn(queue);
+                    }), _obj);
+                    dep.then(function(res) {
+                        obj[turbopackExports] = res;
+                        resolveQueue(queue);
+                    }, function(err) {
+                        obj[turbopackError] = err;
+                        resolveQueue(queue);
+                    });
+                    return obj;
+                }
+            }
+            var _obj1;
+            return _obj1 = {}, _define_property(_obj1, turbopackExports, dep), _define_property(_obj1, turbopackQueues, function() {}), _obj1;
+        });
+    };
+    var asyncModule = function asyncModule(body, hasAwait) {
+        var _$module = this.m;
+        var queue = hasAwait ? Object.assign([], {
+            status: -1
+        }) : undefined;
+        var depQueues = new Set();
+        var _createPromise = createPromise(), resolve = _createPromise.resolve, reject = _createPromise.reject, rawPromise = _createPromise.promise;
+        var _obj;
+        var promise = Object.assign(rawPromise, (_obj = {}, _define_property(_obj, turbopackExports, _$module.exports), _define_property(_obj, turbopackQueues, function(fn) {
+            queue && fn(queue);
+            depQueues.forEach(fn);
+            promise['catch'](function() {});
+        }), _obj));
+        var attributes = {
+            get: function get() {
+                return promise;
+            },
+            set: function set(v) {
+                // Calling `esmExport` leads to this.
+                if (v !== promise) {
+                    promise[turbopackExports] = v;
+                }
+            }
+        };
+        Object.defineProperty(_$module, 'exports', attributes);
+        Object.defineProperty(_$module, 'namespaceObject', attributes);
+        function handleAsyncDependencies(deps) {
+            var currentDeps = wrapDeps(deps);
+            var getResult = function getResult() {
+                return currentDeps.map(function(d) {
+                    if (d[turbopackError]) throw d[turbopackError];
+                    return d[turbopackExports];
+                });
+            };
+            var _createPromise = createPromise(), promise = _createPromise.promise, resolve = _createPromise.resolve;
+            var fn = Object.assign(function() {
+                return resolve(getResult);
+            }, {
+                queueCount: 0
+            });
+            function fnQueue(q) {
+                if (q !== queue && !depQueues.has(q)) {
+                    depQueues.add(q);
+                    if (q && q.status === 0) {
+                        fn.queueCount++;
+                        q.push(fn);
+                    }
+                }
+            }
+            currentDeps.map(function(dep) {
+                return dep[turbopackQueues](fnQueue);
+            });
+            return fn.queueCount ? promise : getResult();
+        }
+        function asyncResult(err) {
+            if (err) {
+                reject(promise[turbopackError] = err);
+            } else {
+                resolve(promise[turbopackExports]);
+            }
+            resolveQueue(queue);
+        }
+        body(handleAsyncDependencies, asyncResult);
+        if (queue && queue.status === -1) {
+            queue.status = 0;
+        }
+    };
+    var getChunkFromRegistration = /**
+ * Determine the chunk to register from a registration entry.
+ * In library builds, chunks are always string paths or script objects.
+ */ function getChunkFromRegistration(chunk) {
+        if (typeof chunk === "string") {
+            return chunk;
+        } else if (chunk) {
+            return {
+                src: chunk.getAttribute("src")
+            };
+        } else {
+            throw new Error("chunk path is empty");
+        }
+    };
+    var externalRequire = /**
+ * Load CommonJS externals when a UMD bundle runs in a CommonJS environment.
+ * Browser-targeted UMD bundles need this too because their wrapper supports
+ * both global and CommonJS consumers.
+ */ function externalRequire(id, thunk) {
+        var esm = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : false;
+        var raw;
+        try {
+            raw = thunk();
+        } catch (err) {
+            throw new Error("Failed to load external module ".concat(id, ": ").concat(err));
+        }
+        if (!esm || raw.__esModule) {
+            return raw;
+        }
+        return interopEsm(raw, createNS(raw), true);
+    };
+    var externalNamespace = /**
+ * Adds Webpack-compatible ESM metadata to external values while preserving
+ * native ESM live bindings.
+ */ function externalNamespace(mod) {
+        if (mod && mod.__esModule) return mod;
+        var ns = Object.create(null);
+        var isEsmNamespace = mod && toStringTag && mod[toStringTag] === "Module";
+        if (mod && ((typeof mod === "undefined" ? "undefined" : _type_of(mod)) === "object" || typeof mod === "function")) {
+            for(var key in mod){
+                if (key === "__esModule" || !isEsmNamespace && key === "default") {
+                    continue;
+                }
+                Object.defineProperty(ns, key, {
+                    enumerable: true,
+                    get: createGetter(mod, key)
+                });
+            }
+        }
+        if (!isEsmNamespace) {
+            Object.defineProperty(ns, "default", {
+                enumerable: true,
+                value: mod
+            });
+        }
+        Object.defineProperty(ns, "__esModule", {
+            value: true
+        });
+        if (toStringTag) {
+            Object.defineProperty(ns, toStringTag, {
+                value: "Module"
+            });
+        }
+        return ns;
+    };
+    var getOrInstantiateRuntimeModule = /**
+ * Gets or instantiates a runtime module.
+ */ // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    function getOrInstantiateRuntimeModule(chunkPath, moduleId) {
+        var _$module = moduleCache[moduleId];
+        if (_$module) {
+            if (_$module.error) {
+                throw _$module.error;
+            }
+            return _$module;
+        }
+        return instantiateModule(moduleId, SourceType.Runtime, chunkPath);
+    };
+    var instantiateModule = function instantiateModule(id, sourceType, sourceData) {
+        var moduleFactory = moduleFactories.get(id);
+        if (typeof moduleFactory !== 'function') {
+            // This can happen if modules incorrectly handle HMR disposes/updates,
+            // e.g. when they keep a `setTimeout` around which still executes old code
+            // and contains e.g. a `require("something")` call.
+            throw new Error(factoryNotAvailableMessage(id, sourceType, sourceData));
+        }
+        var _$module = createModuleObject(id);
+        var _$exports = _$module.exports;
+        moduleCache[id] = _$module;
+        // NOTE(alexkirsz) This can fail when the module encounters a runtime error.
+        var context = new Context(_$module, _$exports);
+        try {
+            moduleFactory(context, _$module, _$exports);
+        } catch (error) {
+            _$module.error = error;
+            throw error;
+        }
+        if (_$module.namespaceObject && _$module.exports !== _$module.namespaceObject) {
+            // in case of a circular dependency: cjs1 -> esm2 -> cjs1
+            interopEsm(_$module.exports, _$module.namespaceObject);
+        }
+        return _$module;
+    };
+    var registerChunk = // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    function registerChunk(registration) {
+        // An inlined entry-only registration is a bare params object (no source chunk).
+        if (!Array.isArray(registration)) {
+            return BACKEND.registerChunk(undefined, registration);
+        }
+        var chunk = getChunkFromRegistration(registration[0]);
+        if (SUPPORT_COMPONENT_CHUNKS) {
+            markChunkComponentsAvailable(chunk);
+        }
+        var runtimeParams;
+        // When bootstrapping we are passed a single runtimeParams object so we can distinguish purely based on length
+        if (registration.length === 2) {
+            runtimeParams = registration[1];
+        } else {
+            runtimeParams = undefined;
+            installCompressedModuleFactories(registration, /* offset= */ 1, moduleFactories);
+        }
+        return BACKEND.registerChunk(chunk, runtimeParams);
+    };
+    var loadScript = /**
+ * Load an external script by creating a <script> tag.
+ * This is used for script externals that need to be loaded from CDN or other external sources.
+ */ function loadScript(scriptUrl) {
+        // Return cached promise if script is already loading or loaded
+        var promise = loadedScripts.get(scriptUrl);
+        if (promise) {
+            return promise;
+        }
+        promise = new Promise(function(resolve, reject) {
+            var script = document.createElement("script");
+            script.src = scriptUrl;
+            script.onload = function() {
+                return resolve();
+            };
+            script.onerror = function() {
+                return reject(new Error("Failed to load script: ".concat(scriptUrl)));
+            };
+            document.head.appendChild(script);
+        });
+        loadedScripts.set(scriptUrl, promise);
+        return promise;
+    };
+    var factory = function factory() {
+        var runtimeModuleIds = [
+            "[project]/runtime/library_build_runtime_legacy/input/index.js [library-client] (ecmascript)"
+        ];
+        var _$exports;
+        for(var i = 0; i < runtimeModuleIds.length; i++){
+            var _$module = moduleCache[runtimeModuleIds[i]];
+            if (_$module.error) throw _$module.error;
+            _$exports = _$module;
+        }
+        if (_$exports) {
+            // any ES module has to have `module.namespaceObject` defined.
+            if (_$exports.namespaceObject) return _$exports.namespaceObject;
+            // only ESM can be an async module, so we don't need to worry about exports being a promise here.
+            var raw = _$exports.exports;
+            return _$exports.namespaceObject = interopEsm(raw, createNS(raw), raw && raw.__esModule);
+        }
+    };
+    if (typeof globalThis === 'undefined') {
+        if (typeof self !== 'undefined') self.globalThis = self;
+        else if (typeof global !== 'undefined') global.globalThis = global;
+    }
+    if (!Array.isArray(__UTOOPACK__)) {
+        return;
+    }
+    var CHUNK_BASE_PATH = "";
+    var CHUNK_SUFFIX_PATH = "";
+    var RELATIVE_ROOT_PATH = "..";
+    var RUNTIME_PUBLIC_PATH = "";
+    // Library builds deliberately collapse JavaScript into one chunk, so the
+    // component-chunk runtime path is unsupported in this custom runtime.
+    var SUPPORT_COMPONENT_CHUNKS = false;
+    /**
+ * This file contains runtime types and functions that are shared between all
+ * TurboPack ECMAScript runtimes.
+ *
+ * It will be prepended to the runtime code of each runtime.
+ */ /* eslint-disable @typescript-eslint/no-unused-vars */ /// <reference path="./runtime-types.d.ts" />
+    /// <reference path="./async-module.ts" />
+    /**
+ * Describes why a module was instantiated.
+ * Shared between browser and Node.js runtimes.
+ */ var SourceType = function(SourceType) {
+        /**
+   * The module was instantiated because it was included in an evaluated chunk's
+   * runtime.
+   * SourceData is a ChunkPath.
+   */ SourceType[SourceType["Runtime"] = 0] = "Runtime";
+        /**
+   * The module was instantiated because a parent module imported it.
+   * SourceData is a ModuleId.
+   */ SourceType[SourceType["Parent"] = 1] = "Parent";
+        /**
+   * The module was instantiated because it was included in a chunk's hot module
+   * update.
+   * SourceData is an array of ModuleIds or undefined.
+   */ SourceType[SourceType["Update"] = 2] = "Update";
+        return SourceType;
+    }(SourceType || {});
+    /**
+ * Flag indicating which module object type to create when a module is merged. Set to `true`
+ * by each runtime that uses ModuleWithDirection (browser dev-base.ts, nodejs dev-base.ts,
+ * nodejs build-base.ts). Browser production (build-base.ts) leaves it as `false` since it
+ * uses plain Module objects.
+ */ var createModuleWithDirectionFlag = false;
+    var REEXPORTED_OBJECTS = new WeakMap();
+    var contextPrototype = Context.prototype;
+    var hasOwnProperty = Object.prototype.hasOwnProperty;
+    var toStringTag = typeof Symbol !== 'undefined' && Symbol.toStringTag;
+    var BindingTag_Value = 0;
+    contextPrototype.s = esmExport;
+    contextPrototype.j = dynamicExport;
+    contextPrototype.v = exportValue;
+    contextPrototype.n = exportNamespace;
+    /**
+ * @returns prototype of the object
+ */ var getProto = Object.getPrototypeOf ? function(obj) {
+        return Object.getPrototypeOf(obj);
+    } : function(obj) {
+        return obj.__proto__;
+    };
+    /** Prototypes that are not expanded for exports */ var LEAF_PROTOTYPES = [
+        null,
+        getProto({}),
+        getProto([]),
+        getProto(getProto)
+    ];
+    contextPrototype.i = esmImport;
+    contextPrototype.A = asyncLoader;
+    // Add a simple runtime require so that environments without one can still pass
+    // `typeof require` CommonJS checks so that exports are correctly registered.
+    var runtimeRequire = typeof require === 'function' ? require : function require1() {
+        throw new Error('Unexpected use of runtime require');
+    };
+    contextPrototype.t = runtimeRequire;
+    contextPrototype.r = commonJsRequire;
+    contextPrototype.f = moduleContext;
+    /**
+ * A pseudo "fake" URL object to resolve to its relative path.
+ *
+ * When UrlRewriteBehavior is set to relative, calls to the `new URL()` will construct url without base using this
+ * runtime function to generate context-agnostic urls between different rendering context, i.e ssr / client to avoid
+ * hydration mismatch.
+ *
+ * This is based on webpack's existing implementation:
+ * https://github.com/webpack/webpack/blob/87660921808566ef3b8796f8df61bd79fc026108/lib/runtime/RelativeUrlRuntimeModule.js
+ */ var relativeURL = function relativeURL(inputUrl) {
+        var realUrl = new URL(inputUrl, 'x:/');
+        var values = {};
+        for(var key in realUrl)values[key] = realUrl[key];
+        values.href = inputUrl;
+        values.pathname = inputUrl.replace(/[?#].*/, '');
+        values.origin = values.protocol = '';
+        values.toString = values.toJSON = function() {
+            for(var _len = arguments.length, _args = new Array(_len), _key = 0; _key < _len; _key++){
+                _args[_key] = arguments[_key];
+            }
+            return inputUrl;
+        };
+        for(var key1 in values)Object.defineProperty(this, key1, {
+            enumerable: true,
+            configurable: true,
+            value: values[key1]
+        });
+    };
+    relativeURL.prototype = URL.prototype;
+    contextPrototype.U = relativeURL;
+    contextPrototype.z = requireStub;
+    // Make `globalThis` available to the module in a way that cannot be shadowed by a local variable.
+    contextPrototype.g = globalThis;
+    var cachedAutomaticPublicPath;
+    contextPrototype.p = getPublicPath;
+    /// <reference path="./runtime-types.d.ts" />
+    /// <reference path="./runtime-utils.ts" />
+    /**
+ * Top-level-await / async-module machinery. This is only included in the runtime
+ * when the module graph actually contains an async module (a module with
+ * top-level await, or one that transitively depends on one). When no async
+ * module is present, the chunk items never reference `__turbopack_context__.a`,
+ * so this whole file can be omitted.
+ *
+ * everything below is adapted from webpack
+ * https://github.com/webpack/webpack/blob/6be4065ade1e252c1d8dcba4af0f43e32af1bdc1/lib/runtime/AsyncModuleRuntimeModule.js#L13
+ */ var turbopackQueues = Symbol('turbopack queues');
+    var turbopackExports = Symbol('turbopack exports');
+    var turbopackError = Symbol('turbopack error');
+    contextPrototype.a = asyncModule;
+    /**
+ * This file contains runtime types and functions that are shared between all
+ * Turbopack UMD library runtimes (DOM and Node.js).
+ *
+ * It will be appended to the runtime code of each runtime right after the
+ * shared runtime utils.
+ */ /* eslint-disable @typescript-eslint/no-unused-vars */ /// <reference path="../../../../../next.js/turbopack/crates/turbopack-ecmascript-runtime/js/src/shared/runtime/runtime-utils.ts" />
+    /// <reference path="../../../../../next.js/turbopack/crates/turbopack-ecmascript-runtime/js/src/shared/runtime/runtime-types.d.ts" />
+    // Provided by build
+    var BACKEND;
+    var moduleFactories = new Map();
+    contextPrototype.M = moduleFactories;
+    externalRequire.resolve = function(id, options) {
+        return require.resolve(id, options);
+    };
+    contextPrototype.x = externalRequire;
+    contextPrototype.N = externalNamespace;
+    /// <reference path="./runtime-base.ts" />
+    /// <reference path="./dummy.ts" />
+    var moduleCache = {};
+    contextPrototype.c = moduleCache;
+    /**
+ * Retrieves a module from the cache, or instantiate it if it is not cached.
+ */ // Used by the backend
+    // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    var getOrInstantiateModuleFromParent = function getOrInstantiateModuleFromParent(id, sourceModule) {
+        var _$module = moduleCache[id];
+        if (_$module) {
+            if (_$module.error) {
+                throw _$module.error;
+            }
+            return _$module;
+        }
+        return instantiateModule(id, SourceType.Parent, sourceModule.id);
+    };
+    /**
+ * This file contains the runtime code specific to the Turbopack
+ * ECMAScript DOM runtime for library builds.
+ *
+ * It will be appended to the base runtime code in place of
+ * runtime-backend-node.ts when the target platform is browser/web.
+ *
+ * Since library builds produce a single, self-contained chunk,
+ * no dynamic chunk loading is needed. The BACKEND simply registers
+ * modules and instantiates runtime entries.
+ *
+ * The only DOM-specific addition is `loadScript` for script externals
+ * that need to be loaded from CDN or other external sources.
+ */ /* eslint-disable @typescript-eslint/no-unused-vars */ /// <reference path="./runtime-base.ts" />
+    var loadedScripts = new Map();
+    contextPrototype.S = loadScript;
+    (function() {
+        BACKEND = {
+            registerChunk: function registerChunk(chunk, params) {
+                if (params == null) {
+                    return;
+                }
+                if (params.runtimeModuleIds.length > 0) {
+                    var _iteratorNormalCompletion = true, _didIteratorError = false, _iteratorError = undefined;
+                    try {
+                        for(var _iterator = params.runtimeModuleIds[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true){
+                            var moduleId = _step.value;
+                            getOrInstantiateRuntimeModule(chunk, moduleId);
+                        }
+                    } catch (err) {
+                        _didIteratorError = true;
+                        _iteratorError = err;
+                    } finally{
+                        try {
+                            if (!_iteratorNormalCompletion && _iterator.return != null) {
+                                _iterator.return();
+                            }
+                        } finally{
+                            if (_didIteratorError) {
+                                throw _iteratorError;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    })();
+    var chunksToRegister = __UTOOPACK__;
+    __UTOOPACK__ = {
+        push: registerChunk
+    };
+    chunksToRegister.forEach(registerChunk);
+    if ((typeof exports === "undefined" ? "undefined" : _type_of(exports)) === 'object' && (typeof module === "undefined" ? "undefined" : _type_of(module)) === 'object') {
+        module.exports = factory();
+    } else if ((typeof exports === "undefined" ? "undefined" : _type_of(exports)) === 'object') {
+        exports["LegacyLibrary"] = factory();
+    } else {
+        globalThis["LegacyLibrary"] = factory();
+    }
+})([
+    [
+        "main.js",
+        "[project]/runtime/library_build_runtime_legacy/input/asset.svg (static in ecmascript)",
+        function(__turbopack_context__) {
+            __turbopack_context__.v(__turbopack_context__.p("auto") + "asset.36cae746.svg");
+        },
+        "[project]/runtime/library_build_runtime_legacy/input/index.js [library-client] (ecmascript) <locals>",
+        function(__turbopack_context__) {
+            "use strict";
+            var __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_build_runtime_legacy$2f$input$2f$asset$2e$svg__$28$static__in__ecmascript$29$__ = __turbopack_context__.i("[project]/runtime/library_build_runtime_legacy/input/asset.svg (static in ecmascript)");
+            ;
+            ;
+            var read = function read(value) {
+                var _ref;
+                return (_ref = value === null || value === void 0 ? void 0 : value.answer) !== null && _ref !== void 0 ? _ref : 42;
+            };
+            var flag = 1;
+            var load = function load() {
+                return Promise.resolve().then(function() {
+                    return __turbopack_context__.i("[project]/runtime/library_build_runtime_legacy/input/lazy.js [library-client] (ecmascript)");
+                }).then(function(module1) {
+                    return module1.answer;
+                });
+            };
+            function last(node) {
+                do {
+                    node = node.next;
+                }while (node.next);
+                return node.value;
+            }
+            __turbopack_context__.s([
+                "flag",
+                0,
+                flag,
+                "last",
+                0,
+                last,
+                "load",
+                0,
+                load,
+                "read",
+                0,
+                read
+            ]);
+        },
+        "[project]/runtime/library_build_runtime_legacy/input/index.js [library-client] (ecmascript)",
+        function(__turbopack_context__) {
+            "use strict";
+            var __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_build_runtime_legacy$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/runtime/library_build_runtime_legacy/input/index.js [library-client] (ecmascript) <locals>");
+            var __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_build_runtime_legacy$2f$input$2f$asset$2e$svg__$28$static__in__ecmascript$29$__ = __turbopack_context__.i("[project]/runtime/library_build_runtime_legacy/input/asset.svg (static in ecmascript)");
+            __turbopack_context__.s([
+                "asset",
+                function() {
+                    return __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_build_runtime_legacy$2f$input$2f$asset$2e$svg__$28$static__in__ecmascript$29$__["default"];
+                },
+                "flag",
+                function() {
+                    return __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_build_runtime_legacy$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["flag"];
+                },
+                "last",
+                function() {
+                    return __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_build_runtime_legacy$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["last"];
+                },
+                "load",
+                function() {
+                    return __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_build_runtime_legacy$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["load"];
+                },
+                "read",
+                function() {
+                    return __TURBOPACK__imported__module__$5b$project$5d2f$runtime$2f$library_build_runtime_legacy$2f$input$2f$index$2e$js__$5b$library$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["read"];
+                }
+            ]);
+        },
+        "[project]/runtime/library_build_runtime_legacy/input/lazy.js [library-client] (ecmascript)",
+        function(__turbopack_context__) {
+            "use strict";
+            return __turbopack_context__.a(function(__turbopack_handle_async_dependencies__, __turbopack_async_result__) {
+                var __gen = function() {
+                    var answer, e;
+                    return _ts_generator(this, function(_state) {
+                        switch(_state.label){
+                            case 0:
+                                _state.trys.push([
+                                    0,
+                                    2,
+                                    ,
+                                    3
+                                ]);
+                                return [
+                                    4,
+                                    Promise.resolve(43)
+                                ];
+                            case 1:
+                                answer = _state.sent();
+                                __turbopack_context__.s([
+                                    "answer",
+                                    0,
+                                    answer
+                                ]);
+                                __turbopack_async_result__();
+                                return [
+                                    3,
+                                    3
+                                ];
+                            case 2:
+                                e = _state.sent();
+                                __turbopack_async_result__(e);
+                                return [
+                                    3,
+                                    3
+                                ];
+                            case 3:
+                                return [
+                                    2
+                                ];
+                        }
+                    });
+                }();
+                (function __step(k, a) {
+                    try {
+                        var r = __gen[k](a);
+                    } catch (e) {
+                        __turbopack_async_result__(e);
+                        return;
+                    }
+                    if (!r.done) Promise.resolve(r.value).then(function(v) {
+                        __step('next', v);
+                    }, function(e) {
+                        __step('throw', e);
+                    });
+                })('next');
+            }, true);
+        }
+    ],
+    [
+        "main.js",
+        {
+            "otherChunks": [],
+            "runtimeModuleIds": [
+                "[project]/runtime/library_build_runtime_legacy/input/index.js [library-client] (ecmascript)"
+            ]
+        }
+    ]
+]);
+
+}).call(this);
