@@ -303,7 +303,7 @@ impl LibraryEndpoint {
                 root_path: project.project_path().owned().await?,
                 output_root: project.dist_root().owned().await?,
                 output_root_to_root_path: (*output_root_to_root_path).clone(),
-                environment: project.client_compile_time_info().environment(),
+                environment: project.compile_time_info_for_platform().environment(),
                 module_id_strategy: project.module_ids(),
                 no_mangling: project.no_mangling(),
                 compress: project.compress(),
