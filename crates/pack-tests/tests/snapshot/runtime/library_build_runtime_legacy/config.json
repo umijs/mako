@@ -4,13 +4,20 @@
       {
         "import": "input/index.js",
         "name": "main",
-        "library": { "name": "LegacyLibrary" }
+        "library": {
+          "name": "LegacyLibrary"
+        }
       }
     ],
     "target": "Android 4, iOS 8",
     "sourceMaps": false,
-    "optimization": { "minify": true, "moduleIds": "named" },
-    "output": { "publicPath": "auto" }
+    "optimization": {
+      "minify": true,
+      "moduleIds": "named"
+    },
+    "output": {
+      "publicPath": "auto"
+    }
   },
   "runtimeType": "Production"
 }
