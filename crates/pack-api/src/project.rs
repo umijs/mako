@@ -1877,19 +1877,18 @@ async fn whole_app_module_graph_operation(
         should_trace,
         should_read_binding_usage,
     );
-    let base_visited_modules = VisitedModules::from_graph(base_single_module_graph);
-
     let base = ModuleGraph::from_graphs(vec![base_single_module_graph], None);
 
     let remove_unused_imports = *project.config().remove_unused_imports(mode).await?;
 
-    let base = if remove_unused_imports {
-        // TODO suboptimal that we do compute_binding_usage_info twice (once for the base graph
-        // and later for the full graph)
+    let (base, base_binding_usage_info) = if remove_unused_imports {
         let binding_usage_info = compute_binding_usage_info(base, true);
-        ModuleGraph::from_graphs(vec![base_single_module_graph], Some(binding_usage_info))
+        (
+            ModuleGraph::from_graphs(vec![base_single_module_graph], Some(binding_usage_info)),
+            Some(binding_usage_info),
+        )
     } else {
-        base
+        (base, None)
     };
 
     let additional_entries = project
@@ -1897,6 +1896,19 @@ async fn whole_app_module_graph_operation(
         .to_resolved()
         .await?;
 
+    // An empty extension leaves the module graph unchanged, so its binding usage analysis
+    // can be reused. Read the entries even in this case to track future additions.
+    if *additional_entries.await? == GraphEntries::default() {
+        let base = base.connect().to_resolved().await?;
+        return Ok(BaseAndFullModuleGraph {
+            base,
+            full: base,
+            binding_usage_info: base_binding_usage_info,
+        }
+        .cell());
+    }
+
+    let base_visited_modules = VisitedModules::from_graph(base_single_module_graph);
     let additional_module_graph = SingleModuleGraph::new_with_entries_visited(
         additional_entries,
         base_visited_modules,
