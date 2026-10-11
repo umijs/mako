@@ -171,6 +171,14 @@ lto           = false
 incremental   = true
 codegen-units = 256
 
+# Native Pack bindings prioritize build throughput; keep the default release
+# profile size-oriented for the package manager and WASM artifacts.
+[profile.pack-release]
+inherits      = "release"
+opt-level     = 3
+# Reduce duplicate code without changing the optimization level of hot paths.
+codegen-units = 1
+
 [profile.release-local]
 inherits        = "release"
 opt-level       = 1
