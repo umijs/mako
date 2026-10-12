@@ -176,13 +176,8 @@ impl EcmascriptLibraryChunk {
     }
 
     #[turbo_tasks::function]
-    async fn source_map(self: Vc<Self>) -> Result<Vc<SourceMapAsset>> {
-        let this = self.await?;
-        Ok(SourceMapAsset::new(
-            Vc::upcast(*this.chunking_context),
-            self.ident(),
-            Vc::upcast(self),
-        ))
+    fn source_map(self: Vc<Self>) -> Vc<SourceMapAsset> {
+        SourceMapAsset::new(Vc::upcast(self), Vc::upcast(self))
     }
 
     #[turbo_tasks::function]
@@ -541,13 +536,8 @@ impl EcmascriptLibraryEvaluateChunk {
     }
 
     #[turbo_tasks::function]
-    async fn source_map(self: Vc<Self>) -> Result<Vc<SourceMapAsset>> {
-        let this = self.await?;
-        Ok(SourceMapAsset::new(
-            Vc::upcast(*this.chunking_context),
-            self.ident(),
-            Vc::upcast(self),
-        ))
+    fn source_map(self: Vc<Self>) -> Vc<SourceMapAsset> {
+        SourceMapAsset::new(Vc::upcast(self), Vc::upcast(self))
     }
 
     #[turbo_tasks::function]

@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["turbopack:///[project]/basic/sourcemap_filename_hash/input/lazy-one.css"],"sourcesContent":[".lazy-one {\n  color: red;\n}\n"],"names":[],"mappings":"AAAA"}}]
+}
