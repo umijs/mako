@@ -2,7 +2,7 @@
 
 use std::env;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use anyhow::Result;
 use tokio::sync::OnceCell;
@@ -13,6 +13,34 @@ use crate::util::platform_const::PATH_SEPARATOR;
 
 /// Cached result of node-gyp availability check and installation
 static NODE_GYP_ENSURED: OnceCell<Result<bool, String>> = OnceCell::const_new();
+
+/// Keep bootstrap diagnostics in the cached error so every waiting package,
+/// including optional dependencies, can surface the original child output.
+async fn install_node_gyp(command: Command) -> Result<bool, String> {
+    let output = tokio::process::Command::from(command)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run node-gyp installation: {e}"))?;
+
+    if output.status.success() {
+        tracing::debug!("node-gyp installed successfully");
+        return Ok(true);
+    }
+
+    let mut error = format!("Failed to install node-gyp globally: {}", output.status);
+    for (label, bytes) in [("stdout", &output.stdout), ("stderr", &output.stderr)] {
+        if !bytes.is_empty() {
+            error.push_str("\n--- ");
+            error.push_str(label);
+            error.push_str(" ---\n");
+            error.push_str(&String::from_utf8_lossy(bytes));
+        }
+    }
+    Err(error)
+}
 
 impl ScriptService {
     /// Check if node-gyp exists in PATH by searching directories
@@ -37,20 +65,9 @@ impl ScriptService {
                 }
 
                 tracing::debug!("node-gyp not found in PATH, installing globally");
-                let status = Command::new("ut")
-                    .args(["i", "-g", "node-gyp"])
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::null())
-                    .status();
-
-                match status {
-                    Ok(s) if s.success() => {
-                        tracing::debug!("node-gyp installed successfully");
-                        Ok(true)
-                    }
-                    Ok(s) => Err(format!("Failed to install node-gyp globally: {s}")),
-                    Err(e) => Err(format!("Failed to run node-gyp installation: {e}")),
-                }
+                let mut command = Command::new("ut");
+                command.args(["i", "-g", "node-gyp"]);
+                install_node_gyp(command).await
             })
             .await;
 
@@ -76,6 +93,42 @@ mod tests {
 
     #[cfg(unix)]
     use std::os::unix::fs::PermissionsExt;
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_install_node_gyp_preserves_failure_output() {
+        let mut command = Command::new("sh");
+        command.args([
+            "-c",
+            "printf 'resolving node-gyp\\n'; printf 'Error: certificate failed\\n    at fetch (registry.js:42:7)\\nFull logs saved to: /tmp/child.log\\n' >&2; exit 1",
+        ]);
+
+        let error = install_node_gyp(command).await.unwrap_err();
+        assert!(error.contains("Failed to install node-gyp globally: exit status: 1"));
+        assert!(error.contains("--- stdout ---\nresolving node-gyp\n"));
+        assert!(error.contains(
+            "--- stderr ---\nError: certificate failed\n    at fetch (registry.js:42:7)\nFull logs saved to: /tmp/child.log\n"
+        ));
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_install_node_gyp_success() {
+        let mut command = Command::new("sh");
+        command.args(["-c", "printf 'installed\\n'; exit 0"]);
+
+        assert!(install_node_gyp(command).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_install_node_gyp_spawn_failure() {
+        let temp_dir = tempdir().unwrap();
+        let command = Command::new(temp_dir.path().join("missing-ut"));
+
+        let error = install_node_gyp(command).await.unwrap_err();
+        assert!(error.contains("Failed to run node-gyp installation:"));
+        assert!(!error.contains("Failed to install node-gyp globally:"));
+    }
 
     #[test]
     fn test_has_node_gyp_in_path_found() {
