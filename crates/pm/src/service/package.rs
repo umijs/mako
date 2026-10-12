@@ -4,6 +4,7 @@ use crate::util::cli_enum::ScriptPolicy;
 use crate::util::install_progress::{mark_downloads_done, track_script};
 use crate::util::logger::{PROGRESS_BAR, finish_progress_bar, log_progress, start_progress_bar};
 use crate::util::user_config::get_script_concurrency_limit;
+use crate::util::{invocation, presenter};
 use anyhow::{Context, Result};
 use futures::stream::{self, StreamExt};
 use std::collections::{HashMap, HashSet};
@@ -502,6 +503,15 @@ impl PackageService {
                     // `{:#}` prints the full cause chain — this warn is the only
                     // signal the user gets that an optional dep's script failed.
                     tracing::warn!("Optional dependency script failed (ignored): {e:#}");
+                    if output != ScriptOutput::Machine
+                        && !invocation::quiet()
+                        && let Err(error) =
+                            presenter::write_human_error_details(&mut std::io::stderr().lock(), &e)
+                    {
+                        tracing::debug!(
+                            "failed to render optional dependency diagnostics: {error}"
+                        );
+                    }
                 } else {
                     return Err(e);
                 }

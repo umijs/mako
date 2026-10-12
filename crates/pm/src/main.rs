@@ -27,7 +27,7 @@ use crate::util::cli_enum::{
     ProvenancePolicy, ScriptPolicy,
 };
 use crate::util::config_file::Config;
-use crate::util::format_print::{format_resolve_chain, resolve_chain};
+use crate::util::format_print::resolve_chain;
 use crate::util::invocation::{self, Invocation};
 use crate::util::logger::{get_log_file_path, init_tracing, log_time, log_time_end};
 use crate::util::presenter;
@@ -115,10 +115,8 @@ fn main() {
             if result.is_err() {
                 process::exit(exit_code);
             }
-        } else if let Some(chain) = format_resolve_chain(&e) {
-            eprintln!("error: {e:#}\n\n{chain}");
-        } else {
-            eprintln!("error: {e:#}");
+        } else if presenter::write_human_error(&mut io::stderr().lock(), &e).is_err() {
+            process::exit(exit_code);
         }
         if !invocation::quiet()
             && let Some(log_path) = get_log_file_path()

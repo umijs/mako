@@ -789,6 +789,179 @@ fn json_error_is_structured_and_uses_stable_exit_code() {
     assert_eq!(value["error"]["exitCode"], 4);
 }
 
+#[cfg(unix)]
+fn node_gyp_rebuild_command(project: &Path) -> Command {
+    use std::os::unix::fs::PermissionsExt;
+
+    let manifest = serde_json::json!({
+        "name": "fixture",
+        "version": "1.0.0",
+        "dependencies": {"native-b": "1.0.0"},
+        "optionalDependencies": {"native-a": "1.0.0"},
+    });
+    fs::write(project.join("package.json"), manifest.to_string()).unwrap();
+    fs::write(
+        project.join("package-lock.json"),
+        serde_json::json!({
+            "name": "fixture",
+            "version": "1.0.0",
+            "lockfileVersion": 3,
+            "packages": {
+                "": manifest,
+                "node_modules/native-a": {
+                    "version": "1.0.0",
+                    "hasInstallScript": true,
+                    "optional": true,
+                },
+                "node_modules/native-b": {
+                    "version": "1.0.0",
+                    "hasInstallScript": true,
+                },
+            },
+        })
+        .to_string(),
+    )
+    .unwrap();
+    for name in ["native-a", "native-b"] {
+        let package = project.join("node_modules").join(name);
+        fs::create_dir_all(&package).unwrap();
+        fs::write(
+            package.join("package.json"),
+            serde_json::json!({
+                "name": name,
+                "version": "1.0.0",
+                "scripts": {"install": "exit 99"},
+            })
+            .to_string(),
+        )
+        .unwrap();
+        fs::write(package.join("binding.gyp"), "{}").unwrap();
+    }
+    let bin = project.join("bin");
+    fs::create_dir(&bin).unwrap();
+    let fake_ut = bin.join("ut");
+    fs::write(
+        &fake_ut,
+        r#"#!/bin/sh
+printf '%s\n' attempt >> "$UTOO_TEST_NODE_GYP_ATTEMPTS"
+printf '%s\n' BOOTSTRAP_STDOUT_MARKER
+printf '%s\n' \
+    'Error: BOOTSTRAP_STDERR_MARKER' \
+    '    at fetch (registry.js:42:7)' \
+    'Full logs saved to: /tmp/child.log' >&2
+exit 1
+"#,
+    )
+    .unwrap();
+    fs::set_permissions(fake_ut, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let mut command = utoo();
+    command
+        .current_dir(project)
+        .env("PATH", bin)
+        .env("UTOO_TEST_NODE_GYP_ATTEMPTS", project.join("attempts"))
+        .args(["--registry", "http://127.0.0.1:9", "rebuild"]);
+    command
+}
+
+#[cfg(unix)]
+#[test]
+fn rebuild_json_node_gyp_failure_is_one_structured_error_document() {
+    let project = tempdir().unwrap();
+    let output = node_gyp_rebuild_command(project.path())
+        .arg("--json")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(11));
+    assert!(output.stdout.is_empty());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert_eq!(stderr.lines().count(), 1, "{stderr}");
+    let value: Value = serde_json::from_str(&stderr).unwrap();
+    assert_eq!(value["command"], "rebuild");
+    assert_eq!(value["error"]["code"], "process_failed");
+    assert!(
+        !value["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("BOOTSTRAP_")
+    );
+    let details = &value["error"]["details"];
+    assert_eq!(details["kind"], "process");
+    let execution = &details["execution"];
+    assert_eq!(execution["command"], "ut i -g node-gyp");
+    assert_same_path(execution["cwd"].as_str().unwrap(), project.path());
+    assert_eq!(execution["status"], "failed");
+    assert_eq!(execution["exitCode"], 1);
+    assert_eq!(execution["stdout"]["tail"], "BOOTSTRAP_STDOUT_MARKER\n");
+    assert_eq!(
+        execution["stderr"]["tail"],
+        concat!(
+            "Error: BOOTSTRAP_STDERR_MARKER\n",
+            "    at fetch (registry.js:42:7)\n",
+            "Full logs saved to: /tmp/child.log\n",
+        )
+    );
+    assert_eq!(execution["stdout"]["truncated"], false);
+    assert_eq!(execution["stderr"]["truncated"], false);
+    assert_eq!(
+        fs::read_to_string(project.path().join("attempts")).unwrap(),
+        "attempt\n"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn rebuild_human_node_gyp_failure_renders_diagnostics() {
+    let project = tempdir().unwrap();
+    let output = node_gyp_rebuild_command(project.path()).output().unwrap();
+
+    assert_eq!(output.status.code(), Some(11));
+    assert!(output.stdout.is_empty());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("Failed to install node-gyp globally: exit status: 1"));
+    assert!(stderr.contains("--- stdout ---\nBOOTSTRAP_STDOUT_MARKER\n"));
+    assert!(stderr.contains("--- stderr ---\nError: BOOTSTRAP_STDERR_MARKER\n"));
+    assert!(stderr.contains("    at fetch (registry.js:42:7)\n"));
+    assert!(stderr.contains("Full logs saved to: /tmp/child.log"));
+    assert_eq!(
+        fs::read_to_string(project.path().join("attempts")).unwrap(),
+        "attempt\n"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn rebuild_human_optional_node_gyp_failure_renders_diagnostics() {
+    let project = tempdir().unwrap();
+    let mut command = node_gyp_rebuild_command(project.path());
+    let manifest_path = project.path().join("package.json");
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+    manifest["dependencies"] = serde_json::json!({});
+    manifest["optionalDependencies"]["native-b"] = serde_json::json!("1.0.0");
+    fs::write(manifest_path, manifest.to_string()).unwrap();
+    let lock_path = project.path().join("package-lock.json");
+    let mut lock: Value = serde_json::from_slice(&fs::read(&lock_path).unwrap()).unwrap();
+    lock["packages"][""] = manifest;
+    lock["packages"]["node_modules/native-b"]["optional"] = serde_json::json!(true);
+    fs::write(lock_path, lock.to_string()).unwrap();
+
+    let output = command.output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("Optional dependency script failed (ignored)"));
+    assert!(stderr.contains("BOOTSTRAP_STDERR_MARKER"));
+    assert!(stderr.contains("    at fetch (registry.js:42:7)\n"));
+    assert_eq!(
+        fs::read_to_string(project.path().join("attempts")).unwrap(),
+        "attempt\n"
+    );
+}
+
 #[test]
 fn list_json_emits_a_document_for_a_disconnected_package() {
     let project = tempdir().unwrap();

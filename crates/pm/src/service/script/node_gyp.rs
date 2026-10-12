@@ -2,44 +2,79 @@
 
 use std::env;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Command;
+use std::time::Instant;
 
 use anyhow::Result;
 use tokio::sync::OnceCell;
 
 use super::ScriptService;
+use super::exec::status_exit_code;
+use crate::error::{CliError, ErrorKind};
+use crate::model::cli_output::{CapturedOutput, ErrorDetails, ExecutionStatus, ProcessExecution};
 use crate::model::package::PackageInfo;
 use crate::util::platform_const::PATH_SEPARATOR;
 
 /// Cached result of node-gyp availability check and installation
-static NODE_GYP_ENSURED: OnceCell<Result<bool, String>> = OnceCell::const_new();
+static NODE_GYP_ENSURED: OnceCell<Result<bool, Box<CliError>>> = OnceCell::const_new();
 
-/// Keep bootstrap diagnostics in the cached error so every waiting package,
-/// including optional dependencies, can surface the original child output.
-async fn install_node_gyp(command: Command) -> Result<bool, String> {
-    let output = tokio::process::Command::from(command)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .await
-        .map_err(|e| format!("Failed to run node-gyp installation: {e}"))?;
+/// Cache structured diagnostics; the CLI presenter owns human/JSON rendering.
+async fn install_node_gyp(command: Command) -> Result<bool, Box<CliError>> {
+    let cwd = command
+        .get_current_dir()
+        .map_or_else(env::current_dir, std::path::absolute)
+        .map_err(|error| {
+            CliError::new(
+                ErrorKind::Local,
+                format!("Failed to read node-gyp installation directory: {error}"),
+            )
+            .with_code("process_start_failed")
+        })?;
+    let mut execution = ProcessExecution {
+        command: std::iter::once(command.get_program())
+            .chain(command.get_args())
+            .map(|arg| arg.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join(" "),
+        cwd: cwd.to_string_lossy().into_owned(),
+        status: ExecutionStatus::FailedToStart,
+        exit_code: None,
+        stdout: CapturedOutput::empty(),
+        stderr: CapturedOutput::empty(),
+        duration_ms: 0,
+    };
+    let started = Instant::now();
+    let output = match ScriptService::run_captured(command, None).await {
+        Ok(output) => output,
+        Err(error) => {
+            execution.duration_ms = started.elapsed().as_millis() as u64;
+            return Err(CliError::new(
+                ErrorKind::Local,
+                format!("Failed to run node-gyp installation: {error:#}"),
+            )
+            .with_code("process_start_failed")
+            .with_details(ErrorDetails::Process { execution })
+            .into());
+        }
+    };
 
     if output.status.success() {
         tracing::debug!("node-gyp installed successfully");
         return Ok(true);
     }
 
-    let mut error = format!("Failed to install node-gyp globally: {}", output.status);
-    for (label, bytes) in [("stdout", &output.stdout), ("stderr", &output.stderr)] {
-        if !bytes.is_empty() {
-            error.push_str("\n--- ");
-            error.push_str(label);
-            error.push_str(" ---\n");
-            error.push_str(&String::from_utf8_lossy(bytes));
-        }
-    }
-    Err(error)
+    execution.status = ExecutionStatus::Failed;
+    execution.exit_code = Some(status_exit_code(&output.status) as u32);
+    execution.stdout = CapturedOutput::from_bytes(&output.stdout);
+    execution.stderr = CapturedOutput::from_bytes(&output.stderr);
+    execution.duration_ms = started.elapsed().as_millis() as u64;
+    Err(CliError::new(
+        ErrorKind::Local,
+        format!("Failed to install node-gyp globally: {}", output.status),
+    )
+    .with_code("process_failed")
+    .with_details(ErrorDetails::Process { execution })
+    .into())
 }
 
 impl ScriptService {
@@ -71,10 +106,7 @@ impl ScriptService {
             })
             .await;
 
-        match result {
-            Ok(v) => Ok(*v),
-            Err(e) => anyhow::bail!("{e}"),
-        }
+        result.clone().map_err(|error| anyhow::Error::new(*error))
     }
 
     pub fn is_node_gyp_pkg(package: &PackageInfo) -> bool {
@@ -100,15 +132,34 @@ mod tests {
         let mut command = Command::new("sh");
         command.args([
             "-c",
-            "printf 'resolving node-gyp\\n'; printf 'Error: certificate failed\\n    at fetch (registry.js:42:7)\\nFull logs saved to: /tmp/child.log\\n' >&2; exit 1",
+            r#"printf '%s\n' 'resolving node-gyp'
+printf '%s\n' \
+    'Error: certificate failed' \
+    '    at fetch (registry.js:42:7)' \
+    'Full logs saved to: /tmp/child.log' >&2
+exit 1"#,
         ]);
 
         let error = install_node_gyp(command).await.unwrap_err();
-        assert!(error.contains("Failed to install node-gyp globally: exit status: 1"));
-        assert!(error.contains("--- stdout ---\nresolving node-gyp\n"));
-        assert!(error.contains(
-            "--- stderr ---\nError: certificate failed\n    at fetch (registry.js:42:7)\nFull logs saved to: /tmp/child.log\n"
-        ));
+        assert_eq!(error.code(), "process_failed");
+        assert_eq!(
+            error.message(),
+            "Failed to install node-gyp globally: exit status: 1"
+        );
+        let details = serde_json::to_value(error.details().unwrap()).unwrap();
+        assert_eq!(details["kind"], "process");
+        let execution = &details["execution"];
+        assert_eq!(execution["status"], "failed");
+        assert_eq!(execution["exitCode"], 1);
+        assert_eq!(execution["stdout"]["tail"], "resolving node-gyp\n");
+        assert_eq!(
+            execution["stderr"]["tail"],
+            concat!(
+                "Error: certificate failed\n",
+                "    at fetch (registry.js:42:7)\n",
+                "Full logs saved to: /tmp/child.log\n",
+            )
+        );
     }
 
     #[cfg(unix)]
@@ -126,8 +177,18 @@ mod tests {
         let command = Command::new(temp_dir.path().join("missing-ut"));
 
         let error = install_node_gyp(command).await.unwrap_err();
-        assert!(error.contains("Failed to run node-gyp installation:"));
-        assert!(!error.contains("Failed to install node-gyp globally:"));
+        assert_eq!(error.code(), "process_start_failed");
+        assert!(
+            error
+                .message()
+                .contains("Failed to run node-gyp installation:")
+        );
+        let details = serde_json::to_value(error.details().unwrap()).unwrap();
+        let execution = &details["execution"];
+        assert_eq!(execution["status"], "failed_to_start");
+        assert!(execution["exitCode"].is_null());
+        assert_eq!(execution["stdout"]["bytes"], 0);
+        assert_eq!(execution["stderr"]["bytes"], 0);
     }
 
     #[test]
