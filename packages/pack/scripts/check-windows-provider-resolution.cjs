@@ -1,6 +1,7 @@
 // Run against either a published package or a local build:
 // node scripts/check-windows-provider-resolution.cjs --pack-path <package directory>
-// NAPI_RS_NATIVE_LIBRARY_PATH may select a freshly built native binding.
+// A freshly built binding can be selected with UTOO_PACK_NATIVE_BINDING_PATH
+// and NODE_OPTIONS='--require <repo>/scripts/use-pack-native-binding.cjs'.
 const assert = require("node:assert/strict");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");

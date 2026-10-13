@@ -10,6 +10,10 @@ on:
         description: Umi branch, tag, or commit used for the Windows native runtime check
         required: false
         default: master
+      binding-run-id:
+        description: Existing native build run to verify without rebuilding (manual dispatch only)
+        required: false
+        default: ""
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -18,7 +22,7 @@ env:
 
 jobs:
   build:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref_name, 'utoopack-v')
+    if: (github.event_name == 'workflow_dispatch' && inputs.binding-run-id == '') || startsWith(github.ref_name, 'utoopack-v')
     permissions:
       contents: read
     strategy:
@@ -286,9 +290,15 @@ jobs:
   windows_runtime:
     name: Windows native runtime and Umi E2E
     needs: build
+    if: >-
+      !cancelled() && (needs.build.result == 'success' ||
+      (github.event_name == 'workflow_dispatch' && inputs.binding-run-id != '' && needs.build.result == 'skipped'))
     runs-on: windows-2022
     timeout-minutes: 60
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
     permissions:
+      actions: read
       contents: read
     steps:
       - name: Checkout Utoo verification scripts
@@ -308,6 +318,8 @@ jobs:
         with:
           name: pack-x86_64-pc-windows-msvc
           path: native-binding
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.binding-run-id || github.run_id }}
       - name: Setup Node 20
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
@@ -334,7 +346,10 @@ jobs:
           if (!stat.isFile() || stat.size === 0) {
             throw new Error(`Missing Windows native binding: ${bindingPath}`);
           }
-          fs.appendFileSync(process.argv[2], `NAPI_RS_NATIVE_LIBRARY_PATH=${bindingPath}\n`);
+          const preloadPath = path.resolve('utoo/scripts/use-pack-native-binding.cjs').replace(/\\/g, '/');
+          fs.appendFileSync(process.argv[2],
+            `UTOO_PACK_NATIVE_BINDING_PATH=${bindingPath}\n` +
+            `NODE_OPTIONS=${process.env.NODE_OPTIONS || ''} --require "${preloadPath}"\n`);
           console.log(`Using Windows native binding: ${bindingPath}`);
           NODE
       - name: Enable utoopack in Umi with-use-model
@@ -351,8 +366,6 @@ jobs:
           NODE
       - name: Build Umi verification targets
         working-directory: umi
-        env:
-          NODE_OPTIONS: --max-old-space-size=6144
         run: >-
           pnpm umi-scripts turbo build
           --filter ./packages/umi/...
@@ -369,8 +382,6 @@ jobs:
           node ../utoo/packages/pack/scripts/check-windows-provider-resolution.cjs --pack-path "$pack_path"
       - name: Run Umi Windows E2E from its workflow
         working-directory: umi
-        env:
-          NODE_OPTIONS: --max-old-space-size=6144
         run: node ../utoo/scripts/run-umi-windows-e2e.cjs --umi-path .
   publish:
     if: github.event_name == 'push' && startsWith(github.ref_name, 'utoopack-v')
