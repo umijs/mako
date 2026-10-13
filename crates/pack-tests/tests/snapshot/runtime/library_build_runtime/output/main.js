@@ -947,9 +947,88 @@ if (typeof exports === 'object' && typeof module === 'object') {
 })([
 ["main.js",
 
-"[project]/runtime/library_build_runtime/input/index.js [library-client] (ecmascript)", ((__turbopack_context__, module, exports) => {
+"[project]/runtime/library_build_runtime/input/index.js [library-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
 
+__turbopack_context__.S([
+    "[project]/runtime/library_build_runtime/input/index.js [library-client] (ecmascript) <locals>",
+    "entryEnv,j,entryUrl,K,readEntryUrl,P",
+    0,
+    "[project]/runtime/library_build_runtime/input/meta space % 中文.mjs [library-client] (ecmascript)",
+    "answer,r,dependencyEnv,N,dependencyUrl,n,readDependencyUrl,W"
+]);
+}),
+"[project]/runtime/library_build_runtime/input/index.js [library-client] (ecmascript) <locals>", ((__turbopack_context__) => {
+"use strict";
+
+var __TURBOPACK__import$2e$meta__ = {
+    get url () {
+        return __turbopack_context__.F("input/index.js");
+    },
+    env: {
+        DEV: false,
+        PROD: true,
+        MODE: "production",
+        BASE_URL: "/",
+        SSR: false
+    }
+};
 console.log('Hello, world!');
+;
+const meta = __TURBOPACK__import$2e$meta__;
+const entryUrl = meta.url;
+const entryEnv = meta.env;
+function readEntryUrl() {
+    return meta.url;
+}
+__turbopack_context__.s([
+    "j",
+    0,
+    entryEnv,
+    "K",
+    0,
+    entryUrl,
+    "P",
+    0,
+    readEntryUrl
+]);
+}),
+"[project]/runtime/library_build_runtime/input/meta space % 中文.mjs [library-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+var __TURBOPACK__import$2e$meta__ = {
+    get url () {
+        return __turbopack_context__.F("input/meta space %25 中文.mjs");
+    },
+    env: {
+        DEV: false,
+        PROD: true,
+        MODE: "production",
+        BASE_URL: "/",
+        SSR: false
+    }
+};
+const meta = __TURBOPACK__import$2e$meta__;
+const dependencyUrl = meta.url;
+const dependencyEnv = meta.env;
+const answer = 42;
+function readDependencyUrl() {
+    return meta.url;
+}
+__turbopack_context__.s([
+    "r",
+    0,
+    answer,
+    "N",
+    0,
+    dependencyEnv,
+    "n",
+    0,
+    dependencyUrl,
+    "W",
+    0,
+    readDependencyUrl
+]);
 }),
 ],
 ["main.js", {"otherChunks":[],"runtimeModuleIds":["[project]/runtime/library_build_runtime/input/index.js [library-client] (ecmascript)"]}],

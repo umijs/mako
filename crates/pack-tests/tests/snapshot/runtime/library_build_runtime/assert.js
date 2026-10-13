@@ -5,10 +5,12 @@ const vm = require("node:vm");
 
 const filename = path.join(__dirname, "output/main.js");
 const bundle = fs.readFileSync(filename, "utf8");
-const globalContext = { URL };
+const logs = [];
+const console = { log: (value) => logs.push(value) };
+const globalContext = { URL, console };
 vm.runInNewContext(bundle, globalContext, { filename });
 
-const commonJsContext = { URL, module: { exports: {} }, exports: {} };
+const commonJsContext = { URL, console, module: { exports: {} }, exports: {} };
 vm.runInNewContext(bundle, commonJsContext, { filename });
 
 const entryUrl = "file:///ROOT/input/index.js";
@@ -22,10 +24,7 @@ const expectedEnv = {
   SSR: false,
 };
 
-for (const library of [
-  globalContext.ImportMetaUrlLibrary,
-  commonJsContext.module.exports,
-]) {
+for (const library of [globalContext.MyLibrary, commonJsContext.module.exports]) {
   assert.equal(library.answer, 42, "the imported .mjs module must be bundled");
   assert.equal(library.entryUrl, entryUrl);
   assert.equal(library.readEntryUrl(), entryUrl);
@@ -35,3 +34,5 @@ for (const library of [
   assert.deepEqual({ ...library.dependencyEnv }, expectedEnv);
   assert.equal(new URL(library.dependencyUrl).hash, "");
 }
+
+assert.deepEqual(logs, ["Hello, world!", "Hello, world!"]);

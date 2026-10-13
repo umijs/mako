@@ -964,13 +964,83 @@ if (typeof exports === 'object' && typeof module === 'object') {
 "[project]/runtime/node_library_build_runtime/input/index.js [library-server] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
 
+__turbopack_context__.S([
+    "[project]/runtime/node_library_build_runtime/input/index.js [library-server] (ecmascript) <locals>",
+    "answer,r,entryEnv,j,entryUrl,K,readEntryUrl,P",
+    0,
+    "[project]/runtime/node_library_build_runtime/input/meta space % 中文.mjs [library-server] (ecmascript)",
+    "dependencyEnv,N,dependencyUrl,n,readDependencyUrl,W"
+]);
+}),
+"[project]/runtime/node_library_build_runtime/input/index.js [library-server] (ecmascript) <locals>", ((__turbopack_context__) => {
+"use strict";
+
+var __TURBOPACK__import$2e$meta__ = {
+    get url () {
+        return __turbopack_context__.F("input/index.js");
+    },
+    env: {
+        DEV: false,
+        PROD: true,
+        MODE: "production",
+        BASE_URL: "/",
+        SSR: true
+    }
+};
 function answer() {
     return 42;
 }
+;
+const entryUrl = __TURBOPACK__import$2e$meta__.url;
+const entryEnv = __TURBOPACK__import$2e$meta__.env;
+function readEntryUrl() {
+    return __TURBOPACK__import$2e$meta__.url;
+}
 __turbopack_context__.s([
-    "answer",
+    "r",
     0,
-    answer
+    answer,
+    "j",
+    0,
+    entryEnv,
+    "K",
+    0,
+    entryUrl,
+    "P",
+    0,
+    readEntryUrl
+]);
+}),
+"[project]/runtime/node_library_build_runtime/input/meta space % 中文.mjs [library-server] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+var __TURBOPACK__import$2e$meta__ = {
+    get url () {
+        return __turbopack_context__.F("input/meta space %25 中文.mjs");
+    },
+    env: {
+        DEV: false,
+        PROD: true,
+        MODE: "production",
+        BASE_URL: "/",
+        SSR: true
+    }
+};
+const dependencyUrl = __TURBOPACK__import$2e$meta__.url;
+const dependencyEnv = __TURBOPACK__import$2e$meta__.env;
+function readDependencyUrl() {
+    return __TURBOPACK__import$2e$meta__.url;
+}
+__turbopack_context__.s([
+    "N",
+    0,
+    dependencyEnv,
+    "n",
+    0,
+    dependencyUrl,
+    "W",
+    0,
+    readDependencyUrl
 ]);
 }),
 ],
