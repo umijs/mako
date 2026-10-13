@@ -5,7 +5,7 @@ if (!Array.isArray(__UTOOPACK__)) {
 
 const CHUNK_BASE_PATH = "";
 const CHUNK_SUFFIX_PATH = "";
-const RELATIVE_ROOT_PATH = "/ROOT";
+const RELATIVE_ROOT_PATH = "..";
 const RUNTIME_PUBLIC_PATH = "";
 // Library builds deliberately collapse JavaScript into one chunk, so the
 // component-chunk runtime path is unsupported in this custom runtime.
@@ -872,6 +872,16 @@ function registerChunk(registration) {
  * CommonJS modules exporting compressed module factories, so the backend can
  * load them synchronously before instantiating runtime entries.
  */ /* eslint-disable @typescript-eslint/no-unused-vars */ /// <reference path="./runtime-base.ts" />
+/**
+ * Resolve source modules relative to the library bundle's directory.
+ */ function resolveFileUrl(modulePath, root) {
+    // ImportMetaBinding escapes percent signs and control characters before codegen.
+    const decodedPath = decodeURIComponent(modulePath ?? "");
+    if (root !== undefined) return placeholderFileUrl(decodedPath, root);
+    const absolutePath = require("path").resolve(__dirname, RELATIVE_ROOT_PATH, decodedPath);
+    return require("url").pathToFileURL(absolutePath).href;
+}
+contextPrototype.F = resolveFileUrl;
 async function externalImport(id) {
     let raw;
     try {
