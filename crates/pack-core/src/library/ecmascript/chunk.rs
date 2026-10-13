@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use indoc::writedoc;
 use serde::Serialize;
 use std::io::Write;
@@ -305,13 +305,21 @@ impl EcmascriptLibraryEvaluateChunk {
         let this = self.await?;
 
         let output_root = this.chunking_context.output_root().await?;
-        let output_root_to_root_path = this.chunking_context.output_root_to_root_path();
         let source_maps = *this
             .chunking_context
             .reference_chunk_source_maps(*ResolvedVc::upcast(self.to_resolved().await?))
             .await?;
         let chunk_path_vc = self.path();
         let chunk_path = chunk_path_vc.await?;
+        let root_path = this.chunking_context.root_path().await?;
+        // Source and output filesystems share the same physical workspace root.
+        // Map the source root into the output filesystem to account for nested filenames.
+        let runtime_root_path =
+            FileSystemPath::new_normalized_unchecked(chunk_path.fs, root_path.path.clone());
+        let runtime_root_relative_path = chunk_path
+            .parent()
+            .get_relative_path_to(&runtime_root_path)
+            .context("library root must share the output filesystem")?;
         let chunk_public_path = if let Some(path) = output_root.get_path_to(&chunk_path) {
             path
         } else {
@@ -395,7 +403,7 @@ impl EcmascriptLibraryEvaluateChunk {
                     Vc::cell(None),
                     runtime_type,
                     has_async_modules,
-                    output_root_to_root_path,
+                    Vc::cell(runtime_root_relative_path),
                     source_maps,
                     this.chunking_context.runtime_root(),
                     this.chunking_context.runtime_export(),

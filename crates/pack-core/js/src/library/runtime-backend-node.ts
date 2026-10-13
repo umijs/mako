@@ -14,6 +14,22 @@
 
 /// <reference path="./runtime-base.ts" />
 
+/**
+ * Resolve source modules relative to the library bundle's directory.
+ */
+function resolveFileUrl(modulePath?: string, root?: string): string {
+  // ImportMetaBinding escapes percent signs and control characters before codegen.
+  const decodedPath = decodeURIComponent(modulePath ?? "");
+  if (root !== undefined) return placeholderFileUrl(decodedPath, root);
+  const absolutePath = require("path").resolve(
+    __dirname,
+    RELATIVE_ROOT_PATH,
+    decodedPath,
+  );
+  return require("url").pathToFileURL(absolutePath).href;
+}
+contextPrototype.F = resolveFileUrl;
+
 async function externalImport(id: DependencySpecifier) {
   let raw;
   try {

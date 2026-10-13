@@ -872,9 +872,16 @@ function registerChunk(registration) {
  * no dynamic chunk loading is needed. The BACKEND simply registers
  * modules and instantiates runtime entries.
  *
- * The only DOM-specific addition is `loadScript` for script externals
- * that need to be loaded from CDN or other external sources.
+ * It also provides browser file URL placeholders and `loadScript` for
+ * script externals loaded from CDN or other external sources.
  */ /* eslint-disable @typescript-eslint/no-unused-vars */ /// <reference path="./runtime-base.ts" />
+/**
+ * Match the browser runtime's placeholder URLs without exposing filesystem paths.
+ */ function resolveFileUrl(modulePath, root) {
+    // ImportMetaBinding escapes percent signs and control characters before codegen.
+    return placeholderFileUrl(decodeURIComponent(modulePath ?? ""), root);
+}
+contextPrototype.F = resolveFileUrl;
 const loadedScripts = new Map();
 /**
  * Load an external script by creating a <script> tag.
@@ -940,9 +947,88 @@ if (typeof exports === 'object' && typeof module === 'object') {
 })([
 ["main.js",
 
-"[project]/runtime/library_build_runtime/input/index.js [library-client] (ecmascript)", ((__turbopack_context__, module, exports) => {
+"[project]/runtime/library_build_runtime/input/index.js [library-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
 
+__turbopack_context__.S([
+    "[project]/runtime/library_build_runtime/input/index.js [library-client] (ecmascript) <locals>",
+    "entryEnv,j,entryUrl,K,readEntryUrl,P",
+    0,
+    "[project]/runtime/library_build_runtime/input/meta space % 中文.mjs [library-client] (ecmascript)",
+    "answer,r,dependencyEnv,N,dependencyUrl,n,readDependencyUrl,W"
+]);
+}),
+"[project]/runtime/library_build_runtime/input/index.js [library-client] (ecmascript) <locals>", ((__turbopack_context__) => {
+"use strict";
+
+var __TURBOPACK__import$2e$meta__ = {
+    get url () {
+        return __turbopack_context__.F("input/index.js");
+    },
+    env: {
+        DEV: false,
+        PROD: true,
+        MODE: "production",
+        BASE_URL: "/",
+        SSR: false
+    }
+};
 console.log('Hello, world!');
+;
+const meta = __TURBOPACK__import$2e$meta__;
+const entryUrl = meta.url;
+const entryEnv = meta.env;
+function readEntryUrl() {
+    return meta.url;
+}
+__turbopack_context__.s([
+    "j",
+    0,
+    entryEnv,
+    "K",
+    0,
+    entryUrl,
+    "P",
+    0,
+    readEntryUrl
+]);
+}),
+"[project]/runtime/library_build_runtime/input/meta space % 中文.mjs [library-client] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+var __TURBOPACK__import$2e$meta__ = {
+    get url () {
+        return __turbopack_context__.F("input/meta space %25 中文.mjs");
+    },
+    env: {
+        DEV: false,
+        PROD: true,
+        MODE: "production",
+        BASE_URL: "/",
+        SSR: false
+    }
+};
+const meta = __TURBOPACK__import$2e$meta__;
+const dependencyUrl = meta.url;
+const dependencyEnv = meta.env;
+const answer = 42;
+function readDependencyUrl() {
+    return meta.url;
+}
+__turbopack_context__.s([
+    "r",
+    0,
+    answer,
+    "N",
+    0,
+    dependencyEnv,
+    "n",
+    0,
+    dependencyUrl,
+    "W",
+    0,
+    readDependencyUrl
+]);
 }),
 ],
 ["main.js", {"otherChunks":[],"runtimeModuleIds":["[project]/runtime/library_build_runtime/input/index.js [library-client] (ecmascript)"]}],
