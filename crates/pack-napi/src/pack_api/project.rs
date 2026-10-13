@@ -654,21 +654,28 @@ impl NapiEntrypoints {
     }
 }
 
+#[turbo_tasks::function(operation, root)]
+async fn endpoint_output_paths_operation(
+    endpoint: OperationVc<OptionEndpoint>,
+) -> Result<Vc<EndpointOutputPaths>> {
+    let endpoint = endpoint.connect().await?;
+    Ok(if let Some(endpoint) = *endpoint {
+        *endpoint.output().await?.output_paths
+    } else {
+        EndpointOutputPaths::NotFound.cell()
+    })
+}
+
 async fn collect_endpoint_output_paths(
     endpoints: &[OperationVc<OptionEndpoint>],
 ) -> Result<Vec<EndpointOutputPaths>> {
     let mut paths = Vec::with_capacity(endpoints.len());
 
     for endpoint in endpoints {
-        let endpoint = endpoint.connect().await?;
-        let output_paths = if let Some(endpoint) = *endpoint {
-            let output = endpoint.output().await?;
-            let output_paths = output.output_paths.await?;
-            ReadRef::into_owned(output_paths)
-        } else {
-            EndpointOutputPaths::NotFound
-        };
-        paths.push(output_paths);
+        let output_paths = endpoint_output_paths_operation(*endpoint)
+            .read_strongly_consistent()
+            .await?;
+        paths.push(ReadRef::into_owned(output_paths));
     }
 
     Ok(paths)
