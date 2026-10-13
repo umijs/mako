@@ -563,19 +563,16 @@ impl ChunkingContext for LibraryChunkingContext {
                                 }
 
                                 if match_content_hash_placeholder(&filename) {
-                                    let content = asset.content().await?;
-                                    if let AssetContent::File(file) = &*content {
-                                        let content_hash = hash_xxh3_hash64(&file.await?);
-                                        filename = replace_content_hash_placeholder(
-                                            &filename,
-                                            &format!("{content_hash:016x}"),
-                                        );
-                                    } else {
-                                        bail!(
+                                    let content_hash = asset
+                                        .content_hash(no_hash_salt(), HashAlgorithm::Xxh3Hash64Hex)
+                                        .owned()
+                                        .await?
+                                        .context(
                                             "chunk_path requires an asset with file content when content \
-                                     hashing is enabled"
-                                        );
-                                    }
+                                             hashing is enabled",
+                                        )?;
+                                    filename =
+                                        replace_content_hash_placeholder(&filename, &content_hash);
                                 };
 
                                 filename

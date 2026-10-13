@@ -1,0 +1,283 @@
+{
+  "entrypoints": {
+    "detail-server": {
+      "name": "detail-server",
+      "chunks": [
+        "chunks/server-shared.c1005744.js",
+        "entries/detail-server.2c817ca8.js"
+      ],
+      "assets": [
+        {
+          "name": "chunks/server-shared.c1005744.js"
+        },
+        {
+          "name": "entries/detail-server.2c817ca8.js"
+        }
+      ]
+    },
+    "index-server": {
+      "name": "index-server",
+      "chunks": [
+        "chunks/server-shared-0-1.8d3d3911.js",
+        "chunks/server-shared.c1005744.js",
+        "entries/index-server.3095d849.js"
+      ],
+      "assets": [
+        {
+          "name": "chunks/server-shared-0-1.8d3d3911.js"
+        },
+        {
+          "name": "chunks/server-shared.c1005744.js"
+        },
+        {
+          "name": "entries/index-server.3095d849.js"
+        }
+      ]
+    },
+    "server": {
+      "name": "server",
+      "chunks": [
+        "chunks/server-shared-0-1.8d3d3911.js",
+        "chunks/server-shared.c1005744.js",
+        "entries/server.6de379ea.js"
+      ],
+      "assets": [
+        {
+          "name": "chunks/server-shared-0-1.8d3d3911.js"
+        },
+        {
+          "name": "chunks/server-shared.c1005744.js"
+        },
+        {
+          "name": "entries/server.6de379ea.js"
+        }
+      ]
+    }
+  },
+  "chunks": [
+    {
+      "rendered": false,
+      "initial": false,
+      "entry": false,
+      "recorded": false,
+      "id": "chunks/server-shared-0-1.8d3d3911.js",
+      "size": 782,
+      "hash": "",
+      "files": [
+        "chunks/server-shared-0-1.8d3d3911.js"
+      ]
+    },
+    {
+      "rendered": false,
+      "initial": false,
+      "entry": false,
+      "recorded": false,
+      "id": "chunks/server-shared.c1005744.js",
+      "size": 324,
+      "hash": "",
+      "files": [
+        "chunks/server-shared.c1005744.js"
+      ]
+    },
+    {
+      "rendered": false,
+      "initial": false,
+      "entry": false,
+      "recorded": false,
+      "id": "entries/detail-server.2c817ca8.js",
+      "size": 38810,
+      "hash": "",
+      "files": [
+        "entries/detail-server.2c817ca8.js"
+      ]
+    },
+    {
+      "rendered": false,
+      "initial": false,
+      "entry": false,
+      "recorded": false,
+      "id": "entries/index-server.3095d849.js",
+      "size": 38821,
+      "hash": "",
+      "files": [
+        "entries/index-server.3095d849.js"
+      ]
+    },
+    {
+      "rendered": false,
+      "initial": false,
+      "entry": false,
+      "recorded": false,
+      "id": "entries/server.6de379ea.js",
+      "size": 38782,
+      "hash": "",
+      "files": [
+        "entries/server.6de379ea.js"
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "type": "asset",
+      "name": "chunks/server-shared-0-1.8d3d3911.js",
+      "info": {},
+      "size": 782,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "chunks/server-shared-0-1.8d3d3911.js"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "chunks/server-shared-0-1.8d3d3911.js.map",
+      "info": {},
+      "size": 432,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "chunks/server-shared-0-1.8d3d3911.js.map"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "chunks/server-shared.c1005744.js",
+      "info": {},
+      "size": 324,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "chunks/server-shared.c1005744.js"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "chunks/server-shared.c1005744.js.map",
+      "info": {},
+      "size": 340,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "chunks/server-shared.c1005744.js.map"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "entries/detail-server.2c817ca8.js",
+      "info": {},
+      "size": 38810,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "entries/detail-server.2c817ca8.js"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "entries/detail-server.2c817ca8.js.map",
+      "info": {},
+      "size": 62262,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "entries/detail-server.2c817ca8.js.map"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "entries/index-server.3095d849.js",
+      "info": {},
+      "size": 38821,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "entries/index-server.3095d849.js"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "entries/index-server.3095d849.js.map",
+      "info": {},
+      "size": 62250,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "entries/index-server.3095d849.js.map"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "entries/server.6de379ea.js",
+      "info": {},
+      "size": 38782,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "entries/server.6de379ea.js"
+      ]
+    },
+    {
+      "type": "asset",
+      "name": "entries/server.6de379ea.js.map",
+      "info": {},
+      "size": 62241,
+      "emitted": false,
+      "comparedForEmit": false,
+      "cached": false,
+      "chunks": [
+        "entries/server.6de379ea.js.map"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "name": "basic/multi_server_entries_sourcemap/input/detail.server.ts",
+      "id": "[project]/basic/multi_server_entries_sourcemap/input/detail.server.ts [server] (ecmascript)",
+      "chunks": [
+        "entries/detail-server.2c817ca8.js"
+      ],
+      "size": 566
+    },
+    {
+      "name": "basic/multi_server_entries_sourcemap/input/index.server.ts",
+      "id": "[project]/basic/multi_server_entries_sourcemap/input/index.server.ts [server] (ecmascript)",
+      "chunks": [
+        "entries/index-server.3095d849.js"
+      ],
+      "size": 544
+    },
+    {
+      "name": "basic/multi_server_entries_sourcemap/input/server.ts",
+      "id": "[project]/basic/multi_server_entries_sourcemap/input/server.ts [server] (ecmascript)",
+      "chunks": [
+        "entries/server.6de379ea.js"
+      ],
+      "size": 541
+    },
+    {
+      "name": "basic/multi_server_entries_sourcemap/input/shared-all.ts",
+      "id": "[project]/basic/multi_server_entries_sourcemap/input/shared-all.ts [server] (ecmascript)",
+      "chunks": [
+        "chunks/server-shared.c1005744.js"
+      ],
+      "size": 155
+    },
+    {
+      "name": "basic/multi_server_entries_sourcemap/input/shared.ts",
+      "id": "[project]/basic/multi_server_entries_sourcemap/input/shared.ts [server] (ecmascript)",
+      "chunks": [
+        "chunks/server-shared-0-1.8d3d3911.js"
+      ],
+      "size": 613
+    }
+  ]
+}

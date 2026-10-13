@@ -1,0 +1,23 @@
+{
+  "runtimeType": "Production",
+  "config": {
+    "entry": [
+      {
+        "import": "input/index.js",
+        "name": "main"
+      }
+    ],
+    "mode": "production",
+    "output": {
+      "filename": "scripts/[name].[contenthash:8].js",
+      "chunkFilename": "chunks/[name].[contenthash:8].async.js",
+      "cssFilename": "styles/[name].[contenthash:8].css",
+      "cssChunkFilename": "styles/[name].[contenthash:8].css"
+    },
+    "sourceMaps": true,
+    "optimization": {
+      "minify": false,
+      "moduleIds": "named"
+    }
+  }
+}
