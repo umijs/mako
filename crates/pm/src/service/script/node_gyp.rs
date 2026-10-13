@@ -14,6 +14,7 @@ use crate::error::{CliError, ErrorKind};
 use crate::model::cli_output::{CapturedOutput, ErrorDetails, ExecutionStatus, ProcessExecution};
 use crate::model::package::PackageInfo;
 use crate::util::platform_const::PATH_SEPARATOR;
+use crate::util::user_config::get_registry;
 
 /// Cached result of node-gyp availability check and installation
 static NODE_GYP_ENSURED: OnceCell<Result<bool, Box<CliError>>> = OnceCell::const_new();
@@ -101,7 +102,9 @@ impl ScriptService {
 
                 tracing::debug!("node-gyp not found in PATH, installing globally");
                 let mut command = Command::new("ut");
-                command.args(["i", "-g", "node-gyp"]);
+                command
+                    .args(["i", "-g", "node-gyp", "--registry"])
+                    .arg(get_registry());
                 install_node_gyp(command).await
             })
             .await;
