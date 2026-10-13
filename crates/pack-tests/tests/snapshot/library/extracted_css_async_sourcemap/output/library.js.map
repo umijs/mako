@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 8, "column": 0}, "map": {"version":3,"sources":["./../library/extracted_css_async_sourcemap/input/index.js"],"sourcesContent":["import \"./initial.css\";\n\nexport const load = () => import(\"./lazy.js\");\n"],"names":["load"],"mappings":";AAEO,MAAMA,OAAO"}},
-    {"offset": {"line": 19, "column": 0}, "map": {"version":3,"sources":["./../library/extracted_css_async_sourcemap/input/lazy.js"],"sourcesContent":["import \"./lazy.css\";\n\nexport const value = 42;\n"],"names":["value"],"mappings":";AAEO,MAAMA,QAAQ"}}]
-}

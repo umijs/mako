@@ -715,19 +715,19 @@ impl ChunkingContext for LibraryChunkingContext {
                 ..Default::default()
             },
         );
-        // Production style grouping ignores max_chunk_count_per_group. Single-file libraries
-        // must use the default style path, which combines all ordered CSS items into one chunk.
-        if self.shared_chunks {
-            map.insert(
-                ResolvedVc::upcast(Vc::<CssChunkType>::default().to_resolved().await?),
-                ChunkingConfig {
-                    min_chunk_size: usize::MAX,
-                    max_chunk_count_per_group: 1,
-                    max_merge_chunk_size: usize::MAX,
-                    ..Default::default()
-                },
-            );
+        // Use default CSS chunking to keep single-file libraries in one chunk.
+        if !self.shared_chunks {
+            return Ok(Vc::cell(map));
         }
+        map.insert(
+            ResolvedVc::upcast(Vc::<CssChunkType>::default().to_resolved().await?),
+            ChunkingConfig {
+                min_chunk_size: usize::MAX,
+                max_chunk_count_per_group: 1,
+                max_merge_chunk_size: usize::MAX,
+                ..Default::default()
+            },
+        );
         Ok(Vc::cell(map))
     }
 
