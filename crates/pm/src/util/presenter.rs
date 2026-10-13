@@ -5,11 +5,12 @@ use std::io::{self, Write};
 use anyhow::{Context, Result};
 use serde::Serialize;
 
-use crate::error::ErrorKind;
+use crate::error::{CliError, ErrorKind};
 use crate::model::cli_output::{
     ErrorDetails, ErrorOutput, FailureEnvelope, PartialResult, SCHEMA_VERSION, SuccessEnvelope,
 };
 
+use super::format_print::format_resolve_chain;
 use super::invocation;
 
 pub struct ErrorReport<'a> {
@@ -83,5 +84,43 @@ pub fn write_error(writer: &mut impl Write, report: &ErrorReport<'_>) -> Result<
 
     serde_json::to_writer(&mut *writer, &output).context("Failed to write JSON error")?;
     writer.write_all(b"\n")?;
+    Ok(())
+}
+
+pub fn write_human_error(writer: &mut impl Write, error: &anyhow::Error) -> Result<()> {
+    if let Some(chain) = format_resolve_chain(error) {
+        writeln!(writer, "error: {error:#}\n\n{chain}")?;
+    } else {
+        writeln!(writer, "error: {error:#}")?;
+    }
+    write_human_error_details(writer, error)
+}
+
+pub fn write_human_error_details(writer: &mut impl Write, error: &anyhow::Error) -> Result<()> {
+    if let Some(ErrorDetails::Process { execution }) =
+        error.downcast_ref::<CliError>().and_then(CliError::details)
+    {
+        for (label, output) in [("stdout", &execution.stdout), ("stderr", &execution.stderr)] {
+            if output.bytes == 0 {
+                continue;
+            }
+            if output.truncated {
+                writeln!(
+                    writer,
+                    "--- {label} (last {} of {} bytes) ---",
+                    output
+                        .bytes
+                        .min(crate::model::cli_output::CAPTURED_OUTPUT_TAIL_LIMIT as u64),
+                    output.bytes,
+                )?;
+            } else {
+                writeln!(writer, "--- {label} ---")?;
+            }
+            writer.write_all(output.tail.as_bytes())?;
+            if !output.tail.ends_with('\n') {
+                writeln!(writer)?;
+            }
+        }
+    }
     Ok(())
 }

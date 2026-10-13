@@ -418,7 +418,7 @@ jobs:
         shell: bash
         run: |
           chmod +x e2e/utoo-pm.sh e2e/pm-arborist.sh
-          arch -x86_64 bash -c '
+          arch -x86_64 bash -e -o pipefail -c '
           export NVM_DIR="$HOME/.nvm"
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           nvm use 22

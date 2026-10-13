@@ -45,7 +45,7 @@ impl ErrorKind {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CliError {
     kind: ErrorKind,
     code: String,

@@ -434,7 +434,10 @@ impl ScriptService {
     /// `sink` (for the long-run heartbeat) while the raw bytes are collected into
     /// a [`std::process::Output`], so callers keep the same failure-dump /
     /// debug-log behaviour they had with `.output()`.
-    async fn run_captured(cmd: Command, sink: Option<&OutputSink>) -> Result<std::process::Output> {
+    pub(super) async fn run_captured(
+        cmd: Command,
+        sink: Option<&OutputSink>,
+    ) -> Result<std::process::Output> {
         let mut child = tokio::process::Command::from(cmd)
             // Null stdin, matching the replaced `.output()`: a dependency script
             // that reads stdin must get immediate EOF, not inherit the user's
