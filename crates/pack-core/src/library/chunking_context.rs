@@ -148,11 +148,6 @@ impl LibraryChunkingContextBuilder {
         self
     }
 
-    pub fn inline_css(mut self, inline_css: bool) -> Self {
-        self.chunking_context.inline_css = inline_css;
-        self
-    }
-
     pub fn css_filename(mut self, css_filename: RcStr) -> Self {
         self.chunking_context.css_filename = Some(css_filename);
         self
@@ -249,8 +244,6 @@ pub struct LibraryChunkingContext {
     filename: Option<RcStr>,
     /// Non-entry JavaScript chunk filename template
     chunk_filename: Option<RcStr>,
-    /// Inline CSS chunks need distinct source map paths instead of a bundle filename.
-    inline_css: bool,
     /// Initial css chunk filename template
     css_filename: Option<RcStr>,
     /// CSS chunking algorithm.
@@ -293,7 +286,6 @@ impl LibraryChunkingContext {
                 unused_references: None,
                 filename: Default::default(),
                 chunk_filename: Default::default(),
-                inline_css: false,
                 css_filename: Default::default(),
                 style_groups_algorithm: Default::default(),
                 asset_module_filename: Default::default(),
@@ -554,31 +546,24 @@ impl ChunkingContext for LibraryChunkingContext {
                         || ResolvedVc::try_downcast_type::<CssChunkSourceMapAsset>(resolved_asset)
                             .is_some()
                     {
-                        if self.inline_css {
-                            ident
-                                .output_name(self.root_path.clone(), None, extension.clone())
-                                .owned()
-                                .await?
-                                .to_string()
-                        } else {
-                            match &self.css_filename {
-                                Some(filename_template) => {
-                                    let query = QString::from(ident.await?.query.as_str());
+                        match &self.css_filename {
+                            Some(filename_template) => {
+                                let query = QString::from(ident.await?.query.as_str());
 
-                                    let name = query
-                                        .get("name")
-                                        .or_else(|| self.name.as_ref().map(|name| name.as_str()))
-                                        .unwrap_or(output_name.as_str());
-                                    let name = escape_file_path(name);
+                                let name = query
+                                    .get("name")
+                                    .or_else(|| self.name.as_ref().map(|name| name.as_str()))
+                                    .unwrap_or(output_name.as_str());
+                                let name = escape_file_path(name);
 
-                                    let mut filename = filename_template.to_string();
+                                let mut filename = filename_template.to_string();
 
-                                    if match_name_placeholder(&filename) {
-                                        filename = replace_name_placeholder(&filename, &name);
-                                    }
+                                if match_name_placeholder(&filename) {
+                                    filename = replace_name_placeholder(&filename, &name);
+                                }
 
-                                    if match_content_hash_placeholder(&filename) {
-                                        let content_hash = asset
+                                if match_content_hash_placeholder(&filename) {
+                                    let content_hash = asset
                                         .content_hash(no_hash_salt(), HashAlgorithm::Xxh3Hash64Hex)
                                         .owned()
                                         .await?
@@ -586,16 +571,13 @@ impl ChunkingContext for LibraryChunkingContext {
                                             "chunk_path requires an asset with file content when content \
                                              hashing is enabled",
                                         )?;
-                                        filename = replace_content_hash_placeholder(
-                                            &filename,
-                                            &content_hash,
-                                        );
-                                    };
+                                    filename =
+                                        replace_content_hash_placeholder(&filename, &content_hash);
+                                };
 
-                                    filename
-                                }
-                                None => output_name,
+                                filename
                             }
+                            None => output_name,
                         }
                     } else if self.shared_chunks {
                         output_name

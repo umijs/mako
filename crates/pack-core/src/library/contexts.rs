@@ -113,13 +113,6 @@ pub async fn get_library_chunking_context(
         MinifyType::NoMinify
     })
     .extract_comments(*config.extract_comments().await?)
-    .inline_css(
-        config
-            .inline_css()
-            .await?
-            .as_ref()
-            .is_some_and(serde_json::Value::is_object),
-    )
     .source_maps(if *config.source_maps().await? {
         SourceMapsType::Full
     } else {
