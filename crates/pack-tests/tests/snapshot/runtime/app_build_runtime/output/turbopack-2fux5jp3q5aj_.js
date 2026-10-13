@@ -1,6 +1,6 @@
 (globalThis["TURBOPACK"] || (globalThis["TURBOPACK"] = [])).push([
     typeof document === "object" ? document.currentScript : undefined,
-    {"otherChunks":["3sjnmlky2qoml.js"],"runtimeModuleIds":[59]}
+    {"otherChunks":["0-be73mqx4gng.js"],"runtimeModuleIds":[47]}
 ]);
 (() => {
 var chunksToRegister = globalThis["TURBOPACK"];
@@ -16,7 +16,7 @@ var RELATIVE_ROOT_PATH = "/ROOT";
 var RUNTIME_PUBLIC_PATH = "/";
 const SUPPORT_COMPONENT_CHUNKS = false;
 var ASSET_SUFFIX = "";
-var CROSS_ORIGIN = "anonymous";
+var CROSS_ORIGIN = null;
 var CHUNK_LOAD_RETRY_MAX_ATTEMPTS = 1;
 var CHUNK_LOAD_RETRY_BASE_DELAY_MS = 200;
 var CHUNK_LOAD_RETRY_MAX_JITTER_MS = 400;
@@ -437,8 +437,10 @@ function createGetter(obj, key) {
  */ function interopEsm(raw, ns, allowExportDefault) {
     const bindings = [];
     let defaultLocation = -1;
-    for(let current = raw; (typeof current === 'object' || typeof current === 'function') && !LEAF_PROTOTYPES.includes(current); current = getProto(current)){
-        for (const key of Object.getOwnPropertyNames(current)){
+    for(let current = raw; (typeof current === 'object' || typeof current === 'function') && LEAF_PROTOTYPES.indexOf(current) === -1; current = getProto(current)){
+        const keys = Object.getOwnPropertyNames(current);
+        for(let i = 0; i < keys.length; i++){
+            const key = keys[i];
             bindings.push(key, createGetter(raw, key));
             if (defaultLocation === -1 && key === 'default') {
                 defaultLocation = bindings.length - 1;
@@ -621,7 +623,9 @@ function installCompressedModuleFactories(chunkModules, offset, moduleFactories,
         value: values[key]
     });
 };
-relativeURL.prototype = URL.prototype;
+if (typeof URL === 'function') {
+    relativeURL.prototype = URL.prototype;
+}
 contextPrototype.U = relativeURL;
 /**
  * Utility function to ensure all variants of an enum are handled.
@@ -1429,4 +1433,4 @@ chunksToRegister.forEach(registerChunk);
 })();
 
 
-//# sourceMappingURL=turbopack-43m0au4-5afq8.js.map
+//# sourceMappingURL=turbopack-2fux5jp3q5aj_.js.map

@@ -628,28 +628,13 @@ function _type_of(obj) {
  */ function interopEsm(raw, ns, allowExportDefault) {
         var bindings = [];
         var defaultLocation = -1;
-        for(var current = raw; ((typeof current === "undefined" ? "undefined" : _type_of(current)) === 'object' || typeof current === 'function') && !LEAF_PROTOTYPES.includes(current); current = getProto(current)){
-            var _iteratorNormalCompletion = true, _didIteratorError = false, _iteratorError = undefined;
-            try {
-                for(var _iterator = Object.getOwnPropertyNames(current)[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true){
-                    var key = _step.value;
-                    bindings.push(key, createGetter(raw, key));
-                    if (defaultLocation === -1 && key === 'default') {
-                        defaultLocation = bindings.length - 1;
-                    }
-                }
-            } catch (err) {
-                _didIteratorError = true;
-                _iteratorError = err;
-            } finally{
-                try {
-                    if (!_iteratorNormalCompletion && _iterator.return != null) {
-                        _iterator.return();
-                    }
-                } finally{
-                    if (_didIteratorError) {
-                        throw _iteratorError;
-                    }
+        for(var current = raw; ((typeof current === "undefined" ? "undefined" : _type_of(current)) === 'object' || typeof current === 'function') && LEAF_PROTOTYPES.indexOf(current) === -1; current = getProto(current)){
+            var keys = Object.getOwnPropertyNames(current);
+            for(var i = 0; i < keys.length; i++){
+                var key = keys[i];
+                bindings.push(key, createGetter(raw, key));
+                if (defaultLocation === -1 && key === 'default') {
+                    defaultLocation = bindings.length - 1;
                 }
             }
         }
@@ -851,7 +836,9 @@ function _type_of(obj) {
             value: values[key1]
         });
     };
-    relativeURL.prototype = URL.prototype;
+    if (typeof URL === 'function') {
+        relativeURL.prototype = URL.prototype;
+    }
     contextPrototype.U = relativeURL;
     /**
  * Utility function to ensure all variants of an enum are handled.
@@ -1298,25 +1285,8 @@ function _type_of(obj) {
                     return;
                 }
                 if (params.runtimeModuleIds.length > 0) {
-                    var _iteratorNormalCompletion = true, _didIteratorError = false, _iteratorError = undefined;
-                    try {
-                        for(var _iterator = params.runtimeModuleIds[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true){
-                            var moduleId = _step.value;
-                            getOrInstantiateRuntimeModule(chunk, moduleId);
-                        }
-                    } catch (err) {
-                        _didIteratorError = true;
-                        _iteratorError = err;
-                    } finally{
-                        try {
-                            if (!_iteratorNormalCompletion && _iterator.return != null) {
-                                _iterator.return();
-                            }
-                        } finally{
-                            if (_didIteratorError) {
-                                throw _iteratorError;
-                            }
-                        }
+                    for(var i = 0; i < params.runtimeModuleIds.length; i++){
+                        getOrInstantiateRuntimeModule(chunk, params.runtimeModuleIds[i]);
                     }
                 }
             }

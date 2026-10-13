@@ -426,8 +426,10 @@ function createGetter(obj, key) {
  */ function interopEsm(raw, ns, allowExportDefault) {
     const bindings = [];
     let defaultLocation = -1;
-    for(let current = raw; (typeof current === 'object' || typeof current === 'function') && !LEAF_PROTOTYPES.includes(current); current = getProto(current)){
-        for (const key of Object.getOwnPropertyNames(current)){
+    for(let current = raw; (typeof current === 'object' || typeof current === 'function') && LEAF_PROTOTYPES.indexOf(current) === -1; current = getProto(current)){
+        const keys = Object.getOwnPropertyNames(current);
+        for(let i = 0; i < keys.length; i++){
+            const key = keys[i];
             bindings.push(key, createGetter(raw, key));
             if (defaultLocation === -1 && key === 'default') {
                 defaultLocation = bindings.length - 1;
@@ -610,7 +612,9 @@ function installCompressedModuleFactories(chunkModules, offset, moduleFactories,
         value: values[key]
     });
 };
-relativeURL.prototype = URL.prototype;
+if (typeof URL === 'function') {
+    relativeURL.prototype = URL.prototype;
+}
 contextPrototype.U = relativeURL;
 /**
  * Utility function to ensure all variants of an enum are handled.
