@@ -112,6 +112,17 @@ async function childMain() {
   );
 
   const packPath = packagePath();
+  const nativePath = process.env.UTOO_PACK_NATIVE_BINDING_PATH;
+  if (nativePath) {
+    const expectedBinding = require(path.resolve(nativePath));
+    const actualBinding = require(path.join(packPath, "cjs", "binding.js"));
+    assert.equal(
+      actualBinding,
+      expectedBinding,
+      "The Pack native override was not loaded; check NODE_OPTIONS preload",
+    );
+    console.log(`Verified Pack native override: ${path.resolve(nativePath)}`);
+  }
   const { serve } = require(packPath);
   const normalizedProjectPath = projectPath.replace(/\\/g, "/");
   let readyContext;
@@ -197,6 +208,7 @@ async function childMain() {
       embeddedHmr: true,
       embeddedReactRefresh: true,
       hmrWebSocket: true,
+      nativeOverrideVerified: Boolean(nativePath),
     })}`,
   );
   // Windows has no graceful POSIX signal delivery. There is no persistent
@@ -206,7 +218,9 @@ async function childMain() {
 }
 
 async function parentMain() {
-  const projectPath = fs.realpathSync(
+  // Native canonicalization expands Windows DOS 8.3 temp paths, matching the
+  // disk filesystem root canonicalized by Rust before absolute import lookup.
+  const projectPath = fs.realpathSync.native(
     fs.mkdtempSync(path.join(os.tmpdir(), "utoo-windows-provider-")),
   );
   try {

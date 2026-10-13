@@ -349,8 +349,32 @@ jobs:
           const preloadPath = path.resolve('utoo/scripts/use-pack-native-binding.cjs').replace(/\\/g, '/');
           fs.appendFileSync(process.argv[2],
             `UTOO_PACK_NATIVE_BINDING_PATH=${bindingPath}\n` +
-            `NODE_OPTIONS=${process.env.NODE_OPTIONS || ''} --require "${preloadPath}"\n`);
+            `UTOO_PACK_NODE_OPTIONS=${process.env.NODE_OPTIONS || ''} --require "${preloadPath}"\n`);
           console.log(`Using Windows native binding: ${bindingPath}`);
+          NODE
+      - name: Verify scoped native preload and independent DOM parser
+        id: native_binding_check
+        working-directory: umi
+        shell: bash
+        env:
+          NODE_OPTIONS: ${{ env.UTOO_PACK_NODE_OPTIONS }}
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+          const { createRequire } = require('node:module');
+          const path = require('node:path');
+          const state = globalThis[Symbol.for('utoo.pack.nativeBinding')];
+          assert(state, 'The pack native preload did not activate; check NODE_OPTIONS');
+          const packJson = require.resolve('@utoo/pack/package.json', {
+            paths: [path.resolve('packages/bundler-utoopack')],
+          });
+          const packRequire = createRequire(packJson);
+          const packBinding = packRequire('./cjs/binding.js');
+          assert.strictEqual(packBinding, require(process.env.UTOO_PACK_NATIVE_BINDING_PATH));
+          assert(state.loads > 0, 'The preload did not intercept the pack binding');
+          const { DOMParser } = packRequire('domparser-rs');
+          assert(new DOMParser().parseFromString('<html><body>native isolation</body></html>', 'text/html'));
+          console.log(`Verified scoped native binding: ${state.bindingPath}; DOMParser loads independently`);
           NODE
       - name: Enable utoopack in Umi with-use-model
         working-directory: umi
@@ -366,6 +390,8 @@ jobs:
           NODE
       - name: Build Umi verification targets
         working-directory: umi
+        env:
+          NODE_OPTIONS: ${{ env.UTOO_PACK_NODE_OPTIONS }}
         run: >-
           pnpm umi-scripts turbo build
           --filter ./packages/umi/...
@@ -374,15 +400,20 @@ jobs:
       - name: Install Playwright Chromium
         working-directory: umi
         run: pnpm exec playwright install chromium
+      - name: Run Umi Windows E2E from its workflow
+        working-directory: umi
+        env:
+          NODE_OPTIONS: ${{ env.UTOO_PACK_NODE_OPTIONS }}
+        run: node ../utoo/scripts/run-umi-windows-e2e.cjs --umi-path .
       - name: Check Windows absolute process provider resolution
+        if: ${{ !cancelled() && steps.native_binding_check.outcome == 'success' }}
         working-directory: umi
         shell: bash
+        env:
+          NODE_OPTIONS: ${{ env.UTOO_PACK_NODE_OPTIONS }}
         run: |
           pack_path=$(node -p "require('path').dirname(require.resolve('@utoo/pack/package.json', { paths: [require('path').resolve('packages/bundler-utoopack')] }))")
           node ../utoo/packages/pack/scripts/check-windows-provider-resolution.cjs --pack-path "$pack_path"
-      - name: Run Umi Windows E2E from its workflow
-        working-directory: umi
-        run: node ../utoo/scripts/run-umi-windows-e2e.cjs --umi-path .
   publish:
     if: github.event_name == 'push' && startsWith(github.ref_name, 'utoopack-v')
     name: Publish
