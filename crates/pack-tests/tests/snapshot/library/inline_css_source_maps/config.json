@@ -1,0 +1,25 @@
+{
+  "runtimeType": "Production",
+  "config": {
+    "entry": [
+      {
+        "import": "input/index.js",
+        "name": "main",
+        "library": {
+          "name": "InlineCssSourceMapsLibrary"
+        }
+      }
+    ],
+    "output": {
+      "filename": "library.min.js",
+      "cssFilename": "[name].css"
+    },
+    "optimization": {
+      "minify": true
+    },
+    "sourceMaps": true,
+    "styles": {
+      "inlineCss": {}
+    }
+  }
+}

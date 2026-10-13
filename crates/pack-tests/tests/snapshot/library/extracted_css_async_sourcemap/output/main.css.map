@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["./../library/extracted_css_async_sourcemap/input/initial.css"],"sourcesContent":[".initial {\n  color: red;\n}\n"],"names":[],"mappings":"AAAA"}},
+    {"offset": {"line": 6, "column": 0}, "map": {"version":3,"sources":["./../library/extracted_css_async_sourcemap/input/lazy.css"],"sourcesContent":[".lazy {\n  color: blue;\n}\n"],"names":[],"mappings":"AAAA"}}]
+}

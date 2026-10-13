@@ -1,0 +1,11 @@
+/* [project]/library/extracted_css_async_sourcemap/input/initial.css [library-client] (css) */
+.initial {
+  color: red;
+}
+
+/* [project]/library/extracted_css_async_sourcemap/input/lazy.css [library-client] (css) */
+.lazy {
+  color: #00f;
+}
+
+/*# sourceMappingURL=main.css.map*/

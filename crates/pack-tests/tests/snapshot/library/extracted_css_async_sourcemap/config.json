@@ -1,0 +1,23 @@
+{
+  "runtimeType": "Production",
+  "config": {
+    "entry": [
+      {
+        "import": "input/index.js",
+        "name": "main",
+        "library": {
+          "name": "ExtractedCssAsyncLibrary"
+        }
+      }
+    ],
+    "output": {
+      "filename": "library.js",
+      "cssFilename": "[name].css"
+    },
+    "optimization": {
+      "minify": false,
+      "moduleIds": "named"
+    },
+    "sourceMaps": true
+  }
+}

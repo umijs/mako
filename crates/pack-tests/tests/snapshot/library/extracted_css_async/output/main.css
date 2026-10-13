@@ -1,0 +1,9 @@
+/* [project]/library/extracted_css_async/input/initial.css [library-client] (css) */
+.initial {
+  color: red;
+}
+
+/* [project]/library/extracted_css_async/input/lazy.css [library-client] (css) */
+.lazy {
+  color: #00f;
+}
