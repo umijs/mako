@@ -22,7 +22,7 @@ pub async fn get_library_runtime_code(
     chunk_suffix_path: Vc<Option<RcStr>>,
     _runtime_type: RuntimeType,
     has_async_modules: bool,
-    output_root_to_root_path: Vc<RcStr>,
+    runtime_root_relative_path: Vc<RcStr>,
     generate_source_map: bool,
     runtime_root: Vc<Option<RcStr>>,
     runtime_export: Vc<Vec<RcStr>>,
@@ -52,7 +52,7 @@ pub async fn get_library_runtime_code(
     let runtime_base_code = vec!["library/runtime-base.ts"];
 
     let mut code: CodeBuilder = CodeBuilder::default();
-    let relative_root_path = output_root_to_root_path.await?;
+    let relative_root_path = runtime_root_relative_path.await?;
     let chunk_base_path = &*chunk_base_path.await?;
     let chunk_base_path = chunk_base_path.as_ref().map_or_else(|| "", |f| f.as_str());
     let chunk_suffix_path = &*chunk_suffix_path.await?;
