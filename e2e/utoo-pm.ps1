@@ -504,7 +504,8 @@ finally {
 Write-Yellow "Case: pnpm migration (eggjs/egg)"
 $eggDir = Join-Path $env:TEMP "utoo-e2e-egg-$(Get-Random)"
 try {
-    git clone --branch next --single-branch --depth 1 https://github.com/eggjs/egg.git $eggDir
+    # Pin the pnpm fixture before eggjs/egg#6057 migrated it to native utoo.
+    git clone --revision 7f494a2324c67f5e56c8e573d5102a25ad67c385 --depth 1 https://github.com/eggjs/egg.git $eggDir
     Push-Location $eggDir
 
     utoo install --from pnpm --ignore-scripts --registry=https://registry.npmjs.org

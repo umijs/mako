@@ -1348,7 +1348,8 @@ cd ../../..
 # Case: pnpm migration (eggjs/egg)
 echo -e "${YELLOW}Case: pnpm migration (eggjs/egg)${NC}"
 EGG_DIR=$(mktemp -d)
-git clone --branch next --single-branch --depth 1 https://github.com/eggjs/egg.git "$EGG_DIR"
+# Pin the pnpm fixture before eggjs/egg#6057 migrated it to native utoo.
+git clone --revision 7f494a2324c67f5e56c8e573d5102a25ad67c385 --depth 1 https://github.com/eggjs/egg.git "$EGG_DIR"
 pushd "$EGG_DIR"
 
 utoo install --from pnpm --ignore-scripts --registry=https://registry.npmjs.org || { echo -e "${RED}FAIL: utoo install --from pnpm failed for eggjs/egg${NC}"; exit 1; }
