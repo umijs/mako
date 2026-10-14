@@ -275,7 +275,7 @@ export function serve(
   rootPath?: string,
   serverOptions?: StartServerOptions & { returnHandle?: false },
 ): Promise<void>;
-export async function serve(
+export function serve(
   options: BundleOptions | WebpackConfig,
   projectPath?: string,
   rootPath?: string,
@@ -286,13 +286,11 @@ export async function serve(
   if (!rootPath) {
     rootPath = findRootDir(projectPath || process.cwd());
   }
-  const handle = await runDev(
-    bundleOptions,
-    projectPath,
-    rootPath,
-    serverOptions,
+  return runDev(bundleOptions, projectPath, rootPath, serverOptions).then(
+    (handle) => {
+      if (serverOptions?.returnHandle) return handle;
+    },
   );
-  if (serverOptions?.returnHandle) return handle;
 }
 
 const HMR_PATH = "/turbopack-hmr";

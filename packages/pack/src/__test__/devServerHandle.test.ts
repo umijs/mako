@@ -187,6 +187,40 @@ afterEach(async () => {
 });
 
 describe("dev server handle", () => {
+  it.each([
+    ["webpack entry", undefined],
+    ["webpack entry", true],
+    ["workspace metadata", undefined],
+    ["workspace metadata", true],
+  ] as const)(
+    "throws %s preparation errors synchronously (returnHandle: %s)",
+    (source, returnHandle) => {
+      if (source === "webpack entry") {
+        fs.writeFileSync(
+          path.join(projectPath, "webpack.config.cjs"),
+          "module.exports = { entry: [] };\n",
+        );
+      } else {
+        fs.writeFileSync(path.join(projectPath, "package.json"), "{ invalid");
+      }
+      const options =
+        source === "webpack entry"
+          ? { webpackMode: true }
+          : { config: { entry: [{ name: "main", import: "./entry.js" }] } };
+
+      expect(() => {
+        const result = returnHandle
+          ? serve(options, projectPath, undefined, {
+              port: 0,
+              returnHandle: true,
+            })
+          : serve(options, projectPath, undefined, { port: 0 });
+        void result.catch(() => {});
+      }).toThrow(source === "webpack entry" ? /missing "entry"/ : SyntaxError);
+      expect(serverMocks.createHotReloader).not.toHaveBeenCalled();
+    },
+  );
+
   it.each([undefined, false] as const)(
     "preserves the legacy void result (returnHandle: %s)",
     async (returnHandle) => {
@@ -209,6 +243,7 @@ describe("dev server handle", () => {
         },
       );
 
+      expect(result).toBeInstanceOf(Promise);
       expect(await result).toBeUndefined();
       const server = serverMocks.servers[0];
       expect(server.listening).toBe(true);
