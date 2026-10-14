@@ -1,6 +1,17 @@
 import legacy from "./legacy.cjs";
+import dynamic from "./dynamic.cjs";
 
 export { legacy };
+export { dynamic };
+export * from "./dynamic.cjs";
+export * from "./function.cjs";
+export * from "./primitive.cjs";
+export const staticValue = "explicit";
+
+export function updateDynamic() {
+  dynamic.dynamicValue = 42;
+  dynamic.addedLater = 99;
+}
 
 export function last(node) {
   do {

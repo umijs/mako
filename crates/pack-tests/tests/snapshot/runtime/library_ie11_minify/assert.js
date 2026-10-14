@@ -7,7 +7,14 @@ const code = fs.readFileSync("output/main.js", "utf8");
 acorn.parse(code, { ecmaVersion: 5, sourceType: "script" });
 assert.deepEqual(fs.readdirSync("output"), ["main.js"]);
 
-const browser = { Symbol: undefined, URL: undefined, Proxy: undefined };
+const browser = {
+  Symbol: undefined,
+  URL: undefined,
+  Proxy: undefined,
+  dynamicKey: "dynamicValue",
+  functionKey: "functionValue",
+  primitiveSource: "hi",
+};
 const commonJs = {
   ...browser,
   module: { exports: {} },
@@ -23,6 +30,26 @@ for (const context of [browser, commonJs]) {
     ? context.module.exports
     : context.Ie11Library;
   assert.equal(library.legacy.value, 23);
+  assert.equal(library.dynamicValue, 17);
+  assert.equal(library.computed, 17);
+  assert.equal(library.inherited, 5);
+  assert.equal("hidden" in library, false);
+  assert.equal(library.staticValue, "explicit");
+  assert.equal(library.functionValue, 19);
+  assert.equal(library[0], "h");
+  assert.equal(library[1], "i");
+  assert.equal("dynamicValue" in library, true);
+  assert.equal(Object.keys(library).includes("dynamicValue"), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(library, "default"), false);
+  const descriptor = Object.getOwnPropertyDescriptor(library, "dynamicValue");
+  assert.equal(typeof descriptor.get, "function");
+  assert.equal(descriptor.enumerable, true);
+  assert.equal(descriptor.configurable, false);
+  library.updateDynamic();
+  assert.equal(library.dynamicValue, 42);
+  assert.equal(library.computed, 42);
+  assert.equal(library.dynamic.addedLater, 99);
+  assert.equal("addedLater" in library, false);
 
   const reads = [];
   function node(name, value, next) {

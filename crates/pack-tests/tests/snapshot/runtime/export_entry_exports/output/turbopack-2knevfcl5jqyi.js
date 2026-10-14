@@ -98,6 +98,9 @@ var WORKER_FORWARDED_GLOBALS = [];
  * uses plain Module objects.
  */ let createModuleWithDirectionFlag = false;
 const REEXPORTED_OBJECTS = new WeakMap();
+// Legacy re-exports need the original CommonJS enumerable keys, not the
+// namespace's synthetic getters for non-enumerable properties.
+const LEGACY_CJS_SOURCES = typeof Proxy === 'function' ? undefined : new WeakMap();
 /**
  * Constructs the `__turbopack_context__` object for a module.
  */ function Context(module, exports) {
@@ -333,6 +336,10 @@ function ensureDynamicExports(module, exports) {
     let reexportedObjects = REEXPORTED_OBJECTS.get(module);
     if (!reexportedObjects) {
         REEXPORTED_OBJECTS.set(module, reexportedObjects = []);
+        if (typeof Proxy !== 'function') {
+            module.exports = module.namespaceObject = exports;
+            return reexportedObjects;
+        }
         // Returns the re-exported object that provides `prop` as an own property,
         // or `undefined` if none does. The traps share this logic so they always
         // agree on which keys are synthesized from `reexportedObjects`. `default`
@@ -434,7 +441,20 @@ function ensureDynamicExports(module, exports) {
         exports = this.e;
     }
     const reexportedObjects = ensureDynamicExports(module, exports);
-    if (typeof object === 'object' && object !== null) {
+    if (typeof Proxy !== 'function') {
+        if (object !== null && (typeof object === 'object' || typeof object === 'function')) {
+            const source = LEGACY_CJS_SOURCES?.has(object) ? LEGACY_CJS_SOURCES.get(object) : object;
+            // Like webpack, snapshot export names while keeping their values live.
+            for(const key in source){
+                if (key !== 'default' && key !== '__esModule') {
+                    defineProp(exports, key, {
+                        enumerable: true,
+                        get: createGetter(source, key)
+                    });
+                }
+            }
+        }
+    } else if (typeof object === 'object' && object !== null) {
         reexportedObjects.push(object);
     }
 }
@@ -502,6 +522,7 @@ function createGetter(obj, key) {
         }
     }
     esm(ns, bindings);
+    LEGACY_CJS_SOURCES?.set(ns, raw);
     return ns;
 }
 function createNS(raw) {
@@ -1492,4 +1513,4 @@ return globalThis["utooChunk_export_entry_exports"].getEntryExports(__entryRegis
 }));
 
 
-//# sourceMappingURL=turbopack-1d_u_ci2sfn_q.js.map
+//# sourceMappingURL=turbopack-2knevfcl5jqyi.js.map
