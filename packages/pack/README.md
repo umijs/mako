@@ -86,17 +86,19 @@ async function startDev() {
       },
       sourceMaps: true
     }
-  });
+  }, undefined, undefined, { port: 3000, returnHandle: true });
   return server;
 }
 ```
 
-`serve()` resolves after the initial build and HTTP startup with a handle containing
+`serve()` resolves after the initial build and HTTP startup. By default its result
+remains `void`. Pass `{ port: 3000, returnHandle: true }` as the fourth argument
+to receive a handle containing
 `port`, `hostname`, `writeAllEntrypointsToDisk()` and `close()`. Integrations can
 await `writeAllEntrypointsToDisk()` before publishing build results and await
 `close()` to release the HTTP server, HMR connections and project resources.
 Calling `close()` does not exit the process. To manage the surrounding process
-yourself, pass `{ port: 3000, handleSignals: false }` as the fourth argument.
+yourself, pass `{ port: 3000, returnHandle: true, handleSignals: false }` as the fourth argument.
 
 ## 🔌 Webpack Compatibility Mode
 

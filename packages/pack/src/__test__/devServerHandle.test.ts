@@ -148,6 +148,7 @@ async function startServer(
       port: await getAvailablePort(),
       hostname: "127.0.0.1",
       handleSignals,
+      returnHandle: true,
       logServerInfo: false,
       onReady,
     },
@@ -185,6 +186,36 @@ afterEach(async () => {
 });
 
 describe("dev server handle", () => {
+  it.each([undefined, false] as const)(
+    "preserves the legacy void result (returnHandle: %s)",
+    async (returnHandle) => {
+      const { runtime } = createRuntime();
+      const result: Promise<void> = serve(
+        {
+          config: {
+            entry: [{ name: "main", import: "./entry.js" }],
+            output: { path: "./dist" },
+          },
+        },
+        projectPath,
+        projectPath,
+        {
+          port: await getAvailablePort(),
+          hostname: "127.0.0.1",
+          returnHandle,
+          handleSignals: false,
+          logServerInfo: false,
+        },
+      );
+
+      expect(await result).toBeUndefined();
+      const server = serverMocks.servers[0];
+      expect(server.listening).toBe(true);
+      await closeHttpServer(server);
+      await runtime.close();
+    },
+  );
+
   it("returns a usable handle and rewrites HTTP assets after a dependency changes", async () => {
     const { project, sourcePath, entryPath } = createRuntime();
     const originalEntry = fs.readFileSync(entryPath, "utf8");

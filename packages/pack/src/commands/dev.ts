@@ -252,16 +252,47 @@ async function resolveDevConfig(
 
 export function serve(
   options: BundleOptions | WebpackConfig,
+  projectPath: string | undefined,
+  rootPath: string | undefined,
+  serverOptions: StartServerOptions & { returnHandle: true },
+): Promise<DevServerHandle>;
+export function serve(
+  options: BundleOptions | WebpackConfig,
+  projectPath: string | undefined,
+  rootPath: string | undefined,
+  serverOptions: StartServerOptions & { returnHandle: false },
+): Promise<void>;
+export function serve(
+  options: BundleOptions | WebpackConfig,
+  projectPath: string | undefined,
+  rootPath: string | undefined,
+  serverOptions: StartServerOptions & { returnHandle: boolean },
+): Promise<DevServerHandle | void>;
+// Keep the legacy overload last for integrations using Parameters<typeof serve>.
+export function serve(
+  options: BundleOptions | WebpackConfig,
   projectPath?: string,
   rootPath?: string,
-  serverOptions?: StartServerOptions,
-): Promise<DevServerHandle> {
+  serverOptions?: StartServerOptions & { returnHandle?: false },
+): Promise<void>;
+export async function serve(
+  options: BundleOptions | WebpackConfig,
+  projectPath?: string,
+  rootPath?: string,
+  serverOptions?: StartServerOptions & { returnHandle?: boolean },
+): Promise<DevServerHandle | void> {
   const bundleOptions = resolveBundleOptions(options, projectPath, rootPath);
 
   if (!rootPath) {
     rootPath = findRootDir(projectPath || process.cwd());
   }
-  return runDev(bundleOptions, projectPath, rootPath, serverOptions);
+  const handle = await runDev(
+    bundleOptions,
+    projectPath,
+    rootPath,
+    serverOptions,
+  );
+  if (serverOptions?.returnHandle) return handle;
 }
 
 const HMR_PATH = "/turbopack-hmr";
