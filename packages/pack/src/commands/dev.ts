@@ -143,7 +143,7 @@ export interface DevServerReadyContext {
 export interface DevServerHandle {
   port: number;
   hostname: string;
-  /** Write the current entrypoints before an integration publishes its build. */
+  /** Write current entrypoints and their HTML before an integration publishes its build. */
   writeAllEntrypointsToDisk: Project["writeAllEntrypointsToDisk"];
   /** Close the HTTP server, HMR connections and project without exiting the process. */
   close(): Promise<void>;
@@ -402,13 +402,7 @@ async function runDev(
       if (closePromise) {
         return Promise.reject(new Error("The dev server is closing or closed"));
       }
-      const project = hotReloader.turbopackProject;
-      if (!project) {
-        return Promise.reject(
-          new Error("The dev server project is unavailable"),
-        );
-      }
-      return project.writeAllEntrypointsToDisk();
+      return hotReloader.writeAllEntrypointsToDisk();
     },
     close() {
       closePromise ??= closeResources();

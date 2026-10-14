@@ -140,6 +140,8 @@ export interface HotReloaderInterface {
   turbopackProject?: Project;
   serverStats: WebpackStats | null;
   getClientPaths(): string[];
+  /** Write current assets, check diagnostics and regenerate their HTML. */
+  writeAllEntrypointsToDisk: Project["writeAllEntrypointsToDisk"];
   setHmrServerError(error: Error | null): void;
   clearHmrServerError(): void;
   start(): Promise<void>;
@@ -350,6 +352,7 @@ export async function createHotReloader(
   >();
 
   let currentWatchedEntrypoints: Endpoint[] = [];
+  let currentEntrypoints: RawEntrypoints = {};
   let backgroundWatchersStarted = false;
   let backgroundWatchGeneration = 0;
   const backgroundEndpointWriteTasks = new Map<Endpoint, Promise<void>>();
@@ -455,8 +458,15 @@ export async function createHotReloader(
   async function writeAllEntrypointsToDisk() {
     const result = await project.writeAllEntrypointsToDisk();
     processIssues(result, true, true);
-    setEntrypoints(result);
+    // All-write results contain new EndpointImpl objects. Keep the identities
+    // used by subscriptions so subsequent endpoint writes update the same HTML groups.
+    setEntrypoints({
+      ...result,
+      apps: currentEntrypoints.apps,
+      libraries: currentEntrypoints.libraries,
+    });
     await htmlGenerationManager.generateAll();
+    return result;
   }
 
   async function writeEntrypointToDisk(
@@ -658,6 +668,7 @@ export async function createHotReloader(
         );
       }
 
+      currentEntrypoints = entrypoints;
       currentWatchedEntrypoints = [
         ...(entrypoints.apps ?? []),
         ...(entrypoints.libraries ?? []),
@@ -695,6 +706,11 @@ export async function createHotReloader(
           ),
         ),
       ];
+    },
+
+    async writeAllEntrypointsToDisk() {
+      await currentEntriesHandling;
+      return writeAllEntrypointsToDisk();
     },
 
     onHMR(req, socket: Socket, head, onUpgrade) {

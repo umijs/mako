@@ -95,7 +95,9 @@ async function startDev() {
 remains `void`. Pass `{ port: 3000, returnHandle: true }` as the fourth argument
 to receive a handle containing
 `port`, `hostname`, `writeAllEntrypointsToDisk()` and `close()`. Integrations can
-await `writeAllEntrypointsToDisk()` before publishing build results and await
+await `writeAllEntrypointsToDisk()` before publishing build results: it checks
+compilation diagnostics and regenerates HTML with the current asset paths before
+resolving. Compilation and HTML generation errors reject the call. Await
 `close()` to release the HTTP server, HMR connections and project resources.
 Calling `close()` does not exit the process. To manage the surrounding process
 yourself, pass `{ port: 3000, returnHandle: true, handleSignals: false }` as the fourth argument.

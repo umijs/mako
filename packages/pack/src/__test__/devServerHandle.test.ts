@@ -118,6 +118,7 @@ function createRuntime() {
   };
   const runtime = {
     turbopackProject: project,
+    writeAllEntrypointsToDisk: vi.fn(() => project.writeAllEntrypointsToDisk()),
     start: vi.fn(async () => {
       await project.writeAllEntrypointsToDisk();
     }),
@@ -217,7 +218,7 @@ describe("dev server handle", () => {
   );
 
   it("returns a usable handle and rewrites HTTP assets after a dependency changes", async () => {
-    const { project, sourcePath, entryPath } = createRuntime();
+    const { runtime, project, sourcePath, entryPath } = createRuntime();
     const originalEntry = fs.readFileSync(entryPath, "utf8");
     const entryMtime = fs.statSync(entryPath).mtimeMs;
     const handle = await startServer();
@@ -233,6 +234,7 @@ describe("dev server handle", () => {
     const written = await handle.writeAllEntrypointsToDisk();
 
     expect(written.issues).toEqual([]);
+    expect(runtime.writeAllEntrypointsToDisk).toHaveBeenCalledTimes(1);
     expect(project.writeAllEntrypointsToDisk).toHaveBeenCalledTimes(2);
     expect(fs.readFileSync(entryPath, "utf8")).toBe(originalEntry);
     expect(fs.statSync(entryPath).mtimeMs).toBe(entryMtime);
