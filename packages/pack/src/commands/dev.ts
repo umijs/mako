@@ -20,6 +20,7 @@ import {
 import type { HotReloaderInterface } from "../core/hmr";
 import { createHotReloader } from "../core/hmr";
 import { createHttpProxyMiddleware } from "../core/proxyHono";
+import type { Project } from "../core/types";
 import { getOutputPath } from "../utils/cleanOutput";
 import { blockStdout, getPackPath } from "../utils/common";
 import { findRootDir } from "../utils/findRoot";
@@ -139,11 +140,22 @@ export interface DevServerReadyContext {
   clientPaths: string[];
 }
 
+export interface DevServerHandle {
+  port: number;
+  hostname: string;
+  /** Write the current entrypoints before an integration publishes its build. */
+  writeAllEntrypointsToDisk: Project["writeAllEntrypointsToDisk"];
+  /** Close the HTTP server, HMR connections and project without exiting the process. */
+  close(): Promise<void>;
+}
+
 export interface StartServerOptions {
   port: number;
   https?: boolean;
   hostname?: string;
   logServerInfo?: boolean;
+  /** Handle process signals and errors. Defaults to true; embedded servers can opt out. */
+  handleSignals?: boolean;
   selfSignedCertificate?: SelfSignedCertificate;
   /**
    * Called after the initial dev build has been written and the HTTP server is
@@ -243,7 +255,7 @@ export function serve(
   projectPath?: string,
   rootPath?: string,
   serverOptions?: StartServerOptions,
-) {
+): Promise<DevServerHandle> {
   const bundleOptions = resolveBundleOptions(options, projectPath, rootPath);
 
   if (!rootPath) {
@@ -259,7 +271,7 @@ async function runDev(
   projectPath?: string,
   rootPath?: string,
   serverOptions?: StartServerOptions,
-): Promise<void> {
+): Promise<DevServerHandle> {
   blockStdout();
   process.title = "utoopack-dev-server";
 
@@ -281,195 +293,272 @@ async function runDev(
     projectPathResolved,
     rootPathResolved,
   );
-  await hotReloader.start();
-
-  const distRoot = getOutputPath(options.config, projectPathResolved);
-  const publicPath = options.config?.output?.publicPath;
-  // Skip prefix stripping for runtime-resolved publicPath modes and when publicPath is absent.
-  const normalizedPrefix =
-    publicPath && !isRuntimeResolvedPublicPath(publicPath)
-      ? normalizedPublicPath(publicPath)
-      : "";
-
-  const app = new Hono();
-  const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
-
-  // Manifest chunks of lazily compiled dynamic imports are rewritten under a
-  // new content hash on activation; serve the browser's stable URL from there.
-  const lazyChunkAliases = new Map<string, string>();
-  const stripPublicPathPrefix = (reqPath: string): string => {
-    if (!normalizedPrefix) return reqPath;
-    // Absolute-URL publicPath: do not rewrite (match dev.ts).
-    if (
-      normalizedPrefix.startsWith("http://") ||
-      normalizedPrefix.startsWith("https://")
-    ) {
-      return reqPath;
-    }
-    if (pathHasPrefix(reqPath, normalizedPrefix)) {
-      return removePathPrefix(reqPath, normalizedPrefix);
-    }
-    return reqPath;
+  let server: ReturnType<typeof honoServe> | undefined;
+  let webSocket: ReturnType<typeof createNodeWebSocket> | undefined;
+  let closePromise: Promise<void> | undefined;
+  const exception = (error: Error) => {
+    console.error(error);
   };
-  const rewriteRequestPath = (reqPath: string): string => {
-    // Aliases are keyed by the output-relative chunk path, i.e. after the
-    // public-path prefix is removed.
-    const distPath = stripPublicPathPrefix(reqPath);
-    const alias = lazyChunkAliases.get(distPath.replace(/^\/+/, ""));
-    return alias ? `/${alias}` : distPath;
+  const rejectionHandled = () => {};
+  const onSignal = () => {
+    void handle.close().then(
+      () => process.exit(0),
+      (error) => {
+        console.error(error);
+        process.exit(1);
+      },
+    );
   };
+  const closeResources = async () => {
+    process.off("SIGINT", onSignal);
+    process.off("SIGTERM", onSignal);
+    process.off("rejectionHandled", rejectionHandled);
+    process.off("uncaughtException", exception);
+    process.off("unhandledRejection", exception);
 
-  // HMR WebSocket route must be registered before "/*" so it is not handled by serveStatic
-  app.get(
-    HMR_PATH,
-    upgradeWebSocket((_c) => ({
-      onOpen(_ev, ws) {
-        hotReloader.registerClient(ws);
-      },
-      onMessage(ev, ws) {
-        try {
-          const data =
-            typeof ev.data === "string" ? ev.data : ev.data.toString();
-          hotReloader.handleClientMessage(ws, data);
-        } catch (err) {
-          console.error("HMR message error", err);
-        }
-      },
-      onClose(_ev, ws) {
-        hotReloader.unregisterClient(ws);
-      },
-      onError(err) {
-        console.error("HMR WebSocket error", err);
-      },
-    })),
-  );
-
-  const proxyRules = bundleOptions.config?.devServer?.proxy;
-  if (proxyRules && proxyRules.length > 0) {
-    app.use("*", createHttpProxyMiddleware(proxyRules));
-  }
-
-  if (bundleOptions.config?.devServer?.lazyDynamicImports) {
-    // Requesting the manifest chunk of a lazily compiled dynamic import is what
-    // activates it, so rebuild the owning entrypoints before serveStatic reads it.
-    app.use("/*", async (c, next) => {
-      if (
-        (c.req.method === "GET" || c.req.method === "HEAD") &&
-        c.req.path.includes("lazy-compilation-")
-      ) {
-        const chunkPath = decodeURIComponent(
-          stripPublicPathPrefix(c.req.path),
-        ).replace(/^\/+/, "");
-        try {
-          if (await hotReloader.activateLazyChunk(chunkPath)) {
-            // The activated manifest has different content, so a content-hashed
-            // chunk filename puts it under a new name while the browser keeps
-            // requesting the URL baked into the entry. Serve the newest file
-            // with the same stem for that URL.
-            const current = await latestChunkWithSameStem(distRoot, chunkPath);
-            if (current && current !== chunkPath) {
-              lazyChunkAliases.set(chunkPath, current);
-            }
-          }
-        } catch (err) {
-          console.error(err);
-        }
-      }
-      await next();
-    });
-  }
-
-  // GET handles HEAD automatically in Hono; serveStatic serves both
-  app.get(
-    "/*",
-    serveStatic({
-      root: distRoot,
-      rewriteRequestPath,
-    }),
-  );
-
-  app.all("*", (c) => {
-    if (c.req.method === "GET" || c.req.method === "HEAD") {
-      return c.notFound();
-    }
-    return c.body(null, 405, { Allow: "GET, HEAD" });
-  });
-
-  const server = honoServe({
-    ...serveOptsBase,
-    fetch: app.fetch,
-  });
-  injectWebSocket(server);
-
-  if (!server.listening) {
-    await new Promise<void>((resolve, reject) => {
-      const onListening = () => {
-        server.off("error", onError);
+    const closeHttp = new Promise<void>((resolve, reject) => {
+      if (!server) {
         resolve();
-      };
-      const onError = (error: Error) => {
-        server.off("listening", onListening);
-        reject(error);
-      };
-
-      server.once("listening", onListening);
-      server.once("error", onError);
+        return;
+      }
+      server.close((error) => {
+        if (
+          error &&
+          (error as NodeJS.ErrnoException).code !== "ERR_SERVER_NOT_RUNNING"
+        ) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
+      // Stop accepting requests before terminating existing HTTP connections.
+      if (
+        "closeAllConnections" in server &&
+        typeof server.closeAllConnections === "function"
+      ) {
+        server.closeAllConnections();
+      }
     });
-  }
-
-  await serverOptions?.onReady?.({
+    const closeWebSocket = new Promise<void>((resolve, reject) => {
+      if (!webSocket) {
+        resolve();
+        return;
+      }
+      for (const client of webSocket.wss.clients) {
+        client.terminate();
+      }
+      webSocket.wss.close((error) => {
+        if (error) reject(error);
+        else resolve();
+      });
+    });
+    const results = await Promise.allSettled([
+      closeHttp,
+      closeWebSocket,
+      hotReloader.close(),
+    ]);
+    const errors = results.flatMap((result) =>
+      result.status === "rejected" ? [result.reason] : [],
+    );
+    if (errors.length > 0) {
+      throw new AggregateError(errors, "Failed to close the dev server");
+    }
+  };
+  const handle: DevServerHandle = {
     port: serveOptsBase.port,
     hostname: serveOptsBase.hostname,
-    clientPaths: hotReloader.getClientPaths(),
-  });
-
-  if (serverOptions?.logServerInfo !== false) {
-    const scheme = serveOptsBase.serverOptions ? "https" : "http";
-    const displayHost =
-      serveOptsBase.hostname === "0.0.0.0"
-        ? "localhost"
-        : serveOptsBase.hostname;
-    printServerInfo(scheme, displayHost, serveOptsBase.port);
-  }
-
-  let cleanupStarted = false;
-  const cleanup = async () => {
-    if (cleanupStarted) {
-      return;
-    }
-    cleanupStarted = true;
-
-    try {
-      await hotReloader.close();
-    } catch (err) {
-      console.error(err);
-      process.exit(1);
-    }
-
-    // We always create HTTP/1.1 server (http or https), so closeAllConnections exists; Hono's
-    // ServerType union includes HTTP/2, so TS does not narrow. Use runtime check to satisfy types.
-    if (
-      "closeAllConnections" in server &&
-      typeof server.closeAllConnections === "function"
-    ) {
-      server.closeAllConnections();
-    }
-    server.close((err) => {
-      if (err) {
-        console.error(err);
-        process.exit(1);
+    writeAllEntrypointsToDisk() {
+      if (closePromise) {
+        return Promise.reject(new Error("The dev server is closing or closed"));
       }
-      process.exit(0);
+      const project = hotReloader.turbopackProject;
+      if (!project) {
+        return Promise.reject(
+          new Error("The dev server project is unavailable"),
+        );
+      }
+      return project.writeAllEntrypointsToDisk();
+    },
+    close() {
+      closePromise ??= closeResources();
+      return closePromise;
+    },
+  };
+
+  try {
+    await hotReloader.start();
+
+    const distRoot = getOutputPath(options.config, projectPathResolved);
+    const publicPath = options.config?.output?.publicPath;
+    // Skip prefix stripping for runtime-resolved publicPath modes and when publicPath is absent.
+    const normalizedPrefix =
+      publicPath && !isRuntimeResolvedPublicPath(publicPath)
+        ? normalizedPublicPath(publicPath)
+        : "";
+
+    const app = new Hono();
+    webSocket = createNodeWebSocket({ app });
+    const { injectWebSocket, upgradeWebSocket } = webSocket;
+
+    // Manifest chunks of lazily compiled dynamic imports are rewritten under a
+    // new content hash on activation; serve the browser's stable URL from there.
+    const lazyChunkAliases = new Map<string, string>();
+    const stripPublicPathPrefix = (reqPath: string): string => {
+      if (!normalizedPrefix) return reqPath;
+      // Absolute-URL publicPath: do not rewrite (match dev.ts).
+      if (
+        normalizedPrefix.startsWith("http://") ||
+        normalizedPrefix.startsWith("https://")
+      ) {
+        return reqPath;
+      }
+      if (pathHasPrefix(reqPath, normalizedPrefix)) {
+        return removePathPrefix(reqPath, normalizedPrefix);
+      }
+      return reqPath;
+    };
+    const rewriteRequestPath = (reqPath: string): string => {
+      // Aliases are keyed by the output-relative chunk path, i.e. after the
+      // public-path prefix is removed.
+      const distPath = stripPublicPathPrefix(reqPath);
+      const alias = lazyChunkAliases.get(distPath.replace(/^\/+/, ""));
+      return alias ? `/${alias}` : distPath;
+    };
+
+    // HMR WebSocket route must be registered before "/*" so it is not handled by serveStatic
+    app.get(
+      HMR_PATH,
+      upgradeWebSocket((_c) => ({
+        onOpen(_ev, ws) {
+          hotReloader.registerClient(ws);
+        },
+        onMessage(ev, ws) {
+          try {
+            const data =
+              typeof ev.data === "string" ? ev.data : ev.data.toString();
+            hotReloader.handleClientMessage(ws, data);
+          } catch (err) {
+            console.error("HMR message error", err);
+          }
+        },
+        onClose(_ev, ws) {
+          hotReloader.unregisterClient(ws);
+        },
+        onError(err) {
+          console.error("HMR WebSocket error", err);
+        },
+      })),
+    );
+
+    const proxyRules = bundleOptions.config?.devServer?.proxy;
+    if (proxyRules && proxyRules.length > 0) {
+      app.use("*", createHttpProxyMiddleware(proxyRules));
+    }
+
+    if (bundleOptions.config?.devServer?.lazyDynamicImports) {
+      // Requesting the manifest chunk of a lazily compiled dynamic import is what
+      // activates it, so rebuild the owning entrypoints before serveStatic reads it.
+      app.use("/*", async (c, next) => {
+        if (
+          (c.req.method === "GET" || c.req.method === "HEAD") &&
+          c.req.path.includes("lazy-compilation-")
+        ) {
+          const chunkPath = decodeURIComponent(
+            stripPublicPathPrefix(c.req.path),
+          ).replace(/^\/+/, "");
+          try {
+            if (await hotReloader.activateLazyChunk(chunkPath)) {
+              // The activated manifest has different content, so a content-hashed
+              // chunk filename puts it under a new name while the browser keeps
+              // requesting the URL baked into the entry. Serve the newest file
+              // with the same stem for that URL.
+              const current = await latestChunkWithSameStem(
+                distRoot,
+                chunkPath,
+              );
+              if (current && current !== chunkPath) {
+                lazyChunkAliases.set(chunkPath, current);
+              }
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        }
+        await next();
+      });
+    }
+
+    // GET handles HEAD automatically in Hono; serveStatic serves both
+    app.get(
+      "/*",
+      serveStatic({
+        root: distRoot,
+        rewriteRequestPath,
+      }),
+    );
+
+    app.all("*", (c) => {
+      if (c.req.method === "GET" || c.req.method === "HEAD") {
+        return c.notFound();
+      }
+      return c.body(null, 405, { Allow: "GET, HEAD" });
     });
-  };
 
-  const exception = (err: Error) => {
-    console.error(err);
-  };
+    server = honoServe({
+      ...serveOptsBase,
+      fetch: app.fetch,
+    });
+    injectWebSocket(server);
+    const httpServer = server;
 
-  process.on("SIGINT", cleanup);
-  process.on("SIGTERM", cleanup);
-  process.on("rejectionHandled", () => {});
-  process.on("uncaughtException", exception);
-  process.on("unhandledRejection", exception);
+    if (!httpServer.listening) {
+      await new Promise<void>((resolve, reject) => {
+        const onListening = () => {
+          httpServer.off("error", onError);
+          resolve();
+        };
+        const onError = (error: Error) => {
+          httpServer.off("listening", onListening);
+          reject(error);
+        };
+
+        httpServer.once("listening", onListening);
+        httpServer.once("error", onError);
+      });
+    }
+
+    await serverOptions?.onReady?.({
+      port: serveOptsBase.port,
+      hostname: serveOptsBase.hostname,
+      clientPaths: hotReloader.getClientPaths(),
+    });
+
+    if (serverOptions?.logServerInfo !== false) {
+      const scheme = serveOptsBase.serverOptions ? "https" : "http";
+      const displayHost =
+        serveOptsBase.hostname === "0.0.0.0"
+          ? "localhost"
+          : serveOptsBase.hostname;
+      printServerInfo(scheme, displayHost, serveOptsBase.port);
+    }
+
+    if (serverOptions?.handleSignals !== false) {
+      process.on("SIGINT", onSignal);
+      process.on("SIGTERM", onSignal);
+      process.on("rejectionHandled", rejectionHandled);
+      process.on("uncaughtException", exception);
+      process.on("unhandledRejection", exception);
+    }
+    return handle;
+  } catch (error) {
+    try {
+      await handle.close();
+    } catch (closeError) {
+      throw new AggregateError(
+        [error, closeError],
+        "Failed to start and close the dev server",
+      );
+    }
+    throw error;
+  }
 }

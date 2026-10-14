@@ -41,7 +41,7 @@ ut install @utoo/pack --save-dev
 You can use `@utoo/pack` directly in your Node.js scripts:
 
 ```javascript
-const { build, dev } = require('@utoo/pack');
+const { build, serve } = require('@utoo/pack');
 
 // Production build
 async function runBuild() {
@@ -68,7 +68,7 @@ async function runBuild() {
 
 // Development mode with HMR
 async function startDev() {
-  const server = await dev({
+  const server = await serve({
     config: {
       entry: [
         {
@@ -87,8 +87,16 @@ async function startDev() {
       sourceMaps: true
     }
   });
+  return server;
 }
 ```
+
+`serve()` resolves after the initial build and HTTP startup with a handle containing
+`port`, `hostname`, `writeAllEntrypointsToDisk()` and `close()`. Integrations can
+await `writeAllEntrypointsToDisk()` before publishing build results and await
+`close()` to release the HTTP server, HMR connections and project resources.
+Calling `close()` does not exit the process. To manage the surrounding process
+yourself, pass `{ port: 3000, handleSignals: false }` as the fourth argument.
 
 ## 🔌 Webpack Compatibility Mode
 
