@@ -1,0 +1,19 @@
+{
+  "runtimeType": "Dummy",
+  "config": {
+    "entry": [
+      {
+        "import": "input/index.js",
+        "name": "main",
+        "library": {
+          "name": "ExtractedCssAsyncLibrary"
+        }
+      }
+    ],
+    "output": {
+      "filename": "library.js",
+      "cssFilename": "[name].css"
+    },
+    "sourceMaps": false
+  }
+}

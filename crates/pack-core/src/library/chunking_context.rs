@@ -715,6 +715,10 @@ impl ChunkingContext for LibraryChunkingContext {
                 ..Default::default()
             },
         );
+        // Use default CSS chunking to keep single-file libraries in one chunk.
+        if !self.shared_chunks {
+            return Ok(Vc::cell(map));
+        }
         map.insert(
             ResolvedVc::upcast(Vc::<CssChunkType>::default().to_resolved().await?),
             ChunkingConfig {
