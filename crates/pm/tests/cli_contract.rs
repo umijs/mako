@@ -844,6 +844,7 @@ fn node_gyp_rebuild_command(project: &Path) -> Command {
         &fake_ut,
         r#"#!/bin/sh
 printf '%s\n' attempt >> "$UTOO_TEST_NODE_GYP_ATTEMPTS"
+printf '%s\n' "$@" > "$UTOO_TEST_NODE_GYP_ARGS"
 printf '%s\n' BOOTSTRAP_STDOUT_MARKER
 printf '%s\n' \
     'Error: BOOTSTRAP_STDERR_MARKER' \
@@ -860,8 +861,31 @@ exit 1
         .current_dir(project)
         .env("PATH", bin)
         .env("UTOO_TEST_NODE_GYP_ATTEMPTS", project.join("attempts"))
+        .env("UTOO_TEST_NODE_GYP_ARGS", project.join("bootstrap-args"))
         .args(["--registry", "http://127.0.0.1:9", "rebuild"]);
     command
+}
+
+#[cfg(unix)]
+#[test]
+fn rebuild_node_gyp_bootstrap_preserves_cli_registry() {
+    let project = tempdir().unwrap();
+    fs::write(
+        project.path().join(".npmrc"),
+        "registry=https://project.example.com\n",
+    )
+    .unwrap();
+    let output = node_gyp_rebuild_command(project.path())
+        .env("UTOO_REGISTRY", "https://environment.example.com")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(11));
+    let args = fs::read_to_string(project.path().join("bootstrap-args")).unwrap();
+    assert_eq!(
+        args.lines().collect::<Vec<_>>(),
+        ["i", "-g", "node-gyp", "--registry", "http://127.0.0.1:9"]
+    );
 }
 
 #[cfg(unix)]
@@ -889,7 +913,10 @@ fn rebuild_json_node_gyp_failure_is_one_structured_error_document() {
     let details = &value["error"]["details"];
     assert_eq!(details["kind"], "process");
     let execution = &details["execution"];
-    assert_eq!(execution["command"], "ut i -g node-gyp");
+    assert_eq!(
+        execution["command"],
+        "ut i -g node-gyp --registry http://127.0.0.1:9"
+    );
     assert_same_path(execution["cwd"].as_str().unwrap(), project.path());
     assert_eq!(execution["status"], "failed");
     assert_eq!(execution["exitCode"], 1);
