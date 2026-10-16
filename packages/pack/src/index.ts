@@ -5,6 +5,7 @@ import * as webpackCompat from "./config/webpackCompat";
 export { build };
 export { serve };
 export type {
+  DevServerHandle,
   DevServerReadyContext,
   StartServerOptions,
 } from "./commands/dev";
