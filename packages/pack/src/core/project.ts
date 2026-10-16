@@ -454,6 +454,7 @@ export function projectFactory(endpointWatchOptions?: {
     // either need to notify a waiting consumer, or buffer the new result until
     // the consumer catches up.
     function emitResult(err: Error | undefined, value: T | undefined) {
+      if (canceled) return;
       if (waiting) {
         let { resolve, reject } = waiting;
         waiting = undefined;
@@ -497,10 +498,18 @@ export function projectFactory(endpointWatchOptions?: {
     }
 
     const iterator = createIterator();
-    iterator.return = async () => {
+    const closeIterator = iterator.return.bind(iterator);
+    iterator.return = () => {
       canceled = true;
-      if (waiting) waiting.reject(cancel);
-      return { value: undefined, done: true } as IteratorReturnResult<never>;
+      buffer = [];
+      if (waiting) {
+        const { reject } = waiting;
+        waiting = undefined;
+        reject(cancel);
+      }
+      // Wake a pending next(), then let the generator run its finally block.
+      // This also closes a generator suspended immediately after a yield.
+      return closeIterator();
     };
     return iterator;
   }
@@ -555,11 +564,23 @@ export function projectFactory(endpointWatchOptions?: {
         async (callback) =>
           binding.projectEntrypointsSubscribe(this._nativeProject, callback),
       );
-      return (async function* () {
+      const iterator = (async function* () {
         for await (const entrypoints of subscription) {
           yield napiEntrypointsToRawEntrypoints(entrypoints);
         }
       })();
+      const closeIterator = iterator.return.bind(iterator);
+      iterator.return = async (value) => {
+        // A generator queues return() behind next(), so cancel the native
+        // subscription first to unblock the next entrypoints result.
+        const closing = subscription.return!();
+        try {
+          return await closeIterator(value);
+        } finally {
+          await closing;
+        }
+      };
+      return iterator;
     }
 
     hmrEvents(identifier: string, expectedVersion?: string) {
