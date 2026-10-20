@@ -33,8 +33,10 @@ use turbopack_core::{
 };
 use turbopack_css::chunk::CssChunkType;
 use turbopack_ecmascript::{
-    TypeofWindow, chunk::EcmascriptChunkType, runtime_functions::TURBOPACK_MODULE,
-    transform::ReactCompilerTarget,
+    TypeofWindow,
+    chunk::EcmascriptChunkType,
+    runtime_functions::TURBOPACK_MODULE,
+    transform::{PresetEnvConfig, ReactCompilerTarget},
 };
 use turbopack_ecmascript_runtime::{RuntimeType, chunk_update_listeners_global_name};
 use turbopack_node::{
@@ -505,6 +507,27 @@ pub async fn get_client_module_options_context(
         ..module_options_context.clone()
     };
 
+    let refresh_context = ModuleOptionsContext {
+        ecmascript: EcmascriptOptionsContext {
+            // Refresh inspects arbitrary exports, including cross-origin WindowProxy
+            // objects. SWC's typeof helper reads `.constructor`, unlike native typeof.
+            // Preserve the original runtime's safe probes without changing user targets.
+            preset_env_config: if mode_ref.is_development() {
+                Some(
+                    PresetEnvConfig {
+                        exclude: Some(vec![rcstr!("transform-typeof-symbol")]),
+                        ..Default::default()
+                    }
+                    .resolved_cell(),
+                )
+            } else {
+                internal_context.ecmascript.preset_env_config
+            },
+            ..internal_context.ecmascript.clone()
+        },
+        ..internal_context.clone()
+    };
+
     let module_options_context = ModuleOptionsContext {
         // We don't need to resolve React Refresh for each module. Instead,
         // we try resolve it once at the root and pass down a context to all
@@ -520,6 +543,10 @@ pub async fn get_client_module_options_context(
         enable_webpack_loaders,
         enable_mdx_rs,
         rules: vec![
+            (
+                ContextCondition::InPath(embed_file_path(rcstr!("react-refresh")).owned().await?),
+                refresh_context.resolved_cell(),
+            ),
             (
                 foreign_code_context_condition(config).await?,
                 foreign_codes_options_context.resolved_cell(),

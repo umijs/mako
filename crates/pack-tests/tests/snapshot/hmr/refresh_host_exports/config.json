@@ -1,0 +1,21 @@
+{
+  "config": {
+    "entry": [
+      {
+        "import": "input/index.js",
+        "name": "main"
+      }
+    ],
+    "mode": "development",
+    "target": "ie 11",
+    "resolve": {
+      "alias": {
+        "@swc/helpers/_/_type_of": "./input/swc-typeof.cjs"
+      }
+    },
+    "sourceMaps": false,
+    "optimization": { "minify": false, "moduleIds": "named" },
+    "output": { "path": "output" }
+  },
+  "runtimeType": "Dummy"
+}
