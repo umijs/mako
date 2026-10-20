@@ -17,5 +17,5 @@
     "optimization": { "minify": false, "moduleIds": "named" },
     "output": { "path": "output" }
   },
-  "runtimeType": "Production"
+  "runtimeType": "Dummy"
 }

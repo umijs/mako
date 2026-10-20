@@ -3,21 +3,64 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-async function main() {
-  const context = vm.createContext({ console, URL });
+function main() {
+  const context = vm.createContext({ console });
   context.self = context;
-  // Every emitted chunk is preloaded below; model its existing script element.
-  context.document = { querySelectorAll: () => [{ addEventListener() {} }] };
   const output = path.join(__dirname, "output");
   for (const file of fs
     .readdirSync(output)
     .filter((file) => file.endsWith(".js"))) {
-    context.document.currentScript = { getAttribute: () => file };
     vm.runInContext(fs.readFileSync(path.join(output, file), "utf8"), context, {
       filename: file,
     });
   }
-  await new Promise(setImmediate);
+
+  // Dummy chunks register factories without executing them. Implement only the
+  // module primitives used by this fixture; Refresh and SWC code stay real.
+  const factories = new Map();
+  const entries = [];
+  for (const chunk of context.TURBOPACK) {
+    entries.push(...(chunk[1]?.runtimeModuleIds ?? []));
+    for (let index = 1; index < chunk.length; index += 2) {
+      if (typeof chunk[index + 1] === "function") {
+        factories.set(chunk[index], chunk[index + 1]);
+      }
+    }
+  }
+  const modules = new Map();
+  function load(id) {
+    if (modules.has(id)) return modules.get(id);
+    const factory = factories.get(id);
+    assert(factory, `missing module ${id}`);
+    const module = { exports: {} };
+    modules.set(id, module);
+    factory(
+      {
+        m: module,
+        r: (id) => load(id).exports,
+        s(bindings) {
+          module.namespace = module.exports;
+          for (let index = 0; index < bindings.length; index += 2) {
+            Object.defineProperty(module.exports, bindings[index], {
+              get: bindings[index + 1],
+            });
+          }
+        },
+        i(id) {
+          const imported = load(id);
+          return (imported.namespace ??= {
+            ...imported.exports,
+            default: imported.exports,
+          });
+        },
+      },
+      module,
+      module.exports,
+    );
+    return module;
+  }
+  assert.equal(entries.length, 1);
+  load(entries[0]);
   const { helpers, runtime, userTypeof } = context.refreshHostExports;
 
   const reads = [];
@@ -76,7 +119,4 @@ async function main() {
   assert.throws(() => userTypeof(host), { name: "SecurityError" });
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main();
