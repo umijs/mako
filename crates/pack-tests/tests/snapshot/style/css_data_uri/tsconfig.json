@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "*": ["./*", "./input/uri-alias-trap.txt"]
+    }
+  }
+}

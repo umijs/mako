@@ -1,0 +1,15 @@
+.inline {
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=");
+}
+
+.uppercase {
+  background-image: url("DATA:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=");
+}
+
+.long {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3C%21--LongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegression--%3E%3C/svg%3E");
+}
+
+.relative {
+  background-image: url("./relative.svg");
+}

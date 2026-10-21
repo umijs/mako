@@ -1,0 +1,16 @@
+/* [project]/style/css_data_uri/input/style.module.css [client] (css) */
+.style-module__jJus2a__inline {
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=");
+}
+
+.style-module__jJus2a__uppercase {
+  background-image: url("DATA:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=");
+}
+
+.style-module__jJus2a__long {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3C%21--LongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegressionLongDataUriRegression--%3E%3C/svg%3E");
+}
+
+.style-module__jJus2a__relative {
+  background-image: url("relative.696a4319.svg");
+}
