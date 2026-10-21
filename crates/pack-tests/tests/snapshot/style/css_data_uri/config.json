@@ -1,5 +1,6 @@
 {
   "watch": true,
+  "runtimeType": "dummy",
   "expectedAppEndpoints": 1,
   "expectedIndividualAppOutputPaths": [],
   "config": {
