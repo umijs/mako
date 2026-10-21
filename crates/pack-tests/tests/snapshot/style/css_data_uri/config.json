@@ -1,0 +1,19 @@
+{
+  "watch": true,
+  "runtimeType": "dummy",
+  "expectedAppEndpoints": 1,
+  "expectedIndividualAppOutputPaths": [],
+  "config": {
+    "entry": [
+      {
+        "import": "input/index.js",
+        "name": "main"
+      }
+    ],
+    "mode": "development",
+    "output": {
+      "cssFilename": "styles.css"
+    },
+    "sourceMaps": false
+  }
+}
