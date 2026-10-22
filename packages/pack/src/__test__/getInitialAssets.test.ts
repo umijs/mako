@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 describe("initial asset discovery", () => {
-  it("deduplicates entry assets from webpack stats", () => {
+  it("preserves first-seen asset order across overlapping webpack entries", () => {
     const outputDir = createTempDir();
     fs.writeFileSync(
       path.join(outputDir, "stats.json"),
@@ -31,9 +31,23 @@ describe("initial asset discovery", () => {
         entrypoints: {
           main: {
             assets: [
+              { name: "runtime.js" },
+              { name: "shared.css" },
               { name: "index.js" },
               { name: "index.js" },
               { name: "index.css" },
+            ],
+          },
+          admin: {
+            assets: [
+              { name: "runtime.js" },
+              { name: "admin.js" },
+              { name: "shared.css" },
+              { name: "admin.css" },
+              { name: "index.js" },
+              { name: "index.css" },
+              { name: "admin.js.map" },
+              { name: "logo.svg" },
             ],
           },
         },
@@ -41,12 +55,12 @@ describe("initial asset discovery", () => {
     );
 
     expect(getInitialAssetsFromStats(outputDir)).toEqual({
-      js: ["index.js"],
-      css: ["index.css"],
+      js: ["runtime.js", "index.js", "admin.js"],
+      css: ["shared.css", "index.css", "admin.css"],
     });
   });
 
-  it("uses endpoint client paths for html assets without stats", () => {
+  it("preserves first-seen client asset order across overlapping endpoints", () => {
     expect(
       getInitialAssetsFromEndpointPaths([
         {
@@ -57,15 +71,33 @@ describe("initial asset discovery", () => {
             "static/runtime.js",
             "static/runtime.js.map",
             "static/runtime.js.LICENSE.txt",
+            "static/shared.css",
+            "static/app.js",
             "static/app.css",
           ],
-          serverPaths: [],
+          serverPaths: [{ path: "server/app.js", contentHash: "app" }],
+          config: {},
+        },
+        {
+          type: "nodejs",
+          entryPath: "dist",
+          clientPaths: [
+            "static/runtime.js",
+            "static/admin.js",
+            "static/shared.css",
+            "static/admin.css",
+            "static/app.js",
+            "static/app.css",
+            "static/admin.css.map",
+            "static/logo.svg",
+          ],
+          serverPaths: [{ path: "server/admin.js", contentHash: "admin" }],
           config: {},
         },
       ]),
     ).toEqual({
-      js: ["static/runtime.js"],
-      css: ["static/app.css"],
+      js: ["static/runtime.js", "static/app.js", "static/admin.js"],
+      css: ["static/shared.css", "static/app.css", "static/admin.css"],
     });
   });
 });

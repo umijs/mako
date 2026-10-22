@@ -7,12 +7,6 @@ export interface Assets {
   css: string[];
 }
 
-function addUniqueAsset(assets: string[], file: string) {
-  if (!assets.includes(file)) {
-    assets.push(file);
-  }
-}
-
 function isJavascriptAsset(file: string): boolean {
   return (
     file.endsWith(".js") &&
@@ -22,7 +16,7 @@ function isJavascriptAsset(file: string): boolean {
 }
 
 export function getInitialAssetsFromStats(outputDir: string): Assets {
-  const assets = { js: [] as string[], css: [] as string[] };
+  const assets = { js: new Set<string>(), css: new Set<string>() };
   const statsPath = path.join(outputDir, "stats.json");
   if (fs.existsSync(statsPath)) {
     try {
@@ -31,10 +25,10 @@ export function getInitialAssetsFromStats(outputDir: string): Assets {
         Object.values(stats.entrypoints).forEach((entrypoint: any) => {
           entrypoint.assets?.forEach((asset: any) => {
             if (asset.name.endsWith(".js")) {
-              addUniqueAsset(assets.js, asset.name);
+              assets.js.add(asset.name);
             }
             if (asset.name.endsWith(".css")) {
-              addUniqueAsset(assets.css, asset.name);
+              assets.css.add(asset.name);
             }
           });
         });
@@ -43,24 +37,24 @@ export function getInitialAssetsFromStats(outputDir: string): Assets {
       console.warn("Failed to read stats.json for assets discovery", e);
     }
   }
-  return assets;
+  return { js: [...assets.js], css: [...assets.css] };
 }
 
 export function getInitialAssetsFromEndpointPaths(
   endpoints: NapiWrittenEndpoint[],
 ): Assets {
-  const assets = { js: [] as string[], css: [] as string[] };
+  const assets = { js: new Set<string>(), css: new Set<string>() };
 
   endpoints.forEach((endpoint) => {
     endpoint.clientPaths.forEach((file) => {
       if (isJavascriptAsset(file)) {
-        addUniqueAsset(assets.js, file);
+        assets.js.add(file);
       }
       if (file.endsWith(".css")) {
-        addUniqueAsset(assets.css, file);
+        assets.css.add(file);
       }
     });
   });
 
-  return assets;
+  return { js: [...assets.js], css: [...assets.css] };
 }
