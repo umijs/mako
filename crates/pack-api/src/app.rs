@@ -646,15 +646,23 @@ impl AppProject {
                 let resolved_graphs = entrypoints
                     .iter()
                     .map(|e| async {
-                        e.module_graph_for_entry(asset_context, runtime_entries)
-                            .await
+                        let graph = e
+                            .module_graph_for_entry(asset_context, runtime_entries)
+                            .to_resolved()
+                            .await?;
+                        Ok((graph, graph.await?))
                     })
                     .try_join()
                     .await?;
 
-                // Walk all graphs to find ServerReferenceModule instances.
+                // Production entries share the whole-app graph; development entries may have
+                // separate graphs. Scan each distinct graph once.
+                let mut visited_graphs = FxHashSet::default();
                 let mut unique_server_modules = turbo_tasks::FxIndexSet::default();
-                for graph in &resolved_graphs {
+                for (graph_id, graph) in &resolved_graphs {
+                    if !visited_graphs.insert(*graph_id) {
+                        continue;
+                    }
                     for module in graph.iter_nodes() {
                         if let Some(server_ref) =
                             ResolvedVc::try_downcast_type::<ServerReferenceModule>(module)
