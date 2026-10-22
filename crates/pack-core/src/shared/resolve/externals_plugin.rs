@@ -258,7 +258,13 @@ fn handle_external_config(
                 (external_name.into(), ExternalType::Script)
             } else {
                 // Default to Global
-                (name.clone(), ExternalType::Global)
+                // Nested global properties use a space-separated path internally.
+                let global_name = if name.contains('.') {
+                    name.replace('.', " ").into()
+                } else {
+                    name.clone()
+                };
+                (global_name, ExternalType::Global)
             }
         }
         ExternalConfig::Advanced(advanced) => {
