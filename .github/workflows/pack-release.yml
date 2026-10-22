@@ -1,300 +1,65 @@
+# One-off continuation of release run 39736394333; no tag or source changes.
 name: utoopack-release
 
 on:
-  push:
-    tags:
-      - "utoopack-v*"
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Validate the existing release packages without publishing
+        type: boolean
+        default: true
+        required: true
+
+concurrency:
+  group: utoopack-resume-1.5.30
+  cancel-in-progress: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  PACK_NATIVE_BUILDER_IMAGE: utoo-pack-native-builder:release
-  PACK_WINDOWS_BUILDER_IMAGE: utoo-pack-windows-builder:release
+  SOURCE_RUN: "39736394333"
+  RELEASE_SHA: ed83ea164acdcda532318d3f975809e2911932ec
+  VERSION: "1.5.30"
 
 jobs:
-  build:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref_name, 'utoopack-v')
-    permissions:
-      contents: read
-    strategy:
-      fail-fast: true
-      matrix:
-        settings:
-          - host: macos-latest
-            target: aarch64-apple-darwin
-            binding: pack.darwin-arm64.node
-            build: |
-              npm run build:binding --workspace=@utoo/pack -- --target aarch64-apple-darwin
-          - host: macos-latest
-            target: x86_64-apple-darwin
-            binding: pack.darwin-x64.node
-            build: |
-              npm run build:binding --workspace=@utoo/pack -- --target x86_64-apple-darwin
-          - host: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            binding: pack.linux-arm64-gnu.node
-            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
-            build: |
-              apt-get update && apt-get install -y libc6-dev-arm64-cross libgcc-s1-arm64-cross &&
-              rustup install nightly-2026-08-20 &&
-              rustup default nightly-2026-08-20 &&
-              rustup target add aarch64-unknown-linux-gnu &&
-              npm run build:binding --workspace=@utoo/pack -- --target aarch64-unknown-linux-gnu
-          - host: ubuntu-latest
-            target: aarch64-unknown-linux-musl
-            binding: pack.linux-arm64-musl.node
-            elf_machine: AArch64
-            file_arch_pattern: ARM aarch64|aarch64
-            musl_builder: true
-          - host: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            binding: pack.linux-x64-gnu.node
-            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
-            build: |
-              apt-get update &&
-              rustup install nightly-2026-08-20 &&
-              rustup default nightly-2026-08-20 &&
-              rustup target add x86_64-unknown-linux-gnu &&
-              npm run build:binding --workspace=@utoo/pack -- --target x86_64-unknown-linux-gnu
-          - host: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-            binding: pack.linux-x64-musl.node
-            elf_machine: Advanced Micro Devices X86-64
-            file_arch_pattern: x86-64
-            musl_builder: true
-          # swc_plugin_runner not supported on aarch64 windows now
-          # - host: windows-latest
-          #   target: aarch64-pc-windows-msvc
-          #   build: |
-          #     git config --system core.longpaths true &&
-          #     rustup target add aarch64-pc-windows-msvc &&
-          #     npm run build:binding --workspace=@utoo/pack -- --target aarch64-pc-windows-msvc
-          - host: ubuntu-latest
-            binding: pack.win32-x64-msvc.node
-            windows_builder: true
-            target: x86_64-pc-windows-msvc
-    name: utoopack-release-${{ matrix.settings.target }} - node@22
-    runs-on: ${{ matrix.settings.host }}
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-        with:
-          fetch-depth: 100
-          persist-credentials: false
-      - name: Free disk space
-        if: matrix.settings.host == 'ubuntu-latest'
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf /usr/share/swift
-          sudo rm -rf /usr/local/share/powershell
-          sudo rm -rf /usr/share/miniconda
-          sudo docker image prune --all --force
-      - name: Set up Docker Buildx
-        if: matrix.settings.musl_builder || matrix.settings.windows_builder
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-        with:
-          # Buildx requires this daemon-side entitlement for its isolated
-          # container driver. The build command deliberately does not grant it.
-          buildkitd-flags: --allow-insecure-entitlement=network.host
-          driver-opts: image=moby/buildkit@sha256:63db51c9b30208a7c2b1c40392c7ebb9ce2f85ba238a18a85420f8f5ea2d4684
-      # Build before the large submodule and node_modules exist so they never
-      # enter the Docker build context.
-      - name: Build native builder image
-        if: matrix.settings.musl_builder
-        run: |
-          docker buildx build \
-            --load \
-            --provenance=false \
-            --tag "$PACK_NATIVE_BUILDER_IMAGE" \
-            --file scripts/pack-native-builder.Dockerfile \
-            .
-      - name: Build Windows builder image
-        if: matrix.settings.windows_builder
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.0.0
-        env:
-          # The publish job downloads every artifact as a platform binding.
-          DOCKER_BUILD_RECORD_UPLOAD: "false"
-        with:
-          context: .
-          file: scripts/pack-windows-builder.Dockerfile
-          load: true
-          provenance: false
-          tags: ${{ env.PACK_WINDOWS_BUILDER_IMAGE }}
-          cache-from: type=gha,scope=utoo-pack-windows-builder-v1
-      - name: Init git submodules
-        run: git submodule update --init --recursive --depth 1
-      - name: Set up QEMU
-        if: matrix.settings.docker && contains(matrix.settings.target, 'aarch64')
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
-        with:
-          cache-image: false
-          image: docker.io/tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
-          platforms: arm64
-      - name: Setup node
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        if: ${{ !matrix.settings.docker }}
-        with:
-          node-version: 22.14.0
-          package-manager-cache: false
-      - name: Install
-        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
-        if: ${{ !matrix.settings.docker && !matrix.settings.musl_builder && !matrix.settings.windows_builder }}
-        with:
-          toolchain: nightly-2026-08-20
-          targets: ${{ matrix.settings.target }}
-      # - name: Cache cargo
-      #   uses: Swatinem/rust-cache@v2
-      #   with:
-      #     shared-key: pack-release-${{ matrix.settings.target }}
-      - name: Setup Utoo
-        uses: utooland/setup-utoo@e7aa4d726a17f79f68aed736476ea5bd68f8ba52 # v1
-        with:
-          cache-utoo: false
-          utoo-version: 1.1.7
-
-      - name: Clear install-node for musl builds
-        if: ${{ contains(matrix.settings.target, 'musl') }}
-        run: |
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json'));
-            delete pkg.engines['install-node'];
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          "
-
-      - name: Install dependencies
-        run: utoo install
-      - name: Resolve binding package version
-        shell: bash
-        run: |
-          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" == utoopack-v* ]]; then
-            binding_version="${GITHUB_REF_NAME#utoopack-v}"
-          else
-            binding_version="$(node -p 'require("./packages/pack/package.json").version')"
-          fi
-          echo "npm_new_version=$binding_version" >> "$GITHUB_ENV"
-      - name: Setup node x86
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        with:
-          package-manager-cache: false
-      - name: Build in docker
-        if: ${{ matrix.settings.docker }}
-        run: |
-          cat <<'EOF' > build_script.sh
-          ${{ matrix.settings.build }}
-          EOF
-          chmod +x build_script.sh
-          docker run --rm \
-            --env npm_new_version \
-            -v ${{ github.workspace }}/.cargo-cache/git/db:/usr/local/cargo/git/db \
-            -v ${{ github.workspace }}/.cargo/registry/cache:/usr/local/cargo/registry/cache \
-            -v ${{ github.workspace }}/.cargo/registry/index:/usr/local/cargo/registry/index \
-            -v ${{ github.workspace }}:/build \
-            -w /build \
-            ${{ matrix.settings.docker }} \
-            /bin/sh /build/build_script.sh
-      - name: Verify NAPI CLI version
-        if: matrix.settings.musl_builder || matrix.settings.windows_builder
-        run: test "$(node -p 'require("@napi-rs/cli/package.json").version')" = "3.8.6"
-      - name: Build musl binding
-        if: matrix.settings.musl_builder
-        env:
-          BINDING: packages/pack/src/${{ matrix.settings.binding }}
-          TARGET: ${{ matrix.settings.target }}
-        run: |
-          rm -f "$BINDING"
-          docker run --rm \
-            --env CI=1 \
-            --env CARGO_INCREMENTAL=0 \
-            --env CARGO_TERM_COLOR=always \
-            --env RUST_BACKTRACE=1 \
-            --env TARGET \
-            --env npm_new_version \
-            --volume "$GITHUB_WORKSPACE:/build" \
-            --workdir /build \
-            "$PACK_NATIVE_BUILDER_IMAGE" \
-            /bin/bash /build/scripts/pack-native-build.sh
-      - name: Verify musl ELF target and loader
-        if: matrix.settings.musl_builder
-        env:
-          BINDING: packages/pack/src/${{ matrix.settings.binding }}
-          EXPECTED_ELF_MACHINE: ${{ matrix.settings.elf_machine }}
-          EXPECTED_FILE_ARCH: ${{ matrix.settings.file_arch_pattern }}
-        run: |
-          set -euo pipefail
-          test -s "$BINDING"
-
-          file_output=$(file --brief "$BINDING")
-          echo "$file_output"
-          grep -Eq "ELF 64-bit LSB shared object.*(${EXPECTED_FILE_ARCH})" <<<"$file_output"
-
-          machine=$(readelf --file-header "$BINDING" | sed -n 's/^[[:space:]]*Machine:[[:space:]]*//p')
-          test "$machine" = "$EXPECTED_ELF_MACHINE"
-
-          dynamic_section=$(readelf --dynamic "$BINDING")
-          echo "$dynamic_section"
-          ! grep -q 'libc\.so\.6' <<<"$dynamic_section"
-
-          program_headers=$(readelf --program-headers "$BINDING")
-          ! grep -Eq '/lib(64)?/(ld-linux|ld64)|ld-linux-' <<<"$program_headers"
-      - name: Build
-        run: ${{ matrix.settings.build }}
-        if: ${{ !matrix.settings.docker && !matrix.settings.musl_builder && !matrix.settings.windows_builder }}
-        shell: bash
-      - name: Build Windows binding
-        if: matrix.settings.windows_builder
-        env:
-          TARGET: ${{ matrix.settings.target }}
-        run: |
-          docker run --rm \
-            --env CI=1 \
-            --env CARGO_INCREMENTAL=0 \
-            --env CARGO_TERM_COLOR=always \
-            --env RUST_BACKTRACE=1 \
-            --env TARGET \
-            --env npm_new_version \
-            --volume "$GITHUB_WORKSPACE:/build" \
-            --workdir /build \
-            "$PACK_WINDOWS_BUILDER_IMAGE" \
-            /bin/bash /build/scripts/pack-windows-build.sh
-      - name: Verify generated binding files
-        run: |
-          npm run check:binding-version --workspace=@utoo/pack -- "$npm_new_version"
-          git diff --exit-code -- packages/pack/src/binding.d.ts
-      - name: Upload binding loader
-        if: matrix.settings.target == 'aarch64-apple-darwin'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: napi-binding-loader
-          path: |
-            ./packages/pack/src/binding.js
-            ./packages/pack/src/binding.d.ts
-          if-no-files-found: error
-      - name: Upload artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: pack-${{ matrix.settings.target }}
-          path: ./packages/pack/src/${{ matrix.settings.binding }}
-          if-no-files-found: error
   publish:
-    if: github.event_name == 'push' && startsWith(github.ref_name, 'utoopack-v')
-    name: Publish
+    name: Resume 1.5.30 publication
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
       id-token: write
-    needs:
-      - build
     outputs:
       version: ${{ steps.get_version.outputs.VERSION }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-          ref: ${{ github.ref_name }}
+          ref: ed83ea164acdcda532318d3f975809e2911932ec
+      - name: Verify original release and build artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+          test "$(gh api repos/utooland/utoo/git/ref/tags/utoopack-v1.5.30 --jq '.object.sha')" = "$RELEASE_SHA"
+          gh api "repos/utooland/utoo/actions/runs/$SOURCE_RUN" > "$RUNNER_TEMP/source-run.json"
+          gh api "repos/utooland/utoo/actions/runs/$SOURCE_RUN/jobs?per_page=100" > "$RUNNER_TEMP/source-jobs.json"
+          node <<'NODE'
+          const fs = require("node:fs");
+          const assert = require("node:assert/strict");
+          const run = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/source-run.json`));
+          assert.equal(run.head_sha, process.env.RELEASE_SHA);
+          assert.equal(run.head_branch, "utoopack-v1.5.30");
+          assert.equal(run.event, "push");
+          assert.equal(run.status, "completed");
+          assert.equal(run.path, ".github/workflows/pack-release.yml");
+          const { jobs } = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/source-jobs.json`));
+          const builds = jobs.filter(job => job.name.startsWith("utoopack-release-"));
+          assert.equal(builds.length, 7);
+          for (const job of builds) assert.equal(job.conclusion, "success", job.name);
+          console.log("Verified all seven builds from the original release commit");
+          NODE
       - name: Setup node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
@@ -312,11 +77,15 @@ jobs:
       - name: Download native binding artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
+          run-id: 39736394333
+          github-token: ${{ github.token }}
           pattern: pack-*
           path: ./packages/pack/src
       - name: Download binding loader
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
+          run-id: 39736394333
+          github-token: ${{ github.token }}
           name: napi-binding-loader
           path: ./packages/pack/src
       - name: Move artifacts
@@ -329,42 +98,76 @@ jobs:
           npm run build --workspace=@utoo/pack-shared
           npm run build:js --workspace=@utoo/pack
           npm run build --workspace=@utoo/pack-cli
-      - name: Get version from tag
+      - name: Set existing release version
         id: get_version
-        shell: bash
-        run: |
-          TAG_NAME="${{ github.ref_name }}"
-          VERSION=${TAG_NAME#utoopack-v}
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        run: echo "VERSION=1.5.30" >> "$GITHUB_OUTPUT"
       - name: Update npm for trusted publishing
         run: npm install -g npm@11.6.2
-      - name: NPM Publish
+      - name: Prepare package metadata without publishing
         run: |
           set -euo pipefail
-
-          echo "${VERSION}"
-
-          TAG="latest"
-          if [[ "$VERSION" == *"-"* ]]; then
-            PRERELEASE="${VERSION#*-}"
-            TAG="${PRERELEASE%%.*}"
-          fi
-          echo "Publishing with tag: $TAG"
-
-          npm version --workspace=@utoo/pack-shared "${VERSION}" --no-git-tag-version --workspaces-update=false &&
-          npm version --workspace=@utoo/pack "${VERSION}" --no-git-tag-version --workspaces-update=false &&
-          npm version --workspace=@utoo/pack-cli "${VERSION}" --no-git-tag-version --workspaces-update=false &&
-          npm pkg set dependencies.@utoo/pack-shared="${VERSION}" --workspace=@utoo/pack &&
-          npm pkg set dependencies.@utoo/pack="${VERSION}" --workspace=@utoo/pack-cli &&
-          npm run check:binding-version --workspace=@utoo/pack -- "${VERSION}" &&
-          npm publish --workspace=@utoo/pack-shared --access public --tag "${TAG}" &&
-          npm publish --workspace=@utoo/pack --access public --tag "${TAG}" &&
-          npm publish --workspace=@utoo/pack-cli --access public --tag "${TAG}"
+          npm version --workspace=@utoo/pack-shared "$VERSION" --no-git-tag-version --workspaces-update=false
+          npm version --workspace=@utoo/pack "$VERSION" --no-git-tag-version --workspaces-update=false
+          npm version --workspace=@utoo/pack-cli "$VERSION" --no-git-tag-version --workspaces-update=false
+          npm pkg set dependencies.@utoo/pack-shared="$VERSION" --workspace=@utoo/pack
+          npm pkg set dependencies.@utoo/pack="$VERSION" --workspace=@utoo/pack-cli
+          npm exec --workspace=@utoo/pack -- napi pre-publish -t npm --no-gh-release --skip-optional-publish
+          npm run check:binding-version --workspace=@utoo/pack -- "$VERSION"
+      - name: Check or publish only missing packages
         env:
-          VERSION: ${{ steps.get_version.outputs.VERSION }}
-
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const { spawnSync } = require("node:child_process");
+          const version = process.env.VERSION;
+          assert.ok(["true", "false"].includes(process.env.DRY_RUN));
+          const platforms = ["darwin-arm64", "darwin-x64", "linux-arm64-gnu", "linux-arm64-musl", "linux-x64-gnu", "linux-x64-musl", "win32-x64-msvc"];
+          const packages = [
+            ["packages/pack-shared", "@utoo/pack-shared"],
+            ...platforms.map(platform => [`packages/pack/npm/${platform}`, `@utoo/pack-${platform}`]),
+            ["packages/pack", "@utoo/pack"],
+            ["packages/pack-cli", "@utoo/pack-cli"],
+          ];
+          function command(args, cwd) {
+            const result = spawnSync("npm", args, { cwd, stdio: "inherit", env: process.env });
+            if (result.error) throw result.error;
+            if (result.status !== 0) throw new Error(`npm ${args[0]} failed with status ${result.status}`);
+          }
+          async function main() {
+            for (const [directory, name] of packages) {
+              const manifest = JSON.parse(fs.readFileSync(path.join(directory, "package.json")));
+              assert.equal(manifest.name, name);
+              assert.equal(manifest.version, version);
+              if (name === "@utoo/pack") {
+                assert.equal(manifest.dependencies["@utoo/pack-shared"], version);
+                assert.equal(Object.keys(manifest.optionalDependencies).length, 7);
+                for (const platform of platforms) assert.equal(manifest.optionalDependencies[`@utoo/pack-${platform}`], version);
+              }
+              if (name === "@utoo/pack-cli") assert.equal(manifest.dependencies["@utoo/pack"], version);
+              const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}/${version}`, { signal: AbortSignal.timeout(30000) });
+              if (response.ok) {
+                const published = await response.json();
+                assert.equal(published.name, name);
+                assert.equal(published.version, version);
+                assert.ok(published.dist?.integrity);
+                console.log(`SKIP already published: ${name}@${version}`);
+                continue;
+              }
+              if (response.status !== 404) throw new Error(`Registry check failed for ${name}: HTTP ${response.status}; refusing to publish`);
+              console.log(`${process.env.DRY_RUN === "true" ? "CHECK" : "PUBLISH"}: ${name}@${version}`);
+              const args = ["publish", "--ignore-scripts", "--access", "public", "--tag", "latest", "--registry=https://registry.npmjs.org", "--loglevel=verbose"];
+              if (process.env.DRY_RUN === "true") args.push("--dry-run");
+              command(args, directory);
+            }
+          }
+          main().catch(error => { console.error(error); process.exitCode = 1; });
+          NODE
   wait_for_npm:
     name: Wait for npm propagation
+    if: ${{ !inputs.dry_run }}
     needs:
       - publish
     runs-on: ubuntu-latest
@@ -386,8 +189,8 @@ jobs:
           : "${VERSION:?VERSION is required}"
 
           # npm publish can succeed before registry metadata exposes the version.
-          # Include the native binding used by the Ubuntu ecosystem runners.
-          packages=(@utoo/pack @utoo/pack-shared @utoo/pack-cli @utoo/pack-linux-x64-gnu)
+          # Check all seven platform bindings before consumer validation.
+          packages=(@utoo/pack @utoo/pack-shared @utoo/pack-cli @utoo/pack-darwin-arm64 @utoo/pack-darwin-x64 @utoo/pack-linux-arm64-gnu @utoo/pack-linux-arm64-musl @utoo/pack-linux-x64-gnu @utoo/pack-linux-x64-musl @utoo/pack-win32-x64-msvc)
           for attempt in {1..12}; do
             ready=true
             for package in "${packages[@]}"; do
@@ -429,42 +232,3 @@ jobs:
       suite: all
       harness_repository: utooland/utoo-ecosystem-ci
       harness_ref: main
-
-  notify_ecosystem_failure:
-    name: Notify ecosystem failure
-    if: >-
-      always() &&
-      needs.publish.result == 'success' &&
-      needs.ecosystem.result == 'failure'
-    needs:
-      - publish
-      - ecosystem
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-    steps:
-      - name: Create failure issue
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.publish.outputs.version }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          TAG_URL: ${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-
-          title="ci(pack): ecosystem CI failed for @utoo/pack@${VERSION}"
-          body_path="${RUNNER_TEMP}/ecosystem-failure.md"
-          printf '%s\n' \
-            "The post-publish ecosystem CI failed for @utoo/pack@${VERSION}." \
-            "" \
-            "- Release tag: [${GITHUB_REF_NAME}](${TAG_URL})" \
-            "- Workflow run: [${GITHUB_RUN_ID}](${RUN_URL})" \
-            "" \
-            "This issue was created automatically after consumer validation failed." \
-            > "${body_path}"
-
-          gh issue create \
-            --repo "${GITHUB_REPOSITORY}" \
-            --title "${title}" \
-            --body-file "${body_path}"
