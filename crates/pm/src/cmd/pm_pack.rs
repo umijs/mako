@@ -11,12 +11,18 @@ use crate::util::format_print::print_pack_details;
 use crate::util::invocation;
 use crate::util::presenter::emit;
 
-pub async fn pack(path: Option<String>, mode: RunMode) -> Result<()> {
+pub async fn pack(
+    path: Option<String>,
+    pack_destination: Option<PathBuf>,
+    mode: RunMode,
+) -> Result<()> {
+    let current_dir = std::env::current_dir()?;
     let package_root = if let Some(p) = path {
         PathBuf::from(p)
     } else {
-        std::env::current_dir()?
+        current_dir.clone()
     };
+    let destination = pack_destination.map(|path| current_dir.join(path));
 
     let output = if invocation::json() {
         ScriptOutput::Machine
@@ -28,7 +34,15 @@ pub async fn pack(path: Option<String>, mode: RunMode) -> Result<()> {
     let tarball_path = match mode {
         RunMode::DryRun => None,
         RunMode::Live => {
-            let tarball_path = package_root.join(result.tarball_filename());
+            let output_dir = destination.as_deref().unwrap_or(&package_root);
+            if destination.is_some() {
+                crate::fs::create_dir_all(output_dir)
+                    .await
+                    .with_context(|| {
+                        format!("Failed to create pack destination {}", output_dir.display())
+                    })?;
+            }
+            let tarball_path = output_dir.join(result.tarball_filename());
             crate::fs::write(&tarball_path, &result.tarball_data)
                 .await
                 .with_context(|| {

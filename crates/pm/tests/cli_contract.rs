@@ -200,6 +200,187 @@ fn pack_json_is_one_clean_document() {
     assert_eq!(value["result"]["tarballPath"], Value::Null);
 }
 
+fn write_scoped_pack_project(project: &Path) {
+    fs::create_dir_all(project).unwrap();
+    fs::write(
+        project.join("package.json"),
+        r#"{"name":"@scope/fixture","version":"1.0.0","files":["index.js"]}"#,
+    )
+    .unwrap();
+    fs::write(project.join("index.js"), "export const source = true;\n").unwrap();
+}
+
+#[test]
+fn pack_destination_is_relative_to_invocation_directory() {
+    let project = tempdir().unwrap();
+    let source = project.path().join("source");
+    write_scoped_pack_project(&source);
+    fs::write(
+        project.path().join("index.js"),
+        "export const caller = true;\n",
+    )
+    .unwrap();
+
+    let output = utoo()
+        .current_dir(project.path())
+        .args([
+            "--json",
+            "pm-pack",
+            "source",
+            "--pack-destination",
+            "artifacts/nested",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["result"]["filename"], "scope-fixture-1.0.0.tgz");
+    let tarball_path = value["result"]["tarballPath"].as_str().unwrap();
+    assert_same_path(
+        tarball_path,
+        &project
+            .path()
+            .join("artifacts/nested/scope-fixture-1.0.0.tgz"),
+    );
+    assert!(!source.join("artifacts").exists());
+    assert!(!source.join("scope-fixture-1.0.0.tgz").exists());
+
+    let mut archive = Archive::new(GzDecoder::new(fs::File::open(tarball_path).unwrap()));
+    let mut paths = Vec::new();
+    for entry in archive.entries().unwrap() {
+        let mut entry = entry.unwrap();
+        let path = entry.path().unwrap().to_string_lossy().into_owned();
+        let mut contents = String::new();
+        entry.read_to_string(&mut contents).unwrap();
+        match path.as_str() {
+            "package/index.js" => assert_eq!(contents, "export const source = true;\n"),
+            "package/package.json" => {
+                let manifest: Value = serde_json::from_str(&contents).unwrap();
+                assert_eq!(manifest["name"], "@scope/fixture");
+            }
+            _ => panic!("unexpected packed file: {path}"),
+        }
+        paths.push(path);
+    }
+    paths.sort_unstable();
+    assert_eq!(paths, ["package/index.js", "package/package.json"]);
+}
+
+#[test]
+fn pack_destination_accepts_absolute_directory() {
+    let project = tempdir().unwrap();
+    write_scoped_pack_project(project.path());
+    let artifacts = tempdir().unwrap();
+    let destination = artifacts.path().join("nested/output");
+
+    let output = utoo()
+        .current_dir(project.path())
+        .args(["--json", "pm-pack", "--pack-destination"])
+        .arg(&destination)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_same_path(
+        value["result"]["tarballPath"].as_str().unwrap(),
+        &destination.join("scope-fixture-1.0.0.tgz"),
+    );
+    assert!(!project.path().join("scope-fixture-1.0.0.tgz").exists());
+}
+
+#[test]
+fn pack_without_destination_writes_to_explicit_package_root() {
+    let project = tempdir().unwrap();
+    let source = project.path().join("source");
+    write_scoped_pack_project(&source);
+
+    let output = utoo()
+        .current_dir(project.path())
+        .args(["--json", "pm-pack", "source"])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_same_path(
+        value["result"]["tarballPath"].as_str().unwrap(),
+        &source.join("scope-fixture-1.0.0.tgz"),
+    );
+    assert!(!project.path().join("scope-fixture-1.0.0.tgz").exists());
+}
+
+#[test]
+fn pack_destination_dry_run_does_not_create_directory() {
+    let project = tempdir().unwrap();
+    write_scoped_pack_project(project.path());
+
+    let output = utoo()
+        .current_dir(project.path())
+        .args([
+            "--json",
+            "pm-pack",
+            "--dry-run",
+            "--pack-destination",
+            "artifacts/nested",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["result"]["dryRun"], true);
+    assert_eq!(value["result"]["tarballPath"], Value::Null);
+    assert!(!project.path().join("artifacts").exists());
+    assert!(!project.path().join("scope-fixture-1.0.0.tgz").exists());
+}
+
+#[test]
+fn pack_destination_rejects_existing_file() {
+    let project = tempdir().unwrap();
+    write_scoped_pack_project(project.path());
+    let destination = project.path().join("artifacts");
+    fs::write(&destination, "keep this file\n").unwrap();
+
+    let output = utoo()
+        .current_dir(project.path())
+        .args(["--json", "pm-pack", "--pack-destination", "artifacts"])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    let value: Value = serde_json::from_slice(&output.stderr).unwrap();
+    assert_eq!(value["command"], "pack");
+    assert_eq!(value["ok"], false);
+    assert!(
+        value["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("artifacts")
+    );
+    assert_eq!(fs::read_to_string(destination).unwrap(), "keep this file\n");
+    assert!(!project.path().join("scope-fixture-1.0.0.tgz").exists());
+}
+
 #[test]
 fn pack_applies_publish_config_overrides_to_tarball_only() {
     let project = tempdir().unwrap();
