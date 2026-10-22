@@ -1,0 +1,23 @@
+{
+  "config": {
+    "entry": [
+      {
+        "import": "input/index.js",
+        "name": "main"
+      }
+    ],
+    "externals": {
+      "@galacean/effects-plugin-multimedia": "window.ge.multimediaPlugin",
+      "normalized-plugin": "ge.multimediaPlugin",
+      "deep-plugin": "ge.plugins.media.multimediaPlugin",
+      "legacy-simple": "legacySimplePlugin",
+      "legacy-nested": "ge multimediaPlugin",
+      "legacy-hyphen": "legacy-plugin",
+      "legacy-missing": "missingLegacyPlugin",
+      "literal-global": {
+        "root": "ge.multimediaPlugin",
+        "type": "global"
+      }
+    }
+  }
+}
