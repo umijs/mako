@@ -452,8 +452,12 @@ async fn async_main() -> Result<()> {
                 )?;
             }
         }
-        Some(Commands::Pack { path, dry_run }) => {
-            cmd::pm_pack::pack(path, dry_run.into()).await?;
+        Some(Commands::Pack {
+            path,
+            pack_destination,
+            dry_run,
+        }) => {
+            cmd::pm_pack::pack(path, pack_destination, dry_run.into()).await?;
             log_time_end("Pack complete");
         }
         Some(Commands::Publish {

@@ -3,6 +3,8 @@
 //! Pure argument-parsing types and helpers live here; per-command assembly
 //! and execution belong to the owning `cmd::*` module.
 
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 
 use crate::cmd::install::InstallArgs;
@@ -257,6 +259,9 @@ pub enum Commands {
     Pack {
         /// Path to the package directory
         path: Option<String>,
+        /// Output directory for the tarball (relative to the current directory)
+        #[arg(long, value_name = "DIR")]
+        pack_destination: Option<PathBuf>,
         /// Perform a dry run without creating a tarball
         #[arg(long)]
         dry_run: bool,
