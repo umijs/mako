@@ -124,11 +124,7 @@ The bundler can be configured via a `utoopack.json` or through the programmatic 
 
 - **`entry`**: Define your application entry points.
 - **`define`**: Build-time variable replacement.
-- **`externals`**: Exclude specific dependencies from the bundle. Plain strings
-  support dotted global paths: `"window.ge.multimediaPlugin"` reads
-  `globalThis["window"]["ge"]["multimediaPlugin"]`. Use
-  `{ "root": "ge.multimediaPlugin", "type": "global" }` to read a literal
-  property named `ge.multimediaPlugin` on `globalThis`.
+- **`externals`**: Exclude specific dependencies from the bundle.
 - **`server.externals`**: Replace top-level externals for server entries and Server Functions. If
   omitted, server builds continue to use top-level `externals`.
 - **`devServer.browserToTerminal`**: Forward browser console output to the development terminal.
