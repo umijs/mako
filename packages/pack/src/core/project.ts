@@ -21,6 +21,7 @@ import {
 } from "../config/types";
 import { getPackPath, rustifyEnv } from "../utils/common";
 import { normalizePath } from "../utils/normalizePath";
+import { DiagnosticSources } from "./diagnosticSources";
 import { runLoaderWorkerPool } from "./loaderWorkerPool";
 import {
   Endpoint,
@@ -427,12 +428,14 @@ export function projectFactory(endpointWatchOptions?: {
   nodeTarget: boolean;
 }) {
   const cancel = new (class Cancel extends Error {})();
+  const diagnosticSources = new WeakMap<object, DiagnosticSources>();
 
   function subscribe<T>(
     useBuffer: boolean,
     nativeFunction:
       | NativeFunction<T>
       | ((callback: (err: Error, value: T) => void) => Promise<void>),
+    diagnosticSources: DiagnosticSources,
   ): AsyncIterableIterator<T> {
     type BufferItem =
       | { err: Error; value: undefined }
@@ -455,6 +458,7 @@ export function projectFactory(endpointWatchOptions?: {
     // the consumer catches up.
     function emitResult(err: Error | undefined, value: T | undefined) {
       if (canceled) return;
+      if (!err) diagnosticSources.intern(value);
       if (waiting) {
         let { resolve, reject } = waiting;
         waiting = undefined;
@@ -519,6 +523,7 @@ export function projectFactory(endpointWatchOptions?: {
 
     constructor(nativeProject: { __napiType: "Project" }) {
       this._nativeProject = nativeProject;
+      diagnosticSources.set(this, new DiagnosticSources());
       if (typeof binding.registerWorkerScheduler === "function") {
         runLoaderWorkerPool(binding, resolve(getPackPath(), "./binding.js"));
       }
@@ -541,7 +546,11 @@ export function projectFactory(endpointWatchOptions?: {
           this._nativeProject,
         )) as TurbopackResult<{ __napiType: "Endpoint" }>;
 
-        return napiEntrypointsToRawEntrypoints(napiEndpoints);
+        diagnosticSources.get(this)!.intern(napiEndpoints);
+        return napiEntrypointsToRawEntrypoints(
+          napiEndpoints,
+          diagnosticSources.get(this)!,
+        );
       });
     }
 
@@ -563,10 +572,12 @@ export function projectFactory(endpointWatchOptions?: {
         false,
         async (callback) =>
           binding.projectEntrypointsSubscribe(this._nativeProject, callback),
+        diagnosticSources.get(this)!,
       );
+      const sources = diagnosticSources.get(this)!;
       const iterator = (async function* () {
         for await (const entrypoints of subscription) {
-          yield napiEntrypointsToRawEntrypoints(entrypoints);
+          yield napiEntrypointsToRawEntrypoints(entrypoints, sources);
         }
       })();
       const closeIterator = iterator.return.bind(iterator);
@@ -584,13 +595,16 @@ export function projectFactory(endpointWatchOptions?: {
     }
 
     hmrEvents(identifier: string, expectedVersion?: string) {
-      return subscribe<TurbopackResult<Update>>(true, async (callback) =>
-        binding.projectHmrEvents(
-          this._nativeProject,
-          identifier,
-          callback,
-          expectedVersion,
-        ),
+      return subscribe<TurbopackResult<Update>>(
+        true,
+        async (callback) =>
+          binding.projectHmrEvents(
+            this._nativeProject,
+            identifier,
+            callback,
+            expectedVersion,
+          ),
+        diagnosticSources.get(this)!,
       );
     }
 
@@ -599,6 +613,7 @@ export function projectFactory(endpointWatchOptions?: {
         false,
         async (callback) =>
           binding.projectHmrIdentifiersSubscribe(this._nativeProject, callback),
+        diagnosticSources.get(this)!,
       );
     }
 
@@ -630,20 +645,25 @@ export function projectFactory(endpointWatchOptions?: {
     }
 
     updateInfoSubscribe(aggregationMs: number) {
-      return subscribe<NapiUpdateMessage>(true, async (callback) =>
-        binding.projectUpdateInfoSubscribe(
-          this._nativeProject,
-          aggregationMs,
-          callback,
-        ),
+      return subscribe<NapiUpdateMessage>(
+        true,
+        async (callback) =>
+          binding.projectUpdateInfoSubscribe(
+            this._nativeProject,
+            aggregationMs,
+            callback,
+          ),
+        diagnosticSources.get(this)!,
       );
     }
 
     shutdown(): Promise<void> {
+      diagnosticSources.get(this)!.dispose();
       return binding.projectShutdown(this._nativeProject);
     }
 
     onExit(): Promise<void> {
+      diagnosticSources.get(this)!.dispose();
       return binding.projectOnExit(this._nativeProject);
     }
   }
@@ -653,17 +673,25 @@ export function projectFactory(endpointWatchOptions?: {
     /** Undefined for library endpoints. */
     readonly _appIndex: number | undefined;
 
-    constructor(nativeEndpoint: { __napiType: "Endpoint" }, appIndex?: number) {
+    constructor(
+      nativeEndpoint: { __napiType: "Endpoint" },
+      sources: DiagnosticSources,
+      appIndex?: number,
+    ) {
       this._nativeEndpoint = nativeEndpoint;
+      diagnosticSources.set(this, sources);
       this._appIndex = appIndex;
     }
 
     async writeToDisk(): Promise<TurbopackResult<NapiWrittenEndpoint>> {
-      return await withErrorCause(
-        () =>
-          binding.endpointWriteToDisk(this._nativeEndpoint) as Promise<
-            TurbopackResult<NapiWrittenEndpoint>
-          >,
+      return await withErrorCause(async () =>
+        diagnosticSources
+          .get(this)!
+          .intern(
+            (await binding.endpointWriteToDisk(
+              this._nativeEndpoint,
+            )) as TurbopackResult<NapiWrittenEndpoint>,
+          ),
       );
     }
 
@@ -681,6 +709,7 @@ export function projectFactory(endpointWatchOptions?: {
             await this._nativeEndpoint,
             callback,
           ),
+        diagnosticSources.get(this)!,
       );
       await clientSubscription.next();
       return clientSubscription;
@@ -704,6 +733,7 @@ export function projectFactory(endpointWatchOptions?: {
             includeIssues,
             callback,
           ),
+        diagnosticSources.get(this)!,
       );
       await serverSubscription.next();
       return serverSubscription;
@@ -721,12 +751,15 @@ export function projectFactory(endpointWatchOptions?: {
       appPaths?: NapiWrittenEndpoint[];
       libraryPaths?: NapiWrittenEndpoint[];
     }>,
+    diagnosticSources: DiagnosticSources,
   ) {
     return {
       apps: (entrypoints.apps || []).map(
-        (e, index) => new EndpointImpl(e, index),
+        (e, index) => new EndpointImpl(e, diagnosticSources, index),
       ),
-      libraries: (entrypoints.libraries || []).map((e) => new EndpointImpl(e)),
+      libraries: (entrypoints.libraries || []).map(
+        (e) => new EndpointImpl(e, diagnosticSources),
+      ),
       appPaths: entrypoints.appPaths,
       libraryPaths: entrypoints.libraryPaths,
       issues: entrypoints.issues,
