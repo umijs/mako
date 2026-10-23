@@ -218,7 +218,10 @@ impl OutputAssetsReference for EcmascriptLibraryChunk {
             .chunking_context
             .reference_chunk_source_maps(Vc::upcast(self))
             .await?;
-        let include_license = self.processed_code().await?.license_comments.is_some();
+        let chunking_context = this.chunking_context.await?;
+        let include_license = matches!(chunking_context.minify_type(), MinifyType::Minify { .. })
+            && chunking_context.extract_comments()
+            && self.processed_code().await?.license_comments.is_some();
         let ref_assets = chunk_references.assets.await?;
         let mut assets = Vec::with_capacity(
             ref_assets.len()
@@ -607,7 +610,10 @@ impl OutputAssetsReference for EcmascriptLibraryEvaluateChunk {
             .chunking_context
             .reference_chunk_source_maps(Vc::upcast(self))
             .await?;
-        let include_license = self.processed_code().await?.license_comments.is_some();
+        let chunking_context = this.chunking_context.await?;
+        let include_license = matches!(chunking_context.minify_type(), MinifyType::Minify { .. })
+            && chunking_context.extract_comments()
+            && self.processed_code().await?.license_comments.is_some();
         let ref_assets = chunk_references.assets.await?;
         let other_chunks = this.other_chunks.await?;
         let mut assets = Vec::with_capacity(
