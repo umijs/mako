@@ -658,15 +658,13 @@ export function projectFactory(endpointWatchOptions?: {
     }
 
     shutdown(): Promise<void> {
-      return withDiagnosticCleanup(diagnosticSources.get(this)!, () =>
-        binding.projectShutdown(this._nativeProject),
-      );
+      diagnosticSources.get(this)!.clear();
+      return binding.projectShutdown(this._nativeProject);
     }
 
     onExit(): Promise<void> {
-      return withDiagnosticCleanup(diagnosticSources.get(this)!, () =>
-        binding.projectOnExit(this._nativeProject),
-      );
+      diagnosticSources.get(this)!.clear();
+      return binding.projectOnExit(this._nativeProject);
     }
   }
 
@@ -745,24 +743,6 @@ export function projectFactory(endpointWatchOptions?: {
   async function* emptySubscription(): AsyncIterableIterator<
     TurbopackResult<{}>
   > {}
-
-  function withDiagnosticCleanup(
-    sources: DiagnosticSources,
-    close: () => Promise<void>,
-  ): Promise<void> {
-    let result: Promise<void>;
-    try {
-      result = close();
-    } catch (error) {
-      sources.clear();
-      throw error;
-    }
-    const clear = () => sources.clear();
-    // Keep the original promise and synchronous throw behavior. Handle both
-    // outcomes so cleanup cannot create an unhandled rejected promise.
-    void result.then(clear, clear);
-    return result;
-  }
 
   function napiEntrypointsToRawEntrypoints(
     entrypoints: TurbopackResult<{

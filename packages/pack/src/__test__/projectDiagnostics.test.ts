@@ -122,47 +122,60 @@ it("preserves complete production writes, shares endpoint sources and isolates p
   expect(intern.mock.contexts.at(-1)).not.toBe(sources);
 });
 
-it.each([
-  ["shutdown", bindingMocks.projectShutdown],
-  ["onExit", bindingMocks.projectOnExit],
-] as const)(
-  "preserves native %s behavior and clears sources on every outcome",
-  async (method, binding) => {
+it.each(["shutdown", "onExit"] as const)(
+  "clears sources before native %s without observing its Promise",
+  async (method) => {
     const intern = vi.spyOn(DiagnosticSources.prototype, "intern");
     const clear = vi.spyOn(DiagnosticSources.prototype, "clear");
     const project = await createProject();
     await project.writeAllEntrypointsToDisk();
     const sources = intern.mock.contexts[0];
-    let resolve!: () => void;
-    const pending = new Promise<void>((done) => {
-      resolve = done;
-    });
-    binding.mockReturnValue(pending);
-
-    expect(project[method]()).toBe(pending);
-    expect(clear).not.toHaveBeenCalled();
-    resolve();
-    await pending;
-    expect(clear.mock.contexts).toEqual([sources]);
-
-    const error = new Error("original native failure");
-    const rejected = Promise.reject(error);
-    binding.mockReturnValue(rejected);
-    expect(project[method]()).toBe(rejected);
-    await expect(rejected).rejects.toBe(error);
-    expect(clear.mock.contexts).toEqual([sources, sources]);
-
-    binding.mockImplementation(() => {
-      throw error;
-    });
-    let thrown: unknown;
+    const key = method === "shutdown" ? "projectShutdown" : "projectOnExit";
+    const original = bindingMocks[key];
+    // vi.fn observes returned Promises itself; use a plain native stub here.
+    const native = (close: () => Promise<void>) =>
+      Object.assign(bindingMocks, { [key]: close });
     try {
-      project[method]();
-    } catch (caught) {
-      thrown = caught;
+      let resolve!: () => void;
+      const pending = new Promise<void>((done) => {
+        resolve = done;
+      });
+      const pendingThen = vi.spyOn(pending, "then");
+      native(() => {
+        expect(clear.mock.contexts).toEqual([sources]);
+        return pending;
+      });
+
+      expect(project[method]()).toBe(pending);
+      expect(pendingThen).not.toHaveBeenCalled();
+      expect(clear.mock.contexts).toEqual([sources]);
+      resolve();
+      await pending;
+
+      const error = new Error("original native failure");
+      const rejected = Promise.reject(error);
+      const rejectedThen = vi.spyOn(rejected, "then");
+      native(() => rejected);
+      expect(project[method]()).toBe(rejected);
+      expect(rejectedThen).not.toHaveBeenCalled();
+      expect(clear.mock.contexts).toEqual([sources, sources]);
+      await expect(rejected).rejects.toBe(error);
+
+      native(() => {
+        expect(clear.mock.contexts).toEqual([sources, sources, sources]);
+        throw error;
+      });
+      let thrown: unknown;
+      try {
+        project[method]();
+      } catch (caught) {
+        thrown = caught;
+      }
+      expect(thrown).toBe(error);
+      expect(clear.mock.contexts).toEqual([sources, sources, sources]);
+    } finally {
+      bindingMocks[key] = original;
     }
-    expect(thrown).toBe(error);
-    expect(clear.mock.contexts).toEqual([sources, sources, sources]);
   },
 );
 
