@@ -540,6 +540,8 @@ async function runDev(
           return next();
         }
 
+        // Both the SPA shell and the miss response depend on Accept.
+        c.header("Vary", "Accept", { append: true });
         const acceptedTypes = parseAccept(
           (c.req.header("accept") || "*/*").toLowerCase(),
         );

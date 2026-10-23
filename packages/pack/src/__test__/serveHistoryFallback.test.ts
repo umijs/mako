@@ -135,6 +135,7 @@ describe("shared serve() history fallback option", () => {
         const response = await request(pathname, { headers: { accept } });
 
         expect(response.status).toBe(404);
+        expect(response.headers.get("vary")).toBeNull();
         expect(await response.text()).not.toBe(SPA_HTML);
       }
     },
@@ -152,6 +153,27 @@ describe("shared serve() history fallback option", () => {
 });
 
 describe("dev server SPA history fallback", () => {
+  it.each(["GET", "HEAD"])(
+    "varies both HTML and non-HTML responses by Accept for %s",
+    async (method) => {
+      const request = await startServer();
+
+      for (const [accept, status] of [
+        ["text/html", 200],
+        ["application/json", 404],
+      ] as const) {
+        const response = await request("/home", {
+          method,
+          headers: { accept },
+        });
+
+        expect(response.status).toBe(status);
+        expect(response.headers.get("vary")).toBe("Accept");
+        await response.body?.cancel();
+      }
+    },
+  );
+
   it.each([
     "/home",
     "/home/settings/profile",
@@ -194,6 +216,7 @@ describe("dev server SPA history fallback", () => {
       });
 
       expect(response.status).toBe(200);
+      expect(response.headers.get("vary")).toBeNull();
       expect(await response.text()).toBe(contents);
     },
   );
@@ -211,6 +234,7 @@ describe("dev server SPA history fallback", () => {
     });
 
     expect(response.status).not.toBe(200);
+    expect(response.headers.get("vary")).toBeNull();
     expect(await response.text()).not.toBe(SPA_HTML);
   });
 
@@ -285,6 +309,7 @@ describe("dev server SPA history fallback", () => {
     });
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("vary")).toBeNull();
     expect(await response.text()).toBe("upstream response");
     expect(serverMocks.proxy).toHaveBeenCalledWith(
       "http://upstream.invalid/api/data?filter=active",
