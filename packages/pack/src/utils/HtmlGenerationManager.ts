@@ -5,6 +5,10 @@ import type { ConfigComplete } from "../config/types";
 import type { Endpoint, RawEntrypoints } from "../core/types";
 import { HtmlPlugin } from "../plugins/HtmlPlugin";
 import { getInitialAssetsFromEndpointPaths } from "./getInitialAssets";
+import {
+  pickWrittenEndpointPaths,
+  type WrittenEndpointPaths,
+} from "./writtenEndpointPaths";
 
 type ConfigWithGlobalHtml = ConfigComplete & {
   html?: HtmlConfig | HtmlConfig[];
@@ -27,7 +31,7 @@ export class HtmlGenerationManager {
   >();
   private readonly writtenEndpointPaths = new Map<
     Endpoint,
-    NapiWrittenEndpoint
+    WrittenEndpointPaths
   >();
   private pendingGenerateAll = false;
   private readonly pendingEndpoints = new Set<Endpoint>();
@@ -75,11 +79,14 @@ export class HtmlGenerationManager {
     );
   }
 
-  setWrittenEndpointPath(
+  setWrittenEndpointPath<T extends WrittenEndpointPaths>(
     endpoint: Endpoint,
-    writtenEndpointPath: NapiWrittenEndpoint,
+    writtenEndpointPath: T,
   ) {
-    this.writtenEndpointPaths.set(endpoint, writtenEndpointPath);
+    this.writtenEndpointPaths.set(
+      endpoint,
+      pickWrittenEndpointPaths(writtenEndpointPath),
+    );
   }
 
   async generateAll() {
@@ -139,7 +146,7 @@ export class HtmlGenerationManager {
 
       const writtenEndpointPath = paths?.[index];
       if (writtenEndpointPath) {
-        this.writtenEndpointPaths.set(endpoint, writtenEndpointPath);
+        this.setWrittenEndpointPath(endpoint, writtenEndpointPath);
       }
     });
   }
