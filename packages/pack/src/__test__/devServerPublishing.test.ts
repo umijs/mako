@@ -82,7 +82,6 @@ function createProject() {
   const state = { marker: "A", issues: [] as NapiIssue[] };
   const outputDir = path.join(projectPath, "dist");
   const nativeResults: TurbopackResult<RawEntrypoints>[] = [];
-  const nativeEndpointResults: TurbopackResult<NapiWrittenEndpoint>[] = [];
   const clientChanges = createStream<TurbopackResult>();
   const serverChanges = createStream<TurbopackResult>();
   const entrypoints = createStream<TurbopackResult<RawEntrypoints>>();
@@ -106,11 +105,7 @@ function createProject() {
 
   function createEndpoint(): Endpoint {
     return {
-      writeToDisk: vi.fn(async () => {
-        const result = { ...writeAsset(), issues: [...state.issues] };
-        nativeEndpointResults.push(result);
-        return result;
-      }),
+      writeToDisk: vi.fn(async () => ({ ...writeAsset(), issues: [] })),
       clientChanged: vi.fn(async () => clientChanges.stream),
       serverChanged: vi.fn(async () => serverChanges.stream),
     };
@@ -137,14 +132,7 @@ function createProject() {
     shutdown: vi.fn(async () => {}),
   };
   projectMocks.projectFactory.mockReturnValue(async () => project);
-  return {
-    clientChanges,
-    nativeEndpointResults,
-    nativeResults,
-    project,
-    state,
-    subscribedEndpoint,
-  };
+  return { clientChanges, nativeResults, project, state, subscribedEndpoint };
 }
 
 async function getAvailablePort(): Promise<number> {
@@ -219,51 +207,6 @@ afterEach(async () => {
 });
 
 describe("dev server publishing pipeline", () => {
-  it("publishes endpoint output without retaining native diagnostics in path caches", async () => {
-    const fixture = createProject();
-    const source = "large native diagnostic source".repeat(100_000);
-    fixture.state.issues = [
-      {
-        ...createIssue("warning"),
-        source: {
-          source: { ident: "[project]/dependency.js", content: source },
-        },
-      },
-    ];
-    const writes: Array<{ cache: Map<unknown, unknown>; value: unknown }> = [];
-    const originalSet = Map.prototype.set;
-    vi.spyOn(Map.prototype, "set").mockImplementation(function (
-      this: Map<unknown, unknown>,
-      key: unknown,
-      value: unknown,
-    ) {
-      if (
-        key === fixture.subscribedEndpoint &&
-        value &&
-        typeof value === "object" &&
-        "clientPaths" in value
-      ) {
-        writes.push({ cache: this, value });
-      }
-      return originalSet.call(this, key, value);
-    });
-
-    const handle = await startServer();
-
-    expect(await readHttp(handle)).toContain('src="main.aaaaaaaa.js"');
-    // Observe both the HMR and HTML caches during the real publishing pipeline.
-    expect(new Set(writes.map(({ cache }) => cache)).size).toBe(2);
-    for (const { value } of writes) {
-      expect(value).toEqual({
-        clientPaths: ["main.aaaaaaaa.js"],
-        serverPaths: [],
-      });
-    }
-    expect(
-      fixture.nativeEndpointResults[0].issues[0].source?.source.content,
-    ).toBe(source);
-  });
-
   it("publishes HTML with fresh content hashes and preserves the native result", async () => {
     const fixture = createProject();
     const handle = await startServer();

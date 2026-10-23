@@ -35,10 +35,6 @@ import {
   TaskProgress,
 } from "../utils/taskProgress";
 import { validateEntryPaths } from "../utils/validateEntry";
-import {
-  pickWrittenEndpointPaths,
-  type WrittenEndpointPaths,
-} from "../utils/writtenEndpointPaths";
 import { forwardBrowserLogs, isBrowserLogsMessage } from "./browserLogs";
 import { consumeHmrSubscription } from "./hmrSubscription";
 import { projectFactory } from "./project";
@@ -433,7 +429,7 @@ export async function createHotReloader(
     sendEnqueuedMessagesDebounce();
   }
 
-  const writtenEndpointPaths = new Map<Endpoint, WrittenEndpointPaths>();
+  const writtenEndpointPaths = new Map<Endpoint, NapiWrittenEndpoint>();
 
   function updateWrittenEndpointPaths(
     endpoints: Endpoint[] | undefined,
@@ -446,9 +442,8 @@ export async function createHotReloader(
     endpoints.forEach((endpoint, index) => {
       const written = paths[index];
       if (written) {
-        const outputPaths = pickWrittenEndpointPaths(written);
-        writtenEndpointPaths.set(endpoint, outputPaths);
-        htmlGenerationManager.setWrittenEndpointPath(endpoint, outputPaths);
+        writtenEndpointPaths.set(endpoint, written);
+        htmlGenerationManager.setWrittenEndpointPath(endpoint, written);
       }
     });
   }
@@ -480,9 +475,8 @@ export async function createHotReloader(
   ) {
     const result = await entrypoint.writeToDisk();
     processIssues(result, true, true);
-    const outputPaths = pickWrittenEndpointPaths(result);
-    writtenEndpointPaths.set(entrypoint, outputPaths);
-    htmlGenerationManager.setWrittenEndpointPath(entrypoint, outputPaths);
+    writtenEndpointPaths.set(entrypoint, result);
+    htmlGenerationManager.setWrittenEndpointPath(entrypoint, result);
     if (generateHtml) {
       await htmlGenerationManager.generateForEndpoint(entrypoint);
     }
