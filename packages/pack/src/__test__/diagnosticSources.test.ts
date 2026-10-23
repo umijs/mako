@@ -41,6 +41,14 @@ describe("diagnostic source text", () => {
     repeated.issues[0].source!.source.content = "caller mutation";
     expect(first.issues[0].source?.source.content).toBe("before edit");
     expect(changed.issues[0].source?.source.content).toBe("after edit");
+
+    sources.dispose();
+    sources.dispose();
+    sources.clear();
+    const late = diagnostic("after disposal");
+    const lateBefore = structuredClone(late);
+    expect(sources.intern(late)).toBe(late);
+    expect(late).toEqual(lateBefore);
   });
 
   it("shares retained strings across result types while bounding cache entries and bytes", async () => {
@@ -93,6 +101,16 @@ describe("diagnostic source text", () => {
     add(new DiagnosticSources(), "separate-project");
     add(new DiagnosticSources(), "separate-project");
 
+    const disposed = new DiagnosticSources();
+    const transient = (name: string) => {
+      disposed.intern(diagnostic(text(name), name));
+    };
+    transient("disposed-released");
+    disposed.dispose();
+    transient("disposed-late");
+    add(disposed, "disposed-independent");
+    add(disposed, "disposed-independent");
+
     const chunks: Buffer[] = [];
     for await (const chunk of getHeapSnapshot())
       chunks.push(Buffer.from(chunk));
@@ -129,7 +147,12 @@ describe("diagnostic source text", () => {
     expect(counts.get("oversized")).toBe(2);
     expect(counts.get("cleared")).toBe(2);
     expect(counts.get("separate-project")).toBe(2);
+    expect.soft(counts.get("disposed-released") ?? 0).toBe(0);
+    expect.soft(counts.get("disposed-late") ?? 0).toBe(0);
+    expect.soft(counts.get("disposed-independent")).toBe(2);
+    // Keep the disposed cache alive while proving it retains no late text.
+    expect(disposed.intern(null)).toBeNull();
     // Keep the native-response-shaped results alive until after the snapshot.
-    expect(results).toHaveLength(35);
+    expect(results).toHaveLength(37);
   });
 });

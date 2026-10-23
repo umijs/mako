@@ -16,6 +16,7 @@ export class DiagnosticSources {
     { content: string; bytes: number }
   >();
   private bytes = 0;
+  private disposed = false;
 
   constructor(
     private readonly maxEntries = MAX_SOURCE_ENTRIES,
@@ -23,6 +24,7 @@ export class DiagnosticSources {
   ) {}
 
   intern<T>(value: T): T {
+    if (this.disposed) return value;
     if (value == null || typeof value !== "object") return value;
 
     const result = value as DiagnosticResult;
@@ -68,5 +70,10 @@ export class DiagnosticSources {
   clear() {
     this.sources.clear();
     this.bytes = 0;
+  }
+
+  dispose() {
+    this.disposed = true;
+    this.clear();
   }
 }

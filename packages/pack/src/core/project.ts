@@ -658,12 +658,12 @@ export function projectFactory(endpointWatchOptions?: {
     }
 
     shutdown(): Promise<void> {
-      diagnosticSources.get(this)!.clear();
+      diagnosticSources.get(this)!.dispose();
       return binding.projectShutdown(this._nativeProject);
     }
 
     onExit(): Promise<void> {
-      diagnosticSources.get(this)!.clear();
+      diagnosticSources.get(this)!.dispose();
       return binding.projectOnExit(this._nativeProject);
     }
   }

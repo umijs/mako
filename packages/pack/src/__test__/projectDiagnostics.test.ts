@@ -123,13 +123,37 @@ it("preserves complete production writes, shares endpoint sources and isolates p
 });
 
 it.each(["shutdown", "onExit"] as const)(
-  "clears sources before native %s without observing its Promise",
+  "disposes sources before native %s and preserves late results and native behavior",
   async (method) => {
     const intern = vi.spyOn(DiagnosticSources.prototype, "intern");
-    const clear = vi.spyOn(DiagnosticSources.prototype, "clear");
+    const dispose = vi.spyOn(DiagnosticSources.prototype, "dispose");
     const project = await createProject();
-    await project.writeAllEntrypointsToDisk();
+    const entrypoints = await project.writeAllEntrypointsToDisk();
     const sources = intern.mock.contexts[0];
+    let emit!: Callback;
+    bindingMocks.projectHmrEvents.mockImplementation(
+      (_project, _identifier, callback: Callback) => {
+        emit = callback;
+        emit(undefined, diagnostic());
+        return Promise.resolve(rootTask);
+      },
+    );
+    const subscription = project.hmrEvents("entry.js");
+    await subscription.next();
+    let finishWrite!: (value: ReturnType<typeof writtenEndpoint>) => void;
+    bindingMocks.endpointWriteToDisk.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishWrite = resolve;
+      }),
+    );
+    const writing = entrypoints.apps![0].writeToDisk();
+    let finishAll!: (value: ReturnType<typeof nativeEntrypoints>) => void;
+    bindingMocks.projectWriteAllEntrypointsToDisk.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishAll = resolve;
+      }),
+    );
+    const writingAll = project.writeAllEntrypointsToDisk();
     const key = method === "shutdown" ? "projectShutdown" : "projectOnExit";
     const original = bindingMocks[key];
     // vi.fn observes returned Promises itself; use a plain native stub here.
@@ -142,15 +166,41 @@ it.each(["shutdown", "onExit"] as const)(
       });
       const pendingThen = vi.spyOn(pending, "then");
       native(() => {
-        expect(clear.mock.contexts).toEqual([sources]);
+        expect(dispose.mock.contexts).toEqual([sources]);
         return pending;
       });
 
       expect(project[method]()).toBe(pending);
       expect(pendingThen).not.toHaveBeenCalled();
-      expect(clear.mock.contexts).toEqual([sources]);
+      expect(dispose.mock.contexts).toEqual([sources]);
+      const beforeLate = intern.mock.calls.length;
+      const late = diagnostic("after close began");
+      const lateWrite = writtenEndpoint("after close began");
+      const lateAll = nativeEntrypoints("after close began");
+      emit(undefined, late);
+      finishWrite(lateWrite);
+      finishAll(lateAll);
+      expect((await subscription.next()).value).toBe(late);
+      expect(await writing).toBe(lateWrite);
+      const all = await writingAll;
+      expect(all).toEqual({
+        ...lateAll,
+        apps: all.apps,
+        libraries: all.libraries,
+      });
+      expect(
+        intern.mock.contexts
+          .slice(beforeLate)
+          .every((cache) => cache === sources),
+      ).toBe(true);
+      expect(dispose.mock.invocationCallOrder[0]).toBeLessThan(
+        intern.mock.invocationCallOrder[beforeLate],
+      );
       resolve();
       await pending;
+      const afterClose = diagnostic("after close completed");
+      emit(undefined, afterClose);
+      expect((await subscription.next()).value).toBe(afterClose);
 
       const error = new Error("original native failure");
       const rejected = Promise.reject(error);
@@ -158,11 +208,11 @@ it.each(["shutdown", "onExit"] as const)(
       native(() => rejected);
       expect(project[method]()).toBe(rejected);
       expect(rejectedThen).not.toHaveBeenCalled();
-      expect(clear.mock.contexts).toEqual([sources, sources]);
+      expect(dispose.mock.contexts).toEqual([sources, sources]);
       await expect(rejected).rejects.toBe(error);
 
       native(() => {
-        expect(clear.mock.contexts).toEqual([sources, sources, sources]);
+        expect(dispose.mock.contexts).toEqual([sources, sources, sources]);
         throw error;
       });
       let thrown: unknown;
@@ -172,9 +222,11 @@ it.each(["shutdown", "onExit"] as const)(
         thrown = caught;
       }
       expect(thrown).toBe(error);
-      expect(clear.mock.contexts).toEqual([sources, sources, sources]);
+      expect(dispose.mock.contexts).toEqual([sources, sources, sources]);
     } finally {
       bindingMocks[key] = original;
+      await subscription.return!();
+      expect(bindingMocks.rootTaskDispose).toHaveBeenCalledWith(rootTask);
     }
   },
 );
