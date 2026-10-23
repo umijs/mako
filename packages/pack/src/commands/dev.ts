@@ -10,6 +10,7 @@ import type { DevServerConfig } from "@utoo/pack-shared";
 import fs from "fs";
 import getPort from "get-port";
 import { Hono } from "hono";
+import { parseAccept } from "hono/utils/accept";
 import https from "https";
 import path from "path";
 import { BundleOptions } from "../config/types";
@@ -154,6 +155,8 @@ export interface StartServerOptions {
   https?: boolean;
   hostname?: string;
   logServerInfo?: boolean;
+  /** Serve index.html for unmatched SPA routes. Defaults to false; the CLI enables it. */
+  historyApiFallback?: boolean;
   /** Handle process signals and errors. Defaults to true; embedded servers can opt out. */
   handleSignals?: boolean;
   selfSignedCertificate?: SelfSignedCertificate;
@@ -519,6 +522,38 @@ async function runDev(
         rewriteRequestPath,
       }),
     );
+
+    // Framework integrations keep their own routing unless they explicitly opt in.
+    if (serverOptions?.historyApiFallback === true) {
+      const serveIndex = serveStatic({ root: distRoot, path: "index.html" });
+      app.get("/*", (c, next) => {
+        let pathname: string;
+        try {
+          pathname = decodeURIComponent(c.req.path);
+        } catch {
+          return next();
+        }
+        if (
+          pathname === HMR_PATH ||
+          path.posix.basename(pathname).includes(".")
+        ) {
+          return next();
+        }
+
+        const acceptedTypes = parseAccept(
+          (c.req.header("accept") || "*/*").toLowerCase(),
+        );
+        const htmlAccept =
+          acceptedTypes.find(({ type }) => type === "text/html") ??
+          acceptedTypes.find(({ type }) => type === "text/*") ??
+          acceptedTypes.find(({ type }) => type === "*/*");
+        if (!htmlAccept?.q || acceptedTypes[0]?.type === "application/json") {
+          return next();
+        }
+
+        return serveIndex(c, next);
+      });
+    }
 
     app.all("*", (c) => {
       if (c.req.method === "GET" || c.req.method === "HEAD") {
