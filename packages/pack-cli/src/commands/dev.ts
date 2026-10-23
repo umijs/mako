@@ -26,6 +26,11 @@ export default defineCommand({
       type: "boolean",
       description: "Show compilation progress (pass --no-tracing to disable)",
     },
+    "history-api-fallback": {
+      type: "boolean",
+      default: true,
+      description: "Serve index.html for unmatched SPA routes",
+    },
   },
   async run({ args }) {
     const { projectOptions, projectPath, rootPath } =
@@ -33,6 +38,7 @@ export default defineCommand({
     await utooPack.serve(projectOptions, projectPath, rootPath, {
       logServerInfo: true,
       port: 3000,
+      historyApiFallback: args["history-api-fallback"],
     });
   },
 });

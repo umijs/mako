@@ -43,6 +43,17 @@ Start the development server with Hot Module Replacement (HMR):
 utx up dev
 ```
 
+SPA history fallback is enabled by default: navigation to routes such as `/home`
+or `/home/settings` serves the output directory's `index.html`, so React Router
+does not need a self-proxy. Existing files and configured API proxies take
+precedence. Missing files with a dot in the final path segment and requests that
+do not accept HTML retain their normal error responses.
+
+Use `utx up dev --no-history-api-fallback` to disable this behavior. The default
+applies only to the CLI: calling `@utoo/pack.serve()` directly keeps fallback
+disabled, preserving framework integrations' existing routing. API callers can
+opt in with `historyApiFallback: true` in the fourth argument (server options).
+
 ### Production Build
 
 Build your project for production:
